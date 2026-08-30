@@ -14,6 +14,7 @@ struct SceneObject {
   bool builtin = false;
   // imported mesh data
   std::string path;
+  unsigned long long material_node = 0; // MaterialOutput node driving this object
   float pos[3] = {0.5f, 0.05f, 0.5f};
   float scale = 0.08f;
   float yaw = 0.f;

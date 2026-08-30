@@ -69,6 +69,9 @@ static Camera CAM;
 
 static GLuint prog_terrain = 0, prog_water = 0, prog_sky = 0, prog_depth = 0;
 static GLuint prog_lines = 0, prog_bg = 0, prog_mesh = 0, prog_gizmo = 0;
+static GLuint prog_matprev = 0;
+static GLuint matprev_fbo = 0, matprev_tex = 0, matprev_depth = 0;
+static int matprev_size = 0;
 static GLuint vao_grid = 0, vbo_grid = 0, ebo_grid = 0, vao_quad = 0;
 static GLuint vao_lines = 0, vbo_lines = 0;
 static GLuint vao_dyn = 0, vbo_dyn = 0;      // dynamic outline lines
@@ -585,6 +588,67 @@ void main(){
   frag = vec4(col, 1.0);
 })GLSL";
 
+// material preview: a lit sphere textured with the material channels
+static const char *VS_MATPREV = R"GLSL(#version 430 core
+layout(location=0) in vec3 in_pos;
+layout(location=1) in vec3 in_nrm;
+out vec3 v_nrm;
+out vec2 v_uv;
+void main(){
+  v_nrm = normalize(in_nrm);
+  v_uv = vec2(atan(in_pos.z, in_pos.x)/6.2831853 + 0.5, 0.5 - asin(clamp(in_pos.y,-1.0,1.0))/3.14159265);
+  gl_Position = vec4(in_pos.xy * 0.92, in_pos.z * 0.5 + 0.5, 1.0);
+})GLSL";
+
+static const char *FS_MATPREV = R"GLSL(#version 430 core
+in vec3 v_nrm;
+in vec2 v_uv;
+out vec4 frag;
+uniform sampler2D u_albedo;
+uniform sampler2D u_normal_map;
+uniform sampler2D u_rough_map;
+uniform int u_has_albedo, u_has_normal, u_has_rough;
+uniform float u_roughness, u_metallic, u_specular, u_reflection;
+uniform vec3 u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
+uniform float u_exposure, u_sun_intensity, u_ambient;
+const float PI = 3.14159265;
+vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
+void main(){
+  vec3 N = normalize(v_nrm);
+  vec3 albedo = (u_has_albedo == 1) ? pow(texture(u_albedo, v_uv).rgb, vec3(2.2))
+                                    : vec3(0.55,0.53,0.5);
+  if (u_has_normal == 1){
+    vec3 nm = texture(u_normal_map, v_uv).xyz * 2.0 - 1.0;
+    vec3 T = normalize(cross(vec3(0,1,0), N) + vec3(1e-4));
+    vec3 B = cross(N, T);
+    N = normalize(T*nm.x + B*nm.y + N*max(nm.z,0.05));
+  }
+  float rough = clamp(u_roughness * ((u_has_rough == 1) ?
+                      texture(u_rough_map, v_uv).r*2.0 : 1.0), 0.03, 1.0);
+  vec3 V = vec3(0,0,1);
+  vec3 L = normalize(u_sun);
+  vec3 H = normalize(L+V);
+  float NdL = max(dot(N,L),0.0), NdV = max(dot(N,V),1e-4);
+  float NdH = max(dot(N,H),0.0), VdH = max(dot(V,H),0.0);
+  vec3 F0 = mix(vec3(0.08*u_specular), albedo, u_metallic);
+  float a = rough*rough, a2 = a*a;
+  float dnm = (NdH*NdH*(a2-1.0)+1.0);
+  float D = a2 / max(PI*dnm*dnm, 1e-6);
+  float k = (rough+1.0); k = k*k/8.0;
+  float G = (NdL/(NdL*(1.0-k)+k)) * (NdV/(NdV*(1.0-k)+k));
+  vec3 F = F0 + (1.0-F0)*pow(1.0-VdH,5.0);
+  vec3 spec = D*G*F/max(4.0*NdL*NdV,1e-4);
+  vec3 kd = (1.0-F)*(1.0-u_metallic);
+  vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
+  vec3 col = (kd*albedo/PI + spec) * u_sun_color * u_sun_intensity * NdL
+           + albedo * sky * (0.45 + 0.55*N.y);
+  vec3 R = reflect(-V, N);
+  vec3 refl = mix(u_sky_horizon, u_sky_zenith, clamp(R.y*0.5+0.5,0.0,1.0));
+  col += refl * u_reflection * (1.0-rough) * (F0.g + (1.0-F0.g)*pow(1.0-NdV,5.0));
+  col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));
+  frag = vec4(col, 1.0);
+})GLSL";
+
 static const char *VS_LINES = R"GLSL(#version 430 core
 layout(location=0) in vec3 in_pos;
 uniform mat4 u_mvp;
@@ -712,6 +776,7 @@ bool renderer_init() {
   prog_bg = link_prog(VS_BG, FS_BG);
   prog_mesh = link_prog(VS_MESH, FS_MESH);
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
+  prog_matprev = link_prog(VS_MATPREV, FS_MATPREV);
 
   // terrain grid
   std::vector<float> verts;
@@ -1503,6 +1568,69 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
     }
   }
   return best_idx;
+}
+
+unsigned renderer_material_preview(int size) {
+  RenderSettings &RS = render_settings();
+  if (size < 16) size = 16;
+  if (size != matprev_size || !matprev_fbo) {
+    if (matprev_fbo) {
+      glDeleteFramebuffers(1, &matprev_fbo);
+      glDeleteTextures(1, &matprev_tex);
+      glDeleteRenderbuffers(1, &matprev_depth);
+    }
+    glGenFramebuffers(1, &matprev_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, matprev_fbo);
+    glGenTextures(1, &matprev_tex);
+    glBindTexture(GL_TEXTURE_2D, matprev_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, size, size, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           matprev_tex, 0);
+    glGenRenderbuffers(1, &matprev_depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, matprev_depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                              GL_RENDERBUFFER, matprev_depth);
+    matprev_size = size;
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, matprev_fbo);
+  glViewport(0, 0, size, size);
+  glClearColor(0.11f, 0.11f, 0.12f, 1.f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST);
+  float sun[3];
+  compute_sun_dir(RS, sun);
+  glUseProgram(prog_matprev);
+  uni3(prog_matprev, "u_sun", sun);
+  uni3(prog_matprev, "u_sun_color", RS.sun_color);
+  uni1(prog_matprev, "u_sun_intensity", RS.sun_intensity);
+  uni3(prog_matprev, "u_sky_zenith", RS.sky_zenith);
+  uni3(prog_matprev, "u_sky_horizon", RS.sky_horizon);
+  uni1(prog_matprev, "u_ambient", RS.ambient_intensity);
+  uni1(prog_matprev, "u_exposure", RS.exposure);
+  uni1(prog_matprev, "u_roughness", RS.mat_roughness);
+  uni1(prog_matprev, "u_metallic", RS.mat_metallic);
+  uni1(prog_matprev, "u_specular", RS.mat_specular);
+  uni1(prog_matprev, "u_reflection", RS.mat_reflection);
+  unii(prog_matprev, "u_has_albedo", has_albedo ? 1 : 0);
+  unii(prog_matprev, "u_has_normal", has_normal_map ? 1 : 0);
+  unii(prog_matprev, "u_has_rough", has_rough_map ? 1 : 0);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, tex_albedo);
+  unii(prog_matprev, "u_albedo", 0);
+  glActiveTexture(GL_TEXTURE5);
+  glBindTexture(GL_TEXTURE_2D, tex_normal);
+  unii(prog_matprev, "u_normal_map", 5);
+  glActiveTexture(GL_TEXTURE6);
+  glBindTexture(GL_TEXTURE_2D, tex_rough);
+  unii(prog_matprev, "u_rough_map", 6);
+  glBindVertexArray(vao_sphere);
+  glDrawArrays(GL_TRIANGLES, 0, sphere_verts);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  return matprev_tex;
 }
 
 // Renders the live sky (gradient + sun tint + volumetric clouds) into an

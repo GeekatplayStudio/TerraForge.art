@@ -44,6 +44,9 @@ public:
   Graph *graph = nullptr;
 
   Port *port(const std::string &name);
+  // direction-aware lookup — required when a node names an input and an
+  // output identically (e.g. Levels' "texture" in and out)
+  Port *port(const std::string &name, PortDir dir);
   Port *first_out(DataType t);
 
   void add_in(const std::string &name, DataType t = DataType::Heightmap,

@@ -78,6 +78,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_modeling.cpp
     engine/nodes/nodes_surface.cpp
     engine/nodes/nodes_atmosphere.cpp
+    engine/nodes/nodes_material_graph.cpp
     engine/nodes/nodes_hydro.cpp
     engine/nodes/nodes_logic.cpp
     external/miniz/miniz.c

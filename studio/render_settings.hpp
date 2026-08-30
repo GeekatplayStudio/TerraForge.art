@@ -137,6 +137,8 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
 // upload extra material maps (any may be null)
 void renderer_set_material_maps(const void *normal, const void *roughness,
                                 const void *displacement);
+// renders the current terrain material onto a lit sphere; returns its texture
+unsigned renderer_material_preview(int size);
 
 // computes sun direction from settings (handles geographic mode)
 void compute_sun_dir(const RenderSettings &rs, float out_dir[3]);

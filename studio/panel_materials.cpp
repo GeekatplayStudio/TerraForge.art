@@ -1,93 +1,170 @@
-// Geekatplay TerraForge — Material panel. Shows the material of whatever is
-// selected in the scene (terrain, water, imported mesh), the way Cinema 4D's
-// material editor follows the selection.
+// Geekatplay TerraForge — Material editor.
+// Blender's material system (named materials assigned to objects, a Material
+// Output node that gathers the shading channels) combined with Substance's
+// channel-graph workflow: every channel is produced by nodes in the Materials
+// workspace and lands on one MaterialOutput node, previewed live on a sphere.
 #include "app.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include <imgui.h>
 #include <string>
+#include <vector>
 
 namespace studio {
 
-// combo listing every texture-producing node in the graph
-static bool node_combo(App &a, const char *label, unsigned long long &id,
-                       bool locked) {
-  bool changed = false;
-  gpx::Node *cur = a.graph.find_node(id);
-  std::string cl = cur ? cur->type + " #" + std::to_string(cur->id)
-                       : std::string("(none)");
-  ImGui::SetNextItemWidth(-1);
-  ImGui::TextUnformatted(label);
-  ImGui::SetNextItemWidth(-1);
-  ImGui::PushID(label);
-  if (ImGui::BeginCombo("##n", cl.c_str())) {
-    if (ImGui::Selectable("(none)", id == 0)) {
-      id = 0;
-      changed = true;
+struct MatEntry {
+  uint64_t id;
+  std::string name;
+};
+
+static std::vector<MatEntry> collect_materials(App &a) {
+  std::vector<MatEntry> out;
+  for (auto &n : a.graph.nodes)
+    if (n->type == "MaterialOutput") {
+      std::string nm = n->attrs.get_s("name");
+      if (nm.empty()) nm = "Material";
+      out.push_back({n->id, nm + "  #" + std::to_string(n->id)});
     }
-    for (auto &n : a.graph.nodes) {
-      if (!n->first_out(gpx::DataType::Texture)) continue;
-      std::string item = n->type + " #" + std::to_string(n->id);
-      if (ImGui::Selectable(item.c_str(), n->id == id)) {
-        id = n->id;
-        changed = true;
-      }
-    }
-    ImGui::EndCombo();
-  }
-  ImGui::PopID();
-  (void)locked;
-  return changed;
+  return out;
 }
 
-static void terrain_material(App &a) {
-  RenderSettings &rs = render_settings();
-  ImGui::SeparatorText("Albedo source");
-  ImGui::RadioButton("Auto (last material node)", &rs.terrain_material_mode, 0);
-  ImGui::RadioButton("Procedural (function + color)", &rs.terrain_material_mode, 1);
-  ImGui::RadioButton("Assigned node", &rs.terrain_material_mode, 2);
-  if (rs.terrain_material_mode == 2) {
-    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
-    if (lk.owns_lock()) {
-      if (node_combo(a, "Albedo node", rs.terrain_material_node, false))
+// one channel row: name, whether a node feeds it, and what feeds it
+static void channel_row(App &a, gpx::Node *mat, const char *port,
+                        const char *human) {
+  gpx::Node *src = a.graph.upstream_node(*mat, port);
+  ImGui::TableNextRow();
+  ImGui::TableNextColumn();
+  ImGui::TextUnformatted(human);
+  ImGui::TableNextColumn();
+  if (src) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.75f, 0.45f, 1.f));
+    ImGui::Text("%s #%llu", src->type.c_str(), (unsigned long long)src->id);
+    ImGui::PopStyleColor();
+  } else {
+    ImGui::TextDisabled("not connected");
+  }
+}
+
+static void material_editor(App &a, SceneObject &obj) {
+  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  if (!lk.owns_lock()) {
+    ImGui::TextDisabled("computing...");
+    return;
+  }
+  std::vector<MatEntry> mats = collect_materials(a);
+  gpx::Node *mat = a.graph.find_node(obj.material_node);
+  if (mat && mat->type != "MaterialOutput") mat = nullptr;
+
+  // ---- material slot (Blender: the material data-block on the object) ----
+  ImGui::SeparatorText("Material");
+  ImGui::SetNextItemWidth(-92);
+  std::string label = mat ? mat->attrs.get_s("name") + "  #" +
+                                std::to_string(mat->id)
+                          : std::string("(none)");
+  if (ImGui::BeginCombo("##matsel", label.c_str())) {
+    if (ImGui::Selectable("(none)", mat == nullptr)) {
+      obj.material_node = 0;
+      a.uploaded_serial = 0;
+    }
+    for (const MatEntry &m : mats)
+      if (ImGui::Selectable(m.name.c_str(), mat && m.id == mat->id)) {
+        obj.material_node = m.id;
         a.uploaded_serial = 0;
-    } else {
-      ImGui::TextDisabled("computing...");
+      }
+    ImGui::EndCombo();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("New", ImVec2(-1, 0))) {
+    float x = 900, y = 120;
+    for (auto &n : a.graph.nodes)
+      if (n->type == "MaterialOutput") x = std::max(x, n->pos_x + 260);
+    gpx::Node *nn = a.graph.add_node("MaterialOutput", x, y);
+    if (nn) {
+      gpx::Attribute *na = nn->attrs.find("name");
+      if (na) na->s = obj.name + " material";
+      obj.material_node = nn->id;
+      a.selected_node = nn->id;
+      a.graph_layout_serial++;
+      a.workspace = 1; // jump to the Materials workspace to wire it up
+      a.request_eval();
     }
   }
+  if (!mat) {
+    ImGui::TextDisabled("No material assigned.");
+    ImGui::TextWrapped("Create one, then build its channels with nodes in the "
+                       "Materials workspace and connect them to the "
+                       "MaterialOutput node.");
+    return;
+  }
 
-  ImGui::SeparatorText("Surface (PBR)");
-  ImGui::SliderFloat("Roughness", &rs.mat_roughness, 0.02f, 1.f);
-  ImGui::SliderFloat("Metallic", &rs.mat_metallic, 0.f, 1.f);
-  ImGui::SliderFloat("Specular", &rs.mat_specular, 0.f, 1.f);
-  ImGui::SliderFloat("Reflection", &rs.mat_reflection, 0.f, 1.f);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Sky reflection strength (fresnel weighted).");
-  ImGui::SliderFloat("Translucency", &rs.mat_translucency, 0.f, 1.f);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Light bleeding through thin material toward the camera —\n"
-                      "backlit foliage, ice, thin rock.");
-  ImGui::SliderFloat("Transparency", &rs.mat_transparency, 0.f, 1.f);
-
-  ImGui::SeparatorText("Maps");
   {
-    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
-    if (lk.owns_lock()) {
-      node_combo(a, "Normal map node", rs.map_normal_node, false);
-      ImGui::SliderFloat("Normal strength", &rs.mat_normal_strength, 0.f, 4.f);
-      node_combo(a, "Roughness map node", rs.map_roughness_node, false);
-      node_combo(a, "Displacement map node", rs.map_displacement_node, false);
-      ImGui::SliderFloat("Displacement", &rs.mat_displacement, 0.f, 0.1f, "%.4f");
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Adds real geometric displacement from the map\n"
-                          "on top of the terrain height.");
-    } else {
-      ImGui::TextDisabled("computing...");
+    char buf[128];
+    snprintf(buf, sizeof buf, "%s", mat->attrs.get_s("name").c_str());
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::InputText("##matname", buf, sizeof buf)) {
+      gpx::Attribute *na = mat->attrs.find("name");
+      if (na) na->s = buf;
     }
   }
-  ImGui::TextDisabled("Build materials with nodes in the Materials workspace:\n"
-                      "PBRMaterial (photoscans), TerrainTexture (procedural),\n"
-                      "SplatMaterial (multilayer), AlbedoToPBR, ColorAdjust.");
+
+  // ---- live preview sphere ----
+  ImGui::SeparatorText("Preview");
+  float avail = ImGui::GetContentRegionAvail().x;
+  float side = std::min(avail, 168.f);
+  unsigned tex = renderer_material_preview((int)std::max(side, 64.f));
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - side) * 0.5f);
+  ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(side, side), ImVec2(0, 1),
+               ImVec2(1, 0));
+  ImGui::TextDisabled("Lit with the scene sun and sky.");
+
+  // ---- channels (Substance output set) ----
+  ImGui::SeparatorText("Channels");
+  if (ImGui::BeginTable("chan", 2, ImGuiTableFlags_SizingStretchProp)) {
+    channel_row(a, mat, "base color", "Base color");
+    channel_row(a, mat, "normal", "Normal");
+    channel_row(a, mat, "roughness", "Roughness");
+    channel_row(a, mat, "metallic", "Metallic");
+    channel_row(a, mat, "height", "Height / displacement");
+    channel_row(a, mat, "ambient occlusion", "Ambient occlusion");
+    ImGui::EndTable();
+  }
+  if (ImGui::Button("Edit channels in the node graph", ImVec2(-1, 0))) {
+    a.workspace = 1;
+    a.selected_node = mat->id;
+    a.prop_tab = TAB_NODE;
+  }
+  ImGui::TextDisabled("Useful channel nodes: PBRMaterial (photoscans),\n"
+                      "TextureFile, TerrainTexture, SplatMaterial, Levels,\n"
+                      "GradientMap, NormalBlend, TextureTransform,\n"
+                      "AOFromHeight, CurvatureFromHeight, ChannelMix.");
+
+  // ---- surface values (Blender's Principled inputs) ----
+  ImGui::SeparatorText("Surface");
+  bool changed = false;
+  auto slider = [&](const char *key, const char *label, float lo, float hi,
+                    const char *tip = nullptr) {
+    gpx::Attribute *at = mat->attrs.find(key);
+    if (!at) return;
+    ImGui::SetNextItemWidth(-130);
+    if (ImGui::SliderFloat(label, &at->f, lo, hi)) changed = true;
+    if (tip && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
+  };
+  slider("roughness", "Roughness", 0.02f, 1.f,
+         "Multiplies the roughness map when one is connected.");
+  slider("metallic", "Metallic", 0.f, 1.f);
+  slider("specular", "Specular", 0.f, 1.f);
+  slider("reflection", "Sky reflection", 0.f, 1.f);
+  slider("translucency", "Translucency", 0.f, 1.f,
+         "Light passing through thin material toward the camera.");
+  slider("transparency", "Transparency", 0.f, 1.f);
+  slider("normal_strength", "Normal strength", 0.f, 4.f);
+  slider("displacement", "Displacement", 0.f, 0.1f,
+         "Real geometric displacement from the height channel.");
+  if (changed) {
+    a.graph.mark_dirty(mat->id);
+    a.request_eval();
+    a.uploaded_serial = 0;
+  }
 }
 
 static void water_material() {
@@ -127,18 +204,13 @@ void material_properties_ui(App &a) {
   ImGui::Separator();
 
   switch (o.type) {
-    case SceneObject::Terrain: terrain_material(a); break;
+    case SceneObject::Terrain:
+    case SceneObject::Mesh: material_editor(a, o); break;
     case SceneObject::Water: water_material(); break;
-    case SceneObject::Mesh:
-      ImGui::SeparatorText("Surface");
-      ImGui::ColorEdit3("Color", o.color);
-      ImGui::TextDisabled("Imported meshes use a simple lit color material.\n"
-                          "Full PBR material assignment for meshes is planned.");
-      break;
     default:
       ImGui::TextDisabled("This object has no surface material.");
       if (o.type == SceneObject::Sun)
-        ImGui::TextDisabled("Sun settings live in Properties / Environment.");
+        ImGui::TextDisabled("Sun settings live in Properties / World.");
       if (o.type == SceneObject::Atmosphere)
         ImGui::TextDisabled("Atmosphere settings live in the World tab.");
       break;

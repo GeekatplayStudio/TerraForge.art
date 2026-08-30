@@ -37,7 +37,11 @@ static void test_registry() {
         "TextureBlend", "AlbedoToPBR", "NormalMap", "ExportHeightmap",
         "PowerFractal", "FakeStones", "Stratify", "Shear", "Craggy", "Crater",
         "Dunes", "Snow", "Rivers", "Coast", "Stamp", "HeightmapFile", "Select",
-        "Repeat", "MathGradient", "ColorAdjust", "FlatColor"})
+        "Repeat", "MathGradient", "ColorAdjust", "FlatColor", "MaterialOutput",
+        "Levels", "GradientMap", "NormalBlend", "TextureTransform",
+        "AOFromHeight", "CurvatureFromHeight", "ChannelMix", "MaskToTexture",
+        "TextureToMask", "SunLight", "AtmosphereSettings", "CloudLayer",
+        "WaterLayer"})
     CHECK(gpx::NodeRegistry::instance().find(t) != nullptr, t);
 }
 
@@ -232,6 +236,40 @@ static void test_surface_nodes() {
   }
 }
 
+static void test_material_graph() {
+  std::printf("material graph...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+  gpx::Node *noise = g.add_node("Noise");
+  gpx::Node *tex = g.add_node("TerrainTexture");
+  gpx::Node *lv = g.add_node("Levels");
+  gpx::Node *gm = g.add_node("GradientMap");
+  gpx::Node *ao = g.add_node("AOFromHeight");
+  gpx::Node *cv = g.add_node("CurvatureFromHeight");
+  gpx::Node *m2t = g.add_node("MaskToTexture");
+  gpx::Node *t2m = g.add_node("TextureToMask");
+  gpx::Node *xf = g.add_node("TextureTransform");
+  gpx::Node *mat = g.add_node("MaterialOutput");
+  CHECK(g.add_link(noise->id, "output", tex->id, "input"), "noise->tex");
+  CHECK(g.add_link(tex->id, "texture", lv->id, "texture"), "tex->levels");
+  CHECK(g.add_link(lv->id, "texture", gm->id, "texture"), "levels->gradient");
+  CHECK(g.add_link(gm->id, "texture", xf->id, "texture"), "gradient->xform");
+  CHECK(g.add_link(noise->id, "output", ao->id, "height"), "noise->ao");
+  CHECK(g.add_link(noise->id, "output", cv->id, "height"), "noise->curv");
+  CHECK(g.add_link(noise->id, "output", m2t->id, "input"), "noise->m2t");
+  CHECK(g.add_link(xf->id, "texture", t2m->id, "texture"), "xform->t2m");
+  CHECK(g.add_link(xf->id, "texture", mat->id, "base color"), "->base color");
+  CHECK(g.add_link(ao->id, "texture", mat->id, "ambient occlusion"), "->ao");
+  CHECK(g.add_link(m2t->id, "texture", mat->id, "roughness"), "->roughness");
+  CHECK(g.evaluate(), "material graph evaluates");
+  for (gpx::Node *n : {tex, lv, gm, ao, cv, m2t, xf, mat})
+    CHECK(n->error.empty(), (n->type + " no error").c_str());
+  gpx::Port *prev = mat->port("preview");
+  CHECK(prev && prev->tex && !prev->tex->empty(), "MaterialOutput preview filled");
+  gpx::Port *mask = t2m->port("mask");
+  CHECK(mask && mask->hmap && finite_map(*mask->hmap), "TextureToMask finite");
+}
+
 static void test_ai_spec() {
   std::printf("AI spec builder...\n");
   const char *spec = R"({
@@ -283,6 +321,7 @@ int main() {
   test_materials();
   test_serialization();
   test_surface_nodes();
+  test_material_graph();
   test_ai_spec();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");

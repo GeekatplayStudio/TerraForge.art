@@ -179,9 +179,23 @@ void run_main() {
           gpx::Port *p = n->first_out(gpx::DataType::Texture);
           return (p && p->tex && !p->tex->empty()) ? p->tex.get() : nullptr;
         };
-        renderer_set_material_maps(tex_of(rs.map_normal_node),
-                                   tex_of(rs.map_roughness_node),
-                                   tex_of(rs.map_displacement_node));
+        // a MaterialOutput assigned to the terrain supplies its own channels
+        gpx::Node *mat_out = nullptr;
+        for (const SceneObject &o : scene().objects)
+          if (o.type == SceneObject::Terrain && o.material_node)
+            mat_out = a.graph.find_node(o.material_node);
+        if (mat_out && mat_out->type == "MaterialOutput") {
+          auto chan = [&](const char *port) -> const gpx::TextureRGBA * {
+            const gpx::TextureRGBA *t = mat_out->in_tex(port);
+            return (t && !t->empty()) ? t : nullptr;
+          };
+          renderer_set_material_maps(chan("normal"), chan("roughness"),
+                                     chan("height"));
+        } else {
+          renderer_set_material_maps(tex_of(rs.map_normal_node),
+                                     tex_of(rs.map_roughness_node),
+                                     tex_of(rs.map_displacement_node));
+        }
       }
     }
     draw_panel_ai(a);
@@ -214,9 +228,26 @@ void run_main() {
         // if the node has no texture out, look downstream? keep simple:
         // search graph for a TerrainTexture/Colorize whose input chain includes n
         const gpx::TextureRGBA *albedo = pt && pt->tex ? pt->tex.get() : nullptr;
-        // material assignment (Scene Materials panel)
+        // material assignment: a MaterialOutput node assigned to the terrain
+        // object wins over the older albedo-source modes
         RenderSettings &rs = render_settings();
-        if (rs.terrain_material_mode == 1) {
+        gpx::Node *mat_out = nullptr;
+        for (const SceneObject &o : scene().objects)
+          if (o.type == SceneObject::Terrain && o.material_node)
+            mat_out = a.graph.find_node(o.material_node);
+        if (mat_out && mat_out->type == "MaterialOutput") {
+          const gpx::TextureRGBA *base = mat_out->in_tex("base color");
+          albedo = (base && !base->empty()) ? base : nullptr;
+          const gpx::AttrSet &at = mat_out->attrs;
+          rs.mat_roughness = at.get_f("roughness", rs.mat_roughness);
+          rs.mat_metallic = at.get_f("metallic", rs.mat_metallic);
+          rs.mat_specular = at.get_f("specular", rs.mat_specular);
+          rs.mat_reflection = at.get_f("reflection", rs.mat_reflection);
+          rs.mat_translucency = at.get_f("translucency", rs.mat_translucency);
+          rs.mat_transparency = at.get_f("transparency", rs.mat_transparency);
+          rs.mat_normal_strength = at.get_f("normal_strength", rs.mat_normal_strength);
+          rs.mat_displacement = at.get_f("displacement", rs.mat_displacement);
+        } else if (rs.terrain_material_mode == 1) {
           albedo = nullptr; // procedural in-shader material
         } else if (rs.terrain_material_mode == 2) {
           albedo = nullptr;

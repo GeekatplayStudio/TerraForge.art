@@ -1,4 +1,4 @@
-#include "gpx/node_graph.hpp"
+﻿#include "gpx/node_graph.hpp"
 #include <algorithm>
 #include <chrono>
 #include <queue>
@@ -10,6 +10,12 @@ namespace gpx {
 Port *Node::port(const std::string &name) {
   for (auto &p : ports)
     if (p.name == name) return &p;
+  return nullptr;
+}
+
+Port *Node::port(const std::string &name, PortDir dir) {
+  for (auto &p : ports)
+    if (p.dir == dir && p.name == name) return &p;
   return nullptr;
 }
 
@@ -47,7 +53,7 @@ const TextureRGBA *Node::in_tex(const std::string &name) const {
 }
 
 Heightmap &Node::out_hmap(const std::string &name) {
-  Port *p = port(name);
+  Port *p = port(name, PortDir::Out);
   int res = graph ? graph->resolution : 512;
   if (!p->hmap || p->hmap->w != res)
     p->hmap = std::make_shared<Heightmap>(res, res);
@@ -57,7 +63,7 @@ Heightmap &Node::out_hmap(const std::string &name) {
 }
 
 TextureRGBA &Node::out_tex(const std::string &name) {
-  Port *p = port(name);
+  Port *p = port(name, PortDir::Out);
   int res = graph ? graph->resolution : 512;
   if (!p->tex || p->tex->w != res) p->tex = std::make_shared<TextureRGBA>(res, res);
   return *p->tex;
@@ -147,8 +153,9 @@ bool Graph::add_link(uint64_t from_node, const std::string &from_port,
                      uint64_t to_node, const std::string &to_port) {
   Node *a = find_node(from_node), *b = find_node(to_node);
   if (!a || !b || a == b) return false;
-  Port *pa = a->port(from_port), *pb = b->port(to_port);
-  if (!pa || !pb || pa->dir != PortDir::Out || pb->dir != PortDir::In) return false;
+  Port *pa = a->port(from_port, PortDir::Out);
+  Port *pb = b->port(to_port, PortDir::In);
+  if (!pa || !pb) return false;
   if (pa->type != pb->type) return false;
   // one link per input: replace existing
   links.erase(std::remove_if(links.begin(), links.end(),
@@ -191,7 +198,7 @@ const Port *Graph::upstream(const Node &n, const std::string &in_port) const {
     if (l.to_node == n.id && l.to_port == in_port) {
       Node *up = find_node(l.from_node);
       if (!up) return nullptr;
-      return up->port(l.from_port);
+      return up->port(l.from_port, PortDir::Out);
     }
   return nullptr;
 }
@@ -280,3 +287,4 @@ bool Graph::evaluate_at(int res) {
 }
 
 } // namespace gpx
+
