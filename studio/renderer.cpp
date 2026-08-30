@@ -1,4 +1,4 @@
-// Geekatplay TerraForge — OpenGL scene renderer.
+﻿// Geekatplay TerraForge â€” OpenGL scene renderer.
 // Terrain (PBR: roughness/metallic/reflection/translucency/displacement),
 // volumetric raymarched clouds, height fog with absorption, water with foam,
 // shadow mapping, scene meshes, sun gizmo, selection outlines, object picking.
@@ -72,6 +72,9 @@ static GLuint prog_lines = 0, prog_bg = 0, prog_mesh = 0, prog_gizmo = 0;
 static GLuint prog_matprev = 0;
 static GLuint matprev_fbo = 0, matprev_tex = 0, matprev_depth = 0;
 static int matprev_size = 0;
+// preview shapes: 0 sphere, 1 cube, 2 flat — pos(3)+nrm(3)+uv(2)
+static GLuint prev_vao[3] = {0, 0, 0}, prev_vbo[3] = {0, 0, 0};
+static int prev_verts[3] = {0, 0, 0};
 static GLuint vao_grid = 0, vbo_grid = 0, ebo_grid = 0, vao_quad = 0;
 static GLuint vao_lines = 0, vbo_lines = 0;
 static GLuint vao_dyn = 0, vbo_dyn = 0;      // dynamic outline lines
@@ -588,16 +591,19 @@ void main(){
   frag = vec4(col, 1.0);
 })GLSL";
 
-// material preview: a lit sphere textured with the material channels
+// material preview: a lit shape (sphere/cube/flat) textured with the channels
 static const char *VS_MATPREV = R"GLSL(#version 430 core
 layout(location=0) in vec3 in_pos;
 layout(location=1) in vec3 in_nrm;
+layout(location=2) in vec2 in_uv;
+uniform mat3 u_rot;
 out vec3 v_nrm;
 out vec2 v_uv;
 void main(){
-  v_nrm = normalize(in_nrm);
-  v_uv = vec2(atan(in_pos.z, in_pos.x)/6.2831853 + 0.5, 0.5 - asin(clamp(in_pos.y,-1.0,1.0))/3.14159265);
-  gl_Position = vec4(in_pos.xy * 0.92, in_pos.z * 0.5 + 0.5, 1.0);
+  vec3 p = u_rot * in_pos;
+  v_nrm = normalize(u_rot * in_nrm);
+  v_uv = in_uv;
+  gl_Position = vec4(p.xy * 0.82, p.z * 0.35 + 0.5, 1.0);
 })GLSL";
 
 static const char *FS_MATPREV = R"GLSL(#version 430 core
@@ -764,6 +770,82 @@ static void make_sphere() {
   glBindVertexArray(0);
 }
 
+static void upload_prev_mesh(int slot, const std::vector<float> &v) {
+  prev_verts[slot] = (int)(v.size() / 8);
+  glGenVertexArrays(1, &prev_vao[slot]);
+  glBindVertexArray(prev_vao[slot]);
+  glGenBuffers(1, &prev_vbo[slot]);
+  glBindBuffer(GL_ARRAY_BUFFER, prev_vbo[slot]);
+  glBufferData(GL_ARRAY_BUFFER, v.size() * 4, v.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, nullptr);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 32, (void *)12);
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 32, (void *)24);
+  glBindVertexArray(0);
+}
+
+static void make_preview_shapes() {
+  // sphere with proper spherical UVs
+  {
+    std::vector<float> v;
+    const int RINGS = 24, SECT = 36;
+    auto emit = [&](int r, int s) {
+      float phi = float(r) / RINGS * 3.14159265f;
+      float th = float(s) / SECT * 6.2831853f;
+      float x = std::sin(phi) * std::cos(th);
+      float y = std::cos(phi);
+      float z = std::sin(phi) * std::sin(th);
+      v.insert(v.end(), {x, y, z, x, y, z, float(s) / SECT * 3.f,
+                         float(r) / RINGS * 1.5f});
+    };
+    for (int r = 0; r < RINGS; ++r)
+      for (int s = 0; s < SECT; ++s) {
+        emit(r, s); emit(r + 1, s); emit(r + 1, s + 1);
+        emit(r, s); emit(r + 1, s + 1); emit(r, s + 1);
+      }
+    upload_prev_mesh(0, v);
+  }
+  // cube with planar per-face UVs
+  {
+    std::vector<float> v;
+    const float N[6][3] = {{0, 0, 1}, {0, 0, -1}, {1, 0, 0},
+                           {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}};
+    for (int f = 0; f < 6; ++f) {
+      const float *n = N[f];
+      float t[3] = {n[1], n[2], n[0]}; // any perpendicular
+      float b[3] = {n[1] * t[2] - n[2] * t[1], n[2] * t[0] - n[0] * t[2],
+                    n[0] * t[1] - n[1] * t[0]};
+      const float S = 0.72f;
+      auto corner = [&](float u, float w, float *o) {
+        for (int k = 0; k < 3; ++k)
+          o[k] = (n[k] + t[k] * u + b[k] * w) * S;
+      };
+      float c[4][3];
+      corner(-1, -1, c[0]); corner(1, -1, c[1]);
+      corner(1, 1, c[2]); corner(-1, 1, c[3]);
+      const int idx[6] = {0, 1, 2, 0, 2, 3};
+      const float uv[4][2] = {{0, 0}, {1.2f, 0}, {1.2f, 1.2f}, {0, 1.2f}};
+      for (int i : idx)
+        v.insert(v.end(), {c[i][0], c[i][1], c[i][2], n[0], n[1], n[2],
+                           uv[i][0], uv[i][1]});
+    }
+    upload_prev_mesh(1, v);
+  }
+  // flat: a full-frame quad facing the camera
+  {
+    std::vector<float> v;
+    const float Q[4][2] = {{-1.05f, -1.05f}, {1.05f, -1.05f},
+                           {1.05f, 1.05f}, {-1.05f, 1.05f}};
+    const int idx[6] = {0, 1, 2, 0, 2, 3};
+    for (int i : idx)
+      v.insert(v.end(), {Q[i][0], Q[i][1], 0.f, 0.f, 0.f, 1.f,
+                         Q[i][0] * 0.5f + 0.5f, Q[i][1] * 0.5f + 0.5f});
+    upload_prev_mesh(2, v);
+  }
+}
+
 bool renderer_init() {
   std::string fs_terrain = inject_sky(FS_TERRAIN_SRC);
   std::string fs_sky = inject_sky(FS_SKY_SRC);
@@ -777,6 +859,7 @@ bool renderer_init() {
   prog_mesh = link_prog(VS_MESH, FS_MESH);
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
   prog_matprev = link_prog(VS_MATPREV, FS_MATPREV);
+  make_preview_shapes();
 
   // terrain grid
   std::vector<float> verts;
@@ -927,7 +1010,7 @@ void renderer_set_material_maps(const void *normal, const void *roughness,
 void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
                            bool panning) {
   if (rotating) {
-    CAM.yaw += dx * 0.01f; // unbounded: full 360° orbit
+    CAM.yaw += dx * 0.01f; // unbounded: full 360Â° orbit
     CAM.pitch = std::fmin(std::fmax(CAM.pitch + dy * 0.01f, -1.55f), 1.55f);
   }
   if (panning) {
@@ -1570,9 +1653,10 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
   return best_idx;
 }
 
-unsigned renderer_material_preview(int size) {
+unsigned renderer_material_preview(int size, int shape, float spin) {
   RenderSettings &RS = render_settings();
   if (size < 16) size = 16;
+  shape = std::clamp(shape, 0, 2);
   if (size != matprev_size || !matprev_fbo) {
     if (matprev_fbo) {
       glDeleteFramebuffers(1, &matprev_fbo);
@@ -1627,8 +1711,18 @@ unsigned renderer_material_preview(int size) {
   glActiveTexture(GL_TEXTURE6);
   glBindTexture(GL_TEXTURE_2D, tex_rough);
   unii(prog_matprev, "u_rough_map", 6);
-  glBindVertexArray(vao_sphere);
-  glDrawArrays(GL_TRIANGLES, 0, sphere_verts);
+  // gentle turntable for sphere/cube; flat stays facing the camera
+  float ax = shape == 2 ? 0.f : spin;
+  float tilt = shape == 1 ? 0.42f : (shape == 0 ? 0.18f : 0.f);
+  float cy2 = std::cos(ax), sy2 = std::sin(ax);
+  float cx2 = std::cos(tilt), sx2 = std::sin(tilt);
+  // column-major rotY then rotX
+  float rot[9] = {cy2, sy2 * sx2, -sy2 * cx2,
+                  0,   cx2,        sx2,
+                  sy2, -cy2 * sx2, cy2 * cx2};
+  glUniformMatrix3fv(glGetUniformLocation(prog_matprev, "u_rot"), 1, GL_FALSE, rot);
+  glBindVertexArray(prev_vao[shape]);
+  glDrawArrays(GL_TRIANGLES, 0, prev_verts[shape]);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   return matprev_tex;
 }
@@ -1746,10 +1840,10 @@ void renderer_settings_ui() {
   ImGui::SliderFloat("Height scale", &RS.height_scale, 0.02f, 0.8f);
   ImGui::SetNextItemWidth(140);
   ImGui::SliderFloat("Exposure", &RS.exposure, 0.3f, 3.f);
-  ImGui::Checkbox("Wireframe", &RS.wireframe);
+  studio::Checkbox("Wireframe", &RS.wireframe);
   ImGui::SameLine();
-  ImGui::Checkbox("Graph albedo", &RS.use_albedo);
-  ImGui::Checkbox("Shadows", &RS.shadows);
+  studio::Checkbox("Graph albedo", &RS.use_albedo);
+  studio::Checkbox("Shadows", &RS.shadows);
 }
 
 static bool mat_inverse(float *inv_out, const float *m) {
@@ -1778,3 +1872,4 @@ static bool mat_inverse(float *inv_out, const float *m) {
 }
 
 } // namespace studio
+

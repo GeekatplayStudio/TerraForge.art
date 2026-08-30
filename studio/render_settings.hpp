@@ -137,8 +137,9 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
 // upload extra material maps (any may be null)
 void renderer_set_material_maps(const void *normal, const void *roughness,
                                 const void *displacement);
-// renders the current terrain material onto a lit sphere; returns its texture
-unsigned renderer_material_preview(int size);
+// renders the current material onto a lit preview shape
+// (0 sphere, 1 cube, 2 flat); spin = turntable angle in radians
+unsigned renderer_material_preview(int size, int shape = 0, float spin = 0.f);
 
 // computes sun direction from settings (handles geographic mode)
 void compute_sun_dir(const RenderSettings &rs, float out_dir[3]);

@@ -65,10 +65,10 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
   ImGui::Combo("Camera", &vc.camera, "Perspective\0Top\0Front\0Right\0");
   ImGui::SetNextItemWidth(W);
   ImGui::Combo("Shading", &vc.display, "Wireframe\0Solid\0Textured\0");
-  ImGui::Checkbox("Atmosphere", &vc.atmosphere);
-  ImGui::Checkbox("Water", &vc.show_water_view);
-  ImGui::Checkbox("Grid", &vc.grid);
-  ImGui::Checkbox("Selection outline", &vc.outlines);
+  studio::Checkbox("Atmosphere", &vc.atmosphere);
+  studio::Checkbox("Water", &vc.show_water_view);
+  studio::Checkbox("Grid", &vc.grid);
+  studio::Checkbox("Selection outline", &vc.outlines);
 
   ImGui::SeparatorText("Viewport windows");
   int count = prefs().view_count;
@@ -243,5 +243,6 @@ void draw_panel_viewport(App &a) {
 }
 
 } // namespace studio
+
 
 

@@ -1,4 +1,4 @@
-// Geekatplay TerraForge — Environment panel: sun (manual/geographic),
+﻿// Geekatplay TerraForge â€” Environment panel: sun (manual/geographic),
 // atmosphere, fog/haze/pollution, water materials.
 #include "app.hpp"
 #include "render_settings.hpp"
@@ -55,7 +55,7 @@ static void section_fog(RenderSettings &rs) {
 static void section_clouds(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Clouds (volumetric)", ImGuiTreeNodeFlags_DefaultOpen))
     return;
-  ImGui::Checkbox("Enabled", &rs.clouds_on);
+  studio::Checkbox("Enabled", &rs.clouds_on);
   if (!rs.clouds_on) return;
   ImGui::Combo("Type", &rs.cloud_type, "Stratus\0Cumulus\0Cumulonimbus\0");
   ImGui::SliderFloat("Coverage", &rs.cloud_coverage, 0.f, 1.f);
@@ -78,7 +78,7 @@ static void section_clouds(RenderSettings &rs) {
 
 static void section_water(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Water", ImGuiTreeNodeFlags_DefaultOpen)) return;
-  ImGui::Checkbox("Enabled", &rs.show_water);
+  studio::Checkbox("Enabled", &rs.show_water);
   if (!rs.show_water) return;
   ImGui::SliderFloat("Level", &rs.water_level, 0.f, 1.f);
   ImGui::ColorEdit3("Deep color", rs.water_deep_color);
@@ -89,7 +89,7 @@ static void section_water(RenderSettings &rs) {
   ImGui::SliderFloat("Wave scale", &rs.water_wave_scale, 0.2f, 6.f);
   ImGui::SliderFloat("Wave speed", &rs.water_wave_speed, 0.f, 5.f);
   ImGui::SeparatorText("Foam");
-  ImGui::Checkbox("Foam enabled", &rs.water_foam);
+  studio::Checkbox("Foam enabled", &rs.water_foam);
   if (rs.water_foam) {
     ImGui::ColorEdit3("Foam color", rs.foam_color);
     ImGui::SliderFloat("Shoreline foam", &rs.foam_amount, 0.f, 2.f);
@@ -101,11 +101,11 @@ static void section_water(RenderSettings &rs) {
 static void section_render(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Render")) return;
   ImGui::SliderFloat("Height scale", &rs.height_scale, 0.02f, 0.8f);
-  ImGui::Checkbox("Shadows", &rs.shadows);
+  studio::Checkbox("Shadows", &rs.shadows);
   ImGui::SliderFloat("Shadow softness", &rs.shadow_softness, 0.5f, 5.f);
-  ImGui::Checkbox("Wireframe", &rs.wireframe);
+  studio::Checkbox("Wireframe", &rs.wireframe);
   ImGui::SameLine();
-  ImGui::Checkbox("Use graph albedo", &rs.use_albedo);
+  studio::Checkbox("Use graph albedo", &rs.use_albedo);
 }
 
 // World tab of the Properties editor (sun, sky, clouds, fog, water)
@@ -137,3 +137,4 @@ void world_properties_ui(App &a) {
 }
 
 } // namespace studio
+

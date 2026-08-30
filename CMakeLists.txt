@@ -116,6 +116,7 @@ set(STUDIO_SOURCES
     studio/scene.cpp
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
+    studio/material_library.cpp
     studio/file_dialogs.cpp
     studio/prefs.cpp
     studio/ollama.cpp

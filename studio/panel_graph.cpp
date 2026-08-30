@@ -184,7 +184,7 @@ void draw_panel_graph(App &a) {
     const char *ws_names[4] = {"Terrain", "Materials", "Atmosphere", "Render"};
     ImGui::TextDisabled("%s nodes", ws_names[std::clamp(a.workspace, 0, 3)]);
     ImGui::SameLine();
-    ImGui::Checkbox("show all domains", &a.graph_show_all_domains);
+    studio::Checkbox("show all domains", &a.graph_show_all_domains);
   }
   ed::SetCurrentEditor(ED);
   ed::PushStyleColor(ed::StyleColor_Bg, ImVec4(0.075f, 0.075f, 0.08f, 1.f));
@@ -369,5 +369,6 @@ void draw_panel_graph(App &a) {
 }
 
 } // namespace studio
+
 
 

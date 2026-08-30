@@ -1,4 +1,4 @@
-// Geekatplay Studio — properties panel: auto-generated UI from attributes
+﻿// Geekatplay Studio â€” properties panel: auto-generated UI from attributes
 #include "app.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -150,7 +150,7 @@ static bool draw_attribute(gpx::Attribute &at) {
       changed = scalar_int("i", &at.i, at.imin, at.imax);
       break;
     case gpx::AttrType::Bool:
-      changed = ImGui::Checkbox("##v", &at.b);
+      changed = studio::Checkbox("##v", &at.b);
       break;
     case gpx::AttrType::Choice: {
       std::string items;
@@ -302,8 +302,8 @@ static void object_properties(App &a) {
                    : o.type == SceneObject::Sun     ? "Light"
                    : o.type == SceneObject::Atmosphere ? "Environment"
                                                        : "Mesh object";
-  ImGui::TextDisabled("· %s", kind);
-  ImGui::Checkbox("Visible", &o.visible);
+  ImGui::TextDisabled("Â· %s", kind);
+  studio::Checkbox("Visible", &o.visible);
   ImGui::Separator();
 
   switch (o.type) {
@@ -355,7 +355,7 @@ static void object_properties(App &a) {
       scalar_float("si", &rs.sun_intensity, 0.2f, 8.f);
       ImGui::SameLine();
       ImGui::TextUnformatted("Intensity");
-      ImGui::Checkbox("Casts shadows", &rs.shadows);
+      studio::Checkbox("Casts shadows", &rs.shadows);
       break;
     case SceneObject::Atmosphere:
       ImGui::SeparatorText("Sky");
@@ -370,7 +370,7 @@ static void object_properties(App &a) {
       ImGui::SameLine();
       ImGui::TextUnformatted("Density");
       ImGui::SeparatorText("Clouds");
-      ImGui::Checkbox("Volumetric clouds", &rs.clouds_on);
+      studio::Checkbox("Volumetric clouds", &rs.clouds_on);
       scalar_float("cc", &rs.cloud_coverage, 0.f, 1.f);
       ImGui::SameLine();
       ImGui::TextUnformatted("Coverage");
@@ -453,7 +453,7 @@ static void node_properties(App &a) {
     ImGui::TextDisabled("Click a node in the graph below.");
     return;
   }
-  // never show a node that belongs to a different workspace — that was the
+  // never show a node that belongs to a different workspace â€” that was the
   // source of "terrain texture showing under Terrain"
   if (domain_of_category(n->category) != a.workspace) {
     const char *ws[4] = {"Terrain", "Materials", "Atmosphere", "Render"};
@@ -467,7 +467,7 @@ static void node_properties(App &a) {
   }
   ImGui::Text("%s", n->type.c_str());
   ImGui::SameLine();
-  ImGui::TextDisabled("· %s", n->category.c_str());
+  ImGui::TextDisabled("Â· %s", n->category.c_str());
   if (ImGui::SmallButton("view in 3D")) {
     a.view_node = n->id;
     a.uploaded_serial = 0;
@@ -619,3 +619,4 @@ void draw_panel_properties(App &a) {
 }
 
 } // namespace studio
+

@@ -7,6 +7,7 @@
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
 #include <random>
+#include <thread>
 
 namespace gpx {
 
@@ -44,24 +45,53 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
     }
   for (auto &wgt : bw) wgt /= wsum;
 
-  auto height_grad = [&](float px, float py, float &hgt, float &gx, float &gy) {
-    int xi = std::clamp((int)px, 0, w - 2), yi = std::clamp((int)py, 0, h - 2);
-    float fx = px - xi, fy = py - yi;
-    float h00 = map.at(xi, yi), h10 = map.at(xi + 1, yi);
-    float h01 = map.at(xi, yi + 1), h11 = map.at(xi + 1, yi + 1);
-    gx = (h10 - h00) * (1 - fy) + (h11 - h01) * fy;
-    gy = (h01 - h00) * (1 - fx) + (h11 - h10) * fx;
-    hgt = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) + h01 * (1 - fx) * fy +
-          h11 * fx * fy;
-  };
+  // Deterministic parallel droplets: particles are split into a fixed number
+  // of rounds; within a round each worker accumulates into its own delta
+  // buffer (no shared writes), and the buffers are summed back in a fixed
+  // order. Same seed => bit-identical terrain, every run.
+  size_t N = (size_t)w * h;
+  unsigned hw = std::thread::hardware_concurrency();
+  if (!hw) hw = 4;
+  // three buffers per worker (height, erosion, deposition): cap total memory
+  size_t per_worker = N * sizeof(float) * 3;
+  unsigned mem_cap = (unsigned)std::max<size_t>(1, (96u << 20) / std::max<size_t>(per_worker, 1));
+  unsigned T = std::max(1u, std::min(hw, mem_cap));
+  const int ROUNDS = 8;
+  std::vector<std::vector<float>> dmap(T, std::vector<float>(N, 0.f));
+  std::vector<std::vector<float>> dero(T, std::vector<float>(N, 0.f));
+  std::vector<std::vector<float>> ddep(T, std::vector<float>(N, 0.f));
 
-  // Droplets run in parallel over the shared heightfield. Concurrent
-  // unsynchronized updates cause only benign, sub-texel races (standard for
-  // CPU droplet erosion) and buy a near-linear core speedup.
-  parallel_index((size_t)p.num_particles, [&](size_t i0, size_t i1) {
-  std::mt19937 rng(seed + (uint32_t)i0 * 2654435761u);
-  std::uniform_real_distribution<float> dist(0.f, 1.f);
-  for (size_t i = i0; i < i1; ++i) {
+  auto simulate = [&](unsigned tid, int round) {
+    std::vector<float> &acc = dmap[tid];
+    std::vector<float> &acc_e = dero[tid];
+    std::vector<float> &acc_d = ddep[tid];
+    // A worker samples the shared map plus its own accumulated changes, so
+    // erosion stays self-limiting exactly like the sequential solver while
+    // never reading another worker's data.
+    auto height_grad = [&](float px, float py, float &hgt, float &gx, float &gy) {
+      int xi = std::clamp((int)px, 0, w - 2), yi = std::clamp((int)py, 0, h - 2);
+      float fx = px - xi, fy = py - yi;
+      auto at = [&](int x, int y) {
+        size_t i = (size_t)y * w + x;
+        return map.v[i] + acc[i];
+      };
+      float h00 = at(xi, yi), h10 = at(xi + 1, yi);
+      float h01 = at(xi, yi + 1), h11 = at(xi + 1, yi + 1);
+      gx = (h10 - h00) * (1 - fy) + (h11 - h01) * fy;
+      gy = (h01 - h00) * (1 - fx) + (h11 - h10) * fx;
+      hgt = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) +
+            h01 * (1 - fx) * fy + h11 * fx * fy;
+    };
+    // deterministic particle range for this (round, worker)
+    long long per_round = (long long)p.num_particles / ROUNDS;
+    long long base = per_round * round;
+    long long chunk = per_round / T;
+    long long i0 = base + (long long)tid * chunk;
+    long long i1 = (tid + 1 == T) ? base + per_round : i0 + chunk;
+    std::mt19937 rng((uint32_t)(seed + 7919u * (uint32_t)round +
+                                104729u * (uint32_t)tid));
+    std::uniform_real_distribution<float> dist(0.f, 1.f);
+    for (long long i = i0; i < i1; ++i) {
     float px = dist(rng) * (w - 1), py = dist(rng) * (h - 1);
     float dx = 0, dy = 0, speed = 1, water = 1, sediment = 0;
     for (int life = 0; life < p.max_lifetime; ++life) {
@@ -85,11 +115,11 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
         sediment -= amount;
         int xi = (int)px, yi = (int)py;
         float fx = px - xi, fy = py - yi;
-        map.at(xi, yi) += amount * (1 - fx) * (1 - fy);
-        map.at(xi + 1, yi) += amount * fx * (1 - fy);
-        map.at(xi, yi + 1) += amount * (1 - fx) * fy;
-        map.at(xi + 1, yi + 1) += amount * fx * fy;
-        if (deposit_out) deposit_out->at(xi, yi) += amount;
+        acc[(size_t)yi * w + xi] += amount * (1 - fx) * (1 - fy);
+        acc[(size_t)yi * w + xi + 1] += amount * fx * (1 - fy);
+        acc[(size_t)(yi + 1) * w + xi] += amount * (1 - fx) * fy;
+        acc[(size_t)(yi + 1) * w + xi + 1] += amount * fx * fy;
+        acc_d[(size_t)yi * w + xi] += amount;
       } else {
         float amount = std::min((cap - sediment) * p.erode_rate, -dh);
         int cx = (int)px, cy = (int)py;
@@ -97,9 +127,9 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
           int ex = cx + bx[b], ey = cy + by[b];
           if (ex < 0 || ex >= w || ey < 0 || ey >= h) continue;
           float delta = amount * bw[b];
-          map.at(ex, ey) -= delta;
+          acc[(size_t)ey * w + ex] -= delta;
           sediment += delta;
-          if (erosion_out) erosion_out->at(ex, ey) += delta;
+          acc_e[(size_t)ey * w + ex] += delta;
         }
       }
       speed = std::sqrt(std::max(speed * speed + dh * -p.gravity, 0.f));
@@ -108,8 +138,39 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
       py = ny;
       if (water < 0.01f) break;
     }
+    }
+  };
+
+  for (int round = 0; round < ROUNDS; ++round) {
+    std::vector<std::thread> pool;
+    for (unsigned t = 1; t < T; ++t) pool.emplace_back(simulate, t, round);
+    simulate(0, round);
+    for (auto &th : pool) th.join();
+    // Fixed-order reduction => reproducible floating-point accumulation.
+    // Workers cannot see each other's deposits within a round, so several
+    // may fill the same sink; clamp each cell's per-round change (the map is
+    // normalised to 0..1 here) to keep that from building spikes.
+    const float MAX_STEP = 0.05f;
+    // per-cell and independent, so parallelising keeps it deterministic
+    parallel_index(N, [&](size_t i0, size_t i1) {
+      for (size_t i = i0; i < i1; ++i) {
+        float d = 0, de = 0, dd = 0;
+        for (unsigned t = 0; t < T; ++t) {
+          d += dmap[t][i];
+          de += dero[t][i];
+          dd += ddep[t][i];
+        }
+        map.v[i] += std::clamp(d, -MAX_STEP, MAX_STEP);
+        if (erosion_out) erosion_out->v[i] += de;
+        if (deposit_out) deposit_out->v[i] += dd;
+      }
+    });
+    for (unsigned t = 0; t < T; ++t) {
+      std::fill(dmap[t].begin(), dmap[t].end(), 0.f);
+      std::fill(dero[t].begin(), dero[t].end(), 0.f);
+      std::fill(ddep[t].begin(), ddep[t].end(), 0.f);
+    }
   }
-  });
 }
 
 // -------------------------------------- shallow-water pipe model (Mei 2007)
@@ -326,38 +387,52 @@ REGISTER_NODE(
       bool converge = n.attrs.get_b("converge");
       if (converge) iters = 2000;
       float rate = n.attrs.get_f("rate", 0.5f);
+      // Deterministic two-pass talus transport: pass 1 computes each cell's
+      // outflow (writes only its own cell), pass 2 gathers inflow from the
+      // neighbours. No cross-thread writes, so the result is reproducible.
+      Heightmap move_amt(out.w, out.h), move_total(out.w, out.h);
       Heightmap delta(out.w, out.h);
+      auto excess = [&](int x, int y, int k) {
+        float dist = (DX8[k] && DY8[k]) ? 1.41421356f : 1.f;
+        float d = (out.atc(x, y) - out.atc(x + DX8[k], y + DY8[k])) / dist - talus;
+        return d > 0 ? d : 0.f;
+      };
       for (int it = 0; it < iters; ++it) {
-        std::fill(delta.v.begin(), delta.v.end(), 0.f);
         std::atomic<bool> moved{false};
         parallel_rows(out.h, [&](int y0, int y1) {
           bool local_moved = false;
           for (int y = y0; y < y1; ++y)
             for (int x = 0; x < out.w; ++x) {
-              float hgt = out.at(x, y);
               float dmax = 0, dtotal = 0;
-              float diffs[8];
               for (int k = 0; k < 8; ++k) {
-                float dist = (DX8[k] && DY8[k]) ? 1.41421356f : 1.f;
-                float d = (hgt - out.atc(x + DX8[k], y + DY8[k])) / dist - talus;
-                diffs[k] = d > 0 ? d : 0;
-                if (diffs[k] > 0) {
-                  dtotal += diffs[k];
-                  dmax = std::max(dmax, diffs[k]);
+                float d = excess(x, y, k);
+                if (d > 0) {
+                  dtotal += d;
+                  dmax = std::max(dmax, d);
                 }
               }
-              if (dtotal <= 0) continue;
-              local_moved = true;
-              float move = rate * dmax * 0.5f;
-              for (int k = 0; k < 8; ++k) {
-                if (diffs[k] <= 0) continue;
-                int nx2 = std::clamp(x + DX8[k], 0, out.w - 1);
-                int ny2 = std::clamp(y + DY8[k], 0, out.h - 1);
-                delta.at(nx2, ny2) += move * diffs[k] / dtotal;
-              }
-              delta.at(x, y) -= move;
+              move_total.at(x, y) = dtotal;
+              move_amt.at(x, y) = dtotal > 0 ? rate * dmax * 0.5f : 0.f;
+              if (dtotal > 0) local_moved = true;
             }
           if (local_moved) moved.store(true);
+        });
+        parallel_rows(out.h, [&](int y0, int y1) {
+          for (int y = y0; y < y1; ++y)
+            for (int x = 0; x < out.w; ++x) {
+              float in = 0;
+              for (int k = 0; k < 8; ++k) {
+                int sx = x + DX8[k], sy = y + DY8[k]; // neighbour giving to us
+                if (sx < 0 || sx >= out.w || sy < 0 || sy >= out.h) continue;
+                float tot = move_total.at(sx, sy);
+                if (tot <= 0) continue;
+                // the neighbour's excess toward this cell is the opposite dir
+                int opp = 7 - k;
+                float share = excess(sx, sy, opp);
+                if (share > 0) in += move_amt.at(sx, sy) * share / tot;
+              }
+              delta.at(x, y) = in - move_amt.at(x, y);
+            }
         });
         parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
           for (size_t i = i0; i < i1; ++i) out.v[i] += delta.v[i];

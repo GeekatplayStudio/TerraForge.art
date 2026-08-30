@@ -70,7 +70,7 @@ void draw_panel_scene(App &a) {
   ImGui::SeparatorText("Layers");
   for (int li = 0; li < (int)sc.layers.size(); ++li) {
     ImGui::PushID(li);
-    ImGui::Checkbox("##vis", &sc.layers[li].visible);
+    studio::Checkbox("##vis", &sc.layers[li].visible);
     ImGui::SameLine();
     char buf[64];
     snprintf(buf, sizeof buf, "%s", sc.layers[li].name.c_str());
@@ -99,7 +99,7 @@ void draw_panel_scene(App &a) {
   for (int i = 0; i < (int)sc.objects.size(); ++i) {
     SceneObject &o = sc.objects[i];
     ImGui::PushID(i);
-    ImGui::Checkbox("##vis", &o.visible);
+    studio::Checkbox("##vis", &o.visible);
     ImGui::SameLine();
     ImGui::TextDisabled("%s", type_icon(o.type));
     ImGui::SameLine();
@@ -154,4 +154,5 @@ void draw_panel_scene(App &a) {
 }
 
 } // namespace studio
+
 

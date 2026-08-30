@@ -115,6 +115,8 @@ static void test_erosion() {
     in->minmax(mn, mx);
     out->minmax(mn2, mx2);
     CHECK(mx2 - mn2 < (mx - mn) * 2.f + 1.f, "erosion amplitude bounded");
+    // erosion must carve, not obliterate: the relief has to survive
+    CHECK(mx2 - mn2 > (mx - mn) * 0.25f, "erosion preserves relief");
   }
   // stream power both methods
   for (int method = 0; method < 2; ++method) {
@@ -270,6 +272,130 @@ static void test_material_graph() {
   CHECK(mask && mask->hmap && finite_map(*mask->hmap), "TextureToMask finite");
 }
 
+// Deterministic workflow tests: a saved material must reproduce byte-identical
+// channel data after a save/load round trip, and every step of a workflow must
+// be reproducible from the same seeds.
+static void test_material_library_roundtrip() {
+  std::printf("material library roundtrip...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+  gpx::Node *noise = g.add_node("Noise");
+  gpx::Node *tex = g.add_node("TerrainTexture");
+  gpx::Node *lv = g.add_node("Levels");
+  gpx::Node *nrm = g.add_node("NormalMap");
+  gpx::Node *ao = g.add_node("AOFromHeight");
+  gpx::Node *mat = g.add_node("MaterialOutput");
+  // an unrelated node that must NOT be captured by the material
+  gpx::Node *stray = g.add_node("Thermal");
+  g.add_link(noise->id, "output", tex->id, "input");
+  g.add_link(tex->id, "texture", lv->id, "texture");
+  g.add_link(lv->id, "texture", mat->id, "base color");
+  g.add_link(noise->id, "output", nrm->id, "input");
+  g.add_link(nrm->id, "texture", mat->id, "normal");
+  g.add_link(noise->id, "output", ao->id, "height");
+  g.add_link(ao->id, "texture", mat->id, "ambient occlusion");
+  g.add_link(noise->id, "output", stray->id, "input");
+  if (gpx::Attribute *at = mat->attrs.find("name")) at->s = "Test Bark";
+  if (gpx::Attribute *at = mat->attrs.find("roughness")) at->f = 0.42f;
+  if (gpx::Attribute *at = lv->attrs.find("gamma")) at->f = 1.7f;
+  CHECK(g.evaluate(), "source material evaluates");
+
+  std::string doc = gpx::material_to_json(g, mat->id);
+  CHECK(doc.find("terraforge-material") != std::string::npos, "format tag");
+  CHECK(doc.find("Thermal") == std::string::npos,
+        "unrelated downstream node not captured");
+
+  // load into a *fresh* graph: an independent copy, no id collisions
+  gpx::Graph g2;
+  g2.resolution = 64;
+  std::string err;
+  uint64_t new_id = gpx::material_from_json(g2, doc, err, 100, 100);
+  CHECK(new_id != 0, "material loads");
+  CHECK(g2.nodes.size() == 6, "6 nodes restored (stray excluded)");
+  gpx::Node *m2 = g2.find_node(new_id);
+  CHECK(m2 && m2->type == "MaterialOutput", "output node identified");
+  CHECK(m2 && m2->attrs.get_s("name") == "Test Bark", "name preserved");
+  CHECK(m2 && std::fabs(m2->attrs.get_f("roughness") - 0.42f) < 1e-6f,
+        "surface value preserved");
+  CHECK(g2.evaluate(), "loaded material evaluates");
+
+  // deterministic: the channels must be bit-identical to the original
+  auto chan = [](gpx::Node *m, const char *port) -> const gpx::TextureRGBA * {
+    return m->in_tex(port);
+  };
+  const gpx::TextureRGBA *a1 = chan(mat, "base color");
+  const gpx::TextureRGBA *a2 = chan(m2, "base color");
+  CHECK(a1 && a2 && a1->v == a2->v, "base color identical after roundtrip");
+  const gpx::TextureRGBA *n1 = chan(mat, "normal");
+  const gpx::TextureRGBA *n2 = chan(m2, "normal");
+  CHECK(n1 && n2 && n1->v == n2->v, "normal identical after roundtrip");
+  const gpx::TextureRGBA *o1 = chan(mat, "ambient occlusion");
+  const gpx::TextureRGBA *o2 = chan(m2, "ambient occlusion");
+  CHECK(o1 && o2 && o1->v == o2->v, "AO identical after roundtrip");
+
+  // loading twice into the same graph yields two independent materials
+  uint64_t third = gpx::material_from_json(g2, doc, err, 400, 400);
+  CHECK(third != 0 && third != new_id, "second load is an independent copy");
+  CHECK(g2.nodes.size() == 12, "copies do not share nodes");
+  CHECK(g2.evaluate(), "graph with two material copies evaluates");
+}
+
+// Every workflow step must be reproducible: same graph + same seeds =>
+// identical output, and re-running a step after a no-op edit changes nothing.
+static void test_workflow_determinism() {
+  std::printf("workflow determinism...\n");
+  const char *chain[] = {"Noise", "WarpNoise", "Hydraulic", "StreamPower",
+                         "Thermal", "TerrainTexture"};
+  auto build = [&](gpx::Graph &g) {
+    g.resolution = 64;
+    gpx::Node *prev = nullptr;
+    for (const char *t : chain) {
+      gpx::Node *n = g.add_node(t);
+      if (!n) continue;
+      if (prev) {
+        if (n->port("input", gpx::PortDir::In))
+          g.add_link(prev->id, "output", n->id, "input");
+      }
+      if (gpx::Attribute *s = n->attrs.find("seed")) s->seed = 1234;
+      if (gpx::Attribute *it = n->attrs.find("iterations")) it->i = 6;
+      if (gpx::Attribute *p = n->attrs.find("particles")) p->i = 8;
+      prev = n;
+    }
+    return prev;
+  };
+  gpx::Graph g1, g2;
+  gpx::Node *last1 = build(g1);
+  gpx::Node *last2 = build(g2);
+  CHECK(g1.evaluate() && g2.evaluate(), "both workflows evaluate");
+  // compare every step, not just the final result
+  CHECK(g1.nodes.size() == g2.nodes.size(), "same node count");
+  for (size_t i = 0; i < g1.nodes.size(); ++i) {
+    gpx::Port *p1 = g1.nodes[i]->first_out(gpx::DataType::Heightmap);
+    gpx::Port *p2 = g2.nodes[i]->first_out(gpx::DataType::Heightmap);
+    if (!p1 || !p2 || !p1->hmap || !p2->hmap) continue;
+    CHECK(p1->hmap->v == p2->hmap->v,
+          (g1.nodes[i]->type + " step is deterministic").c_str());
+  }
+  // re-evaluating a clean graph must not alter any step
+  std::vector<float> before;
+  if (last1) {
+    gpx::Port *p = last1->first_out(gpx::DataType::Texture);
+    if (p && p->tex) before = p->tex->v;
+  }
+  g1.evaluate();
+  if (last1 && !before.empty()) {
+    gpx::Port *p = last1->first_out(gpx::DataType::Texture);
+    CHECK(p && p->tex && p->tex->v == before, "clean re-eval changes nothing");
+  }
+  // forcing a full recompute must reproduce the same result
+  g1.mark_all_dirty();
+  g1.evaluate();
+  if (last1 && !before.empty()) {
+    gpx::Port *p = last1->first_out(gpx::DataType::Texture);
+    CHECK(p && p->tex && p->tex->v == before, "full recompute reproduces");
+  }
+}
+
 static void test_ai_spec() {
   std::printf("AI spec builder...\n");
   const char *spec = R"({
@@ -322,6 +448,8 @@ int main() {
   test_serialization();
   test_surface_nodes();
   test_material_graph();
+  test_material_library_roundtrip();
+  test_workflow_determinism();
   test_ai_spec();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");

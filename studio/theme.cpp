@@ -1,6 +1,58 @@
 // Geekatplay Studio — flat dark-gray theme, dim orange accent, zero rounding
 #include "app.hpp"
 #include <imgui.h>
+#include <imgui_internal.h>
+
+namespace studio {
+
+// Flat toggle replacing ImGui::Checkbox: a small square, dark gray with a
+// frame when off, brighter gray fill when on. No check mark.
+bool Checkbox(const char *label, bool *v) {
+  ImGuiWindow *window = ImGui::GetCurrentWindow();
+  if (window->SkipItems) return false;
+  ImGuiContext &g = *ImGui::GetCurrentContext();
+  const ImGuiID id = window->GetID(label);
+  const float sz = g.FontSize * 0.78f; // smaller than the stock checkbox
+  const ImVec2 pos = window->DC.CursorPos;
+  const float y_off = (g.FontSize + g.Style.FramePadding.y * 2.f - sz) * 0.5f;
+  const ImRect box(ImVec2(pos.x, pos.y + y_off),
+                   ImVec2(pos.x + sz, pos.y + y_off + sz));
+  const char *label_end = ImGui::FindRenderedTextEnd(label);
+  const ImVec2 label_size = ImGui::CalcTextSize(label, label_end, true);
+  const float total_w = sz + (label_size.x > 0
+                                  ? g.Style.ItemInnerSpacing.x + label_size.x
+                                  : 0.f);
+  const ImRect total(pos, ImVec2(pos.x + total_w,
+                                 pos.y + g.FontSize + g.Style.FramePadding.y * 2.f));
+  ImGui::ItemSize(total, g.Style.FramePadding.y);
+  if (!ImGui::ItemAdd(total, id)) return false;
+  bool hovered, held;
+  bool pressed = ImGui::ButtonBehavior(total, id, &hovered, &held);
+  if (pressed) {
+    *v = !*v;
+    ImGui::MarkItemEdited(id);
+  }
+  ImDrawList *dl = window->DrawList;
+  const ImU32 frame = ImGui::GetColorU32(hovered ? ImVec4(0.48f, 0.46f, 0.44f, 1.f)
+                                                 : ImVec4(0.33f, 0.32f, 0.31f, 1.f));
+  if (*v) {
+    // on: brighter gray fill, slightly warmer when hovered
+    const ImU32 fill = ImGui::GetColorU32(
+        hovered ? ImVec4(0.72f, 0.69f, 0.65f, 1.f) : ImVec4(0.62f, 0.60f, 0.57f, 1.f));
+    dl->AddRectFilled(box.Min, box.Max, fill);
+  } else {
+    // off: dark gray with a frame
+    dl->AddRectFilled(box.Min, box.Max, ImGui::GetColorU32(ImVec4(0.145f, 0.145f, 0.145f, 1.f)));
+    dl->AddRect(box.Min, box.Max, frame);
+  }
+  if (label_size.x > 0)
+    ImGui::RenderText(ImVec2(box.Max.x + g.Style.ItemInnerSpacing.x,
+                             pos.y + g.Style.FramePadding.y),
+                      label, label_end);
+  return pressed;
+}
+
+} // namespace studio
 
 namespace studio {
 

@@ -95,6 +95,8 @@ enum PropTab { TAB_RENDER = 0, TAB_SCENE, TAB_WORLD, TAB_OBJECT, TAB_MATERIAL,
 
 // theme
 void apply_theme();
+// flat square toggle (no check mark) used app-wide instead of ImGui::Checkbox
+bool Checkbox(const char *label, bool *v);
 
 // previews (per-node thumbnails as GL textures)
 void previews_update(App &a);
