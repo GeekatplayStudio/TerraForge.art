@@ -1,0 +1,48 @@
+# build output
+/build/
+*.exe
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.pdb
+*.ilk
+
+# third-party sources fetched by scripts/get_deps.ps1
+/external/
+
+# private development notes, research and roadmaps (not published)
+/docs_private/
+
+# reference material / scratch clones
+/_temp_hesiod/
+
+# machine-specific tooling output
+compile_commands.json
+.vscode/
+.clangd
+*.wal
+*.log
+
+# app state written at runtime
+geekatplay_studio_layout.ini
+geekatplay_graph_view.json
+terraforge_prefs.json
+imgui.ini
+*.gpxt
+terraforge_render*.png
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# os
+Thumbs.db
+desktop.ini
+.DS_Store
