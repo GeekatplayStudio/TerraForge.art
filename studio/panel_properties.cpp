@@ -552,18 +552,15 @@ void draw_panel_properties(App &a) {
   };
   const int TAB_N = 6;
 
-  // keep the tab valid for the current selection (sticky otherwise)
+  // only fall back when the current tab genuinely cannot be shown
   bool valid = false;
   for (const TabDef &t : tabs)
     if (t.id == a.prop_tab && t.shown) valid = true;
   if (!valid) a.prop_tab = have_obj ? TAB_OBJECT : TAB_SCENE;
 
-  static uint64_t seen_sel = 0;
-  if (seen_sel != a.scene_selection_serial) {
-    seen_sel = a.scene_selection_serial;
-    ImGui::SetWindowFocus("Properties");
-  }
-
+  // The active tab is entirely sticky: selecting objects or nodes never
+  // switches it and never steals focus, so working in the node editor is
+  // not interrupted by clicking something in a viewport.
   if (!ImGui::Begin("Properties", &a.show_properties)) {
     ImGui::End();
     return;

@@ -86,6 +86,7 @@ void draw_panel_scene(App &a); // the Outliner
 void world_properties_ui(App &a);
 void material_properties_ui(App &a);
 void render_properties_ui(App &a);
+void draw_render_window(App &a); // live progressive render view
 void apply_scene_nodes(App &a);
 // true when the Properties search box is empty or matches this label
 bool prop_filter_match(const char *text);

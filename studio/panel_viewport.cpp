@@ -189,7 +189,6 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
       if (hit >= 0) {
         scene().selected = hit; // shared: updates every view and the panels
         a.scene_selection_serial++;
-        a.prop_tab = a.prop_tab == TAB_MATERIAL ? TAB_MATERIAL : TAB_OBJECT;
       }
     }
     // right-click (without panning) opens the same options menu
@@ -243,6 +242,7 @@ void draw_panel_viewport(App &a) {
 }
 
 } // namespace studio
+
 
 
 

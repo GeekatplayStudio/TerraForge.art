@@ -109,7 +109,6 @@ void draw_panel_scene(App &a) {
                           ImVec2(ImGui::GetContentRegionAvail().x - 92, 0))) {
       sc.selected = i;
       a.scene_selection_serial++;
-      a.prop_tab = a.prop_tab == TAB_MATERIAL ? TAB_MATERIAL : TAB_OBJECT;
     }
     ImGui::SameLine();
     // layer assignment combo (compact)
@@ -154,5 +153,6 @@ void draw_panel_scene(App &a) {
 }
 
 } // namespace studio
+
 
 

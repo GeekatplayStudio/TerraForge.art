@@ -200,6 +200,7 @@ void run_main() {
     }
     draw_panel_ai(a);
     draw_panel_scene(a); // Outliner
+    draw_render_window(a);
 
     // upload fresh eval results to GPU (main thread only)
     if (a.uploaded_serial != a.eval_serial && !a.eval.running.load()) {

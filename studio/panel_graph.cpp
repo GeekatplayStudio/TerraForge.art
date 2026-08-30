@@ -282,7 +282,6 @@ void draw_panel_graph(App &a) {
     int count = ed::GetSelectedNodes(sel, 8);
     if (count > 0) {
       uint64_t picked = (uint64_t)sel[0].Get();
-      if (picked != a.selected_node) a.prop_tab = TAB_NODE;
       a.selected_node = picked;
     }
   }
@@ -369,6 +368,7 @@ void draw_panel_graph(App &a) {
 }
 
 } // namespace studio
+
 
 
 

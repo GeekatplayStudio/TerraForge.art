@@ -68,6 +68,29 @@ def print_probe() -> int:
 
 
 # -------------------------------------------------------------- mitsuba 3
+def _progress(sc: dict, text: str) -> None:
+    """Writes a one-line status the app polls while rendering."""
+    path = sc.get("progress_file")
+    if not path:
+        return
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    except Exception:
+        pass
+
+
+def _passes(total_spp: int) -> list[int]:
+    """Progressive schedule: a quick first image, then doubling refinements."""
+    out, done, chunk = [], 0, 4
+    while done < total_spp:
+        step = min(chunk, total_spp - done)
+        out.append(step)
+        done += step
+        chunk = min(chunk * 2, 64)
+    return out
+
+
 def render_mitsuba(sc: dict) -> int:
     try:
         import mitsuba as mi
@@ -144,15 +167,37 @@ def render_mitsuba(sc: dict) -> int:
         }
 
     scene = mi.load_dict(scene_dict)
-    img = mi.render(scene)
-    rgb = tonemap.to_numpy(img)
 
-    if want_fog:
-        depth = _mitsuba_depth(mi, scene_dict, sc)
-        rgb = tonemap.apply_height_fog(rgb, depth, cam["eye"], cam["target"],
-                                       cam["fov"], sc["width"], sc["height"], fog,
-                                       sun)
-    tonemap.save_png(rgb, sc["output"], sc.get("exposure", 1.0))
+    # depth once up front so every progressive frame can carry the fog
+    depth = _mitsuba_depth(mi, scene_dict, sc) if want_fog else None
+
+    def finish(rgb, path):
+        out = rgb
+        if depth is not None:
+            out = tonemap.apply_height_fog(out, depth, cam["eye"], cam["target"],
+                                           cam["fov"], sc["width"], sc["height"],
+                                           fog, sun)
+        tonemap.save_png(out, path, sc.get("exposure", 1.0))
+
+    import time
+    total_spp = int(sc["spp"])
+    schedule = _passes(total_spp)
+    preview = sc.get("preview") or (sc["output"] + ".preview.png")
+    accum = None
+    done = 0
+    t0 = time.time()
+    for i, step in enumerate(schedule):
+        img = tonemap.to_numpy(mi.render(scene, spp=step, seed=i))
+        accum = img * step if accum is None else accum + img * step
+        done += step
+        avg = accum / float(done)
+        # progressive: refine the same image so the viewer sees it converge
+        finish(avg, preview)
+        _progress(sc, f"pass {i + 1}/{len(schedule)}  {done}/{total_spp} spp  "
+                      f"{time.time() - t0:.1f}s")
+        print(f"pass {i + 1}/{len(schedule)} - {done}/{total_spp} spp", flush=True)
+    finish(accum / float(done), sc["output"])
+    _progress(sc, f"done  {total_spp} spp  {time.time() - t0:.1f}s")
     print("wrote", sc["output"])
     return 0
 
