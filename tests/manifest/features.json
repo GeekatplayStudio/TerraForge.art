@@ -207,6 +207,18 @@
       "description": "The GPU mirrors FieldValue's permissive conversions exactly: a number broadcasts to a vector, a vector read as a number is its length, a colour is its luminance",
       "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
 
+    { "id": "terrain.flow_accumulation", "area": "terrain", "phase": "P1",
+      "description": "D8 flow accumulation: how much water passes through each point, computed over the whole surface with a deterministic total ordering",
+      "test_file": "test_engine.cpp", "test_symbol": "test_analysis" },
+
+    { "id": "terrain.wetness_index", "area": "terrain", "phase": "P1",
+      "description": "Topographic wetness index ln(a/tan b) — high in flat hollows fed from above, low on steep ground, finite even on perfectly flat terrain",
+      "test_file": "test_engine.cpp", "test_symbol": "test_analysis" },
+
+    { "id": "terrain.resample", "area": "terrain", "phase": "P1",
+      "description": "Terrain resolution operations: half, quarter, double or custom sampling with smooth or nearest interpolation, changing detail without changing buffer size",
+      "test_file": "test_engine.cpp", "test_symbol": "test_analysis" },
+
     { "id": "meta.goldens_vary", "area": "meta", "phase": "P1",
       "description": "Every golden project must produce varying output, so a golden cannot silently lock a flat buffer",
       "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },

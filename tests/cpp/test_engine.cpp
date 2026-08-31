@@ -1311,6 +1311,116 @@ static void test_displacement() {
   }
 }
 
+// --------------------------------------------------------- analysis (P1)
+// Hydrological analysis has answers you can work out on paper, so these tests
+// check the arithmetic rather than that a picture appeared.
+static void test_analysis() {
+  std::printf("flow, wetness and resampling...\n");
+  const int W = 32;
+
+  // Park a buffer straight onto a node's input port. The graph prefers a
+  // port's own buffer over a link, which is how MetaNodes feed their boundary.
+  auto feed = [](gpx::Node *n, const char *port, const gpx::Heightmap &h) {
+    gpx::Port *p = n->port(port, gpx::PortDir::In);
+    if (p) p->hmap = std::make_shared<gpx::Heightmap>(h);
+  };
+
+  // A pure slope in X: every cell's steepest descent is its left neighbour
+  // (the diagonals are the same height but further away), so each row drains
+  // straight to the left edge and the leftmost cell collects the whole row.
+  gpx::Heightmap ramp(W, W);
+  for (int y = 0; y < W; ++y)
+    for (int x = 0; x < W; ++x) ramp.at(x, y) = x * 0.01f;
+
+  {
+    gpx::Graph g;
+    g.resolution = W;
+    gpx::Node *fa = g.add_node("FlowAccumulation");
+    fa->attrs.find("log_scale")->b = false;
+    fa->attrs.find("post_remap")->b = false; // raw counts, so we can check them
+    feed(fa, "input", ramp);
+    fa->dirty = true;
+    g.evaluate();
+
+    gpx::Heightmap *out = out_of(fa);
+    CHECK(out != nullptr, "flow accumulation produced output");
+    if (out) {
+      CHECK(std::fabs(out->at(0, W / 2) - (float)W) < 1e-3f,
+            "the outlet of a row collects exactly one cell per column");
+      CHECK(std::fabs(out->at(W - 1, W / 2) - 1.f) < 1e-3f,
+            "the ridge cell contributes only itself");
+      // accumulation must rise monotonically downhill along a row
+      bool rises = true;
+      for (int x = 1; x < W; ++x)
+        if (out->at(W - 1 - x, W / 2) < out->at(W - x, W / 2)) rises = false;
+      CHECK(rises, "accumulation grows as water moves downhill");
+    }
+  }
+
+  {   // wetness: finite everywhere, including on ground that is exactly flat
+    gpx::Graph g;
+    g.resolution = W;
+    gpx::Node *wi = g.add_node("WetnessIndex");
+    gpx::Heightmap flat(W, W);
+    for (float &v : flat.v) v = 0.5f;
+    feed(wi, "input", flat);
+    wi->dirty = true;
+    g.evaluate();
+    gpx::Heightmap *out = out_of(wi);
+    CHECK(out && finite_map(*out),
+          "perfectly flat ground stays finite (no divide by zero)");
+  }
+
+  {   // wetness rises downhill, where the contributing area is larger
+    gpx::Graph g;
+    g.resolution = W;
+    gpx::Node *wi = g.add_node("WetnessIndex");
+    wi->attrs.find("post_remap")->b = false;
+    feed(wi, "input", ramp);
+    wi->dirty = true;
+    g.evaluate();
+    gpx::Heightmap *out = out_of(wi);
+    CHECK(out != nullptr, "wetness produced output");
+    if (out) {
+      CHECK(finite_map(*out), "wetness is finite everywhere");
+      CHECK(out->at(1, W / 2) > out->at(W - 2, W / 2),
+            "the foot of a slope is wetter than its top");
+    }
+  }
+
+  {   // resampling coarser must lose detail, not gain it
+    gpx::Graph g;
+    g.resolution = W;
+    gpx::Node *noise = g.add_node("Noise");
+    noise->attrs.find("octaves")->i = 8;
+    gpx::Node *rs = g.add_node("Resample");
+    rs->attrs.find("post_remap")->b = false;
+    g.add_link(noise->id, "output", rs->id, "input");
+    g.mark_all_dirty();
+    g.evaluate();
+
+    gpx::Heightmap *src = out_of(noise);
+    gpx::Heightmap *out = out_of(rs);
+    CHECK(src && out, "resample produced output");
+    if (src && out) {
+      // roughness as mean absolute difference between neighbours
+      auto rough = [](const gpx::Heightmap &h) {
+        double s = 0;
+        int n = 0;
+        for (int y = 0; y < h.h; ++y)
+          for (int x = 1; x < h.w; ++x) {
+            s += std::fabs(h.at(x, y) - h.at(x - 1, y));
+            ++n;
+          }
+        return n ? s / n : 0.0;
+      };
+      CHECK(rough(*out) < rough(*src),
+            "half sampling is smoother than the source it came from");
+      CHECK(finite_map(*out), "resampled terrain is finite");
+    }
+  }
+}
+
 // ------------------------------------------------------------------ bypass
 // "The network is processed as if the node did not even exist" (Terragen p15).
 // The graph implements this during link resolution, so it holds for every node
@@ -1786,6 +1896,7 @@ int main() {
   test_field_bridges();
   test_field_glsl();
   test_displacement();
+  test_analysis();
   test_bypass();
   test_metanodes();
   test_metanode_published();

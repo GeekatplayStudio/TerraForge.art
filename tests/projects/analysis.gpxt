@@ -1,0 +1,25 @@
+{
+ "app": "Geekatplay Studio",
+ "version": 2,
+ "resolution": 64,
+ "nodes": [
+  {"id": 1, "type": "Noise", "pos": [0, 0],
+   "attrs": {"octaves": {"i": 7}, "seed": {"seed": 314}}},
+  {"id": 2, "type": "FlowAccumulation", "pos": [220, 0],
+   "attrs": {"log_scale": {"b": true}, "threshold": {"f": 0.2}}},
+  {"id": 3, "type": "WetnessIndex", "pos": [220, 200],
+   "attrs": {"min_slope": {"f": 0.02}, "contrast": {"f": 1.5}}},
+  {"id": 4, "type": "Resample", "pos": [220, 400],
+   "attrs": {"mode": {"i": 0}, "smooth": {"b": true}}},
+  {"id": 5, "type": "Blend", "pos": [460, 100], "attrs": {}},
+  {"id": 6, "type": "TerrainOutput", "pos": [700, 100], "attrs": {}}
+ ],
+ "links": [
+  {"from": 1, "from_port": "output", "to": 2, "to_port": "input"},
+  {"from": 1, "from_port": "output", "to": 3, "to_port": "input"},
+  {"from": 1, "from_port": "output", "to": 4, "to_port": "input"},
+  {"from": 2, "from_port": "output", "to": 5, "to_port": "a"},
+  {"from": 3, "from_port": "output", "to": 5, "to_port": "b"},
+  {"from": 5, "from_port": "output", "to": 6, "to_port": "heightmap"}
+ ]
+}

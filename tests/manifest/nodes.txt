@@ -45,6 +45,7 @@ FieldTrig|Field Math
 FieldVectorOp|Field Math
 FieldZone|Field Displace
 FlatColor|Material
+FlowAccumulation|Analysis
 Fold|Filter
 Fractal|Primitive
 GammaCorrection|Filter
@@ -74,6 +75,7 @@ Remap|Filter
 RenderCamera|Render
 RenderQuality|Render
 Repeat|Logic
+Resample|Analysis
 Rivers|Erosion
 Sample|Field Bridge
 SedimentDeposit|Erosion
@@ -110,4 +112,5 @@ Transform|Transform
 WarpDirectional|Transform
 WarpNoise|Transform
 WaterLayer|Atmosphere
+WetnessIndex|Analysis
 Wind|Erosion
