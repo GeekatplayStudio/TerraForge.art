@@ -121,6 +121,47 @@ static void section_planet(RenderSettings &rs) {
   }
 }
 
+static void section_subdivision(RenderSettings &rs) {
+  if (!ImGui::CollapsingHeader("Surface detail", ImGuiTreeNodeFlags_DefaultOpen))
+    return;
+
+  studio::Checkbox("Adaptive subdivision", &rs.tessellation);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Subdivide the terrain to whatever the camera needs\n"
+                      "instead of to a fixed grid, so displacement keeps\n"
+                      "resolving as you approach. Off falls back to the\n"
+                      "fixed grid.");
+  if (rs.tessellation) {
+    ImGui::SliderFloat("Target edge (px)", &rs.tess_pixels, 2.f, 32.f, "%.0f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How long a triangle edge should be on screen.\n"
+                        "Smaller means more triangles and finer relief.");
+    ImGui::SliderFloat("Minimum subdivision", &rs.tess_min, 1.f, 32.f, "%.0f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Never go coarser than this, however far away the\n"
+                        "ground is. 8 matches the fixed grid exactly, so the\n"
+                        "adaptive path can only ever add detail.");
+    ImGui::SliderFloat("Limit subdivision", &rs.tess_max, 1.f, 64.f, "%.0f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The ceiling, for when detail is not worth the cost.");
+    ImGui::TextDisabled("%s", renderer_tess_status().c_str());
+  }
+
+  ImGui::Separator();
+  ImGui::SliderFloat("Graph displacement", &rs.field_displacement, -1.f, 1.f,
+                     "%.3f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How far a TerrainDisplacement node's field moves the\n"
+                      "surface, in world units. The node's own Strength sets\n"
+                      "this whenever the graph is evaluated.");
+  const char *ferr = renderer_field_error();
+  if (ferr && *ferr) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.4f, 0.25f, 1.f));
+    ImGui::TextWrapped("displacement shader: %s", ferr);
+    ImGui::PopStyleColor();
+  }
+}
+
 static void section_render(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Render")) return;
   ImGui::SliderFloat("Height scale", &rs.height_scale, 0.02f, 0.8f);
@@ -157,6 +198,8 @@ void world_properties_ui(App &a) {
   if (prop_filter_match("Fog haze")) section_fog(rs);
   if (prop_filter_match("Water foam")) section_water(rs);
   if (prop_filter_match("Planet fractal detail")) section_planet(rs);
+  if (prop_filter_match("Surface detail subdivision tessellation displacement"))
+    section_subdivision(rs);
   if (prop_filter_match("Render shadows")) section_render(rs);
 }
 
