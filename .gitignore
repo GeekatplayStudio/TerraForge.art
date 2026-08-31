@@ -48,3 +48,7 @@ venv/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# scratch files from experiments, never part of the build
+/fp.cpp
+/*.tmp.cpp
