@@ -171,11 +171,20 @@
       "description": "A MetaNode can be saved to a personal library and dropped into any project as a reusable node, keeping its inner graph, exposed parameters and their tuned values",
       "test_file": "test_undo.cpp", "test_symbol": "test_node_library_roundtrip" },
 
+    { "id": "framework.node_list", "area": "framework", "phase": "P0.4",
+      "description": "A Node List view of the same graph, rooted at the terrain result with inputs indented beneath, per-row bypass, and unreachable nodes listed separately",
+      "test_file": "test_engine.cpp", "test_symbol": "test_bypass" },
+
+    { "id": "framework.animation_hooks", "area": "framework", "phase": "P0.4",
+      "description": "Every parameter can carry an animation track; scene time drives them, they survive save/load, reach the field domain, and cost nothing when unused",
+      "test_file": "test_engine.cpp", "test_symbol": "test_animation_hooks" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
   ]
 }
+
 
 
 

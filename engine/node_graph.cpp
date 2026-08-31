@@ -419,7 +419,41 @@ std::vector<Node *> Graph::topo_order() const {
   return order;
 }
 
+// Write every animated attribute's value for the current time. Doing it here,
+// once, before the topological walk means no node has to know that animation
+// exists: it simply reads the attribute it always read.
+void Graph::apply_animation() {
+  for (auto &n : nodes) {
+    bool changed = false;
+    for (Attribute &a : n->attrs.items) {
+      if (a.anim.empty()) continue;
+      float v = a.anim.sample(time);
+      switch (a.type) {
+        case AttrType::Float:
+          if (a.f != v) { a.f = v; changed = true; }
+          break;
+        case AttrType::Int:
+        case AttrType::Choice: {
+          int iv = (int)std::lround(v);
+          if (a.i != iv) { a.i = iv; changed = true; }
+        } break;
+        case AttrType::Bool: {
+          bool bv = v >= 0.5f;
+          if (a.b != bv) { a.b = bv; changed = true; }
+        } break;
+        case AttrType::Seed: {
+          uint32_t sv = (uint32_t)std::max(0.f, v);
+          if (a.seed != sv) { a.seed = sv; changed = true; }
+        } break;
+        default: break; // vectors, colours and gradients animate in P7
+      }
+    }
+    if (changed) mark_dirty(n->id);
+  }
+}
+
 bool Graph::evaluate() {
+  apply_animation();
   auto order = topo_order();
   if (order.empty() && !nodes.empty()) return false;
   int idx = 0, total = 0;

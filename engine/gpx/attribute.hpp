@@ -1,7 +1,8 @@
-// Geekatplay Studio — declarative node parameters.
+﻿// Geekatplay Studio â€” declarative node parameters.
 // A node declares attributes in its setup fn; the properties panel renders
 // them automatically and serialization walks the same list.
 #pragma once
+#include "gpx/animation.hpp"
 #include <cstdint>
 #include <map>
 #include <string>
@@ -49,6 +50,12 @@ struct Attribute {
   // floats in memory and quantized + compressed on the way to disk.
   std::vector<float> field;
   int fw = 0, fh = 0;
+  // Animation. Every parameter can carry a track; an un-animated one costs an
+  // empty vector. The hook lives here rather than in a side table so that
+  // copying, serializing, undoing and publishing a parameter all carry its
+  // animation with it automatically.
+  Track anim;
+  bool animated() const { return !anim.empty(); }
 };
 
 // Ordered attribute container; preserves declaration order for UI.
@@ -107,3 +114,4 @@ Attribute &add_field(AttrSet &s, const std::string &key, const std::string &labe
                      const std::string &group = "");
 
 } // namespace gpx
+

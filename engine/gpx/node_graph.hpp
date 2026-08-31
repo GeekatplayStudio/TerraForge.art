@@ -1,4 +1,4 @@
-// Geekatplay Studio — registry-based dataflow graph.
+﻿// Geekatplay Studio â€” registry-based dataflow graph.
 // Nodes self-register (REGISTER_NODE) with a setup fn (declares ports +
 // attributes) and a compute fn. Evaluation is topological with dirty
 // propagation and per-node output caching.
@@ -23,7 +23,7 @@ enum class PortDir { In, Out };
 
 class Node;
 
-// A field port carries no buffer — it carries the promise that the node can be
+// A field port carries no buffer â€” it carries the promise that the node can be
 // asked for a value at any point. Evaluation is pull-based: asking an output
 // port for a value walks upstream through the links.
 using FieldEvalFn = std::function<FieldValue(const Node &, const FieldContext &)>;
@@ -65,7 +65,7 @@ public:
   Graph *graph = nullptr;
 
   Port *port(const std::string &name);
-  // direction-aware lookup — required when a node names an input and an
+  // direction-aware lookup â€” required when a node names an input and an
   // output identically (e.g. Levels' "texture" in and out)
   Port *port(const std::string &name, PortDir dir);
   Port *first_out(DataType t);
@@ -77,7 +77,7 @@ public:
   // ---- field domain -------------------------------------------------------
   // A field input declares the value type it expects; a field output declares
   // what it produces and how. `eval` receives the node and the point being
-  // asked about, so field nodes are stateless and re-entrant — which is what
+  // asked about, so field nodes are stateless and re-entrant â€” which is what
   // lets them be evaluated in parallel and transpiled to GLSL.
   void add_field_in(const std::string &name, FieldType t = FieldType::Number,
                     bool optional = false);
@@ -85,7 +85,7 @@ public:
 
   // Pull a value from a connected field input. If nothing is connected,
   // `fallback` is returned, so every field node has a defined result even in a
-  // half-built graph — a partially wired graph must still preview.
+  // half-built graph â€” a partially wired graph must still preview.
   FieldValue in_field(const std::string &name, const FieldContext &ctx,
                       FieldValue fallback = FieldValue(0.f)) const;
   float in_number(const std::string &name, const FieldContext &ctx,
@@ -138,6 +138,10 @@ struct Registrar {
 class Graph {
 public:
   int resolution = 512; // preview resolution; bake overrides per-run
+  // Scene time in seconds. Animated attributes are sampled from their track at
+  // this time before each evaluation, and it reaches field nodes through
+  // FieldContext::time. Setting it is what "scrubbing the timeline" means.
+  float time = 0.f;
   std::vector<std::unique_ptr<Node>> nodes;
   std::vector<Link> links;
   std::atomic<bool> cancel{false};
@@ -158,6 +162,8 @@ public:
 
   void mark_dirty(uint64_t node_id); // node + all downstream
   void mark_all_dirty();
+  // sample every animated attribute at Graph::time (called by evaluate)
+  void apply_animation();
   std::vector<Node *> topo_order() const;
   // returns false if a cycle or error occurred; computes only dirty nodes
   bool evaluate();
@@ -173,3 +179,4 @@ private:
 };
 
 } // namespace gpx
+

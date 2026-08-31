@@ -1260,6 +1260,135 @@ static void test_universal_blend() {
   }
 }
 
+// --------------------------------------------------------------- animation
+// The timeline is P7, but the hook has to exist on every parameter now:
+// retrofitting it after terrain, materials, lighting, atmosphere, clouds and
+// render would mean touching every node a second time.
+static void test_animation_hooks() {
+  std::printf("animation hooks...\n");
+  // track behaviour
+  {
+    gpx::Track t;
+    CHECK(t.empty(), "a new track is empty");
+    CHECK(t.sample(0.f) == 0.f, "an empty track samples to zero");
+    CHECK(t.set_key(0.f, 10.f), "first key added");
+    CHECK(t.sample(5.f) == 10.f, "one key holds its value everywhere");
+    CHECK(t.set_key(2.f, 20.f), "second key added");
+    CHECK(!t.set_key(2.f, 30.f), "re-keying the same time replaces, not adds");
+    CHECK(t.keys.size() == 2, "still two keys");
+    // ends hold rather than extrapolate
+    CHECK(t.sample(-5.f) == 10.f, "before the first key holds");
+    CHECK(t.sample(99.f) == 30.f, "after the last key holds");
+    t.interp = gpx::Interp::Linear;
+    CHECK(std::fabs(t.sample(1.f) - 20.f) < 1e-4f, "linear interpolates");
+    t.interp = gpx::Interp::Constant;
+    CHECK(t.sample(1.f) == 10.f, "constant steps");
+    t.interp = gpx::Interp::Smooth;
+    float mid = t.sample(1.f);
+    CHECK(mid > 10.f && mid < 30.f, "smooth stays between its keys");
+    CHECK(t.has_key_at(2.f), "key lookup works");
+    CHECK(t.remove_key(2.f), "key removed");
+    CHECK(t.keys.size() == 1, "one key left");
+
+    // keys added out of order are kept sorted, so sampling stays correct
+    gpx::Track u;
+    u.set_key(3.f, 30.f);
+    u.set_key(1.f, 10.f);
+    u.set_key(2.f, 20.f);
+    u.interp = gpx::Interp::Linear;
+    CHECK(u.keys[0].time == 1.f && u.keys[2].time == 3.f, "keys sorted");
+    CHECK(std::fabs(u.sample(1.5f) - 15.f) < 1e-4f, "sampling out-of-order keys");
+  }
+
+  // an animated attribute drives the graph as scene time moves
+  {
+    gpx::Graph g;
+    g.resolution = 48;
+    gpx::Node *noise = g.add_node("Noise");
+    gpx::Attribute *oct = noise->attrs.find("octaves");
+    CHECK(oct != nullptr, "the node has the attribute we animate");
+    if (!oct) return;
+    oct->anim.interp = gpx::Interp::Linear;
+    oct->anim.set_key(0.f, 3.f);
+    oct->anim.set_key(10.f, 9.f);
+    CHECK(oct->animated(), "the attribute reports itself as animated");
+
+    g.time = 0.f;
+    g.mark_all_dirty();
+    g.evaluate();
+    CHECK(oct->i == 3, "at t=0 the animated value is applied");
+    std::vector<float> at0 = out_of(noise)->v;
+
+    g.time = 10.f;
+    g.evaluate();
+    CHECK(oct->i == 9, "at t=10 the value has moved");
+    CHECK(out_of(noise)->v != at0, "and the terrain changed with it");
+
+    // scrubbing back reproduces the earlier frame exactly — an animation that
+    // is not repeatable is not an animation
+    g.time = 0.f;
+    g.evaluate();
+    CHECK(out_of(noise)->v == at0, "scrubbing back reproduces the frame");
+  }
+
+  // an un-animated graph is untouched by time, so nothing pays for this
+  {
+    gpx::Graph g;
+    g.resolution = 48;
+    gpx::Node *n = g.add_node("Noise");
+    g.evaluate();
+    std::vector<float> a = out_of(n)->v;
+    g.time = 42.f;
+    g.evaluate();
+    CHECK(out_of(n)->v == a, "time does not disturb an un-animated graph");
+  }
+
+  // tracks survive save/load with the value they belong to
+  {
+    gpx::Graph g;
+    g.resolution = 32;
+    gpx::Node *n = g.add_node("Noise");
+    gpx::Attribute *oct = n->attrs.find("octaves");
+    oct->anim.interp = gpx::Interp::Constant;
+    oct->anim.set_key(1.f, 4.f);
+    oct->anim.set_key(4.f, 8.f);
+    std::string json = gpx::graph_to_json(g);
+    CHECK(json.find("anim") != std::string::npos, "the track is written out");
+    gpx::Graph g2;
+    std::string err;
+    CHECK(gpx::graph_from_json(g2, json, err), "reloads");
+    gpx::Attribute *o2 = g2.nodes.empty() ? nullptr
+                                          : g2.nodes[0]->attrs.find("octaves");
+    CHECK(o2 && o2->anim.keys.size() == 2, "both keys came back");
+    if (o2) {
+      CHECK(o2->anim.interp == gpx::Interp::Constant, "interpolation kept");
+      CHECK(std::fabs(o2->anim.keys[1].value - 8.f) < 1e-4f, "values kept");
+    }
+  }
+
+  // the field domain sees scene time, which is how an animated field graph
+  // rasterizes differently per frame
+  {
+    gpx::Graph g;
+    g.resolution = 32;
+    gpx::Node *tnode = g.add_node("FieldTime");
+    gpx::Node *rast = g.add_node("Rasterize");
+    rast->attrs.find("post_remap")->b = false;
+    g.add_link(tnode->id, "out", rast->id, "field");
+    g.time = 2.f;
+    g.mark_all_dirty();
+    g.evaluate();
+    gpx::Heightmap *out = out_of(rast);
+    CHECK(out && std::fabs(out->v[0] - 2.f) < 1e-4f,
+          "scene time reaches the field domain");
+    g.time = 7.f;
+    g.mark_all_dirty();
+    g.evaluate();
+    CHECK(out_of(rast) && std::fabs(out_of(rast)->v[0] - 7.f) < 1e-4f,
+          "and follows the timeline");
+  }
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -1288,6 +1417,7 @@ int main() {
   test_metanodes();
   test_metanode_published();
   test_universal_blend();
+  test_animation_hooks();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;
@@ -1295,6 +1425,7 @@ int main() {
   std::printf("%d FAILURES\n", g_failures);
   return 1;
 }
+
 
 
 

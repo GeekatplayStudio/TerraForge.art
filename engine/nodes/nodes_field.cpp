@@ -398,6 +398,9 @@ REGISTER_NODE(
             ctx.pos[2] = cy + (y / float(h - 1) - 0.5f) * size;
             ctx.altitude = hy;
             ctx.lod = lod;
+            // scene time reaches field graphs here, so an animated field
+            // graph rasterizes differently per frame
+            ctx.time = n.graph ? n.graph->time : 0.f;
             out.at(x, y) = n.in_field("field", ctx).number();
           }
       });
@@ -520,4 +523,5 @@ REGISTER_NODE(
     })
 
 } // namespace gpx
+
 

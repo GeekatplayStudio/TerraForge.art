@@ -127,10 +127,13 @@ static json attr_to_json(const Attribute &a) {
     case AttrType::Text: j["s"] = a.s; break;
     case AttrType::Field: j = field_to_json(a); break;
   }
+  // animation rides along with the value it belongs to
+  if (!a.anim.empty()) j["anim"] = track_to_string(a.anim);
   return j;
 }
 
 static void attr_from_json(Attribute &a, const json &j) {
+  if (j.contains("anim")) track_from_string(a.anim, j["anim"].get<std::string>());
   if (a.type == AttrType::Field) {
     field_from_json(a, j);
     return;
@@ -497,4 +500,5 @@ std::string registry_catalog_for_ai(const std::vector<std::string> &categories) 
 }
 
 } // namespace gpx
+
 
