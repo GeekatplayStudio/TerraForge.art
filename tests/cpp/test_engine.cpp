@@ -1421,6 +1421,202 @@ static void test_analysis() {
   }
 }
 
+// -------------------------------------------------- field materials (P2)
+// Environment-sensitive distribution: where a material belongs. The point of
+// these tests is that the answers are the ones you would give out loud —
+// "snow above the treeline", "rock on the steep bits" — not merely that a
+// number came out.
+static void test_field_materials() {
+  std::printf("environment-sensitive materials...\n");
+  auto at_alt = [](float a, float slope = 1.f, float orient = 0.f) {
+    gpx::FieldContext c;
+    c.altitude = a;
+    c.slope = slope;
+    c.orientation = orient;
+    c.lod = 8.f;
+    return c;
+  };
+
+  {   // snow above a line, with a soft edge
+    gpx::Graph g;
+    gpx::Node *d = g.add_node("FieldDistribution");
+    d->attrs.find("altitude")->v2[0] = 100.f; // band 100..1000
+    d->attrs.find("altitude")->v2[1] = 1000.f;
+    d->attrs.find("altitude_fuzz")->f = 10.f;
+
+    CHECK(d->eval_field("out", at_alt(500.f)).number() == 1.f,
+          "well inside the band the material is fully present");
+    CHECK(d->eval_field("out", at_alt(0.f)).number() == 0.f,
+          "well below the band it is absent");
+    CHECK(d->eval_field("out", at_alt(5000.f)).number() == 0.f,
+          "well above the band it is absent");
+    float edge = d->eval_field("out", at_alt(100.f)).number();
+    CHECK(edge > 0.f && edge < 1.f, "the band edge is a fade, not a step");
+    CHECK(std::fabs(edge - 0.5f) < 1e-4f,
+          "exactly on the boundary it is half present");
+
+    // and the fade is monotonic through the transition, or it would band
+    bool rises = true;
+    float prev = -1.f;
+    for (int i = 0; i <= 20; ++i) {
+      float v = d->eval_field("out", at_alt(85.f + i * 1.5f)).number();
+      if (v < prev - 1e-6f) rises = false;
+      prev = v;
+    }
+    CHECK(rises, "the fade rises monotonically into the band");
+  }
+
+  {   // a zero fade is a hard edge, and must not divide by zero
+    gpx::Graph g;
+    gpx::Node *d = g.add_node("FieldDistribution");
+    d->attrs.find("altitude")->v2[0] = 0.f;
+    d->attrs.find("altitude")->v2[1] = 10.f;
+    d->attrs.find("altitude_fuzz")->f = 0.f;
+    CHECK(d->eval_field("out", at_alt(5.f)).number() == 1.f, "inside is 1");
+    CHECK(d->eval_field("out", at_alt(10.001f)).number() == 0.f,
+          "just outside is 0 with no fade");
+    CHECK(std::isfinite(d->eval_field("out", at_alt(0.f)).number()),
+          "a zero fade stays finite (smoothstep with equal edges would not)");
+  }
+
+  {   // criteria multiply: rock is steep AND low
+    gpx::Graph g;
+    gpx::Node *d = g.add_node("FieldDistribution");
+    d->attrs.find("altitude")->v2[0] = 0.f;
+    d->attrs.find("altitude")->v2[1] = 100.f;
+    d->attrs.find("altitude_fuzz")->f = 0.f;
+    d->attrs.find("use_slope")->b = true;
+    d->attrs.find("slope")->v2[0] = 0.f;   // steep only
+    d->attrs.find("slope")->v2[1] = 0.4f;
+    d->attrs.find("slope_fuzz")->f = 0.f;
+
+    CHECK(d->eval_field("out", at_alt(50.f, 0.2f)).number() == 1.f,
+          "low and steep: the material belongs");
+    CHECK(d->eval_field("out", at_alt(50.f, 0.9f)).number() == 0.f,
+          "low but flat: rejected by the steepness criterion alone");
+    CHECK(d->eval_field("out", at_alt(500.f, 0.2f)).number() == 0.f,
+          "steep but high: rejected by the altitude criterion alone");
+
+    d->attrs.find("invert")->b = true;
+    CHECK(d->eval_field("out", at_alt(50.f, 0.2f)).number() == 0.f,
+          "invert flips the result");
+  }
+
+  {   // a criterion can be driven by a field, which is how it reads a
+      // computed slope from downstream of a displacement
+    gpx::Graph g;
+    gpx::Node *cst = g.add_node("FieldConstant");
+    cst->attrs.find("value")->f = 700.f;
+    gpx::Node *d = g.add_node("FieldDistribution");
+    d->attrs.find("altitude")->v2[0] = 500.f;
+    d->attrs.find("altitude")->v2[1] = 900.f;
+    d->attrs.find("altitude_fuzz")->f = 0.f;
+    g.add_link(cst->id, "out", d->id, "altitude");
+    // the context says 0, the connected field says 700: the field must win
+    CHECK(d->eval_field("out", at_alt(0.f)).number() == 1.f,
+          "a connected field overrides the context value");
+  }
+
+  {   // colour mixing
+    gpx::Graph g;
+    gpx::Node *ca = g.add_node("FieldColorConstant");
+    gpx::Node *cb = g.add_node("FieldColorConstant");
+    gpx::Node *mx = g.add_node("FieldColorMix");
+    ca->attrs.find("color")->col[0] = 1.f;
+    ca->attrs.find("color")->col[1] = 0.f;
+    ca->attrs.find("color")->col[2] = 0.f;
+    cb->attrs.find("color")->col[0] = 0.f;
+    cb->attrs.find("color")->col[1] = 1.f;
+    cb->attrs.find("color")->col[2] = 0.f;
+    g.add_link(ca->id, "out", mx->id, "a");
+    g.add_link(cb->id, "out", mx->id, "b");
+    mx->attrs.find("amount")->f = 1.f;
+
+    gpx::FieldContext c = at_alt(0.f);
+    gpx::FieldValue v = mx->eval_field("out", c);
+    CHECK(v.type == gpx::FieldType::Color, "produces a colour");
+    CHECK(std::fabs(v.v[0]) < 1e-6f && std::fabs(v.v[1] - 1.f) < 1e-6f,
+          "a full mix is entirely B");
+    mx->attrs.find("amount")->f = 0.f;
+    v = mx->eval_field("out", c);
+    CHECK(std::fabs(v.v[0] - 1.f) < 1e-6f,
+          "a zero factor leaves A untouched, whatever the mode");
+    // and that holds for every mode, which is what makes the factor mean one
+    // thing rather than seven
+    for (int mode = 0; mode < 7; ++mode) {
+      mx->attrs.find("mode")->i = mode;
+      v = mx->eval_field("out", c);
+      CHECK(std::fabs(v.v[0] - 1.f) < 1e-6f && std::fabs(v.v[1]) < 1e-6f,
+            "mode " + std::to_string(mode) + " is a no-op at factor zero");
+    }
+    mx->attrs.find("mode")->i = 2; // multiply
+    mx->attrs.find("amount")->f = 1.f;
+    v = mx->eval_field("out", c);
+    CHECK(std::fabs(v.v[0]) < 1e-6f && std::fabs(v.v[1]) < 1e-6f,
+          "red times green is black");
+  }
+
+  {   // Both transpile, and the emitted code is well-formed.
+      //
+      // Every input is deliberately connected. An unconnected input resolves
+      // to a literal without emitting anything, so a bare node cannot exhibit
+      // the ordering bug at all — testing one would pass while the shader the
+      // user actually gets does not compile. That is exactly what happened.
+    gpx::Graph g;
+    gpx::Node *n1 = g.add_node("FieldNoise");
+    gpx::Node *n2 = g.add_node("FieldNoise");
+    n2->attrs.find("seed")->seed = 5;
+
+    gpx::Node *d = g.add_node("FieldDistribution");
+    d->attrs.find("use_slope")->b = true;
+    d->attrs.find("use_orientation")->b = true;
+    g.add_link(n1->id, "out", d->id, "altitude");
+    g.add_link(n2->id, "out", d->id, "slope");
+    g.add_link(n1->id, "out", d->id, "orientation");
+
+    gpx::Node *ga = g.add_node("FieldGradient");
+    gpx::Node *cc = g.add_node("FieldColorConstant");
+    gpx::Node *mx = g.add_node("FieldColorMix");
+    g.add_link(n1->id, "out", ga->id, "in");
+    g.add_link(ga->id, "out", mx->id, "a");
+    g.add_link(cc->id, "out", mx->id, "b");
+    g.add_link(n2->id, "out", mx->id, "factor");
+
+    // First prove the checker can fail, or passing it means nothing. This is
+    // the shape the bug produced: a declaration spliced into the middle of
+    // the statement that was being written.
+    {
+      std::string why;
+      CHECK(!glsl_declared_before_use(
+                "vec4 gpx_f(){\n  vec4 v_ca_0 =   vec4 v_n_1 = P.x;\n"
+                "v_n_1;\n  return v_ca_0;\n}\n",
+                why),
+            "the ordering checker rejects a spliced declaration");
+      CHECK(glsl_declared_before_use(
+                "vec4 gpx_f(){\n  vec4 v_n_1 = vec4(P, 0.0);\n"
+                "  vec4 v_ca_0 = v_n_1;\n  return v_ca_0;\n}\n",
+                why),
+            "and accepts the same code written in order");
+    }
+
+    for (gpx::Node *n : {d, mx}) {
+      gpx::GlslProgram p = gpx::field_to_glsl(*n, "out", "gpx_f");
+      CHECK(p.ok, std::string(n->type) + " transpiles: " + p.error);
+      std::string why;
+      CHECK(glsl_declared_before_use(p.code, why),
+            std::string(n->type) + " emits valid ordering: " + why);
+    }
+    gpx::GlslProgram p = gpx::field_to_glsl(*d, "out", "gpx_f");
+    CHECK(p.code.find("gpxf_band") != std::string::npos,
+          "distribution uses the shared band helper, not smoothstep");
+
+    // a colour source must keep its alpha rather than having 1.0 forced on it
+    gpx::GlslProgram q = gpx::field_to_glsl(*mx, "out", "gpx_f");
+    CHECK(q.ok && q.code.find("vec4(vec3(") == std::string::npos,
+          "a colour input is taken whole, not rebuilt from a luminance");
+  }
+}
+
 // ------------------------------------------------------------------ bypass
 // "The network is processed as if the node did not even exist" (Terragen p15).
 // The graph implements this during link resolution, so it holds for every node
@@ -1897,6 +2093,7 @@ int main() {
   test_field_glsl();
   test_displacement();
   test_analysis();
+  test_field_materials();
   test_bypass();
   test_metanodes();
   test_metanode_published();

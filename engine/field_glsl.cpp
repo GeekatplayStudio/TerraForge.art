@@ -53,6 +53,17 @@ float gpxf_fbm(vec3 p, uint seed, int octaves, int type){
 }
 // guarded division: the CPU side returns 0 rather than NaN, so must this
 float gpxf_div(float a, float b){ return abs(b) > 1e-9 ? a/b : 0.0; }
+// Soft membership of a band. Deliberately not smoothstep: smoothstep(e,e,x) is
+// undefined when the edges coincide, which is exactly what zero fuzziness asks
+// for. Mirrors band() in nodes_field_material.cpp.
+float gpxf_band(float x, float lo, float hi, float fuzz){
+  if (fuzz <= 1e-6) return (x >= lo && x <= hi) ? 1.0 : 0.0;
+  float a = clamp((x - (lo - fuzz)) / (2.0 * fuzz), 0.0, 1.0);
+  float b = clamp(((hi + fuzz) - x) / (2.0 * fuzz), 0.0, 1.0);
+  a = a*a*(3.0-2.0*a);
+  b = b*b*(3.0-2.0*b);
+  return min(a, b);
+}
 )GLSL";
 
 const char *field_glsl_prelude() { return PRELUDE; }
@@ -85,6 +96,23 @@ struct EmitCtx {
   }
   std::string fresh(const char *tag) {
     return std::string("v_") + tag + "_" + std::to_string(counter++);
+  }
+
+  // Declare a variable from an expression, and hand back its name.
+  //
+  // Always use this rather than streaming into `body` directly. Resolving an
+  // input appends that subtree's own declarations to this same buffer, so
+  //
+  //     body << "float " << v << " = " << in("a", "0.0") << ";\n";
+  //
+  // splices those declarations into the middle of the line being written and
+  // produces a shader that does not compile. A function call evaluates its
+  // arguments first, so by the time declare() appends anything, everything the
+  // expression needed is already in place. That ordering is the whole point.
+  std::string declare(const char *type, const char *tag, const std::string &expr) {
+    std::string v = fresh(tag);
+    body << "  " << type << " " << v << " = " << expr << ";\n";
+    return v;
   }
 };
 
@@ -318,8 +346,7 @@ static void install_emitters() {
     if (!g || g->stops.empty())
       return "vec4(vec3(" + t + "), 1.0)";
     // unrolled ramp: stops are few and this keeps the shader branch-light
-    std::string tv = ctx.fresh("t");
-    ctx.body << "  float " << tv << " = " << t << ";\n";
+    std::string tv = ctx.declare("float", "t", t);
     std::string col = "vec4(" + f2s(g->stops[0].r) + ", " + f2s(g->stops[0].g) +
                       ", " + f2s(g->stops[0].b) + ", " + f2s(g->stops[0].a) + ")";
     for (size_t i = 1; i < g->stops.size(); ++i) {
@@ -347,14 +374,11 @@ static void install_emitters() {
     std::string sc = "vec3(" + f2s(n.attrs.get_f("scale_x", 1.f) * s) + ", " +
                      f2s(n.attrs.get_f("scale_y", 1.f) * s) + ", " +
                      f2s(n.attrs.get_f("scale_z", 1.f) * s) + ")";
-    std::string pv = ctx.fresh("rp");
     std::string base =
         n.attrs.get_choice("mode") == 1 ? std::string("vec3(0.0)") : ctx.pos;
-    ctx.body << "  vec3 " << pv << " = " << base << " + " << off << " * " << sc
-             << ";\n";
-    std::string av = ctx.fresh("ra");
-    ctx.body << "  float " << av << " = " << ctx.alt << " + (" << pv << ".y - "
-             << ctx.pos << ".y);\n";
+    std::string pv = ctx.declare("vec3", "rp", base + " + " + off + " * " + sc);
+    std::string av = ctx.declare(
+        "float", "ra", ctx.alt + " + (" + pv + ".y - " + ctx.pos + ".y)");
     std::string r = in.at("input", pv, av, ctx.lod, "0.0");
     return "vec4(" + r + ", 0.0, 0.0, 1.0)";
   });
@@ -370,8 +394,7 @@ static void install_emitters() {
     float sm = std::clamp(n.attrs.get_f("smoothing", 0.f), 0.f, 1.f);
     if (sm > 1e-6f) {
       float r = std::max(n.attrs.get_f("smooth_radius", 0.01f), 1e-6f);
-      std::string cv = ctx.fresh("dc");
-      ctx.body << "  float " << cv << " = " << a << ";\n";
+      std::string cv = ctx.declare("float", "dc", a);
       const float off[4][2] = {{r, 0}, {-r, 0}, {0, r}, {0, -r}};
       std::string sum;
       for (const auto &o : off) {
@@ -441,12 +464,8 @@ static void install_emitters() {
     // with a << chain splices them into the middle of the line being written.
     std::string xp = at(ef, 0), xm = at(-ef, 0);
     std::string zp = at(0, ef), zm = at(0, -ef);
-    gx = ctx.fresh("gx");
-    gz = ctx.fresh("gz");
-    ctx.body << "  float " << gx << " = (" << xp << " - " << xm << ") * " << s
-             << ";\n";
-    ctx.body << "  float " << gz << " = (" << zp << " - " << zm << ") * " << s
-             << ";\n";
+    gx = ctx.declare("float", "gx", "(" + xp + " - " + xm + ") * " + s);
+    gz = ctx.declare("float", "gz", "(" + zp + " - " + zm + ") * " + s);
   };
   reg("FieldComputeNormal", [normal_gradients](const Node &n, const InputFn &in,
                                                EmitCtx &ctx) {
@@ -502,14 +521,12 @@ static void install_emitters() {
                               ")))"
                         : "length(vec3(" + dx + ", " + dy + ", " + dz + "))";
     float fade = std::clamp(n.attrs.get_f("fade", 0.25f), 0.f, 1.f) * size;
-    std::string dv = ctx.fresh("zd");
-    ctx.body << "  float " << dv << " = " << d << ";\n";
+    std::string dv = ctx.declare("float", "zd", d);
     if (fade <= 1e-9f)
       return "(" + dv + " < " + f2s(size) + " ? 1.0 : 0.0)";
     std::string t = "clamp((" + f2s(size) + " - " + dv + ") / " + f2s(fade) +
                     ", 0.0, 1.0)";
-    std::string tv = ctx.fresh("zt");
-    ctx.body << "  float " << tv << " = " << t << ";\n";
+    std::string tv = ctx.declare("float", "zt", t);
     return "(" + tv + " * " + tv + " * (3.0 - 2.0 * " + tv + "))";
   };
   reg("FieldZone", [zone_mask](const Node &n, const InputFn &in, EmitCtx &ctx) {
@@ -521,6 +538,51 @@ static void install_emitters() {
   reg_out("FieldZone", "mask", [zone_mask](const Node &n, const InputFn &,
                                            EmitCtx &ctx) {
     return "vec4(" + zone_mask(n, ctx) + ", 0.0, 0.0, 1.0)";
+  });
+
+  // ---- materials (P2)
+  reg("FieldDistribution", [](const Node &n, const InputFn &in, EmitCtx &ctx) {
+    std::string m = "1.0";
+    auto crit = [&](const char *flag, const char *rangek, const char *fuzzk,
+                    const char *port, const std::string &fallback) {
+      if (!n.attrs.get_b(flag, std::string(flag) == "use_altitude")) return;
+      float lo, hi;
+      n.attrs.get_range(rangek, lo, hi);
+      std::string x = in(port, fallback.c_str());
+      m = m + " * gpxf_band(" + x + ", " + f2s(lo) + ", " + f2s(hi) + ", " +
+          f2s(n.attrs.get_f(fuzzk, 0.1f)) + ")";
+    };
+    crit("use_altitude", "altitude", "altitude_fuzz", "altitude", ctx.alt);
+    crit("use_slope", "slope", "slope_fuzz", "slope", "slope");
+    crit("use_orientation", "orientation", "orientation_fuzz", "orientation",
+         "orient");
+    std::string e = "(" + m + ")";
+    if (n.attrs.get_b("invert")) e = "(1.0 - " + e + ")";
+    return "vec4(" + e + ", 0.0, 0.0, 1.0)";
+  });
+
+  reg("FieldColorMix", [](const Node &n, const InputFn &in, EmitCtx &ctx) {
+    std::string a = ctx.declare("vec4", "ca", in("@a", "vec4(0.0, 0.0, 0.0, 1.0)"));
+    std::string b = ctx.declare("vec4", "cb", in("@b", "vec4(1.0, 1.0, 1.0, 1.0)"));
+    std::string t = ctx.declare(
+        "float", "ct",
+        "clamp(" + in("factor", f2s(n.attrs.get_f("amount", 0.5f)).c_str()) +
+            ", 0.0, 1.0)");
+    std::string v;
+    switch (n.attrs.get_choice("mode")) {
+      case 1: v = "(" + a + ".rgb + " + b + ".rgb)"; break;
+      case 2: v = "(" + a + ".rgb * " + b + ".rgb)"; break;
+      case 3: v = "(1.0 - (1.0 - " + a + ".rgb) * (1.0 - " + b + ".rgb))"; break;
+      case 4:
+        v = "mix(2.0 * " + a + ".rgb * " + b + ".rgb, 1.0 - 2.0 * (1.0 - " + a +
+            ".rgb) * (1.0 - " + b + ".rgb), step(vec3(0.5), " + a + ".rgb))";
+        break;
+      case 5: v = "min(" + a + ".rgb, " + b + ".rgb)"; break;
+      case 6: v = "max(" + a + ".rgb, " + b + ".rgb)"; break;
+      default: v = b + ".rgb"; break;
+    }
+    return "vec4(mix(" + a + ".rgb, " + v + ", " + t + "), mix(" + a + ".a, " +
+           b + ".a, " + t + "))";
   });
 
   // ---- bridge back to a buffer
@@ -573,14 +635,23 @@ static std::string as_vec3(const std::string &v, FieldType t) {
   if (t == FieldType::Vector || t == FieldType::Color) return v + ".xyz";
   return "vec3(" + v + ".x)";
 }
+// And FieldValue::as_color(): a colour keeps its alpha, anything else becomes
+// grey at full opacity. Forcing alpha to 1 for a real colour would quietly
+// throw away transparency.
+static std::string as_vec4(const std::string &v, FieldType t) {
+  if (t == FieldType::Color) return v;
+  return "vec4(vec3(" + as_number(v, t) + "), 1.0)";
+}
 
-// Resolve one input port to a GLSL expression. A leading '#' asks for the
-// vec3 form (for vector inputs) rather than the scalar form.
+// Resolve one input port to a GLSL expression. A leading '#' asks for the vec3
+// form (vector inputs) and '@' for the vec4 form (colour inputs); otherwise the
+// scalar form. The prefix picks which FieldValue conversion to mirror.
 static std::string resolve_input(const Node &n, EmitCtx &ctx,
                                  std::set<uint64_t> &visiting, const char *port,
                                  const char *fallback) {
   bool want_vec3 = port[0] == '#';
-  std::string pname = want_vec3 ? port + 1 : port;
+  bool want_vec4 = port[0] == '@';
+  std::string pname = (want_vec3 || want_vec4) ? port + 1 : port;
   // Which output feeds us matters: a node may produce several, and they are
   // different values, not different views of one.
   const Port *src_port = n.graph ? n.graph->upstream(n, pname) : nullptr;
@@ -589,8 +660,9 @@ static std::string resolve_input(const Node &n, EmitCtx &ctx,
   if (!emit_node(*src, src_port->name, ctx, visiting)) return fallback;
   auto it = ctx.var_of.find(ctx.key(src->id, src_port->name));
   if (it == ctx.var_of.end()) return fallback;
-  return want_vec3 ? as_vec3(it->second, src_port->field_type)
-                   : as_number(it->second, src_port->field_type);
+  if (want_vec3) return as_vec3(it->second, src_port->field_type);
+  if (want_vec4) return as_vec4(it->second, src_port->field_type);
+  return as_number(it->second, src_port->field_type);
 }
 
 // The same, but evaluated somewhere else. Everything upstream is re-emitted

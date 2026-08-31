@@ -1,15 +1,16 @@
 # Golden evaluation hashes per project.
 # Regenerate with: regression_tests --update  (review the diff!)
-analysis.gpxt|6027628294db6f7d
+analysis.gpxt|4a66e154c5890e2d
 displacement.gpxt|76e53aae371da6e0
 effects_all.gpxt|52249c3b22d7226a
 erosion_all.gpxt|52c49a3dedcebe5b
+field_material.gpxt|5affd8db6bac2338
 hydro.gpxt|79e5ca2c2236d8ba
-masks_logic.gpxt|27ff2437d3ed393a
+masks_logic.gpxt|b6c44ed9c294f068
 material_graph.gpxt|0f81de864aa91261
 materials.gpxt|53977e0a06f3c46a
 modeling_transform.gpxt|9d05ee98341e0562
-operators.gpxt|a9fbb24c91e2a92b
+operators.gpxt|2b695cec721ea04f
 sculpt_layer.gpxt|3dba33173329e53c
 surface_geology.gpxt|75d6f82278958d61
 terrain_basic.gpxt|c76b5c22cc0091af

@@ -330,6 +330,39 @@ std::string field_gpu_verify_all(App &a) {
     run("texcoord(rotated)", g, tc);
   }
 
+  // ---- field materials (P2) ---------------------------------------------
+  {   // distribution on all three criteria at once, with fades
+    gpx::Graph g;
+    gpx::Node *d = g.add_node("FieldDistribution");
+    d->attrs.find("altitude")->v2[0] = -1.f;
+    d->attrs.find("altitude")->v2[1] = 1.f;
+    d->attrs.find("altitude_fuzz")->f = 0.5f;
+    d->attrs.find("use_slope")->b = true;
+    d->attrs.find("use_orientation")->b = true;
+    run("distribution(alt+slope+facing)", g, d);
+  }
+  {   // and with a hard edge, where smoothstep would be undefined
+    gpx::Graph g;
+    gpx::Node *n = g.add_node("FieldNoise");
+    gpx::Node *d = g.add_node("FieldDistribution");
+    d->attrs.find("altitude_fuzz")->f = 0.f;
+    g.add_link(n->id, "out", d->id, "altitude");
+    run("distribution(hard edge)", g, d);
+  }
+  {   // colour blending, where the alpha channel is easy to get wrong
+    gpx::Graph g;
+    gpx::Node *ga = g.add_node("FieldGradient");
+    gpx::Node *cb = g.add_node("FieldColorConstant");
+    gpx::Node *nz = g.add_node("FieldNoise");
+    gpx::Node *mx = g.add_node("FieldColorMix");
+    mx->attrs.find("mode")->i = 4; // overlay: the branchy one
+    g.add_link(nz->id, "out", ga->id, "in");
+    g.add_link(ga->id, "out", mx->id, "a");
+    g.add_link(cb->id, "out", mx->id, "b");
+    g.add_link(nz->id, "out", mx->id, "factor");
+    run("colour mix(overlay)", g, mx);
+  }
+
   // The live terrain program: whether a TerrainDisplacement graph is actually
   // driving the viewport, and whether its generated shader linked. Agreement
   // on a test grid means nothing if the real program failed to build.

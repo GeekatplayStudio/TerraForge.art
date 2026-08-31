@@ -25,10 +25,12 @@ ExportTexture|Export
 FakeStones|Primitive
 FieldAltitude|Field Input
 FieldColorConstant|Field Input
+FieldColorMix|Field Color
 FieldComputeNormal|Field Displace
 FieldConstant|Field Input
 FieldCurve|Field Math
 FieldDisplace|Field Displace
+FieldDistribution|Field Material
 FieldGradient|Field Color
 FieldMath|Field Math
 FieldMix|Field Math

@@ -245,6 +245,25 @@ static void check_golden_projects(bool update) {
     bool ok = gpx::graph_from_json(g, text, err);
     CHECK(ok, "project '" + f.filename().string() + "' loads: " + err);
     if (!ok) continue;
+    // Every link in the file must actually connect. graph_from_json drops a
+    // link naming a port that does not exist, silently — so a golden can look
+    // like it exercises a whole chain while half of it is disconnected, and
+    // lock far less than it appears to. That happened, twice, from guessing a
+    // port name.
+    {
+      // the quoted key cannot match inside "from_port", so this counts links
+      size_t want = 0, pos = 0;
+      while ((pos = text.find("\"from\"", pos)) != std::string::npos) {
+        ++want;
+        pos += 6;
+      }
+      CHECK(g.links.size() == want,
+            "project '" + f.filename().string() + "' declares " +
+                std::to_string(want) + " links but only " +
+                std::to_string(g.links.size()) +
+                " connected (a port name is wrong)");
+    }
+
     // fixed small resolution keeps the corpus fast; determinism is what we
     // are testing, not visual fidelity
     g.resolution = 64;

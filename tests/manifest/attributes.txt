@@ -129,6 +129,8 @@ FakeStones.tallness|float
 FakeStones.vary_density|float
 FakeStones.vary_scale|float
 FieldColorConstant.color|color
+FieldColorMix.amount|float
+FieldColorMix.mode|choice
 FieldComputeNormal.epsilon|float
 FieldComputeNormal.flip|bool
 FieldComputeNormal.strength|float
@@ -147,6 +149,16 @@ FieldDisplace.quality|int
 FieldDisplace.relative_size|float
 FieldDisplace.smooth_radius|float
 FieldDisplace.smoothing|float
+FieldDistribution.altitude_fuzz|float
+FieldDistribution.altitude|range
+FieldDistribution.invert|bool
+FieldDistribution.orientation_fuzz|float
+FieldDistribution.orientation|range
+FieldDistribution.slope_fuzz|float
+FieldDistribution.slope|range
+FieldDistribution.use_altitude|bool
+FieldDistribution.use_orientation|bool
+FieldDistribution.use_slope|bool
 FieldGradient.gradient|gradient
 FieldGradient.range|range
 FieldMath.a_default|float

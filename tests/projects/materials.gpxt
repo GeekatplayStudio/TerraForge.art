@@ -106,9 +106,9 @@
   },
   {
    "from": 6,
-   "from_port": "albedo",
+   "from_port": "normal",
    "to": 7,
-   "to_port": "base color"
+   "to_port": "normal"
   }
  ]
 }

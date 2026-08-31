@@ -227,6 +227,14 @@
       "description": "A node-editor view file with non-finite or absurd values is discarded rather than loaded, because one made the application spin behind a black window on every launch, permanently",
       "test_file": "test_undo.cpp", "test_symbol": "test_graph_view_sanity" },
 
+    { "id": "material.distribution", "area": "material", "phase": "P2",
+      "description": "Environment-sensitive distribution: where a material belongs by altitude, steepness and facing, each with a soft band, combined multiplicatively, and read after displacement so it describes the displaced surface",
+      "test_file": "test_engine.cpp", "test_symbol": "test_field_materials" },
+
+    { "id": "material.color_mix", "area": "material", "phase": "P2",
+      "description": "Colour blending in the field domain — mix, add, multiply, screen, overlay, darken, lighten — with the factor meaning the same thing in every mode",
+      "test_file": "test_engine.cpp", "test_symbol": "test_field_materials" },
+
     { "id": "meta.goldens_vary", "area": "meta", "phase": "P1",
       "description": "Every golden project must produce varying output, so a golden cannot silently lock a flat buffer",
       "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },

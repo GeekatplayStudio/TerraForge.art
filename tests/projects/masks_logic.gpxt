@@ -102,13 +102,13 @@
    "from": 1,
    "from_port": "output",
    "to": 7,
-   "to_port": "input a"
+   "to_port": "input A"
   },
   {
    "from": 6,
    "from_port": "mask",
    "to": 7,
-   "to_port": "input b"
+   "to_port": "input B"
   }
  ]
 }

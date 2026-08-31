@@ -63,13 +63,13 @@
    "from": 1,
    "from_port": "output",
    "to": 3,
-   "to_port": "input a"
+   "to_port": "input"
   },
   {
    "from": 2,
    "from_port": "output",
-   "to": 3,
-   "to_port": "input b"
+   "to": 5,
+   "to_port": "layer 3"
   },
   {
    "from": 3,
@@ -79,7 +79,7 @@
   },
   {
    "from": 4,
-   "from_port": "output",
+   "from_port": "magnitude",
    "to": 5,
    "to_port": "layer 1"
   },
@@ -88,6 +88,12 @@
    "from_port": "output",
    "to": 5,
    "to_port": "layer 2"
+  },
+  {
+   "from": 6,
+   "from_port": "output",
+   "to": 5,
+   "to_port": "layer 4"
   }
  ]
 }

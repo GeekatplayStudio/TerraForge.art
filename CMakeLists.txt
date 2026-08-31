@@ -88,6 +88,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_field.cpp
     engine/nodes/nodes_displace.cpp
     engine/nodes/nodes_analysis.cpp
+    engine/nodes/nodes_field_material.cpp
     engine/nodes/nodes_terrain_fx.cpp
     engine/nodes/nodes_export.cpp
 )
