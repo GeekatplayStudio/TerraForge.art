@@ -269,6 +269,26 @@ void run_main() {
         // Compile whichever sink is present into the shader it drives. Both
         // follow the same shape: find the node, transpile what feeds it, hand
         // the source to the renderer, and say so on the node when we cannot.
+        // Buffers the generated programs sample, collected across both sinks.
+        std::vector<std::pair<std::string, const gpx::Heightmap *>> field_tex;
+        // A sampler is named after the Sample node that declared it, so the
+        // buffer to bind is that node's own input.
+        auto collect_samplers = [&](const gpx::GlslProgram &prog) {
+          for (const std::string &s : prog.samplers) {
+            size_t us = s.rfind('_');
+            if (us == std::string::npos) continue;
+            uint64_t id = 0;
+            try {
+              id = std::stoull(s.substr(us + 1));
+            } catch (const std::exception &) {
+              continue;
+            }
+            gpx::Node *sn = a.graph.find_node(id);
+            const gpx::Heightmap *hm = sn ? sn->in_hmap("input") : nullptr;
+            if (hm && !hm->empty()) field_tex.emplace_back(s, hm);
+          }
+        };
+
         auto compile_sink = [&](const char *type, const char *port,
                                 const char *fn) -> std::string {
           gpx::Node *sink = nullptr;
@@ -282,18 +302,18 @@ void run_main() {
           if (!src) return {};
           gpx::GlslProgram prog =
               gpx::field_to_glsl(*src, sp ? sp->name : "", fn);
-          // A graph reading a buffer needs its textures bound, which the
-          // terrain pass does not do yet — better to do nothing visible than
-          // to sample an unbound sampler.
           if (!prog.ok) {
             sink->error = prog.error;
             return {};
           }
-          if (!prog.samplers.empty()) {
-            sink->error = "graphs that sample a buffer cannot drive the "
-                          "viewport yet";
+          // A graph reading a buffer needs its textures bound. There are only
+          // so many units to spare, so say plainly when a graph asks for more
+          // rather than binding some and sampling black for the rest.
+          if (prog.samplers.size() > 4) {
+            sink->error = "too many sampled buffers in one graph (max 4)";
             return {};
           }
+          collect_samplers(prog);
           sink->error.clear();
           if (std::string(type) == "TerrainDisplacement")
             render_settings().field_displacement =
@@ -306,6 +326,7 @@ void run_main() {
         renderer_set_surface_program(
             compile_sink("TerrainSurface", "color", "gpx_terrain_surface"),
             a.eval_serial);
+        renderer_set_field_textures(field_tex, a.eval_serial);
       }
       uint64_t view = a.view_node ? a.view_node : a.selected_node;
       gpx::Node *n = a.graph.find_node(view);

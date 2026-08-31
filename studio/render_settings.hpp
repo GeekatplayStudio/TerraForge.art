@@ -2,6 +2,12 @@
 // renderer and the Environment panel.
 #pragma once
 #include <string>
+#include <utility>
+#include <vector>
+
+namespace gpx {
+struct Heightmap;
+}
 
 namespace studio {
 
@@ -175,6 +181,11 @@ void renderer_set_field_program(const std::string &glsl,
 // one program, so setting either triggers a single relink.
 void renderer_set_surface_program(const std::string &glsl,
                                   unsigned long long version);
+// Buffers those programs sample, by the uniform name the transpiler declared.
+// This is what lets an eroded heightfield drive displacement or colour.
+void renderer_set_field_textures(
+    const std::vector<std::pair<std::string, const gpx::Heightmap *>> &maps,
+    unsigned long long version);
 // Empty unless the last generated shader failed to link, in which case the
 // previous program is still in use and this says why.
 const char *renderer_field_error();

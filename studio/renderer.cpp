@@ -1007,6 +1007,13 @@ static std::string g_field_want;      // what the graph asked for
 static std::string g_field_glsl;      // what is spliced in now, empty = stub
 static bool g_field_dirty = false;    // a relink is owed
 static std::string g_field_error;     // why the last relink failed, if it did
+// Buffers a generated program samples, uploaded as textures and bound to the
+// uniform names the transpiler declared.
+struct FieldTex {
+  std::string name;
+  GLuint tex = 0;
+};
+static std::vector<FieldTex> g_field_tex;
 
 static std::string inject_sky(const char *src) {
   std::string s(src);
@@ -1324,6 +1331,52 @@ void renderer_set_surface_program(const std::string &glsl,
   if (glsl == g_surface_want) return;
   g_surface_want = glsl;
   g_field_dirty = true; // one program carries both; one relink covers them
+}
+
+// A field graph containing a Sample node reads a buffer, and the shader
+// declares a sampler for it. Binding those is what lets an *eroded* heightfield
+// drive displacement or colour — which is the whole reason both domains exist,
+// so refusing such graphs left the bridge half-built.
+void renderer_set_field_textures(
+    const std::vector<std::pair<std::string, const gpx::Heightmap *>> &maps,
+    unsigned long long version) {
+  static unsigned long long last_version = ~0ull;
+  if (version == last_version && maps.size() == g_field_tex.size()) return;
+  last_version = version;
+
+  // The terrain pass already uses units 0-7, so these start at 8; more than a
+  // handful of sampled buffers in one graph is not worth the units.
+  const size_t MAX = 4;
+  for (auto &t : g_field_tex)
+    if (t.tex) glDeleteTextures(1, &t.tex);
+  g_field_tex.clear();
+
+  for (const auto &[name, hm] : maps) {
+    if (g_field_tex.size() >= MAX) break;
+    if (!hm || hm->empty()) continue;
+    FieldTex ft;
+    ft.name = name;
+    glGenTextures(1, &ft.tex);
+    glBindTexture(GL_TEXTURE_2D, ft.tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, hm->w, hm->h, 0, GL_RED, GL_FLOAT,
+                 hm->v.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    g_field_tex.push_back(ft);
+  }
+}
+
+// Bind whatever the generated code asked for. A sampler the host never binds
+// reads black, so an unbound one is not a crash — it is a silently wrong
+// picture, which is worse.
+static void bind_field_textures(GLuint prog) {
+  for (size_t i = 0; i < g_field_tex.size(); ++i) {
+    glActiveTexture(GL_TEXTURE8 + (GLenum)i);
+    glBindTexture(GL_TEXTURE_2D, g_field_tex[i].tex);
+    unii(prog, g_field_tex[i].name.c_str(), 8 + (int)i);
+  }
 }
 
 // Empty when the displacement graph is compiling cleanly. The Properties panel
@@ -1757,6 +1810,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni1(prog_depth, "u_hscale", RS.height_scale);
     uni1(prog_depth, "u_field_strength",
          g_field_glsl.empty() ? 0.f : RS.field_displacement);
+    bind_field_textures(prog_depth);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_height);
     unii(prog_depth, "u_height", 0);
@@ -1935,6 +1989,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       glEnable(GL_BLEND);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
+    bind_field_textures(PT);
     if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     if (use_tess) {
       float vp[2] = {(float)w, (float)h};
