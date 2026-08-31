@@ -114,7 +114,9 @@ uniform vec3 u_cam;
 uniform float u_frac_amount;   // fractal detail height, world units
 uniform float u_frac_scale;    // base frequency of the detail
 uniform float u_planet_radius; // 0 = flat, else curve the world down
+uniform float u_field_strength; // graph-authored displacement, 0 = none
 FRACTAL_FN_PLACEHOLDER
+GPX_FIELD_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
 out float v_detail;
@@ -123,6 +125,13 @@ void main(){
   if (u_has_disp == 1)
     h += (texture(u_disp, in_uv).r - 0.5) * 2.0 * u_disp_strength;
   vec3 p = vec3(in_uv.x, h, in_uv.y);
+  // A displacement graph authored by the user, evaluated per vertex on the
+  // GPU. The same function runs on the CPU for picking and baking, which is
+  // what the CPU/GPU agreement check exists to keep true.
+  if (u_field_strength != 0.0)
+    p.y += gpx_terrain_field(p, vec3(0.0,1.0,0.0), h, 1.0, 0.0, 0.0,
+                             gp_octavesf(length(u_cam - p), 9.0)).x *
+           u_field_strength;
   // fractal micro-relief, refined by how close the camera is
   float d = length(u_cam - p);
   v_detail = 0.0;
@@ -174,10 +183,16 @@ float gp_detail(vec2 uv, float base_freq, int octaves, float gain){
   }
   return norm > 0.0 ? sum / norm : 0.0;
 }
-// how many octaves are worth evaluating at this distance
+// How much detail is worth evaluating at this distance, as a continuous
+// value. A generated field graph must get this rather than the truncated
+// form: stepping a detail budget with an int makes the surface pop as the
+// camera moves (AGENTS.md, planets rule 3).
+float gp_octavesf(float dist, float max_oct){
+  return clamp(log2(1.0 / max(dist, 1e-4)) * 0.9 + 4.0, 0.0, max_oct);
+}
+// the integer form the fractal detail loop needs
 int gp_octaves(float dist, float max_oct){
-  float lod = clamp(log2(1.0 / max(dist, 1e-4)) * 0.9 + 4.0, 0.0, max_oct);
-  return int(lod);
+  return int(gp_octavesf(dist, max_oct));
 }
 )GLSL";
 
@@ -228,7 +243,9 @@ in float v_detail;
 uniform float u_cl_cov, u_cl_alt, u_cl_time;
 uniform vec2 u_cl_wind;
 const float PI = 3.14159265;
+uniform float u_field_strength;
 FRACTAL_FN_PLACEHOLDER
+GPX_FIELD_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
@@ -246,6 +263,19 @@ vec3 get_normal(vec2 uv){
   float hd = texture(u_height, uv - vec2(0,e)).r;
   float hu = texture(u_height, uv + vec2(0,e)).r;
   vec3 n = normalize(vec3((hl-hr)*u_hscale, 2.0*e, (hd-hu)*u_hscale));
+  // The graph-authored displacement moved the geometry, so the normal has to
+  // move with it or the lighting describes a surface that is not there.
+  // Central differences, matching FieldComputeNormal on the CPU.
+  if (u_field_strength != 0.0){
+    float lodf = gp_octavesf(length(u_cam - v_world), 9.0);
+    vec3 pc = v_world;
+    float fxp = gpx_terrain_field(pc + vec3(e,0,0), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float fxm = gpx_terrain_field(pc - vec3(e,0,0), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float fzp = gpx_terrain_field(pc + vec3(0,0,e), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float fzm = gpx_terrain_field(pc - vec3(0,0,e), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float k = u_field_strength / max(2.0*e, 1e-5);
+    n = normalize(n + vec3(-(fxp-fxm)*k, 0.0, -(fzp-fzm)*k));
+  }
   // fractal detail continues below the heightmap's resolution: perturb the
   // normal with the same octaves the vertex stage used, plus finer ones
   if (u_frac_amount > 0.0){
@@ -840,6 +870,25 @@ void main(){
 })GLSL";
 
 // ------------------------------------------------------------------ helpers
+// The generated displacement function, or a stub. Always substituting
+// something keeps every shader well-formed whether or not the user has
+// authored a displacement graph, so the placeholder never needs a conditional
+// and there is no second code path to get wrong.
+static const char *GPX_FIELD_STUB =
+    "vec4 gpx_terrain_field(vec3 P, vec3 N, float alt, float slope,\n"
+    "                       float orient, float t, float lod){\n"
+    "  return vec4(0.0);\n}\n";
+// The source the graph asked for, and the source actually spliced into the
+// live program. They differ only while a relink is owed, or after one failed:
+// on failure the program falls back to the stub but the request is remembered,
+// so the same broken source is never retried. Comparing against the *request*
+// rather than the live source is what stops a failing graph from relinking a
+// shader every single frame.
+static std::string g_field_want;      // what the graph asked for
+static std::string g_field_glsl;      // what is spliced in now, empty = stub
+static bool g_field_dirty = false;    // a relink is owed
+static std::string g_field_error;     // why the last relink failed, if it did
+
 static std::string inject_sky(const char *src) {
   std::string s(src);
   auto sub = [&](const char *tag, const char *body) {
@@ -848,6 +897,11 @@ static std::string inject_sky(const char *src) {
   };
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
+  // The vertex and fragment stages are separate translation units, so each
+  // gets its own copy of the generated code and its prelude; duplicate
+  // definitions only collide within one stage.
+  sub("GPX_FIELD_PLACEHOLDER",
+      g_field_glsl.empty() ? GPX_FIELD_STUB : g_field_glsl.c_str());
   return s;
 }
 
@@ -873,6 +927,32 @@ static GLuint link_prog(const char *vs, const char *fs) {
   glLinkProgram(p);
   glDeleteShader(v);
   glDeleteShader(f);
+  return p;
+}
+
+// Link, but report rather than assume. The built-in shaders are known good, so
+// nothing checked this before; generated code is written by the user's graph
+// and can genuinely fail, and a silently unlinked program renders nothing at
+// all — the worst way to find out.
+static GLuint link_checked(const std::string &vs, const std::string &fs,
+                           std::string &err) {
+  GLuint p = glCreateProgram();
+  GLuint v = compile(GL_VERTEX_SHADER, vs.c_str());
+  GLuint f = compile(GL_FRAGMENT_SHADER, fs.c_str());
+  glAttachShader(p, v);
+  glAttachShader(p, f);
+  glLinkProgram(p);
+  glDeleteShader(v);
+  glDeleteShader(f);
+  GLint ok = 0;
+  glGetProgramiv(p, GL_LINK_STATUS, &ok);
+  if (!ok) {
+    char log[4096] = {0};
+    glGetProgramInfoLog(p, sizeof log, nullptr, log);
+    err = log;
+    glDeleteProgram(p);
+    return 0;
+  }
   return p;
 }
 
@@ -1018,6 +1098,41 @@ static void make_preview_shapes() {
     upload_prev_mesh(2, v);
   }
 }
+
+// Rebuild the terrain program around the current generated displacement.
+// Called at init and again whenever the graph's displacement changes — the
+// only shader in the codebase that is not built once and left alone.
+//
+// The old program is kept until the new one links. A graph that produces
+// invalid GLSL therefore leaves the viewport exactly as it was rather than
+// turning it black, which is the difference between a visible mistake and an
+// apparently broken application.
+static bool rebuild_terrain_program(std::string &err) {
+  std::string vs = inject_sky(VS_TERRAIN_SRC);
+  std::string fs = inject_sky(FS_TERRAIN_SRC);
+  GLuint p = link_checked(vs, fs, err);
+  if (!p) return false;
+  if (prog_terrain) glDeleteProgram(prog_terrain);
+  prog_terrain = p;
+  return true;
+}
+
+// Hand the renderer a transpiled displacement graph. Same shape as
+// renderer_set_material_maps: version-guarded, so an unchanged graph costs
+// nothing. The relink itself is deferred to draw time because this is called
+// from the evaluation path, which has no guarantee about the GL context.
+void renderer_set_field_program(const std::string &glsl,
+                                unsigned long long version) {
+  (void)version; // the source itself is the identity; comparing it is cheap
+  if (glsl == g_field_want) return;
+  g_field_want = glsl;
+  g_field_dirty = true;
+}
+
+// Empty when the displacement graph is compiling cleanly. The Properties panel
+// shows this on the node, so a broken graph says so instead of just not
+// displacing.
+const char *renderer_field_error() { return g_field_error.c_str(); }
 
 bool renderer_init() {
   std::string fs_terrain = inject_sky(FS_TERRAIN_SRC);
@@ -1503,6 +1618,10 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni1(prog_terrain, "u_disp_strength", RS.mat_displacement);
     uni1(prog_terrain, "u_frac_amount", RS.fractal_detail);
     uni1(prog_terrain, "u_frac_scale", RS.fractal_scale);
+    // zero when no graph is driving displacement, which also short-circuits
+    // the stub call in both stages
+    uni1(prog_terrain, "u_field_strength",
+         g_field_glsl.empty() ? 0.f : RS.field_displacement);
     glUniform4f(glGetUniformLocation(prog_terrain, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
     uni1(prog_terrain, "u_planet_radius", RS.planet_radius);
@@ -1846,6 +1965,25 @@ static void ensure_fbo(int slot, int w, int h) {
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int h,
                             float dt) {
   slot = std::clamp(slot, 0, 5);
+  // Relink here rather than where the graph changed: this is the main thread
+  // with the context current, and doing it once before the first view means
+  // all six views draw the same program in the same frame.
+  if (g_field_dirty) {
+    g_field_dirty = false;
+    g_field_glsl = g_field_want;
+    std::string err;
+    if (rebuild_terrain_program(err)) {
+      g_field_error.clear();
+    } else {
+      g_field_error = err.empty() ? "displacement shader failed to link" : err;
+      std::fprintf(stderr, "terrain displacement shader:\n%s\n", g_field_error.c_str());
+      // fall back to the stub, which is known good, so the viewport keeps
+      // drawing. g_field_want still holds the broken source, so this is not
+      // retried until the graph actually changes.
+      g_field_glsl.clear();
+      rebuild_terrain_program(err);
+    }
+  }
   if (slot == 0) cloud_time += dt;
   static float time_acc = 0;
   if (slot == 0) time_acc += dt;

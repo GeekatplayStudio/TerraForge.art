@@ -4,8 +4,12 @@
 #include "gpx/metanode.hpp"
 #include <imgui.h>
 #include <imgui_node_editor.h>
+#include <json.hpp>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
@@ -177,6 +181,9 @@ void draw_panel_graph(App &a) {
   if (!ED) {
     ed::Config cfg;
     cfg.SettingsFile = "geekatplay_graph_view.json";
+    // A view file with absurd values hangs the editor for ever; never hand it
+    // one without looking (see graph_view_is_sane).
+    discard_insane_graph_view(cfg.SettingsFile);
     ED = ed::CreateEditor(&cfg);
   }
   if (!ImGui::Begin("Graph")) {

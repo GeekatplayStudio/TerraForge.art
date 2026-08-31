@@ -3,6 +3,7 @@
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "gpx/field_glsl.hpp"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -260,6 +261,35 @@ void run_main() {
       if (!a.eval_interactive.load()) previews_update(a);
       // Terragen-style: atmosphere/render nodes drive the renderer
       apply_scene_nodes(a);
+
+      // A TerrainDisplacement node compiles its field graph to GLSL and the
+      // viewport evaluates it per vertex. Transpiling is pure string work on
+      // the CPU; the relink happens at draw time where the context is current.
+      {
+        gpx::Node *disp = nullptr;
+        for (auto &cand : a.graph.nodes)
+          if (cand->type == "TerrainDisplacement" && cand->enabled) disp = cand.get();
+        std::string glsl;
+        if (disp && disp->attrs.get_b("live", true) &&
+            disp->field_connected("field")) {
+          if (gpx::Node *src = a.graph.upstream_node(*disp, "field")) {
+            const gpx::Port *sp = a.graph.upstream(*disp, "field");
+            gpx::GlslProgram prog =
+                gpx::field_to_glsl(*src, sp ? sp->name : "", "gpx_terrain_field");
+            // A graph reading a buffer needs textures bound, which the terrain
+            // pass does not do yet — better to displace by nothing than to
+            // sample an unbound sampler.
+            if (prog.ok && prog.samplers.empty()) glsl = prog.code;
+            disp->error = prog.ok ? (prog.samplers.empty()
+                                         ? std::string()
+                                         : "graphs that sample a buffer cannot "
+                                           "displace the viewport yet")
+                                  : prog.error;
+          }
+          render_settings().field_displacement = disp->attrs.get_f("strength", 0.05f);
+        }
+        renderer_set_field_program(glsl, a.eval_serial);
+      }
       uint64_t view = a.view_node ? a.view_node : a.selected_node;
       gpx::Node *n = a.graph.find_node(view);
       // a TerrainOutput node is the canonical final terrain â€” prefer it

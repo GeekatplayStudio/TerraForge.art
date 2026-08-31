@@ -10,6 +10,7 @@
 // can be run against the live app, and it prints a worst-case error so a
 // regression shows up as a number rather than a vibe.
 #include "app.hpp"
+#include "render_settings.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/node_graph.hpp"
 #include <glad/gl.h>
@@ -327,6 +328,17 @@ std::string field_gpu_verify_all(App &a) {
     gpx::Node *tc = g.add_node("FieldTexCoord");
     tc->attrs.find("angle")->f = 31.f;
     run("texcoord(rotated)", g, tc);
+  }
+
+  // The live terrain program: whether a TerrainDisplacement graph is actually
+  // driving the viewport, and whether its generated shader linked. Agreement
+  // on a test grid means nothing if the real program failed to build.
+  {
+    const char *e = renderer_field_error();
+    out += std::string("terrain displacement program: ") +
+           (e && *e ? std::string("LINK FAILED - ") + e
+                    : std::string("ok (no link error)")) +
+           "\n";
   }
 
   // also drop it beside the API state so it can be read from a script — the

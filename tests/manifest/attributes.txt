@@ -454,6 +454,8 @@ TerrainClip.clip|range
 TerrainClip.high_mode|choice
 TerrainClip.low_mode|choice
 TerrainClip.softness|float
+TerrainDisplacement.live|bool
+TerrainDisplacement.strength|float
 TerrainOutput.combine|choice
 TerrainOutput.edge_curve|choice
 TerrainOutput.height_range|range

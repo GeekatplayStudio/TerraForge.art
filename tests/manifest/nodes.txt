@@ -98,6 +98,7 @@ SunLight|Atmosphere
 Switch|Logic
 Terrace|Filter
 TerrainClip|Effect
+TerrainDisplacement|Export
 TerrainOutput|Export
 TerrainSculpt|Effect
 TerrainTexture|Texture

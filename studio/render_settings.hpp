@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — environment / render settings shared between the
 // renderer and the Environment panel.
 #pragma once
+#include <string>
 
 namespace studio {
 
@@ -116,6 +117,9 @@ struct RenderSettings {
   // fractal detail: keeps resolving as the camera closes in
   float fractal_detail = 0.0025f; // height of the procedural micro-relief
   float fractal_scale = 90.f;     // base frequency of that relief
+  // graph-authored displacement: how strongly a TerrainDisplacement node's
+  // field moves the surface, in world units
+  float field_displacement = 0.05f;
   // planetary curvature: 0 = flat, otherwise the horizon falls away.
   // radius is in world units (the terrain tile is 1 unit across).
   float planet_radius = 0.f;
@@ -153,6 +157,14 @@ void renderer_set_brush_cursor(float tx, float tz, float radius, bool erasing);
 void renderer_set_material_maps(const void *normal, const void *roughness,
                                 const void *displacement,
                                 unsigned long long version);
+// Hand the renderer a field graph transpiled to GLSL, to displace the terrain
+// on the GPU. Empty source removes the displacement. Version-guarded the same
+// way as the material maps; the relink happens at the next draw.
+void renderer_set_field_program(const std::string &glsl,
+                                unsigned long long version);
+// Empty unless the last generated shader failed to link, in which case the
+// previous program is still in use and this says why.
+const char *renderer_field_error();
 // camera navigation for the active camera (scene camera or free viewport)
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);

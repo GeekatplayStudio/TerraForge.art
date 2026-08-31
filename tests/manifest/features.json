@@ -219,6 +219,14 @@
       "description": "Terrain resolution operations: half, quarter, double or custom sampling with smooth or nearest interpolation, changing detail without changing buffer size",
       "test_file": "test_engine.cpp", "test_symbol": "test_analysis" },
 
+    { "id": "terrain.gpu_displacement", "area": "terrain", "phase": "P1",
+      "description": "A TerrainDisplacement node compiles its field graph to GLSL and the viewport evaluates it per vertex, with normals following the displaced surface; a graph that fails to link keeps the previous program instead of blanking the viewport",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "studio.graph_view_recovery", "area": "studio", "phase": "P1",
+      "description": "A node-editor view file with non-finite or absurd values is discarded rather than loaded, because one made the application spin behind a black window on every launch, permanently",
+      "test_file": "test_undo.cpp", "test_symbol": "test_graph_view_sanity" },
+
     { "id": "meta.goldens_vary", "area": "meta", "phase": "P1",
       "description": "Every golden project must produce varying output, so a golden cannot silently lock a flat buffer",
       "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },

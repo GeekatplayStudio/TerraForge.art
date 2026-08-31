@@ -354,4 +354,32 @@ REGISTER_NODE(
     },
     [](Node &) {})
 
+// ------------------------------------------------- the terrain displacement
+// The sink that says "this field displaces the viewport terrain". It mirrors
+// TerrainOutput: the graph declares the intent rather than the application
+// guessing which node was meant, which is also what makes it discoverable in
+// the node library.
+//
+// It computes nothing. The studio finds it, transpiles whatever feeds it to
+// GLSL and hands that to the renderer, so the displacement is evaluated per
+// vertex on the GPU rather than baked into a buffer. That is the entire point:
+// a field has no resolution, so it keeps resolving as the camera closes in.
+REGISTER_NODE(
+    TerrainDisplacement, "Export",
+    "Displaces the viewport terrain on the GPU from a field graph",
+    [](Node &n) {
+      n.add_field_in("field", FieldType::Number);
+      add_float(n.attrs, "strength", "Strength", 0.05f, -2.f, 2.f)
+          .tooltip = "How far the field moves the surface, in world units\n"
+                     "(the terrain tile is 1 unit across).";
+      add_bool(n.attrs, "live", "Update the viewport", true)
+          .tooltip = "Off: keep the graph but stop displacing, without having\n"
+                     "to disconnect it.";
+    },
+    [](Node &n) {
+      // Nothing to compute — but say so clearly if it is not wired up, since
+      // an unconnected sink silently doing nothing is hard to diagnose.
+      if (!n.field_connected("field")) n.error = "input 'field' not connected";
+    })
+
 } // namespace gpx

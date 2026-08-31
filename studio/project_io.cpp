@@ -7,6 +7,8 @@
 #include "scene.hpp"
 #include "undo.hpp"
 #include "gpx/serialization.hpp"
+#include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <json.hpp>
 #include <map>
@@ -184,6 +186,57 @@ void project_default_graph(App &a) {
     a.view_node = erode->id;
     a.selected_node = erode->id;
   }
+}
+
+// ------------------------------------------------------- graph view state
+// The node editor remembers pan, zoom and node positions in its own settings
+// file. If those values ever go non-finite — a NaN position, a zoom that
+// underflows to nothing — it tries to lay out a canvas billions of units
+// across and never finishes a frame. The application then spins at full CPU
+// behind a black window, on every subsequent launch, with nothing to say why:
+// the bad file outlives the process that wrote it, so the failure is
+// permanent and looks like the application itself is broken.
+//
+// That happened. So the file is inspected before the editor is allowed near
+// it, and a nonsensical one is discarded instead of loaded. Losing the graph's
+// pan and zoom is a trivial cost; an application that will not start is not.
+bool graph_view_is_sane(const std::string &text) {
+  if (text.empty()) return true; // nothing saved yet is perfectly fine
+  try {
+    nlohmann::json j = nlohmann::json::parse(text);
+    // A usable zoom sits around 1. Far outside that is a collapsed view, and
+    // it is what makes the canvas enormous.
+    if (j.contains("view") && j["view"].contains("zoom")) {
+      double z = j["view"]["zoom"].get<double>();
+      if (!std::isfinite(z) || z < 1e-3 || z > 1e3) return false;
+    }
+    // A NaN position that has been through an int cast comes back as INT_MIN,
+    // which is how this showed up in practice.
+    if (j.contains("nodes"))
+      for (auto &[key, n] : j["nodes"].items()) {
+        (void)key;
+        if (!n.contains("location")) continue;
+        for (const char *ax : {"x", "y"}) {
+          if (!n["location"].contains(ax)) continue;
+          double v = n["location"][ax].get<double>();
+          if (!std::isfinite(v) || std::fabs(v) > 1e7) return false;
+        }
+      }
+  } catch (const std::exception &) {
+    return false; // unparseable is just as unusable
+  }
+  return true;
+}
+
+void discard_insane_graph_view(const std::string &path) {
+  std::ifstream f(path);
+  if (!f) return;
+  std::string text((std::istreambuf_iterator<char>(f)),
+                   std::istreambuf_iterator<char>());
+  f.close();
+  if (graph_view_is_sane(text)) return;
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
 }
 
 } // namespace studio

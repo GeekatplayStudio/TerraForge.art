@@ -156,6 +156,11 @@ void project_new(App &a);
 bool project_save(App &a, const std::string &path);
 bool project_load(App &a, const std::string &path);
 void project_default_graph(App &a);
+// The node editor's saved pan/zoom/positions. A file with non-finite or absurd
+// values makes the editor hang for ever on every launch, so it is validated
+// before the editor loads it and discarded if it cannot be trusted.
+bool graph_view_is_sane(const std::string &text);
+void discard_insane_graph_view(const std::string &path);
 
 } // namespace studio
 

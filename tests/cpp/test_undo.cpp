@@ -14,6 +14,8 @@
 #include "gpx/serialization.hpp"
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <string>
 
 static int g_failures = 0;
@@ -469,8 +471,62 @@ static void test_node_library_roundtrip() {
   CHECK(gone, "removing from the library works");
 }
 
+// A corrupted node-editor view file made the application spin for ever behind
+// a black window on every launch, permanently. The values below are taken from
+// the file that actually did it, so this is a regression test in the literal
+// sense rather than a hypothetical.
+static void test_graph_view_sanity() {
+  std::printf("graph view state sanity...\n");
+
+  // healthy files must be left alone, or the check would throw away everyone's
+  // pan and zoom on every start
+  CHECK(studio::graph_view_is_sane(""), "no saved view is fine");
+  CHECK(studio::graph_view_is_sane(
+            R"({"nodes":{"node:1":{"location":{"x":260,"y":100}}},)"
+            R"("view":{"zoom":1.0612}})"),
+        "an ordinary saved view is kept");
+  CHECK(studio::graph_view_is_sane(R"({"view":{"zoom":0.25}})"),
+        "a zoomed-out but usable view is kept");
+  CHECK(studio::graph_view_is_sane(R"({"view":{"zoom":4.0}})"),
+        "a zoomed-in view is kept");
+
+  // the real one: zoom collapsed to 4.6e-07 and positions at INT_MIN
+  CHECK(!studio::graph_view_is_sane(
+            R"({"nodes":{"node:4":{"location":{"x":-2147483648,"y":-2147483648}}},)"
+            R"("view":{"zoom":4.63121295979362912e-07}})"),
+        "the view file that hung the application is rejected");
+  CHECK(!studio::graph_view_is_sane(R"({"view":{"zoom":4.63e-07}})"),
+        "a zoom that has collapsed to nothing is rejected");
+  CHECK(!studio::graph_view_is_sane(
+            R"({"nodes":{"n":{"location":{"x":-2147483648,"y":100}}}})"),
+        "an INT_MIN node position is rejected");
+  CHECK(!studio::graph_view_is_sane("{not json at all"),
+        "an unparseable view file is rejected rather than handed over");
+
+  // and the file is actually removed, since that is what unblocks the launch
+  {
+    std::string path = "test_graph_view_tmp.json";
+    {
+      std::ofstream f(path);
+      f << R"({"view":{"zoom":4.63e-07}})";
+    }
+    studio::discard_insane_graph_view(path);
+    CHECK(!std::filesystem::exists(path), "a bad view file is deleted");
+
+    {
+      std::ofstream f(path);
+      f << R"({"view":{"zoom":1.0}})";
+    }
+    studio::discard_insane_graph_view(path);
+    CHECK(std::filesystem::exists(path), "a good view file is left in place");
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+  }
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
+  test_graph_view_sanity();
   test_graph_undo();
   test_attributes_and_links();
   test_world_undo();
