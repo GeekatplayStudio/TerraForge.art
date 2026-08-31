@@ -6,9 +6,11 @@
 #include <vector>
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 
 static int g_failures = 0;
@@ -939,6 +941,376 @@ static void test_field_glsl() {
   }
 }
 
+// Every generated variable must be declared before it is used. An emitter that
+// streams into the body while resolving its own inputs splices declarations
+// into the middle of the line it is writing, which produces code that looks
+// plausible and does not compile. This catches that without needing a GPU.
+static bool glsl_declared_before_use(const std::string &code, std::string &why) {
+  size_t body = code.find("vec4 gpx_");
+  if (body == std::string::npos) {
+    why = "no entry function";
+    return false;
+  }
+  std::vector<std::string> declared;
+  size_t line_start = body;
+  while (line_start < code.size()) {
+    size_t nl = code.find('\n', line_start);
+    if (nl == std::string::npos) nl = code.size();
+    std::string line = code.substr(line_start, nl - line_start);
+    line_start = nl + 1;
+
+    // the name this line declares, if any: "<type> v_name = ..."
+    std::string decl;
+    for (const char *kw : {"float ", "vec2 ", "vec3 ", "vec4 "}) {
+      size_t k = line.find(kw);
+      if (k == std::string::npos) continue;
+      size_t s = k + std::strlen(kw);
+      size_t e = s;
+      while (e < line.size() && (std::isalnum((unsigned char)line[e]) || line[e] == '_'))
+        ++e;
+      if (e > s && line.compare(s, 2, "v_") == 0) decl = line.substr(s, e - s);
+      break;
+    }
+    // every v_ identifier used on this line must already be declared
+    for (size_t i = 0; i + 1 < line.size(); ++i) {
+      if (line[i] != 'v' || line[i + 1] != '_') continue;
+      if (i > 0 && (std::isalnum((unsigned char)line[i - 1]) || line[i - 1] == '_'))
+        continue;
+      size_t e = i;
+      while (e < line.size() && (std::isalnum((unsigned char)line[e]) || line[e] == '_'))
+        ++e;
+      std::string name = line.substr(i, e - i);
+      i = e - 1;
+      if (name == decl) continue;
+      bool found = false;
+      for (const std::string &d : declared)
+        if (d == name) { found = true; break; }
+      if (!found) {
+        why = "'" + name + "' used before it is declared, in: " + line;
+        return false;
+      }
+    }
+    if (!decl.empty()) declared.push_back(decl);
+  }
+  return true;
+}
+
+// ------------------------------------------------------- displacement (P1)
+// The three nodes that evaluate their input somewhere other than the point
+// they were asked about. Their correctness is checkable analytically, which is
+// what these tests do rather than eyeballing a picture.
+static void test_displacement() {
+  std::printf("displacement, redirect and computed normals...\n");
+  auto ctx_at = [](float x, float y, float z) {
+    gpx::FieldContext c = gpx::FieldContext::at(x, y, z);
+    c.lod = 8.f;
+    return c;
+  };
+
+  // ---- Redirect really moves the evaluation point ------------------------
+  {
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *red = g.add_node("FieldRedirect");
+    gpx::Node *cst = g.add_node("FieldConstant"); // a constant vector offset
+    cst->attrs.find("value")->f = 0.25f;
+    g.add_link(noise->id, "out", red->id, "input");
+    g.add_link(cst->id, "out", red->id, "redirect");
+    // a Number feeding a Vector input broadcasts, so the offset is (.25,.25,.25)
+    red->attrs.find("strength")->f = 1.f;
+
+    gpx::FieldValue moved = red->eval_field("out", ctx_at(1.f, 0.f, 2.f));
+    gpx::FieldValue direct = noise->eval_field("out", ctx_at(1.25f, 0.25f, 2.25f));
+    CHECK(std::fabs(moved.number() - direct.number()) < 1e-6f,
+          "redirect evaluates its input at the offset position");
+
+    // zero offset must be exactly a pass-through, or redirect is not safe to
+    // leave in a graph while it is being tuned
+    cst->attrs.find("value")->f = 0.f;
+    gpx::FieldValue same = red->eval_field("out", ctx_at(1.f, 0.f, 2.f));
+    gpx::FieldValue plain = noise->eval_field("out", ctx_at(1.f, 0.f, 2.f));
+    CHECK(same.number() == plain.number(), "a zero redirect changes nothing");
+  }
+
+  // ---- Redirect in 'replace' mode ----------------------------------------
+  {
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *red = g.add_node("FieldRedirect");
+    gpx::Node *cst = g.add_node("FieldConstant");
+    cst->attrs.find("value")->f = 0.5f;
+    red->attrs.find("mode")->i = 1; // replace
+    g.add_link(noise->id, "out", red->id, "input");
+    g.add_link(cst->id, "out", red->id, "redirect");
+    // the answer must be the same wherever it is asked from
+    float a = red->eval_field("out", ctx_at(1.f, 0.f, 2.f)).number();
+    float b = red->eval_field("out", ctx_at(-9.f, 3.f, 40.f)).number();
+    CHECK(std::fabs(a - b) < 1e-6f,
+          "replace mode ignores the incoming position entirely");
+  }
+
+  // ---- Displace: depth, outwards-only, and the two outputs agreeing ------
+  {
+    gpx::Graph g;
+    gpx::Node *cst = g.add_node("FieldConstant");
+    gpx::Node *dis = g.add_node("FieldDisplace");
+    g.add_link(cst->id, "out", dis->id, "amount");
+    dis->attrs.find("dir_mode")->i = 1; // straight up
+    dis->attrs.find("depth")->f = 10.f;
+
+    cst->attrs.find("value")->f = 2.f;
+    gpx::FieldContext c = ctx_at(0.f, 5.f, 0.f);
+    CHECK(std::fabs(dis->eval_field("out", c).number() - 25.f) < 1e-4f,
+          "displaced height is altitude + amount * depth");
+    float off[3];
+    dis->eval_field("offset", c).as_vector(off);
+    CHECK(std::fabs(off[1] - 20.f) < 1e-4f, "offset output carries the same move");
+    CHECK(std::fabs(off[0]) < 1e-6f && std::fabs(off[2]) < 1e-6f,
+          "straight up displaces only in Y");
+
+    // relative depth multiplies by the reference size
+    dis->attrs.find("depth_mode")->i = 1;
+    dis->attrs.find("relative_size")->f = 0.5f;
+    CHECK(std::fabs(dis->eval_field("out", c).number() - 15.f) < 1e-4f,
+          "relative depth scales by the reference size");
+    dis->attrs.find("depth_mode")->i = 0;
+
+    // outwards only discards the negative half
+    cst->attrs.find("value")->f = -2.f;
+    CHECK(std::fabs(dis->eval_field("out", c).number() - -15.f) < 1e-4f,
+          "negative displacement dents inward by default");
+    dis->attrs.find("outwards_only")->b = true;
+    CHECK(std::fabs(dis->eval_field("out", c).number() - 5.f) < 1e-4f,
+          "outwards-only clamps the dent away, leaving the surface untouched");
+  }
+
+  // ---- Displace: the quality boost actually buys detail -------------------
+  {
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *dis = g.add_node("FieldDisplace");
+    g.add_link(noise->id, "out", dis->id, "amount");
+    noise->attrs.find("octaves")->i = 10;
+    dis->attrs.find("dir_mode")->i = 1;
+
+    gpx::FieldContext c = ctx_at(0.3f, 0.f, 0.7f);
+    c.lod = 2.f; // a distant point: the noise is capped to two octaves
+    float plain = dis->eval_field("out", c).number();
+    dis->attrs.find("quality")->i = 4;
+    float boosted = dis->eval_field("out", c).number();
+    CHECK(plain != boosted,
+          "quality boost raises the detail budget for this displacement");
+  }
+
+  // ---- Displace: smoothing softens, and is a no-op at zero ---------------
+  {
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *dis = g.add_node("FieldDisplace");
+    g.add_link(noise->id, "out", dis->id, "amount");
+    noise->attrs.find("frequency")->f = 40.f; // fine detail, so smoothing shows
+    dis->attrs.find("dir_mode")->i = 1;
+    gpx::FieldContext c = ctx_at(0.3f, 0.f, 0.7f);
+
+    float sharp = dis->eval_field("out", c).number();
+    dis->attrs.find("smoothing")->f = 0.f;
+    CHECK(dis->eval_field("out", c).number() == sharp,
+          "zero smoothing is exactly a no-op");
+    dis->attrs.find("smoothing")->f = 1.f;
+    dis->attrs.find("smooth_radius")->f = 0.05f;
+    CHECK(dis->eval_field("out", c).number() != sharp,
+          "smoothing changes the result once it is switched on");
+  }
+
+  // ---- ComputeNormal against an analytic slope ---------------------------
+  {
+    // A field that is exactly h = 3x has a known normal everywhere, so this
+    // checks the arithmetic rather than merely that something came out.
+    // TexCoord's first component is the X coordinate, which gives a clean
+    // linear ramp; a Vector would read as its length instead.
+    gpx::Graph g;
+    gpx::Node *tcx = g.add_node("FieldTexCoord");
+    gpx::Node *math = g.add_node("FieldMath");
+    math->attrs.find("op")->i = 2; // multiply
+    math->attrs.find("b_default")->f = 3.f;
+    gpx::Node *cn = g.add_node("FieldComputeNormal");
+    g.add_link(tcx->id, "out", math->id, "a");
+    g.add_link(math->id, "out", cn->id, "height");
+
+    cn->attrs.find("epsilon")->f = 0.01f;
+    cn->attrs.find("strength")->f = 1.f;
+    gpx::FieldContext c = ctx_at(1.f, 0.f, 1.f);
+    float nvec[3];
+    cn->eval_field("normal", c).as_vector(nvec);
+    // gradient 3 in x, 0 in z  ->  normal proportional to (-3, 1, 0)
+    float len = std::sqrt(9.f + 1.f);
+    CHECK(std::fabs(nvec[0] - (-3.f / len)) < 1e-3f, "normal X matches the slope");
+    CHECK(std::fabs(nvec[1] - (1.f / len)) < 1e-3f, "normal Y matches the slope");
+    CHECK(std::fabs(nvec[2]) < 1e-3f, "no gradient in Z gives no Z component");
+    float unit = std::sqrt(nvec[0]*nvec[0] + nvec[1]*nvec[1] + nvec[2]*nvec[2]);
+    CHECK(std::fabs(unit - 1.f) < 1e-4f, "the normal is unit length");
+
+    // the slope output must describe the same surface as the normal
+    float slope = cn->eval_field("slope", c).number();
+    CHECK(std::fabs(slope - nvec[1]) < 1e-4f,
+          "slope output agrees with the normal it came from");
+  }
+
+  // ---- ComputeNormal on flat ground --------------------------------------
+  {
+    gpx::Graph g;
+    gpx::Node *cst = g.add_node("FieldConstant");
+    gpx::Node *cn = g.add_node("FieldComputeNormal");
+    g.add_link(cst->id, "out", cn->id, "height");
+    float nvec[3];
+    cn->eval_field("normal", ctx_at(4.f, 0.f, -2.f)).as_vector(nvec);
+    CHECK(std::fabs(nvec[0]) < 1e-6f && std::fabs(nvec[1] - 1.f) < 1e-6f &&
+              std::fabs(nvec[2]) < 1e-6f,
+          "flat ground points straight up");
+    CHECK(std::fabs(cn->eval_field("slope", ctx_at(0, 0, 0)).number() - 1.f) < 1e-6f,
+          "flat ground has slope 1");
+  }
+
+  // ---- Zone confines a field to a region ---------------------------------
+  {
+    gpx::Graph g;
+    gpx::Node *in = g.add_node("FieldConstant");
+    gpx::Node *out = g.add_node("FieldConstant");
+    gpx::Node *z = g.add_node("FieldZone");
+    in->attrs.find("value")->f = 1.f;
+    out->attrs.find("value")->f = 0.f;
+    g.add_link(in->id, "out", z->id, "inside");
+    g.add_link(out->id, "out", z->id, "outside");
+    z->attrs.find("size")->f = 10.f;
+    z->attrs.find("fade")->f = 0.5f; // inner radius 5
+
+    CHECK(std::fabs(z->eval_field("out", ctx_at(0, 0, 0)).number() - 1.f) < 1e-6f,
+          "the centre of the zone is fully inside");
+    CHECK(std::fabs(z->eval_field("out", ctx_at(100, 0, 0)).number()) < 1e-6f,
+          "far outside the zone the other field wins");
+    float edge = z->eval_field("out", ctx_at(7.5f, 0, 0)).number();
+    CHECK(edge > 0.f && edge < 1.f, "the fade band blends between the two");
+    CHECK(std::fabs(z->eval_field("mask", ctx_at(0, 0, 0)).number() - 1.f) < 1e-6f,
+          "the mask output is the region on its own (Vue's Extract)");
+    // 'flat' means a column: height must not matter
+    float high = z->eval_field("out", ctx_at(0, 1000, 0)).number();
+    CHECK(std::fabs(high - 1.f) < 1e-6f, "a flat zone ignores altitude");
+  }
+
+  // ---- TexCoord --------------------------------------------------------
+  {
+    gpx::Graph g;
+    gpx::Node *tc = g.add_node("FieldTexCoord");
+    gpx::FieldValue v = tc->eval_field("out", ctx_at(2.f, 5.f, 3.f));
+    CHECK(v.type == gpx::FieldType::TexCoord, "produces texture coordinates");
+    CHECK(std::fabs(v.v[0] - 2.f) < 1e-6f && std::fabs(v.v[1] - 3.f) < 1e-6f,
+          "top-down projection reads X and Z");
+    tc->attrs.find("plane")->i = 1; // front: X and Y
+    v = tc->eval_field("out", ctx_at(2.f, 5.f, 3.f));
+    CHECK(std::fabs(v.v[1] - 5.f) < 1e-6f, "front projection reads Y");
+  }
+
+  // ---- all five transpile, and the multi-output nodes emit differently ----
+  {
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *red = g.add_node("FieldRedirect");
+    gpx::Node *dis = g.add_node("FieldDisplace");
+    gpx::Node *cn = g.add_node("FieldComputeNormal");
+    gpx::Node *z = g.add_node("FieldZone");
+    gpx::Node *tc = g.add_node("FieldTexCoord");
+    g.add_link(noise->id, "out", red->id, "input");
+    g.add_link(red->id, "out", dis->id, "amount");
+    g.add_link(dis->id, "out", cn->id, "height");
+    g.add_link(cn->id, "slope", z->id, "inside");
+
+    for (gpx::Node *n : {red, dis, cn, z, tc}) {
+      gpx::GlslProgram p = gpx::field_to_glsl(*n, "", "gpx_f");
+      CHECK(p.ok, std::string(n->type) + " transpiles: " + p.error);
+      std::string why;
+      CHECK(glsl_declared_before_use(p.code, why),
+            std::string(n->type) + " emits valid ordering: " + why);
+    }
+    // ComputeNormal resolves four samples while writing one line, which is
+    // exactly how declarations get spliced into the middle of a statement.
+    for (const char *port : {"normal", "slope"}) {
+      gpx::GlslProgram p = gpx::field_to_glsl(*cn, port, "gpx_f");
+      std::string why;
+      CHECK(p.ok && glsl_declared_before_use(p.code, why),
+            std::string("ComputeNormal.") + port + " emits valid ordering: " + why);
+    }
+
+    // A node's two outputs are different values, not two views of one.
+    gpx::GlslProgram a = gpx::field_to_glsl(*cn, "normal", "gpx_f");
+    gpx::GlslProgram b = gpx::field_to_glsl(*cn, "slope", "gpx_f");
+    CHECK(a.ok && b.ok, "both ComputeNormal outputs transpile");
+    CHECK(a.code != b.code, "normal and slope emit different code");
+    gpx::GlslProgram c = gpx::field_to_glsl(*dis, "out", "gpx_f");
+    gpx::GlslProgram d = gpx::field_to_glsl(*dis, "offset", "gpx_f");
+    CHECK(c.ok && d.ok, "both Displace outputs transpile");
+    CHECK(c.code != d.code, "height and offset emit different code");
+  }
+
+  // ---- type conversion must mean the same thing on both sides ------------
+  {
+    // FieldValue is deliberately permissive: a number used as a vector
+    // broadcasts, a vector used as a number is its length, a colour is its
+    // luminance. The GPU has to agree, or a graph silently renders differently
+    // there — which is precisely the bug the GPU check caught.
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise"); // Number
+    gpx::Node *red = g.add_node("FieldRedirect");
+    g.add_link(noise->id, "out", red->id, "redirect"); // Number -> Vector
+    gpx::GlslProgram p = gpx::field_to_glsl(*red, "out", "gpx_f");
+    CHECK(p.ok, "scalar into a vector input transpiles");
+    CHECK(p.code.find(".xyz") == std::string::npos,
+          "a scalar source is broadcast, not read as xyz with two zeros");
+
+    // and on the CPU, the same wiring broadcasts
+    float v[3];
+    gpx::FieldContext c = ctx_at(0.4f, 0.f, 0.6f);
+    noise->eval_field("out", c).as_vector(v);
+    CHECK(v[0] == v[1] && v[1] == v[2], "a number broadcasts to all three axes");
+
+    // vector into a number input reads as length on both sides
+    gpx::Graph g2;
+    gpx::Node *pos = g2.add_node("FieldPosition"); // Vector
+    gpx::Node *math = g2.add_node("FieldMath");
+    g2.add_link(pos->id, "out", math->id, "a"); // Vector -> Number
+    gpx::GlslProgram q = gpx::field_to_glsl(*math, "out", "gpx_f");
+    CHECK(q.ok, "vector into a number input transpiles");
+    CHECK(q.code.find("length(") != std::string::npos,
+          "a vector read as a number is its length, matching FieldValue");
+  }
+
+  // ---- the scoped cache: a redirect re-emits, a plain graph does not ------
+  {
+    // Under a redirect the same noise is a different value, so it must be
+    // emitted twice; without one it must still be emitted once. This is the
+    // property that makes warping correct on the GPU rather than silently
+    // reusing the un-redirected value.
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *red = g.add_node("FieldRedirect");
+    gpx::Node *math = g.add_node("FieldMath");
+    g.add_link(noise->id, "out", red->id, "input");
+    g.add_link(noise->id, "out", red->id, "redirect");
+    g.add_link(red->id, "out", math->id, "a");
+    g.add_link(noise->id, "out", math->id, "b");
+
+    gpx::GlslProgram p = gpx::field_to_glsl(*math, "out", "gpx_f");
+    CHECK(p.ok, "redirected graph transpiles: " + p.error);
+    size_t body = p.code.find("vec4 gpx_f(");
+    int calls = 0;
+    for (size_t i = p.code.find("gpxf_fbm(", body); i != std::string::npos;
+         i = p.code.find("gpxf_fbm(", i + 1))
+      ++calls;
+    // once at the original point (shared by the redirect vector and the
+    // math input), once again at the redirected point
+    CHECK(calls == 2, "the redirected subtree is re-emitted at the new point");
+  }
+}
+
 // ------------------------------------------------------------------ bypass
 // "The network is processed as if the node did not even exist" (Terragen p15).
 // The graph implements this during link resolution, so it holds for every node
@@ -1413,6 +1785,7 @@ int main() {
   test_field_domain();
   test_field_bridges();
   test_field_glsl();
+  test_displacement();
   test_bypass();
   test_metanodes();
   test_metanode_published();

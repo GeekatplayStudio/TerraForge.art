@@ -19,6 +19,7 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -253,13 +254,24 @@ static void check_golden_projects(bool update) {
     // behaviour change anywhere in the chain shows up
     uint64_t h = 1469598103934665603ull;
     int outputs = 0;
+    // A project whose outputs are all one value hashes just as stably as a
+    // real one, and locks nothing. Requiring some variation keeps a golden
+    // honest — it is the difference between "this still works" and "this
+    // still returns a flat buffer".
+    bool varies = false;
     for (const auto &n : g.nodes)
       for (const gpx::Port &port : n->ports) {
         if (port.dir != gpx::PortDir::Out || !port.hmap) continue;
         uint64_t ph = hash_floats(port.hmap->v);
         h ^= ph + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
         ++outputs;
+        const std::vector<float> &v = port.hmap->v;
+        for (size_t i = 1; i < v.size() && !varies; ++i)
+          if (v[i] != v[0] && std::isfinite(v[i])) varies = true;
       }
+    CHECK(outputs > 0, "project '" + f.filename().string() + "' produced output");
+    CHECK(varies, "project '" + f.filename().string() +
+                      "' produces varying output (a flat golden locks nothing)");
     char buf[64];
     std::snprintf(buf, sizeof buf, "%016llx", (unsigned long long)h);
     std::string key = f.filename().string();

@@ -1,5 +1,6 @@
 # Golden evaluation hashes per project.
 # Regenerate with: regression_tests --update  (review the diff!)
+displacement.gpxt|76e53aae371da6e0
 effects_all.gpxt|52249c3b22d7226a
 erosion_all.gpxt|52c49a3dedcebe5b
 hydro.gpxt|79e5ca2c2236d8ba

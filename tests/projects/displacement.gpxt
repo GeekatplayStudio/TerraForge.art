@@ -1,0 +1,36 @@
+{
+ "app": "Geekatplay Studio",
+ "version": 2,
+ "resolution": 64,
+ "nodes": [
+  {"id": 1, "type": "FieldNoise", "pos": [0, 0],
+   "attrs": {"frequency": {"f": 3.0}, "octaves": {"i": 6}, "seed": {"seed": 11}}},
+  {"id": 2, "type": "FieldNoise", "pos": [0, 160],
+   "attrs": {"frequency": {"f": 1.25}, "octaves": {"i": 4}, "seed": {"seed": 92}}},
+  {"id": 3, "type": "FieldRedirect", "pos": [220, 0],
+   "attrs": {"strength": {"f": 0.35}, "scale_y": {"f": 0.0}}},
+  {"id": 4, "type": "FieldDisplace", "pos": [440, 0],
+   "attrs": {"dir_mode": {"i": 1}, "depth": {"f": 2.0}, "quality": {"i": 2},
+             "smoothing": {"f": 0.4}, "smooth_radius": {"f": 0.02}}},
+  {"id": 5, "type": "FieldComputeNormal", "pos": [660, 0],
+   "attrs": {"epsilon": {"f": 0.02}, "strength": {"f": 1.0}}},
+  {"id": 6, "type": "FieldZone", "pos": [880, 0],
+   "attrs": {"size": {"f": 0.45}, "fade": {"f": 0.5}}},
+  {"id": 7, "type": "Rasterize", "pos": [1100, 0],
+   "attrs": {"size": {"f": 2.0}}},
+  {"id": 8, "type": "Rasterize", "pos": [1100, 200],
+   "attrs": {"size": {"f": 2.0}}},
+  {"id": 9, "type": "TerrainOutput", "pos": [1320, 0], "attrs": {}}
+ ],
+ "links": [
+  {"from": 1, "from_port": "out", "to": 3, "to_port": "input"},
+  {"from": 2, "from_port": "out", "to": 3, "to_port": "redirect"},
+  {"from": 3, "from_port": "out", "to": 4, "to_port": "amount"},
+  {"from": 4, "from_port": "out", "to": 5, "to_port": "height"},
+  {"from": 5, "from_port": "slope", "to": 6, "to_port": "inside"},
+  {"from": 4, "from_port": "out", "to": 6, "to_port": "outside"},
+  {"from": 6, "from_port": "out", "to": 7, "to_port": "field"},
+  {"from": 5, "from_port": "slope", "to": 8, "to_port": "field"},
+  {"from": 7, "from_port": "output", "to": 9, "to_port": "heightmap"}
+ ]
+}

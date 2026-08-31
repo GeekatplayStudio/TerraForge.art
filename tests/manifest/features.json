@@ -179,6 +179,38 @@
       "description": "Every parameter can carry an animation track; scene time drives them, they survive save/load, reach the field domain, and cost nothing when unused",
       "test_file": "test_engine.cpp", "test_symbol": "test_animation_hooks" },
 
+    { "id": "terrain.redirect", "area": "terrain", "phase": "P1",
+      "description": "Redirect shader: any vector field moves where any other field is evaluated, giving warp, flow and domain distortion on anything, on CPU and GPU alike",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "terrain.displacement", "area": "terrain", "phase": "P1",
+      "description": "Displacement shader family: along normal / up / vector / fixed direction, depth in real units or relative, smoothing, quality boost and displace-outwards-only, with both a displaced height and a 3D offset output",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "terrain.compute_normal", "area": "terrain", "phase": "P1",
+      "description": "Compute Normal recovers the surface direction after displacement by central differences, so downstream nodes see the displaced shape rather than the flat plane underneath",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "terrain.zones", "area": "terrain", "phase": "P1",
+      "description": "Zones confine one field to a sphere or box region with a smooth fade, and expose the region itself as a mask output",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "framework.texcoord", "area": "framework", "phase": "P1",
+      "description": "Texture coordinates as a field input, with plane choice, scale, rotation and offset",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "framework.glsl_scoped", "area": "framework", "phase": "P1",
+      "description": "The transpiler re-emits a subtree under a second evaluation point, so warped and finite-differenced graphs are correct on the GPU instead of silently reusing the un-redirected value; generated variables are always declared before use",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "framework.glsl_conversions", "area": "framework", "phase": "P1",
+      "description": "The GPU mirrors FieldValue's permissive conversions exactly: a number broadcasts to a vector, a vector read as a number is its length, a colour is its luminance",
+      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
+
+    { "id": "meta.goldens_vary", "area": "meta", "phase": "P1",
+      "description": "Every golden project must produce varying output, so a golden cannot silently lock a flat buffer",
+      "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
