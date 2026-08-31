@@ -120,6 +120,15 @@ struct RenderSettings {
   // graph-authored displacement: how strongly a TerrainDisplacement node's
   // field moves the surface, in world units
   float field_displacement = 0.05f;
+  // adaptive subdivision: the surface is tessellated to whatever the camera
+  // needs rather than to a fixed grid, so displacement keeps resolving as you
+  // approach and distant ground costs almost nothing
+  bool tessellation = true;
+  float tess_pixels = 8.f;  // target pixels per triangle edge
+  // 64 patches x 8 = 512 across, exactly the fixed grid this replaces, so the
+  // adaptive path is never coarser than what it took over from
+  float tess_min = 8.f;
+  float tess_max = 32.f;    // Vue's "limit automatic subdivision"
   // planetary curvature: 0 = flat, otherwise the horizon falls away.
   // radius is in world units (the terrain tile is 1 unit across).
   float planet_radius = 0.f;
@@ -169,6 +178,8 @@ void renderer_set_surface_program(const std::string &glsl,
 // Empty unless the last generated shader failed to link, in which case the
 // previous program is still in use and this says why.
 const char *renderer_field_error();
+// Whether adaptive subdivision is actually running, and at what settings.
+std::string renderer_tess_status();
 // camera navigation for the active camera (scene camera or free viewport)
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);

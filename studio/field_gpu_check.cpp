@@ -372,6 +372,7 @@ std::string field_gpu_verify_all(App &a) {
            (e && *e ? std::string("LINK FAILED - ") + e
                     : std::string("ok (no link error)")) +
            "\n";
+    out += renderer_tess_status() + "\n";
   }
 
   // also drop it beside the API state so it can be read from a script — the

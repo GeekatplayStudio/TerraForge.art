@@ -89,6 +89,14 @@ static GLuint tex_normal = 0, tex_rough = 0, tex_disp = 0;
 static GLuint tex_cloud_shape = 0, tex_cloud_detail = 0;
 static bool has_normal_map = false, has_rough_map = false, has_disp_map = false;
 static int grid_n = 512, index_count = 0;
+// A coarse quad grid the tessellator subdivides. 64x64 patches at up to 64
+// subdivisions an edge reaches an effective 4096 across where the camera is
+// close, while a patch at the horizon costs two triangles.
+static const int patch_n = 65; // vertices per side, so 64 patches
+static GLuint vao_patch = 0, vbo_patch = 0, ibo_patch = 0;
+static int patch_index_count = 0;
+static GLuint prog_terrain_tess = 0;
+static bool tess_ok = false;
 static int hm_w = 0;
 static bool has_albedo = false;
 static gpx::Heightmap cpu_height; // normalized copy, for picking
@@ -103,8 +111,11 @@ static float cloud_time = 0.f;
 static float g_last_fovy = 0.9f; // for the planet pass's pixel-size LOD
 
 // ----------------------------------------------------------------- shaders
-static const char *VS_TERRAIN_SRC = R"GLSL(#version 430 core
-layout(location=0) in vec2 in_uv;
+// The uniforms and the body that place a terrain vertex. Shared verbatim
+// between the plain vertex shader and the tessellation evaluation shader, so
+// the two paths cannot drift: whichever one runs, the surface is the same
+// surface. Both call TERRAIN_PLACE with the uv they arrived at.
+static const char *TERRAIN_VERT_COMMON = R"GLSL(
 uniform sampler2D u_height;
 uniform sampler2D u_disp;
 uniform int u_has_disp;
@@ -121,11 +132,11 @@ GPX_FIELD_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
 out float v_detail;
-void main(){
-  float h = texture(u_height, in_uv).r * u_hscale;
+void terrain_place(vec2 uv){
+  float h = texture(u_height, uv).r * u_hscale;
   if (u_has_disp == 1)
-    h += (texture(u_disp, in_uv).r - 0.5) * 2.0 * u_disp_strength;
-  vec3 p = vec3(in_uv.x, h, in_uv.y);
+    h += (texture(u_disp, uv).r - 0.5) * 2.0 * u_disp_strength;
+  vec3 p = vec3(uv.x, h, uv.y);
   // A displacement graph authored by the user, evaluated per vertex on the
   // GPU. The same function runs on the CPU for picking and baking, which is
   // what the CPU/GPU agreement check exists to keep true.
@@ -139,7 +150,7 @@ void main(){
   if (u_frac_amount > 0.0){
     int oct = gp_octaves(d, 9.0);
     if (oct > 0){
-      float f = gp_detail(in_uv, u_frac_scale, oct, 0.5) - 0.5;
+      float f = gp_detail(uv, u_frac_scale, oct, 0.5) - 0.5;
       v_detail = f;
       p.y += f * u_frac_amount;
     }
@@ -150,9 +161,86 @@ void main(){
     float r2 = dot(flat_d, flat_d);
     p.y -= r2 / (2.0 * u_planet_radius);
   }
-  v_uv = in_uv; v_world = p;
+  v_uv = uv; v_world = p;
   gl_Position = u_mvp * vec4(p,1.0);
-})GLSL";
+}
+)GLSL";
+
+// The fixed-grid path: one vertex per grid point, as before.
+static const char *VS_TERRAIN_TAIL = R"GLSL(
+layout(location=0) in vec2 in_uv;
+void main(){ terrain_place(in_uv); }
+)GLSL";
+
+// ---------------------------------------------------- adaptive subdivision
+// A fixed grid spends the same triangles on a ridge filling the screen and on
+// one at the horizon, and caps how fine a displacement can ever be. Vue calls
+// the alternative Dynamic subdivision (p719) and Terragen's displacement is
+// strong for exactly this reason: the surface is subdivided to whatever the
+// camera needs, then displaced.
+//
+// The control shader chooses a level per *edge* from that edge's length in
+// pixels. Both patches sharing an edge compute it from the same two endpoints,
+// so they always agree and no crack can open between them.
+static const char *TCS_TERRAIN = R"GLSL(#version 430 core
+layout(vertices = 4) out;
+in vec2 tc_uv[];
+out vec2 te_uv[];
+uniform sampler2D u_height;
+uniform float u_hscale;
+uniform mat4 u_mvp;
+uniform vec2 u_viewport;
+uniform float u_tess_px;   // target pixels per triangle edge
+uniform float u_tess_min;  // floor, so this is never coarser than the old grid
+uniform float u_tess_max;  // Vue's "limit automatic subdivision"
+vec2 screen_of(vec2 uv){
+  vec3 p = vec3(uv.x, texture(u_height, uv).r * u_hscale, uv.y);
+  vec4 c = u_mvp * vec4(p, 1.0);
+  // a point behind the camera has a tiny or negative w; clamp rather than
+  // divide by it, or one such vertex tessellates the whole patch to death
+  return c.xy / max(abs(c.w), 1e-4) * 0.5 * u_viewport;
+}
+// The floor matters as much as the ceiling. Displacement and fractal relief
+// are evaluated per vertex, so a patch that subdivides to nothing loses them —
+// and when the whole tile is small on screen, a purely screen-space metric
+// asks for exactly that. The floor keeps this at least as fine as the fixed
+// grid it replaces, so adaptive subdivision can only ever add detail.
+float edge_tess(vec2 a, vec2 b){
+  float px = distance(screen_of(a), screen_of(b));
+  return clamp(px / max(u_tess_px, 1.0), u_tess_min, u_tess_max);
+}
+void main(){
+  te_uv[gl_InvocationID] = tc_uv[gl_InvocationID];
+  if (gl_InvocationID == 0){
+    // outer[i] is the edge opposite corner i in GL's quad convention
+    gl_TessLevelOuter[0] = edge_tess(tc_uv[3], tc_uv[0]);
+    gl_TessLevelOuter[1] = edge_tess(tc_uv[0], tc_uv[1]);
+    gl_TessLevelOuter[2] = edge_tess(tc_uv[1], tc_uv[2]);
+    gl_TessLevelOuter[3] = edge_tess(tc_uv[2], tc_uv[3]);
+    gl_TessLevelInner[0] = max(gl_TessLevelOuter[1], gl_TessLevelOuter[3]);
+    gl_TessLevelInner[1] = max(gl_TessLevelOuter[0], gl_TessLevelOuter[2]);
+  }
+}
+)GLSL";
+
+// fractional_odd_spacing so a patch's level changes continuously as the camera
+// moves. Integer spacing would step, and a stepping subdivision pops — the
+// same reason the octave count is a float (AGENTS.md, planets rule 3).
+static const char *TES_TERRAIN_TAIL = R"GLSL(
+layout(quads, fractional_odd_spacing, ccw) in;
+in vec2 te_uv[];
+void main(){
+  vec2 lo = mix(te_uv[0], te_uv[1], gl_TessCoord.x);
+  vec2 hi = mix(te_uv[3], te_uv[2], gl_TessCoord.x);
+  terrain_place(mix(lo, hi, gl_TessCoord.y));
+}
+)GLSL";
+
+static const char *VS_TERRAIN_PASS = R"GLSL(#version 430 core
+layout(location=0) in vec2 in_uv;
+out vec2 tc_uv;
+void main(){ tc_uv = in_uv; }
+)GLSL";
 
 // Procedural fractal detail shared by the vertex and fragment stages: the
 // baked heightmap carries the large forms, these octaves keep resolving as
@@ -1131,13 +1219,65 @@ static void make_preview_shapes() {
 // invalid GLSL therefore leaves the viewport exactly as it was rather than
 // turning it black, which is the difference between a visible mistake and an
 // apparently broken application.
+// The plain vertex shader and the tessellation evaluation shader are the same
+// body with a different way of arriving at a uv, so they are assembled from
+// one string rather than kept in step by hand.
+static std::string terrain_vs_source() {
+  return std::string("#version 430 core\n") + TERRAIN_VERT_COMMON +
+         VS_TERRAIN_TAIL;
+}
+static std::string terrain_tes_source() {
+  return std::string("#version 430 core\n") + TERRAIN_VERT_COMMON +
+         TES_TERRAIN_TAIL;
+}
+
+// Link a four-stage program. Tessellation is the one place we need more than
+// a vertex and a fragment shader.
+static GLuint link_checked_tess(const std::string &vs, const std::string &tcs,
+                                const std::string &tes, const std::string &fs,
+                                std::string &err) {
+  GLuint p = glCreateProgram();
+  GLuint v = compile(GL_VERTEX_SHADER, vs.c_str());
+  GLuint c = compile(GL_TESS_CONTROL_SHADER, tcs.c_str());
+  GLuint e = compile(GL_TESS_EVALUATION_SHADER, tes.c_str());
+  GLuint f = compile(GL_FRAGMENT_SHADER, fs.c_str());
+  for (GLuint s : {v, c, e, f}) glAttachShader(p, s);
+  glLinkProgram(p);
+  for (GLuint s : {v, c, e, f}) glDeleteShader(s);
+  GLint ok = 0;
+  glGetProgramiv(p, GL_LINK_STATUS, &ok);
+  if (!ok) {
+    char log[4096] = {0};
+    glGetProgramInfoLog(p, sizeof log, nullptr, log);
+    err = log;
+    glDeleteProgram(p);
+    return 0;
+  }
+  return p;
+}
+
 static bool rebuild_terrain_program(std::string &err) {
-  std::string vs = inject_sky(VS_TERRAIN_SRC);
   std::string fs = inject_sky(FS_TERRAIN_SRC);
-  GLuint p = link_checked(vs, fs, err);
+  GLuint p = link_checked(inject_sky(terrain_vs_source().c_str()), fs, err);
   if (!p) return false;
   if (prog_terrain) glDeleteProgram(prog_terrain);
   prog_terrain = p;
+
+  // The tessellated program is an optimisation, not a requirement: if it does
+  // not build we keep the fixed grid and say so, rather than losing the
+  // terrain entirely. Everything below this point is allowed to fail.
+  std::string terr;
+  GLuint t = link_checked_tess(VS_TERRAIN_PASS, TCS_TERRAIN,
+                               inject_sky(terrain_tes_source().c_str()), fs,
+                               terr);
+  if (t) {
+    if (prog_terrain_tess) glDeleteProgram(prog_terrain_tess);
+    prog_terrain_tess = t;
+    tess_ok = true;
+  } else {
+    tess_ok = prog_terrain_tess != 0; // keep any program that already worked
+    std::fprintf(stderr, "terrain tessellation unavailable:\n%s\n", terr.c_str());
+  }
   return true;
 }
 
@@ -1166,12 +1306,36 @@ void renderer_set_surface_program(const std::string &glsl,
 // displacing.
 const char *renderer_field_error() { return g_field_error.c_str(); }
 
+// Whether the terrain is actually being subdivided adaptively, and at what
+// settings. Worth being able to ask: the fixed grid is a silent fallback, and
+// a silent fallback that nobody can see is indistinguishable from a feature
+// that does not work.
+std::string renderer_tess_status() {
+  const RenderSettings &RS = render_settings();
+  if (!prog_terrain_tess)
+    return "adaptive subdivision: unavailable (tessellation program did not "
+           "link; using the fixed grid)";
+  if (!RS.tessellation)
+    return "adaptive subdivision: available but switched off";
+  char buf[224];
+  std::snprintf(buf, sizeof buf,
+                "adaptive subdivision: ON, %dx%d patches, %.0fx to %.0fx an "
+                "edge (effective %d to %d across), target %.0f px/edge",
+                patch_n - 1, patch_n - 1, RS.tess_min, RS.tess_max,
+                (int)((patch_n - 1) * RS.tess_min),
+                (int)((patch_n - 1) * RS.tess_max), RS.tess_pixels);
+  return buf;
+}
+
 bool renderer_init() {
   std::string fs_terrain = inject_sky(FS_TERRAIN_SRC);
   std::string fs_sky = inject_sky(FS_SKY_SRC);
   std::string fs_water = inject_sky(FS_WATER);
-  std::string vs_terrain = inject_sky(VS_TERRAIN_SRC);
-  prog_terrain = link_prog(vs_terrain.c_str(), fs_terrain.c_str());
+  {
+    // builds prog_terrain and, if the driver takes it, prog_terrain_tess
+    std::string terr;
+    rebuild_terrain_program(terr);
+  }
   prog_water = link_prog(VS_WATER, fs_water.c_str());
   prog_sky = link_prog(VS_SKY, fs_sky.c_str());
   prog_depth = link_prog(VS_DEPTH, FS_DEPTH);
@@ -1211,6 +1375,40 @@ bool renderer_init() {
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, nullptr);
   glBindVertexArray(0);
+
+  // The coarse patch grid the tessellator subdivides. Four indices per quad,
+  // corners counter-clockwise starting at the origin, which is the order the
+  // evaluation shader's bilinear interpolation assumes.
+  {
+    std::vector<float> pv;
+    pv.reserve((size_t)patch_n * patch_n * 2);
+    for (int y = 0; y < patch_n; ++y)
+      for (int x = 0; x < patch_n; ++x) {
+        pv.push_back(x / float(patch_n - 1));
+        pv.push_back(y / float(patch_n - 1));
+      }
+    std::vector<unsigned> pi;
+    pi.reserve((size_t)(patch_n - 1) * (patch_n - 1) * 4);
+    for (int y = 0; y < patch_n - 1; ++y)
+      for (int x = 0; x < patch_n - 1; ++x) {
+        unsigned i = y * patch_n + x;
+        pi.insert(pi.end(), {i, i + 1, i + 1 + (unsigned)patch_n,
+                             i + (unsigned)patch_n});
+      }
+    patch_index_count = (int)pi.size();
+    glGenVertexArrays(1, &vao_patch);
+    glBindVertexArray(vao_patch);
+    glGenBuffers(1, &vbo_patch);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_patch);
+    glBufferData(GL_ARRAY_BUFFER, pv.size() * 4, pv.data(), GL_STATIC_DRAW);
+    glGenBuffers(1, &ibo_patch);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_patch);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, pi.size() * 4, pi.data(),
+                 GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, nullptr);
+    glBindVertexArray(0);
+  }
   glGenVertexArrays(1, &vao_quad);
 
   // ground grid lines
@@ -1626,89 +1824,105 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
 
   // terrain
   if (show_terrain_obj) {
-    glUseProgram(prog_terrain);
-    glUniformMatrix4fv(glGetUniformLocation(prog_terrain, "u_mvp"), 1, GL_FALSE, mvp);
-    glUniformMatrix4fv(glGetUniformLocation(prog_terrain, "u_light_mvp"), 1, GL_FALSE,
+    // Adaptive subdivision when the driver took the tessellated program and
+    // the user has not turned it off; the fixed grid is always there as the
+    // fallback, and both run the same placement code.
+    const bool use_tess = tess_ok && RS.tessellation && prog_terrain_tess;
+    const GLuint PT = use_tess ? prog_terrain_tess : prog_terrain;
+    glUseProgram(PT);
+    glUniformMatrix4fv(glGetUniformLocation(PT, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniformMatrix4fv(glGetUniformLocation(PT, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);
-    uni1(prog_terrain, "u_hscale", RS.height_scale);
-    uni3(prog_terrain, "u_sun", sun);
-    uni3(prog_terrain, "u_sun_color", RS.sun_color);
-    uni1(prog_terrain, "u_sun_intensity", sun_intensity);
-    uni3(prog_terrain, "u_sky_zenith", RS.sky_zenith);
-    uni3(prog_terrain, "u_sky_horizon", RS.sky_horizon);
-    uni1(prog_terrain, "u_ambient", RS.ambient_intensity);
-    uni1(prog_terrain, "u_atmo", RS.atmosphere_density);
-    uni3(prog_terrain, "u_cam", view_eye);
-    uni1(prog_terrain, "u_exposure", (RS.exposure) * g_exposure_mult);
-    uni3(prog_terrain, "u_grade", g_grade);
-    uni1(prog_terrain, "u_sat", g_saturation);
-    uni1(prog_terrain, "u_texel", hm_w > 0 ? 1.f / hm_w : 1.f / 512.f);
-    unii(prog_terrain, "u_has_albedo", (has_albedo && RS.use_albedo && textured) ? 1 : 0);
-    unii(prog_terrain, "u_has_normal", (has_normal_map && textured && heavy_maps) ? 1 : 0);
-    unii(prog_terrain, "u_has_rough", (has_rough_map && textured && heavy_maps) ? 1 : 0);
-    unii(prog_terrain, "u_has_disp", (has_disp_map && RS.mat_displacement > 0) ? 1 : 0);
-    uni1(prog_terrain, "u_disp_strength", RS.mat_displacement);
-    uni1(prog_terrain, "u_frac_amount", RS.fractal_detail);
-    uni1(prog_terrain, "u_frac_scale", RS.fractal_scale);
+    uni1(PT, "u_hscale", RS.height_scale);
+    uni3(PT, "u_sun", sun);
+    uni3(PT, "u_sun_color", RS.sun_color);
+    uni1(PT, "u_sun_intensity", sun_intensity);
+    uni3(PT, "u_sky_zenith", RS.sky_zenith);
+    uni3(PT, "u_sky_horizon", RS.sky_horizon);
+    uni1(PT, "u_ambient", RS.ambient_intensity);
+    uni1(PT, "u_atmo", RS.atmosphere_density);
+    uni3(PT, "u_cam", view_eye);
+    uni1(PT, "u_exposure", (RS.exposure) * g_exposure_mult);
+    uni3(PT, "u_grade", g_grade);
+    uni1(PT, "u_sat", g_saturation);
+    uni1(PT, "u_texel", hm_w > 0 ? 1.f / hm_w : 1.f / 512.f);
+    unii(PT, "u_has_albedo", (has_albedo && RS.use_albedo && textured) ? 1 : 0);
+    unii(PT, "u_has_normal", (has_normal_map && textured && heavy_maps) ? 1 : 0);
+    unii(PT, "u_has_rough", (has_rough_map && textured && heavy_maps) ? 1 : 0);
+    unii(PT, "u_has_disp", (has_disp_map && RS.mat_displacement > 0) ? 1 : 0);
+    uni1(PT, "u_disp_strength", RS.mat_displacement);
+    uni1(PT, "u_frac_amount", RS.fractal_detail);
+    uni1(PT, "u_frac_scale", RS.fractal_scale);
     // zero when no graph is driving displacement, which also short-circuits
     // the stub call in both stages
-    uni1(prog_terrain, "u_field_strength",
+    uni1(PT, "u_field_strength",
          g_field_glsl.empty() ? 0.f : RS.field_displacement);
-    unii(prog_terrain, "u_surface_on", g_surface_glsl.empty() ? 0 : 1);
-    glUniform4f(glGetUniformLocation(prog_terrain, "u_brush"), g_brush[0],
+    unii(PT, "u_surface_on", g_surface_glsl.empty() ? 0 : 1);
+    glUniform4f(glGetUniformLocation(PT, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
-    uni1(prog_terrain, "u_planet_radius", RS.planet_radius);
-    unii(prog_terrain, "u_shadows", (shadows_ok && vc.display != 0) ? 1 : 0);
-    unii(prog_terrain, "u_quality", cinematic ? 1 : 0);
-    uni1(prog_terrain, "u_shadow_soft", RS.shadow_softness);
-    uni1(prog_terrain, "u_roughness", RS.mat_roughness);
-    uni1(prog_terrain, "u_metallic", RS.mat_metallic);
-    uni1(prog_terrain, "u_specular", RS.mat_specular);
-    uni1(prog_terrain, "u_reflection", RS.mat_reflection);
-    uni1(prog_terrain, "u_translucency", RS.mat_translucency);
-    uni1(prog_terrain, "u_transparency", RS.mat_transparency);
-    uni1(prog_terrain, "u_normal_strength", RS.mat_normal_strength);
-    unii(prog_terrain, "u_fog_type", atmosphere ? RS.fog_type : 0);
-    uni1(prog_terrain, "u_fog_density", RS.fog_density);
-    uni1(prog_terrain, "u_fog_level", RS.fog_level);
-    uni1(prog_terrain, "u_fog_falloff", RS.fog_falloff);
-    uni3(prog_terrain, "u_fog_color", RS.fog_color);
-    uni3(prog_terrain, "u_absorb", RS.absorption_color);
-    uni1(prog_terrain, "u_fog_scatter", RS.fog_sun_scatter);
-    unii(prog_terrain, "u_cloud_shadows",
+    uni1(PT, "u_planet_radius", RS.planet_radius);
+    unii(PT, "u_shadows", (shadows_ok && vc.display != 0) ? 1 : 0);
+    unii(PT, "u_quality", cinematic ? 1 : 0);
+    uni1(PT, "u_shadow_soft", RS.shadow_softness);
+    uni1(PT, "u_roughness", RS.mat_roughness);
+    uni1(PT, "u_metallic", RS.mat_metallic);
+    uni1(PT, "u_specular", RS.mat_specular);
+    uni1(PT, "u_reflection", RS.mat_reflection);
+    uni1(PT, "u_translucency", RS.mat_translucency);
+    uni1(PT, "u_transparency", RS.mat_transparency);
+    uni1(PT, "u_normal_strength", RS.mat_normal_strength);
+    unii(PT, "u_fog_type", atmosphere ? RS.fog_type : 0);
+    uni1(PT, "u_fog_density", RS.fog_density);
+    uni1(PT, "u_fog_level", RS.fog_level);
+    uni1(PT, "u_fog_falloff", RS.fog_falloff);
+    uni3(PT, "u_fog_color", RS.fog_color);
+    uni3(PT, "u_absorb", RS.absorption_color);
+    uni1(PT, "u_fog_scatter", RS.fog_sun_scatter);
+    unii(PT, "u_cloud_shadows",
          (clouds_ok && atmosphere && cinematic) ? 1 : 0);
-    uni1(prog_terrain, "u_cl_cov", RS.cloud_coverage);
-    uni1(prog_terrain, "u_cl_alt", RS.cloud_altitude);
-    uni1(prog_terrain, "u_cl_time", cloud_time);
-    glUniform2fv(glGetUniformLocation(prog_terrain, "u_cl_wind"), 1, wind);
+    uni1(PT, "u_cl_cov", RS.cloud_coverage);
+    uni1(PT, "u_cl_alt", RS.cloud_altitude);
+    uni1(PT, "u_cl_time", cloud_time);
+    glUniform2fv(glGetUniformLocation(PT, "u_cl_wind"), 1, wind);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_height);
-    unii(prog_terrain, "u_height", 0);
+    unii(PT, "u_height", 0);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, tex_albedo);
-    unii(prog_terrain, "u_albedo", 1);
+    unii(PT, "u_albedo", 1);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, shadow_tex);
-    unii(prog_terrain, "u_shadowmap", 2);
+    unii(PT, "u_shadowmap", 2);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_3D, tex_cloud_shape);
-    unii(prog_terrain, "u_cl_shape", 3);
+    unii(PT, "u_cl_shape", 3);
     glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, tex_normal);
-    unii(prog_terrain, "u_normal_map", 5);
+    unii(PT, "u_normal_map", 5);
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, tex_rough);
-    unii(prog_terrain, "u_rough_map", 6);
+    unii(PT, "u_rough_map", 6);
     glActiveTexture(GL_TEXTURE7);
     glBindTexture(GL_TEXTURE_2D, tex_disp);
-    unii(prog_terrain, "u_disp", 7);
+    unii(PT, "u_disp", 7);
     if (RS.mat_transparency > 0.001f) {
       glEnable(GL_BLEND);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glBindVertexArray(vao_grid);
-    glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+    if (use_tess) {
+      float vp[2] = {(float)w, (float)h};
+      glUniform2fv(glGetUniformLocation(PT, "u_viewport"), 1, vp);
+      uni1(PT, "u_tess_px", RS.tess_pixels);
+      uni1(PT, "u_tess_min", RS.tess_min);
+      uni1(PT, "u_tess_max", RS.tess_max);
+      glPatchParameteri(GL_PATCH_VERTICES, 4);
+      glBindVertexArray(vao_patch);
+      glDrawElements(GL_PATCHES, patch_index_count, GL_UNSIGNED_INT, nullptr);
+    } else {
+      glBindVertexArray(vao_grid);
+      glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+    }
     if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (RS.mat_transparency > 0.001f) glDisable(GL_BLEND);
   }
