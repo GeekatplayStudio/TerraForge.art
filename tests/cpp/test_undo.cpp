@@ -290,6 +290,91 @@ static void test_undo_is_deterministic() {
   CHECK(identical, "terrain after undo is bit-identical to before the edit");
 }
 
+static void test_planets_in_scene() {
+  std::printf("undo: planets & infinite terrains...\n");
+  App a;
+  reset_all(a);
+  int before = (int)scene().objects.size();
+
+  undo_push(a, "Add planet");
+  int p = scene_add_planet("Vulcan");
+  CHECK(p >= 0 && scene().objects[p].type == SceneObject::Planet, "planet added");
+  // a new planet comes with one surface layer so it is not a smooth ball
+  CHECK((int)scene_surface_layers(p).size() == 1, "planet has a starter layer");
+  scene().objects[p].planet.radius = 7.5f;
+  scene().objects[p].planet.sea_level = 0.f;
+
+  // several planets coexist — the multiple-planets promise
+  undo_push(a, "Add planet");
+  int p2 = scene_add_planet();
+  CHECK(p2 != p, "second planet added");
+  CHECK((int)scene_planet_indices().size() == 2, "two planets in the scene");
+  float dx = scene().objects[p].pos[0] - scene().objects[p2].pos[0];
+  float dz = scene().objects[p].pos[2] - scene().objects[p2].pos[2];
+  CHECK(dx * dx + dz * dz > 4.f, "auto-placement keeps planets apart");
+
+  // ground-plane infinite terrain is separate from planet layers
+  undo_push(a, "Add infinite terrain");
+  int gsurf = scene_add_infinite_surface(-1);
+  CHECK((int)scene_surface_layers(-1).size() == 1, "ground layer registered");
+  CHECK((int)scene_surface_layers(p).size() == 1,
+        "planet layers unaffected by ground layers");
+  (void)gsurf;
+
+  // undo unwinds the whole stack back to nothing
+  undo_perform(a);
+  CHECK((int)scene_surface_layers(-1).empty(), "undo removed the ground layer");
+  undo_perform(a);
+  undo_perform(a);
+  CHECK((int)scene().objects.size() == before, "undo removed both planets");
+  redo_perform(a);
+  CHECK((int)scene_planet_indices().size() == 1, "redo restored the planet");
+  CHECK(std::fabs(scene()
+                      .objects[scene_planet_indices()[0]]
+                      .planet.radius -
+                  7.5f) < 1e-5f,
+        "redo restored the edited radius");
+}
+
+static void test_planet_persistence() {
+  std::printf("planets survive save/load...\n");
+  App a;
+  reset_all(a);
+  a.graph.add_node("Noise");
+  int p = scene_add_planet("Kepler");
+  scene().objects[p].planet.radius = 12.25f;
+  scene().objects[p].planet.seed = 424242;
+  scene().objects[p].planet.sea_level = 0.71f;
+  scene().objects[p].pos[0] = -33.f;
+  scene_add_infinite_surface(p, "Craggy belt");
+  scene_add_infinite_surface(-1, "Home horizon");
+  int planets_before = (int)scene_planet_indices().size();
+  int psurf_before = (int)scene_surface_layers(p).size();
+
+  const char *path = "test_planets_roundtrip.gpxt";
+  CHECK(project_save(a, path), "project saved");
+
+  // wipe and reload
+  reset_all(a);
+  CHECK(scene_planet_indices().empty(), "scene cleared");
+  CHECK(project_load(a, path), "project loaded");
+  std::remove(path);
+
+  std::vector<int> planets = scene_planet_indices();
+  CHECK((int)planets.size() == planets_before, "planet count restored");
+  if (!planets.empty()) {
+    const SceneObject &o = scene().objects[planets[0]];
+    CHECK(o.name == "Kepler", "planet name restored");
+    CHECK(std::fabs(o.planet.radius - 12.25f) < 1e-5f, "radius restored");
+    CHECK(o.planet.seed == 424242, "seed restored");
+    CHECK(std::fabs(o.planet.sea_level - 0.71f) < 1e-5f, "sea level restored");
+    CHECK(std::fabs(o.pos[0] + 33.f) < 1e-5f, "position restored");
+    CHECK((int)scene_surface_layers(planets[0]).size() == psurf_before,
+          "planet surface layers restored and re-parented");
+  }
+  CHECK((int)scene_surface_layers(-1).size() == 1, "ground layer restored");
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   test_graph_undo();
@@ -301,6 +386,8 @@ int main() {
   test_history_and_jump();
   test_stack_overflow_is_stable();
   test_undo_is_deterministic();
+  test_planets_in_scene();
+  test_planet_persistence();
   std::printf("\n%s (%d failures)\n", g_failures ? "FAILED" : "ALL PASSED",
               g_failures);
   return g_failures ? 1 : 0;

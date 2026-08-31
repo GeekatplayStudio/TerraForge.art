@@ -1,5 +1,6 @@
-// Geekatplay Studio — engine test suite (graph, nodes, serialization)
+﻿// Geekatplay Studio â€” engine test suite (graph, nodes, serialization)
 #include "gpx/camera_math.hpp"
+#include "gpx/planet_math.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <cmath>
@@ -624,6 +625,71 @@ static void test_sculpt_layer() {
   }
 }
 
+static void test_planet_math() {
+  std::printf("planet math...\n");
+  using namespace gpx::planet;
+  Layer L[2];
+  L[0].seed = 42;
+  L[0].type = 1;
+  L[0].frequency = 4.f;
+  L[1].seed = 7;
+  L[1].type = 0;
+  L[1].frequency = 11.f;
+  L[1].amplitude = 0.5f;
+  L[1].coverage = 0.6f;
+
+  // deterministic: the same direction always gives the same altitude
+  float d1[3] = {0.267f, 0.535f, 0.802f};
+  float h_a = height(d1, L, 2);
+  float h_b = height(d1, L, 2);
+  CHECK(h_a == h_b, "planet height is deterministic");
+  CHECK(std::isfinite(h_a), "height is finite");
+  CHECK(std::fabs(h_a) <= 0.75f, "height stays within the relief budget");
+
+  // different directions give different terrain (the planet is not flat)
+  float mn = 1e9f, mx = -1e9f;
+  for (int i = 0; i < 400; ++i) {
+    float th = i * 0.61803f * 6.2831853f;
+    float y = 1.f - 2.f * (i + 0.5f) / 400.f;
+    float r = std::sqrt(std::max(0.f, 1.f - y * y));
+    float d[3] = {r * std::cos(th), y, r * std::sin(th)};
+    float h = height(d, L, 2);
+    mn = std::min(mn, h);
+    mx = std::max(mx, h);
+    CHECK(std::isfinite(h), "sampled height finite");
+    if (!std::isfinite(h)) break;
+  }
+  CHECK(mx - mn > 0.05f, "the surface has real relief");
+
+  // 3D continuity (the reason the function is evaluated in 3D at all):
+  // neighbouring directions give neighbouring altitudes â€” no seams
+  float step = 0.002f;
+  float worst = 0.f;
+  for (int i = 0; i < 200; ++i) {
+    float th = i * 0.031f;
+    float a[3] = {std::cos(th), 0.4f, std::sin(th)};
+    float b[3] = {std::cos(th + step), 0.4f, std::sin(th + step)};
+    worst = std::max(worst, std::fabs(height(a, L, 2) - height(b, L, 2)));
+  }
+  CHECK(worst < 0.08f, "surface is continuous (no seams between directions)");
+
+  // a different seed is a different planet
+  Layer L2[1] = {L[0]};
+  L2[0].seed = 43;
+  bool differs = false;
+  for (int i = 0; i < 32 && !differs; ++i) {
+    float th = i * 0.41f;
+    float d[3] = {std::cos(th), 0.2f, std::sin(th)};
+    if (std::fabs(height(d, L, 1) - height(d, L2, 1)) > 1e-4f) differs = true;
+  }
+  CHECK(differs, "changing the seed changes the planet");
+
+  // coverage 0 silences a layer entirely
+  Layer L3[1] = {L[0]};
+  L3[0].coverage = 0.f;
+  CHECK(height(d1, L3, 1) == 0.f, "coverage 0 = no contribution");
+}
+
 int main() {
   std::printf("=== Geekatplay Studio engine tests ===\n");
   test_registry();
@@ -642,6 +708,7 @@ int main() {
   test_ai_spec();
   test_terrain_effects();
   test_sculpt_layer();
+  test_planet_math();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;
@@ -649,3 +716,4 @@ int main() {
   std::printf("%d FAILURES\n", g_failures);
   return 1;
 }
+

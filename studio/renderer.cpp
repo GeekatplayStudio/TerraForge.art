@@ -4,6 +4,7 @@
 // shadow mapping, scene meshes, sun gizmo, selection outlines, object picking.
 #include "app.hpp"
 #include "cloud_noise.hpp"
+#include "planet_renderer.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
@@ -98,6 +99,7 @@ static int fbo_w[6] = {0}, fbo_h[6] = {0};
 static GLuint shadow_fbo = 0, shadow_tex = 0;
 static const int SHADOW_RES = 2048;
 static float cloud_time = 0.f;
+static float g_last_fovy = 0.9f; // for the planet pass's pixel-size LOD
 
 // ----------------------------------------------------------------- shaders
 static const char *VS_TERRAIN_SRC = R"GLSL(#version 430 core
@@ -536,6 +538,7 @@ uniform vec3 u_cl_color;
 uniform int u_panorama;
 uniform int u_hdr;
 uniform int u_no_sun;
+uniform float u_space; // 0 = inside the atmosphere, 1 = open space
 const float PI = 3.14159265;
 SKY_FN_PLACEHOLDER
 uniform vec3 u_grade;
@@ -649,6 +652,27 @@ void main(){
   if (u_fog_type != 0) {
     float horizon_fog = pow(1.0 - clamp(dir.y, 0.0, 1.0), 8.0);
     col = mix(col, u_fog_color, clamp(horizon_fog * u_fog_density * 0.6, 0.0, 1.0));
+  }
+  // Leaving the atmosphere: the sky thins to space so that pulling the camera
+  // back actually reveals the planets instead of drowning them in daylight
+  // haze. u_space is a smooth 0..1 from the camera's altitude, so the
+  // transition is continuous — no popping at any zoom level.
+  if (u_space > 0.0) {
+    vec3 stars = vec3(0.0);
+    // stable star field: hashed on the quantized view direction
+    vec3 sd = dir * 380.0;
+    vec3 si = floor(sd);
+    float hs = fract(sin(dot(si, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+    if (hs > 0.9965) {
+      float tw = 0.55 + 0.45 * fract(hs * 91.7);
+      stars = vec3(tw) * smoothstep(0.9965, 1.0, hs);
+    }
+    vec3 space = stars;
+    if (u_no_sun == 0) {
+      float s2 = max(dot(dir, u_sun), 0.0);
+      space += u_sun_color * pow(s2, 900.0) * 9.0; // the sun stays, airless
+    }
+    col = mix(col, space, u_space);
   }
   if (u_hdr == 1) { frag = vec4(col, 1.0); return; } // linear for env maps
   col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));
@@ -1010,6 +1034,7 @@ bool renderer_init() {
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
   prog_matprev = link_prog(VS_MATPREV, FS_MATPREV);
   make_preview_shapes();
+  planet_renderer_init();
 
   // terrain grid
   std::vector<float> verts;
@@ -1209,7 +1234,8 @@ void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly) {
   if (camera_object_input(dx, dy, wheel, rotating, panning, dolly)) return;
   if (dolly)
-    CAM.dist = std::fmin(std::fmax(CAM.dist * (1.f + dy * 0.005f), 0.0004f), 400.f);
+    CAM.dist = std::fmin(
+        std::fmax(CAM.dist * (1.f + dy * 0.005f), 0.0004f), 100000.f);
   renderer_handle_input(dx, dy, wheel, rotating, panning);
 }
 
@@ -1249,8 +1275,10 @@ void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
     CAM.target[0] += (-dx * cy - dy * sy) * s;
     CAM.target[2] += (dx * sy - dy * cy) * s;
   }
+  // zoom range spans a grain of sand to a whole planetary neighbourhood
   if (wheel != 0)
-    CAM.dist = std::fmin(std::fmax(CAM.dist * (1.f - wheel * 0.12f), 0.0004f), 400.f);
+    CAM.dist = std::fmin(
+        std::fmax(CAM.dist * (1.f - wheel * 0.12f), 0.0004f), 100000.f);
 }
 
 static void build_light_mvp(const float *sun, float hscale, float *out) {
@@ -1326,10 +1354,30 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   }
   float sun_intensity = sun_on ? RS.sun_intensity : 0.05f;
 
+  // ---- progressive quality: features that only matter near the ground are
+  // shut off as the camera pulls away, with hysteresis so nothing flickers
+  // at the threshold. This is where the frame budget for planets comes from.
+  float tile_dx = view_eye[0] - 0.5f, tile_dz = view_eye[2] - 0.5f;
+  float tile_dist = std::sqrt(tile_dx * tile_dx + view_eye[1] * view_eye[1] +
+                              tile_dz * tile_dz);
+  static bool far_tier[6] = {false};
+  if (!far_tier[slot] && tile_dist > 9.f) far_tier[slot] = true;
+  else if (far_tier[slot] && tile_dist < 7.f) far_tier[slot] = false;
+  bool near_ground = !far_tier[slot];
+  // volumetric clouds are a ground-view effect; from high above they cost a
+  // full raymarch for a few pixels
+  bool clouds_ok = RS.clouds_on && view_eye[1] < 3.f && near_ground;
+  bool shadows_ok = RS.shadows && near_ground; // shadow texels vanish out there
+  bool heavy_maps = near_ground; // 4K material maps are wasted on a far tile
+  // how far out of the atmosphere the camera is (0 ground .. 1 open space);
+  // smooth, so the sky thins continuously as you pull back
+  float space_t = std::clamp((tile_dist - 6.f) / 22.f, 0.f, 1.f);
+  space_t = space_t * space_t * (3.f - 2.f * space_t);
+
   // shadow pass
   float light_mvp[16];
   build_light_mvp(sun, RS.height_scale, light_mvp);
-  if (RS.shadows) {
+  if (shadows_ok) {
     glBindFramebuffer(GL_FRAMEBUFFER, shadow_fbo);
     glViewport(0, 0, SHADOW_RES, SHADOW_RES);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -1374,7 +1422,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_sky, "u_fog_color", RS.fog_color);
     uni1(prog_sky, "u_fog_density", RS.fog_density);
     // clouds
-    unii(prog_sky, "u_clouds", RS.clouds_on ? 1 : 0);
+    unii(prog_sky, "u_clouds", clouds_ok ? 1 : 0);
     int steps = RS.cloud_quality == 0 ? 24 : (RS.cloud_quality == 2 ? 72 : 44);
     if (cinematic) steps = (int)(steps * 1.5f);
     unii(prog_sky, "u_cl_steps", steps);
@@ -1383,6 +1431,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     unii(prog_sky, "u_panorama", 0);
     unii(prog_sky, "u_hdr", 0);
     unii(prog_sky, "u_no_sun", 0);
+    uni1(prog_sky, "u_space", vc.camera == 0 ? space_t : 0.f);
     uni1(prog_sky, "u_cl_cov", RS.cloud_coverage);
     uni1(prog_sky, "u_cl_den", RS.cloud_density);
     uni1(prog_sky, "u_cl_alt", RS.cloud_altitude);
@@ -1412,6 +1461,22 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glDepthMask(GL_TRUE);
   }
 
+  // planets: drawn between the sky and the ground, so terrain in front of
+  // them occludes correctly and they are never clipped however far you zoom
+  if (vc.camera == 0) {
+    PlanetFrame pf;
+    pf.mvp = mvp;
+    pf.eye = view_eye;
+    pf.sun = sun;
+    pf.sun_intensity = sun_intensity;
+    pf.exposure = RS.exposure * g_exposure_mult;
+    pf.grade = g_grade;
+    pf.saturation = g_saturation;
+    pf.view_h = h;
+    pf.fovy_rad = g_last_fovy;
+    planet_draw_all(pf);
+  }
+
   // terrain
   if (show_terrain_obj) {
     glUseProgram(prog_terrain);
@@ -1432,8 +1497,8 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni1(prog_terrain, "u_sat", g_saturation);
     uni1(prog_terrain, "u_texel", hm_w > 0 ? 1.f / hm_w : 1.f / 512.f);
     unii(prog_terrain, "u_has_albedo", (has_albedo && RS.use_albedo && textured) ? 1 : 0);
-    unii(prog_terrain, "u_has_normal", (has_normal_map && textured) ? 1 : 0);
-    unii(prog_terrain, "u_has_rough", (has_rough_map && textured) ? 1 : 0);
+    unii(prog_terrain, "u_has_normal", (has_normal_map && textured && heavy_maps) ? 1 : 0);
+    unii(prog_terrain, "u_has_rough", (has_rough_map && textured && heavy_maps) ? 1 : 0);
     unii(prog_terrain, "u_has_disp", (has_disp_map && RS.mat_displacement > 0) ? 1 : 0);
     uni1(prog_terrain, "u_disp_strength", RS.mat_displacement);
     uni1(prog_terrain, "u_frac_amount", RS.fractal_detail);
@@ -1441,7 +1506,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glUniform4f(glGetUniformLocation(prog_terrain, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
     uni1(prog_terrain, "u_planet_radius", RS.planet_radius);
-    unii(prog_terrain, "u_shadows", (RS.shadows && vc.display != 0) ? 1 : 0);
+    unii(prog_terrain, "u_shadows", (shadows_ok && vc.display != 0) ? 1 : 0);
     unii(prog_terrain, "u_quality", cinematic ? 1 : 0);
     uni1(prog_terrain, "u_shadow_soft", RS.shadow_softness);
     uni1(prog_terrain, "u_roughness", RS.mat_roughness);
@@ -1459,7 +1524,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_terrain, "u_absorb", RS.absorption_color);
     uni1(prog_terrain, "u_fog_scatter", RS.fog_sun_scatter);
     unii(prog_terrain, "u_cloud_shadows",
-         (RS.clouds_on && atmosphere && cinematic) ? 1 : 0);
+         (clouds_ok && atmosphere && cinematic) ? 1 : 0);
     uni1(prog_terrain, "u_cl_cov", RS.cloud_coverage);
     uni1(prog_terrain, "u_cl_alt", RS.cloud_altitude);
     uni1(prog_terrain, "u_cl_time", cloud_time);
@@ -1494,6 +1559,32 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
     if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (RS.mat_transparency > 0.001f) glDisable(GL_BLEND);
+  }
+
+  // infinite ground: the tile continues procedurally to the horizon when
+  // root-level InfiniteSurface layers exist (drawn after the tile so its
+  // depth wins in the overlap band; the surround discards inside the tile)
+  if (vc.camera == 0 && show_terrain_obj && infinite_layers_present()) {
+    InfiniteFrame inf;
+    inf.mvp = mvp;
+    inf.eye = view_eye;
+    inf.sun = sun;
+    inf.sun_color = RS.sun_color;
+    inf.sun_intensity = sun_intensity;
+    inf.exposure = RS.exposure * g_exposure_mult;
+    inf.grade = g_grade;
+    inf.saturation = g_saturation;
+    inf.ambient = RS.ambient_intensity;
+    inf.sky_zenith = RS.sky_zenith;
+    inf.sky_horizon = RS.sky_horizon;
+    inf.tex_height = tex_height;
+    inf.tex_albedo = (has_albedo && RS.use_albedo && textured) ? tex_albedo : 0;
+    inf.height_scale = RS.height_scale;
+    inf.planet_radius = RS.planet_radius;
+    inf.fog_type = atmosphere ? RS.fog_type : 0;
+    inf.fog_density = RS.fog_density;
+    inf.fog_color = RS.fog_color;
+    infinite_draw(inf);
   }
 
   // scene meshes
@@ -1711,8 +1802,12 @@ static void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp)
                     -(uy[0] * eye[0] + uy[1] * eye[1] + uy[2] * eye[2]),
                     fz[0] * eye[0] + fz[1] * eye[1] + fz[2] * eye[2], 1};
   float aspect = w / float(h);
+  g_last_fovy = fovy_rad;
   float cam_d = std::sqrt((eye[0]-target[0])*(eye[0]-target[0]) + (eye[1]-target[1])*(eye[1]-target[1]) + (eye[2]-target[2])*(eye[2]-target[2]));
   float znear = std::clamp(cam_d * 0.002f, 0.00002f, 0.5f);
+  // the far plane follows the zoom so pulling out reveals the whole planetary
+  // neighborhood; planets themselves render as a depth-write-free sky layer,
+  // so they are never clipped by it regardless
   float zfar = std::max(cam_d * 40.f, 60.f);
   float f = 1.f / std::tan(fovy_rad * 0.5f);
   float proj[16] = {f / aspect, 0, 0, 0, 0, f, 0, 0,
@@ -1904,6 +1999,17 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
   float best_t = 1e30f;
   float sun[3];
   compute_sun_dir(RS, sun);
+
+  // planets first: they are behind everything else, so any closer hit below
+  // simply replaces this one
+  {
+    float pt;
+    int p = planet_pick(pn, rd, pt);
+    if (p >= 0) {
+      best_idx = p;
+      best_t = pt;
+    }
+  }
 
   for (size_t i = 0; i < sc.objects.size(); ++i) {
     const SceneObject &o = sc.objects[i];
@@ -2108,6 +2214,7 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     unii(prog_sky, "u_panorama", 1);
     unii(prog_sky, "u_hdr", 1);
     unii(prog_sky, "u_no_sun", 1); // the sun is emitted separately
+    uni1(prog_sky, "u_space", 0.f); // panoramas are always shot from the ground
     glBindVertexArray(vao_quad);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     std::vector<float> px((size_t)w * h * 4);
@@ -2195,6 +2302,11 @@ static bool mat_inverse(float *inv_out, const float *m) {
 }
 
 } // namespace studio
+
+
+
+
+
 
 
 

@@ -64,6 +64,31 @@ each one was a bug we already paid for. Do not regress them.
    model the constraints (for example the exposure triangle) rather than
    clamping away a physically correct result.
 
+## Planets and infinite terrains
+
+1. **Planets are parameters, never data.** A planet is a `PlanetData` block
+   plus its `InfiniteSurface` layers; the surface is generated on the GPU
+   from those numbers each frame. Never cache a planet heightmap, texture or
+   mesh — that is what makes an unlimited number of them possible. Three
+   shared sphere LODs and one shared surround grid are the whole footprint.
+2. **The relief function is mirrored, not duplicated in spirit.**
+   `engine/gpx/planet_math.hpp` (CPU) and `PL_FN` in
+   `studio/planet_renderer.cpp` (GLSL) must stay in agreement — the CPU copy
+   is what tests and picking use. It is evaluated in **3D** on the sphere
+   direction; a 2D parameterization pinches at the poles.
+3. **LOD must be continuous.** Detail is driven by `octf`, a *float* octave
+   count from projected pixel size, and the top octave fades in with a
+   `clamp(octf - i, 0, 1)` weight. Never step the octave count with an int —
+   that pops. Mesh LOD swaps use overlapping thresholds (hysteresis) for the
+   same reason.
+4. **Progressive quality is by projected size, not distance alone.** Skip
+   sub-pixel objects outright; shed shadow maps, volumetric clouds and heavy
+   material maps once the camera leaves the ground (`near_ground`, also
+   hysteretic).
+5. Planets draw between the sky and the terrain with depth writes **off**
+   and a far-plane depth clamp in the vertex shader, so they are never
+   clipped however far the camera zooms out.
+
 ## Undo
 
 1. **Every mutation is preceded by `undo_push(a, "what changed")`.** A change a

@@ -20,6 +20,8 @@ static const char *type_icon(SceneObject::Type t) {
     case SceneObject::Atmosphere: return "[A]";
     case SceneObject::Camera: return "[C]";
     case SceneObject::Group: return "[+]";
+    case SceneObject::Planet: return "[O]";
+    case SceneObject::InfiniteSurface: return "[~]";
     default: return "[M]";
   }
 }
@@ -130,10 +132,20 @@ void draw_panel_scene(App &a) {
         scene_active_camera() = i;
         scene_last_used_camera() = i;
       }
+      if (o.type == SceneObject::Planet &&
+          ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        // fly the free camera out to the planet
+        scene_active_camera() = -1;
+        renderer_camera_look_at(o.pos, o.planet.radius * 3.5f);
+        a.status = "flying to " + o.name;
+      }
     }
     if (active_cam) ImGui::PopStyleColor();
     if (ImGui::IsItemHovered() && o.type == SceneObject::Camera)
       ImGui::SetTooltip("%s\ndouble-click to look through this camera",
+                        o.name.c_str());
+    if (ImGui::IsItemHovered() && o.type == SceneObject::Planet)
+      ImGui::SetTooltip("%s\ndouble-click to fly the camera to this planet",
                         o.name.c_str());
     ImGui::SameLine();
     ImGui::SetNextItemWidth(64);
@@ -181,6 +193,39 @@ void draw_panel_scene(App &a) {
     a.scene_selection_serial++;
     a.status = "added " + sc.objects[idx].name;
   }
+  if (ImGui::Button("+ add planet", ImVec2(-1, 0))) {
+    undo_push(a, "Add planet");
+    int idx = scene_add_planet();
+    sc.selected = idx;
+    a.scene_selection_serial++;
+    a.status = "added " + sc.objects[idx].name +
+               " - double-click it to fly there";
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("A whole procedural world, generated on the GPU from\n"
+                      "its parameters - planets cost no memory, add as many\n"
+                      "as you like. Zoom out to see them all; double-click\n"
+                      "one in this list to fly to it.");
+  if (ImGui::Button("+ add infinite terrain", ImVec2(-1, 0))) {
+    undo_push(a, "Add infinite terrain");
+    // to the selected planet, otherwise extending the home ground plane
+    int parent = -1;
+    if (sc.selected >= 0 && sc.selected < (int)sc.objects.size()) {
+      if (sc.objects[sc.selected].type == SceneObject::Planet)
+        parent = sc.selected;
+      else if (sc.objects[sc.selected].type == SceneObject::InfiniteSurface)
+        parent = sc.objects[sc.selected].parent;
+    }
+    int idx = scene_add_infinite_surface(parent);
+    sc.selected = idx;
+    a.scene_selection_serial++;
+    a.status = "added " + sc.objects[idx].name;
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("An endless procedural terrain layer. Added to the\n"
+                      "selected planet it shapes that planet's surface; at\n"
+                      "the root it extends the home terrain past the tile's\n"
+                      "edges to the horizon. Layers stack - add several.");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("New cameras inherit the lens, exposure, film and\n"
                       "render settings of the last camera you used.");

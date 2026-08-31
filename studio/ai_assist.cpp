@@ -74,6 +74,17 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
       s += R"(- {"op":"place_object","name":"Rock","position":[x,y,z],"scale":0.1,
    "rotation_deg":30}
 - {"op":"select","name":"Terrain"}
+- {"op":"add_planet","name":"Mars","radius":3.5,"relief":0.03,"seed":42,
+   "position":[x,y,z],"sea_level":0,"snow_line":0.9,"atmosphere":0.3,
+   "rock_low":[0.45,0.25,0.15],"rock_high":[0.6,0.4,0.3],
+   "atmo_color":[0.9,0.6,0.4]}
+   (planets are procedural and free: any number is fine. sea_level 0 = dry
+    world; the home terrain tile is at the origin, keep planets 8+ units away)
+- {"op":"set_planet","name":"Mars", ...same fields...}
+- {"op":"add_infinite_terrain","planet":"Mars","style":"mountains"|"hills"|"dunes",
+   "scale":5,"amplitude":1.0,"coverage":0.5,"seed":7}
+   (omit "planet" to extend the home ground plane to the horizon instead;
+    layers stack, so add several with different styles and coverages)
 The world is a unit tile: terrain spans x 0..1, z 0..1.)";
       break;
     default:
@@ -364,6 +375,72 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         ++applied;
         break;
       }
+    } else if (op == "add_planet") {
+      int idx = scene_add_planet(act.value("name", std::string()));
+      SceneObject &o = sc.objects[idx];
+      PlanetData &P = o.planet;
+      read_vec3(act, "position", o.pos);
+      if (act.contains("radius")) P.radius = act["radius"].get<float>();
+      if (act.contains("relief")) P.relief = act["relief"].get<float>();
+      if (act.contains("seed")) P.seed = act["seed"].get<uint32_t>();
+      if (act.contains("sea_level")) P.sea_level = act["sea_level"].get<float>();
+      if (act.contains("snow_line")) P.snow_line = act["snow_line"].get<float>();
+      if (act.contains("atmosphere")) P.atmo_density = act["atmosphere"].get<float>();
+      read_vec3(act, "water_color", P.water_color);
+      read_vec3(act, "rock_low", P.rock_low);
+      read_vec3(act, "rock_high", P.rock_high);
+      read_vec3(act, "atmo_color", P.atmo_color);
+      sc.selected = idx;
+      a.scene_selection_serial++;
+      ++applied;
+    } else if (op == "set_planet") {
+      std::string want = act.value("name", std::string());
+      for (auto &o : sc.objects) {
+        if (o.type != SceneObject::Planet) continue;
+        if (!want.empty() && o.name != want) continue;
+        PlanetData &P = o.planet;
+        read_vec3(act, "position", o.pos);
+        if (act.contains("radius")) P.radius = act["radius"].get<float>();
+        if (act.contains("relief")) P.relief = act["relief"].get<float>();
+        if (act.contains("seed")) P.seed = act["seed"].get<uint32_t>();
+        if (act.contains("sea_level")) P.sea_level = act["sea_level"].get<float>();
+        if (act.contains("snow_line")) P.snow_line = act["snow_line"].get<float>();
+        if (act.contains("atmosphere")) P.atmo_density = act["atmosphere"].get<float>();
+        read_vec3(act, "water_color", P.water_color);
+        read_vec3(act, "rock_low", P.rock_low);
+        read_vec3(act, "rock_high", P.rock_high);
+        read_vec3(act, "atmo_color", P.atmo_color);
+        ++applied;
+        if (!want.empty()) break;
+      }
+      if (!applied) err = "no planet named '" + want + "'";
+    } else if (op == "add_infinite_terrain") {
+      // "planet":"name" attaches to that planet; omitted = home ground plane
+      int parent = -1;
+      std::string pn = act.value("planet", std::string());
+      if (!pn.empty()) {
+        for (int i = 0; i < (int)sc.objects.size(); ++i)
+          if (sc.objects[i].type == SceneObject::Planet &&
+              sc.objects[i].name == pn)
+            parent = i;
+        if (parent < 0) {
+          err = "no planet named '" + pn + "'";
+          continue;
+        }
+      }
+      int idx = scene_add_infinite_surface(parent, act.value("name", std::string()));
+      gpx::planet::Layer &L = sc.objects[idx].surf.layer;
+      std::string style = act.value("style", std::string());
+      if (style == "hills") L.type = 0;
+      else if (style == "mountains" || style == "ridged") L.type = 1;
+      else if (style == "dunes" || style == "billow") L.type = 2;
+      if (act.contains("scale")) L.frequency = act["scale"].get<float>();
+      if (act.contains("amplitude")) L.amplitude = act["amplitude"].get<float>();
+      if (act.contains("coverage")) L.coverage = act["coverage"].get<float>();
+      if (act.contains("seed")) L.seed = act["seed"].get<uint32_t>();
+      sc.selected = idx;
+      a.scene_selection_serial++;
+      ++applied;
     } else if (op == "graph") {
       if (act.contains("spec")) {
         std::string spec = act["spec"].dump();

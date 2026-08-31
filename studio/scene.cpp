@@ -57,6 +57,70 @@ std::vector<int> scene_camera_indices() {
   return out;
 }
 
+// ---- planets & infinite surfaces ------------------------------------------
+std::vector<int> scene_planet_indices() {
+  SceneState &s = scene();
+  std::vector<int> out;
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (s.objects[i].type == SceneObject::Planet) out.push_back(i);
+  return out;
+}
+
+int scene_add_planet(const std::string &name) {
+  SceneState &s = scene();
+  SceneObject o;
+  o.type = SceneObject::Planet;
+  int count = (int)scene_planet_indices().size();
+  o.name = name.empty() ? "Planet " + std::to_string(count + 1) : name;
+  // spread new planets on a loose spiral in the sky so they never overlap;
+  // the user repositions them from the properties
+  float ang = 0.9f + count * 2.4f; // golden-ish steps
+  float dist = 14.f + count * 9.f;
+  o.planet.radius = 2.f + (count % 4) * 1.3f;
+  o.planet.seed = 1u + (uint32_t)count * 7919u;
+  o.pos[0] = 0.5f + std::cos(ang) * dist;
+  o.pos[1] = 3.5f + (count % 3) * 3.f;
+  o.pos[2] = 0.5f + std::sin(ang) * dist;
+  s.objects.push_back(o);
+  int idx = (int)s.objects.size() - 1;
+  // every planet starts with one ridged infinite terrain so it has relief
+  scene_add_infinite_surface(idx);
+  return idx;
+}
+
+int scene_add_infinite_surface(int parent, const std::string &name) {
+  SceneState &s = scene();
+  SceneObject o;
+  o.type = SceneObject::InfiniteSurface;
+  o.parent = (parent >= 0 && parent < (int)s.objects.size()) ? parent : -1;
+  int siblings = (int)scene_surface_layers(o.parent).size();
+  o.name = name.empty()
+               ? (o.parent < 0 ? "Infinite terrain " : "Surface layer ") +
+                     std::to_string(siblings + 1)
+               : name;
+  o.surf.layer.seed = 1u + (uint32_t)(s.objects.size() * 31 + siblings * 7);
+  o.surf.layer.type = siblings == 0 ? 1 : (siblings % 3); // vary the stack
+  o.surf.layer.frequency = 3.f + siblings * 2.5f;
+  o.surf.layer.amplitude = siblings == 0 ? 1.f : 0.5f;
+  o.surf.layer.coverage = siblings == 0 ? 1.f : 0.6f;
+  s.objects.push_back(o);
+  return (int)s.objects.size() - 1;
+}
+
+std::vector<int> scene_surface_layers(int planet_idx) {
+  SceneState &s = scene();
+  std::vector<int> out;
+  for (int i = 0; i < (int)s.objects.size(); ++i) {
+    const SceneObject &o = s.objects[i];
+    if (o.type != SceneObject::InfiniteSurface) continue;
+    bool root = o.parent < 0 || o.parent >= (int)s.objects.size() ||
+                s.objects[o.parent].type != SceneObject::Planet;
+    if ((planet_idx < 0 && root) || (planet_idx >= 0 && o.parent == planet_idx))
+      if (s.object_visible(o)) out.push_back(i);
+  }
+  return out;
+}
+
 int scene_add_camera(const std::string &name) {
   SceneState &s = scene();
   int group = scene_cameras_group();

@@ -109,6 +109,7 @@ set(STUDIO_SOURCES
     studio/undo.cpp
     studio/sculpt.cpp
     studio/renderer.cpp
+    studio/planet_renderer.cpp
     studio/preview.cpp
     studio/project_io.cpp
     studio/panel_environment.cpp
@@ -163,6 +164,7 @@ target_link_libraries(engine_tests PRIVATE
 add_executable(undo_tests
     tests/cpp/test_undo.cpp
     studio/undo.cpp
+    studio/project_io.cpp
     studio/scene.cpp)
 target_include_directories(undo_tests PRIVATE studio)
 target_link_libraries(undo_tests PRIVATE
@@ -172,6 +174,7 @@ enable_testing()
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
+
 
 
 

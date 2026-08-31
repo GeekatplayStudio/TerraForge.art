@@ -41,6 +41,29 @@ real-time OpenGL viewport.
   Mountain, Ridged peaks, Eroded mountain, Canyon, Dunes, Iceberg, Lunar —
   with a fresh seed every click.
 
+### Planets and infinite terrains
+- **Unlimited planets.** Each is a pure parameter block — radius, relief,
+  seed, sea level, snow line, rock and water colors, atmosphere — generated
+  on the GPU every frame. No textures, no meshes, no caches, so a hundred
+  planets cost the same memory as one. Add them from the Outliner or by
+  asking the AI.
+- **Infinite procedural terrains.** Stack any number of endless terrain
+  layers (rolling hills / ridged mountains / billow dunes, each with its own
+  scale, amplitude, coverage and seed). Parented to a planet they shape its
+  surface; at the root they extend the home terrain tile past its edges to
+  the horizon, blending seamlessly out of the tile's own heightmap.
+- **Continuous zoom.** Pull back to see a whole planetary neighbourhood —
+  the sky thins to a starfield as you leave the atmosphere — then fly to any
+  world (double-click it in the Outliner) and keep zooming until individual
+  ridges resolve. Detail is a *continuous* function of on-screen size, so
+  nothing pops as you travel.
+- **Progressive quality.** Everything scales with how much a thing is
+  actually worth: sub-pixel planets are skipped entirely, sphere meshes swap
+  through three LODs with hysteresis so they never flicker at a threshold,
+  and shadow maps, volumetric clouds and 4K material maps switch off once
+  the camera leaves the ground. Surface shading always evaluates two octaves
+  finer than the geometry, so detail below mesh resolution still shows.
+
 ### Materials
 - **PBR terrain shading:** roughness, metallic, specular, sky reflections,
   translucency, transparency and true displacement mapping.

@@ -74,6 +74,25 @@ static void publish_state(App &a) {
   }
   j["objects"] = objs;
   j["selected"] = sc.selected;
+  json planets = json::array();
+  for (int i = 0; i < (int)sc.objects.size(); ++i) {
+    const SceneObject &o = sc.objects[i];
+    if (o.type != SceneObject::Planet) continue;
+    int layer_count = 0;
+    for (const auto &c : sc.objects)
+      if (c.type == SceneObject::InfiniteSurface && c.parent == i) ++layer_count;
+    planets.push_back({{"index", i},
+                       {"name", o.name},
+                       {"position", {o.pos[0], o.pos[1], o.pos[2]}},
+                       {"radius", o.planet.radius},
+                       {"relief", o.planet.relief},
+                       {"seed", o.planet.seed},
+                       {"sea_level", o.planet.sea_level},
+                       {"atmosphere", o.planet.atmo_density},
+                       {"surface_layers", layer_count},
+                       {"visible", sc.object_visible(o)}});
+  }
+  j["planets"] = planets;
   j["sun"] = {{"azimuth_deg", rs.sun_azimuth},
               {"altitude_deg", rs.sun_altitude},
               {"intensity", rs.sun_intensity},

@@ -1,9 +1,36 @@
 // Geekatplay TerraForge — scene objects & layers
 #pragma once
+#include "gpx/planet_math.hpp"
 #include <string>
 #include <vector>
 
 namespace studio {
+
+// A whole procedural planet. Purely parametric — the surface is generated on
+// the GPU from these numbers, so any count of planets costs no memory or
+// textures. Positions and radii are in world units (1 unit = the home
+// terrain tile = terrain_size_m meters).
+struct PlanetData {
+  float radius = 3.f;
+  float relief = 0.02f;      // max relief as a fraction of the radius
+  uint32_t seed = 1;
+  float sea_level = 0.35f;   // 0..1 within the relief range; <=0 = no ocean
+  float snow_line = 0.75f;   // altitude where snow begins; >=1 = none
+  float rock_low[3] = {0.38f, 0.34f, 0.30f};
+  float rock_high[3] = {0.55f, 0.51f, 0.47f};
+  float water_color[3] = {0.06f, 0.16f, 0.28f};
+  float atmo_color[3] = {0.45f, 0.62f, 0.90f};
+  float atmo_density = 0.6f; // 0 = airless rim
+  float spin_deg = 0.f;      // static rotation about Y, for variety
+};
+
+// One infinite procedural terrain layer. Parented to a Planet it shapes that
+// planet's surface; at the root it extends the home ground plane to the
+// horizon. Any number can be stacked — they sum.
+struct InfiniteSurfaceData {
+  gpx::planet::Layer layer;   // seed, type, frequency, amplitude, coverage
+  float height_scale = 1.f;   // extra multiplier for ground-plane layers
+};
 
 // per-camera offline render assignment
 struct RenderAssign {
@@ -27,8 +54,11 @@ struct CameraData {
 };
 
 struct SceneObject {
-  enum Type { Terrain, Water, Sun, Atmosphere, Mesh, Group, Camera };
+  enum Type { Terrain, Water, Sun, Atmosphere, Mesh, Group, Camera, Planet,
+              InfiniteSurface };
   Type type = Mesh;
+  PlanetData planet;          // valid when type == Planet
+  InfiniteSurfaceData surf;   // valid when type == InfiniteSurface
   std::string name;
   int layer = 0;
   int parent = -1;       // index into objects, -1 = root
@@ -71,6 +101,17 @@ SceneState &scene();
 void scene_init_builtins();
 // load OBJ into a new scene object; returns index or -1
 int scene_import_obj(const std::string &path, std::string &err);
+
+// ---- planets & infinite surfaces ----
+// creates a planet at a free spot in space; returns its index
+int scene_add_planet(const std::string &name = "");
+// creates an infinite terrain layer; parent = planet object index, or -1 for
+// the home ground plane. Returns its index.
+int scene_add_infinite_surface(int parent = -1, const std::string &name = "");
+std::vector<int> scene_planet_indices();
+// the infinite layers that apply to `planet_idx` (-1 = home ground plane),
+// visible ones only, outliner order
+std::vector<int> scene_surface_layers(int planet_idx);
 
 // ---- cameras ----
 // creates a camera under the "Cameras" group, inheriting every property

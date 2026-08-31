@@ -330,6 +330,8 @@ static void object_properties(App &a) {
                    : o.type == SceneObject::Atmosphere ? "Environment"
                    : o.type == SceneObject::Camera ? "Camera"
                    : o.type == SceneObject::Group  ? "Group"
+                   : o.type == SceneObject::Planet ? "Planet"
+                   : o.type == SceneObject::InfiniteSurface ? "Infinite terrain"
                                                    : "Mesh object";
   ImGui::TextDisabled("Â· %s", kind);
   studio::Checkbox("Visible", &o.visible);
@@ -428,6 +430,79 @@ static void object_properties(App &a) {
       ImGui::TextDisabled("%d triangles", o.vert_count / 3);
       ImGui::TextDisabled("%s", o.path.c_str());
       break;
+    case SceneObject::Planet: {
+      PlanetData &P = o.planet;
+      RenderSettings &rsn = render_settings();
+      float km = rsn.terrain_size_m / 1000.f; // world unit -> km
+      ImGui::SeparatorText("Body");
+      ImGui::DragFloat("Radius", &P.radius, 0.05f, 0.05f, 500.f, "%.2f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("= %.0f km", P.radius * km);
+      ImGui::DragFloat("Relief", &P.relief, 0.001f, 0.f, 0.15f, "%.3f");
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Maximum mountain height as a fraction of the\n"
+                          "radius. Earth is about 0.0014; go higher for\n"
+                          "dramatic fantasy worlds.");
+      int seed = (int)P.seed;
+      if (ImGui::DragInt("Seed", &seed, 1, 1, 1 << 24)) P.seed = (uint32_t)seed;
+      ImGui::SliderFloat("Rotation", &P.spin_deg, -180.f, 180.f, "%.0f\xC2\xB0");
+      ImGui::SeparatorText("Position (world units)");
+      ImGui::DragFloat("X", &o.pos[0], 0.2f, -100000.f, 100000.f);
+      ImGui::DragFloat("Y", &o.pos[1], 0.2f, -100000.f, 100000.f);
+      ImGui::DragFloat("Z", &o.pos[2], 0.2f, -100000.f, 100000.f);
+      ImGui::SeparatorText("Ocean & climate");
+      ImGui::SliderFloat("Sea level", &P.sea_level, 0.f, 1.f);
+      ImGui::SliderFloat("Snow line", &P.snow_line, 0.f, 1.2f);
+      ImGui::ColorEdit3("Water", P.water_color);
+      ImGui::ColorEdit3("Rock (low)", P.rock_low);
+      ImGui::ColorEdit3("Rock (high)", P.rock_high);
+      ImGui::SeparatorText("Atmosphere");
+      ImGui::SliderFloat("Density", &P.atmo_density, 0.f, 2.f);
+      ImGui::ColorEdit3("Tint", P.atmo_color);
+      ImGui::SeparatorText("Surface layers");
+      int layers = (int)scene_surface_layers(sc.selected).size();
+      ImGui::TextDisabled("%d infinite terrain layer%s shape this planet.\n"
+                          "Add more from the Outliner; each has its own\n"
+                          "type, scale, coverage and seed.",
+                          layers, layers == 1 ? "" : "s");
+      ImGui::TextDisabled("The surface is generated on the GPU from these\n"
+                          "numbers alone - a planet costs no memory, so\n"
+                          "you can add as many as you like.");
+    } break;
+    case SceneObject::InfiniteSurface: {
+      gpx::planet::Layer &L = o.surf.layer;
+      bool on_planet = o.parent >= 0 && o.parent < (int)sc.objects.size() &&
+                       sc.objects[o.parent].type == SceneObject::Planet;
+      ImGui::TextDisabled(on_planet
+                              ? "Shapes the surface of %s."
+                              : "Extends the home terrain to the horizon.%s",
+                          on_planet ? sc.objects[o.parent].name.c_str() : "");
+      ImGui::SeparatorText("Relief");
+      int type = L.type;
+      if (ImGui::Combo("Style", &type,
+                       "Rolling hills\0Ridged mountains\0Billow dunes\0"))
+        L.type = type;
+      ImGui::DragFloat("Feature scale", &L.frequency, 0.1f, 0.2f, 200.f, "%.1f");
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("How many features fit across the world.\n"
+                          "Low = continents, high = hills.");
+      ImGui::SliderFloat("Amplitude", &L.amplitude, 0.f, 2.f);
+      int seed = (int)L.seed;
+      if (ImGui::DragInt("Seed", &seed, 1, 1, 1 << 24)) L.seed = (uint32_t)seed;
+      ImGui::SeparatorText("Coverage");
+      ImGui::SliderFloat("Coverage", &L.coverage, 0.f, 1.f);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Fraction of the world this layer occupies.\n"
+                          "1 covers everything; lower values confine it to\n"
+                          "procedurally chosen regions (continents, ranges).");
+      ImGui::DragFloat("Region size", &L.mask_scale, 0.05f, 0.2f, 12.f, "%.2f");
+      if (!on_planet) {
+        ImGui::SeparatorText("Ground plane");
+        ImGui::SliderFloat("Height scale", &o.surf.height_scale, 0.f, 3.f);
+        ImGui::TextDisabled("Blends seamlessly out of the terrain tile's\n"
+                            "edges and continues to the horizon.");
+      }
+    } break;
   }
 }
 

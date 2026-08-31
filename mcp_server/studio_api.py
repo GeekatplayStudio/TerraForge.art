@@ -112,6 +112,21 @@ class Studio:
         acts.append({"op": "render"})
         return self.send(*acts)
 
+    # planets & infinite terrains
+    def add_planet(self, **kw: Any) -> Dict[str, Any]:
+        return self.send({"op": "add_planet", **kw})
+
+    def set_planet(self, name: str, **kw: Any) -> Dict[str, Any]:
+        return self.send({"op": "set_planet", "name": name, **kw})
+
+    def add_infinite_terrain(self, **kw: Any) -> Dict[str, Any]:
+        """kw: planet (name; omit for the home ground plane), style
+        ('mountains'|'hills'|'dunes'), scale, amplitude, coverage, seed."""
+        return self.send({"op": "add_infinite_terrain", **kw})
+
+    def planets(self) -> List[Dict[str, Any]]:
+        return self.state().get("planets", [])
+
     def undo(self, steps: int = 1) -> Dict[str, Any]:
         """Revert the last change, including one made through this API."""
         return self.send({"op": "undo", "steps": steps})
@@ -174,6 +189,30 @@ MCP_TOOLS = {
         "params": {"engine": "str", "width": "int", "height": "int",
                    "samples": "int", "output": "str"},
     },
+    "studio_add_planet": {
+        "description": "Create a procedural planet (any number is fine - they "
+                       "are generated on the GPU and cost no memory). Fields: "
+                       "name, radius, relief, seed, position [x,y,z], "
+                       "sea_level, snow_line, atmosphere, rock_low, "
+                       "rock_high, water_color, atmo_color.",
+        "params": {"name": "str", "radius": "float", "relief": "float",
+                   "seed": "int", "position": "[x,y,z]", "sea_level": "float",
+                   "snow_line": "float", "atmosphere": "float"},
+    },
+    "studio_set_planet": {
+        "description": "Modify an existing planet by name (same fields as "
+                       "studio_add_planet).",
+        "params": {"name": "str"},
+    },
+    "studio_add_infinite_terrain": {
+        "description": "Add an endless procedural terrain layer. With "
+                       "'planet' it shapes that planet's surface; without it "
+                       "the home ground plane extends to the horizon. Layers "
+                       "stack. Fields: planet, style (mountains|hills|dunes), "
+                       "scale, amplitude, coverage, seed.",
+        "params": {"planet": "str", "style": "str", "scale": "float",
+                   "amplitude": "float", "coverage": "float", "seed": "int"},
+    },
     "studio_undo": {
         "description": "Revert the last change. Every edit is one step, "
                        "including changes made through this API, so a change "
@@ -213,6 +252,12 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.graph(params.get("spec", {}))}
     if tool == "studio_render":
         return {"status": "success", "sent": s.render(**params)}
+    if tool == "studio_add_planet":
+        return {"status": "success", "sent": s.add_planet(**params)}
+    if tool == "studio_set_planet":
+        return {"status": "success", "sent": s.set_planet(**params)}
+    if tool == "studio_add_infinite_terrain":
+        return {"status": "success", "sent": s.add_infinite_terrain(**params)}
     if tool == "studio_undo":
         return {"status": "success", "sent": s.undo(int(params.get("steps", 1)))}
     if tool == "studio_redo":
