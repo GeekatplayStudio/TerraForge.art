@@ -2140,6 +2140,100 @@ static void test_animation_hooks() {
   }
 }
 
+// ------------------------------------------------------ memory ceiling
+// The graph holds one buffer per output port for its whole life. Under a
+// budget it releases the ones nothing further in the pass will read, which
+// bounds peak memory. The property that matters is that this changes *when*
+// things are computed and never *what* they compute.
+static void test_buffer_budget() {
+  std::printf("[buffer budget]\n");
+
+  // A chain long enough that peak memory is much less than total memory.
+  auto build = [](gpx::Graph &g, int links_n) {
+    g.resolution = 128;
+    gpx::Node *prev = g.add_node("Noise");
+    prev->attrs.find("seed")->seed = 4242;
+    for (int i = 0; i < links_n; ++i) {
+      gpx::Node *f = g.add_node("Smooth");
+      g.add_link(prev->id, "output", f->id, "input");
+      prev = f;
+    }
+    return prev;
+  };
+
+  gpx::Graph plain;
+  gpx::Node *tail_plain = build(plain, 8);
+  CHECK(plain.evaluate(), "unbudgeted graph did not evaluate");
+  const gpx::Heightmap *ref = out_of(tail_plain);
+  CHECK(ref && !ref->empty(), "unbudgeted graph produced nothing");
+  std::vector<float> expect = ref->v;
+  size_t full_bytes = plain.buffer_bytes();
+  CHECK(full_bytes > 0, "buffer_bytes reports nothing for a live graph");
+
+  gpx::Graph tight;
+  gpx::Node *tail_tight = build(tight, 8);
+  // Room for a handful of buffers, not for all nine.
+  tight.buffer_budget = full_bytes / 3;
+  CHECK(tight.evaluate(), "budgeted graph did not evaluate");
+
+  const gpx::Heightmap *got = out_of(tail_tight);
+  CHECK(got && got->v.size() == expect.size(),
+        "budgeted graph produced a different sized output");
+  if (got && got->v.size() == expect.size()) {
+    bool same = true;
+    for (size_t i = 0; i < expect.size(); ++i)
+      if (expect[i] != got[0].v[i]) { same = false; break; }
+    CHECK(same, "a memory budget changed the result — it must only change "
+                "when buffers live, never what they contain");
+  }
+
+  // It has to have actually done something, or the equality above is vacuous.
+  CHECK(tight.released_bytes > 0, "the budget released nothing");
+  CHECK(tight.buffer_bytes() < full_bytes,
+        "the budgeted graph holds as much as the unbudgeted one");
+
+  // The terminal node is nobody's input, so its result must survive: that is
+  // the answer the caller asked for.
+  CHECK(out_of(tail_tight) != nullptr, "the graph's own output was released");
+
+  // Re-evaluating must rebuild whatever was released, and land in the same
+  // place. This is the guarantee that makes releasing safe at all.
+  CHECK(tight.evaluate(), "re-evaluation after release failed");
+  const gpx::Heightmap *again = out_of(tail_tight);
+  CHECK(again && again->v.size() == expect.size(), "rebuild produced nothing");
+  if (again && again->v.size() == expect.size()) {
+    bool same = true;
+    for (size_t i = 0; i < expect.size(); ++i)
+      if (expect[i] != again->v[i]) { same = false; break; }
+    CHECK(same, "rebuilding a released buffer changed the result");
+  }
+
+  // A protected node keeps its buffer however tight the budget is.
+  gpx::Graph guarded;
+  gpx::Node *tail_guard = build(guarded, 8);
+  gpx::Node *first = guarded.nodes.front().get();
+  guarded.buffer_budget = 1; // release everything releasable
+  guarded.protected_nodes = {first->id};
+  CHECK(guarded.evaluate(), "protected graph did not evaluate");
+  gpx::Port *fp = first->port("output", gpx::PortDir::Out);
+  CHECK(fp && fp->hmap && !fp->hmap->empty(),
+        "a protected node's buffer was released");
+  CHECK(out_of(tail_guard) != nullptr, "the output was released under a "
+                                       "budget of one byte");
+
+  // Zero means unlimited, and must be bit-identical to having no budget code
+  // at all.
+  gpx::Graph off;
+  gpx::Node *tail_off = build(off, 8);
+  off.buffer_budget = 0;
+  CHECK(off.evaluate(), "unlimited graph did not evaluate");
+  CHECK(off.released_bytes == 0, "a zero budget released something");
+  CHECK(off.buffer_bytes() == full_bytes,
+        "a zero budget did not behave like no budget");
+  const gpx::Heightmap *unl = out_of(tail_off);
+  CHECK(unl && unl->v == expect, "a zero budget changed the result");
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2172,6 +2266,7 @@ int main() {
   test_metanode_published();
   test_universal_blend();
   test_animation_hooks();
+  test_buffer_budget();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;

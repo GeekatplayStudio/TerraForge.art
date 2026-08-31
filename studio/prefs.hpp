@@ -12,6 +12,15 @@ struct Prefs {
   std::string vision_model = "llava";
   int interactive_res = 256;   // eval resolution while dragging sliders
   int view_count = 1;          // viewport windows (1..6), remembered
+  // Ceiling on the cached node output buffers, in megabytes. Every output port
+  // holds its buffer for the graph's lifetime, so a deep graph at high
+  // resolution can hold gigabytes nothing will read again: at 4096 one
+  // heightmap output is 64 MB and one RGBA texture output is 256 MB.
+  //
+  // The default is high enough that ordinary work never reaches it and
+  // behaviour is unchanged; it is a floor under the worst case, not a
+  // day-to-day constraint. 0 means no ceiling.
+  int graph_memory_mb = 1024;
 };
 
 Prefs &prefs();

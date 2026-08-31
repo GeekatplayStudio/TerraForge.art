@@ -95,7 +95,10 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "surface itself (height_scale, planet_radius, "
                        "fractal_detail, fractal_scale, field_displacement) "
                        "and shading (wireframe, shadows, shadow_softness, "
-                       "exposure, use_albedo, layout, engine). Send only the "
+                       "exposure, use_albedo, layout, engine). Also "
+                       "graph_memory_mb, the ceiling on cached node output "
+                       "buffers (0 lifts it) — read memory.buffers_mb and "
+                       "memory.released_mb back from the state. Send only the "
                        "settings you want to change.",
         "params": {"tessellation": "bool", "tess_pixels": "float",
                    "tess_min": "float", "tess_max": "float",
@@ -104,7 +107,8 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                    "fractal_scale": "float", "field_displacement": "float",
                    "wireframe": "bool", "shadows": "bool",
                    "shadow_softness": "float", "exposure": "float",
-                   "use_albedo": "bool", "layout": "int", "engine": "int"},
+                   "use_albedo": "bool", "layout": "int", "engine": "int",
+                   "graph_memory_mb": "int"},
     },
     "studio_evaluate": {
         "description": "Re-evaluate the whole graph. Poll studio_get_graph and "

@@ -81,6 +81,17 @@ static void eval_worker(App &a) {
       if (intended != last_eval_res) a.graph.mark_all_dirty();
       last_eval_res = intended;
       a.graph.resolution = intended;
+      // The memory ceiling. Nothing is released while the graph fits, so the
+      // default is a floor under the worst case rather than a constraint on
+      // ordinary work. What the viewport shows and what the user has selected
+      // are kept whatever the budget says — those are the two buffers someone
+      // is looking at.
+      a.graph.buffer_budget = prefs().graph_memory_mb > 0
+                                  ? (size_t)prefs().graph_memory_mb * 1024u * 1024u
+                                  : 0;
+      a.graph.protected_nodes.clear();
+      if (a.view_node) a.graph.protected_nodes.push_back(a.view_node);
+      if (a.selected_node) a.graph.protected_nodes.push_back(a.selected_node);
       a.graph.evaluate();
       a.graph.resolution = full;
       a.graph.on_progress = nullptr;

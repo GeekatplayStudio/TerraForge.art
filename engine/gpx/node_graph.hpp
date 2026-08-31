@@ -174,8 +174,55 @@ public:
   // take over another graph's nodes and links (replaces current content)
   void adopt(Graph &other);
 
+  // ------------------------------------------------------- memory ceiling
+  // Cached node outputs are by far the graph's largest memory cost. Every
+  // output port holds its buffer for the graph's lifetime, so the total is
+  // one buffer per output port, not one per live value: at 4096 a heightmap
+  // output is 64 MB and an RGBA texture output is 256 MB, and a deep graph
+  // holds gigabytes that nothing will read again.
+  //
+  // They are kept because a partial re-evaluation reads them: change a node
+  // near the end of a chain and everything upstream stays clean and is not
+  // recomputed. Freeing one therefore trades memory for recompute time, which
+  // is the trade a budget exists to make deliberately.
+  //
+  // 0 means unlimited, which is the behaviour that shipped before this.
+  size_t buffer_budget = 0;
+  // Nodes never released whatever the budget says: what the viewport is
+  // showing, and what the user has selected.
+  std::vector<uint64_t> protected_nodes;
+  // Total released since the graph was created. A counter rather than a flag
+  // so "the ceiling never actually did anything" is distinguishable from "the
+  // ceiling is working", which is the difference between a feature and a
+  // claim.
+  size_t released_bytes = 0;
+
+  // What the cached buffers currently hold, in bytes. Counts input ports too
+  // (a MetaNode parks values there), because they are equally resident.
+  size_t buffer_bytes() const;
+
+  // Release cached outputs until the total fits the budget, cheapest to
+  // rebuild first — the graph already records what each node cost, so there
+  // is no reason to throw away an erosion pass before a noise pass holding
+  // the same bytes. Ties break on node id, so eviction is deterministic.
+  //
+  // A released node is marked dirty, and evaluation walks in topological
+  // order, so it is rebuilt before anything reads it. Buffers parked on input
+  // ports are never touched: those are values injected across a MetaNode
+  // boundary and marking a node dirty does not bring them back.
+  //
+  // `protect` names nodes to leave alone whatever the budget says — what the
+  // viewport is showing, and what the user has selected.
+  // Returns the bytes released.
+  size_t evict_buffers(const std::vector<uint64_t> &protect = {});
+
 private:
   uint64_t id_counter_ = 1;
+  // Called from evaluate() when the budget is exceeded: frees outputs whose
+  // last reader in this walk has already been passed.
+  void release_dead_buffers(const std::vector<Node *> &order,
+                            const std::vector<int> &last_use, int step);
+  bool is_protected_node(uint64_t id) const;
 };
 
 } // namespace gpx

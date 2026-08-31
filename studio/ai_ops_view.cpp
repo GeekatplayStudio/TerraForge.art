@@ -11,6 +11,7 @@
 // They also happen to be the settings a performance measurement needs to turn
 // on and off, which is how the omission was noticed.
 #include "app.hpp"
+#include "prefs.hpp"
 #include "render_settings.hpp"
 #include <algorithm>
 #include <json.hpp>
@@ -62,6 +63,16 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_f(act, "shadow_softness", rs.shadow_softness, 0.f, 8.f);
   n += take_f(act, "exposure", rs.exposure, 0.01f, 16.f);
   n += take_b(act, "use_albedo", rs.use_albedo);
+
+  // The graph's memory ceiling, in megabytes. 0 lifts it. Lives here rather
+  // than with the graph ops because it is a machine setting, not a document
+  // one: it never changes what the graph computes, only how much of it is
+  // kept in memory at once.
+  if (act.contains("graph_memory_mb") && act["graph_memory_mb"].is_number()) {
+    prefs().graph_memory_mb =
+        std::clamp(act["graph_memory_mb"].get<int>(), 0, 1024 * 1024);
+    ++n;
+  }
 
   if (act.contains("layout") && act["layout"].is_number())
     rs.viewport_layout = std::clamp(act["layout"].get<int>(), 0, 5), ++n;

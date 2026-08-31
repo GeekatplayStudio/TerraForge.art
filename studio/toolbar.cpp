@@ -276,6 +276,21 @@ static void prefs_dialog() {
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Slider drags recompute at this low resolution for\n"
                         "silky-smooth feedback; full quality on release.");
+    ImGui::SetNextItemWidth(220);
+    ImGui::SliderInt("Graph memory ceiling", &p.graph_memory_mb, 0, 16384,
+                     p.graph_memory_mb ? "%d MB" : "no limit");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Every node keeps its output buffer, so a deep graph\n"
+                        "at high resolution can hold gigabytes nothing will\n"
+                        "read again. Past this, buffers no longer needed in\n"
+                        "the current pass are released and rebuilt on demand.\n"
+                        "Nothing is released while the graph fits. 0 = no cap.");
+    {
+      double held = app().snapshot_bytes / (1024.0 * 1024.0);
+      double freed = app().graph.released_bytes / (1024.0 * 1024.0);
+      ImGui::TextDisabled("graph buffers: %.1f MB held, %.1f MB released so far",
+                          held, freed);
+    }
     ImGui::SeparatorText("AI (local Ollama)");
     char url[256], tm[128], vm[128];
     auto copy_to = [](char *dst, size_t n, const std::string &s) {

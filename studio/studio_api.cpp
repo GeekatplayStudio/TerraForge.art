@@ -5,6 +5,7 @@
 #include "ai_assist.hpp"
 #include "app.hpp"
 #include "gpu_timer.hpp"
+#include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
@@ -110,6 +111,13 @@ static void publish_state(App &a) {
   j["terrain"] = {{"resolution", a.graph.resolution},
                   {"height_scale", rs.height_scale},
                   {"size_m", rs.terrain_size_m}};
+  // What the graph is holding, against what it is allowed to. Published so a
+  // memory claim can be checked rather than asserted: released_bytes staying
+  // at zero is how you tell a ceiling that never engaged from one that is not
+  // wired up.
+  j["memory"] = {{"buffers_mb", a.snapshot_bytes / (1024.0 * 1024.0)},
+                 {"budget_mb", prefs().graph_memory_mb},
+                 {"released_mb", a.graph.released_bytes / (1024.0 * 1024.0)}};
   // How the surface is being drawn, and what that is costing. Published so a
   // performance claim can be checked from a script instead of asserted: the
   // frame time is the renderer's own, and patches_visible is the count the

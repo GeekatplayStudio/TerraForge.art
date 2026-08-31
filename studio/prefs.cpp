@@ -26,6 +26,7 @@ void prefs_load() {
     p.vision_model = j.value("vision_model", p.vision_model);
     p.interactive_res = j.value("interactive_res", p.interactive_res);
     p.view_count = j.value("view_count", p.view_count);
+    p.graph_memory_mb = j.value("graph_memory_mb", p.graph_memory_mb);
   } catch (...) {
   }
 }
@@ -40,6 +41,7 @@ void prefs_save() {
   j["vision_model"] = p.vision_model;
   j["interactive_res"] = p.interactive_res;
   j["view_count"] = p.view_count;
+  j["graph_memory_mb"] = p.graph_memory_mb;
   std::ofstream f(PREFS_FILE);
   f << j.dump(2);
 }
