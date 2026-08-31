@@ -6,6 +6,11 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
+#include "gpx/parallel.hpp"
+#include <cmath>
+#include <atomic>
+#include <memory>
+#include <cstdint>
 #include <random>
 #include <thread>
 
@@ -45,36 +50,81 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
     }
   for (auto &wgt : bw) wgt /= wsum;
 
-  // Deterministic parallel droplets: particles are split into a fixed number
-  // of rounds; within a round each worker accumulates into its own delta
-  // buffer (no shared writes), and the buffers are summed back in a fixed
-  // order. Same seed => bit-identical terrain, every run.
+  // Deterministic parallel droplets.
+  //
+  // "Deterministic" used to mean "on this machine". Particles were dealt out
+  // as chunk = per_round / T, the RNG was seeded from the worker id, and each
+  // worker sampled its own accumulator - so the partition decided which
+  // particles existed, where they started, and what they saw. Measured at 256
+  // with one seed: workers=1,2,3,4,8 gave five different terrains. AGENTS.md
+  // engine rule 1 says "every thread count", and no test could see it because
+  // the suite runs at whatever the machine has.
+  //
+  // Three changes make the result a function of the seed alone:
+  //   - a particle's start comes from a counter hash of (seed, round, global
+  //     particle index), so particle i lands in the same place under any
+  //     partition. This also drops std::uniform_real_distribution, which the
+  //     standard does not specify - libstdc++ and MSVC give different streams
+  //     from the same engine.
+  //   - a particle reads only the shared map, never a worker's accumulator,
+  //     so its path cannot depend on who else that worker happened to run.
+  //   - deltas still land in per-worker buffers and reduce in a fixed order.
+  //
+  // Self-limiting now happens at round granularity rather than continuously
+  // within a worker, so ROUNDS rises to keep the erosion character: particles
+  // in a round cannot see each other, and the per-round clamp below is what
+  // stops several of them filling one sink.
   size_t N = (size_t)w * h;
-  unsigned hw = std::thread::hardware_concurrency();
-  if (!hw) hw = 4;
+  unsigned hw = gpx::worker_count();
   // three buffers per worker (height, erosion, deposition): cap total memory
-  size_t per_worker = N * sizeof(float) * 3;
-  unsigned mem_cap = (unsigned)std::max<size_t>(1, (96u << 20) / std::max<size_t>(per_worker, 1));
-  unsigned T = std::max(1u, std::min(hw, mem_cap));
-  const int ROUNDS = 8;
-  std::vector<std::vector<float>> dmap(T, std::vector<float>(N, 0.f));
-  std::vector<std::vector<float>> dero(T, std::vector<float>(N, 0.f));
-  std::vector<std::vector<float>> ddep(T, std::vector<float>(N, 0.f));
+  unsigned T = std::max(1u, hw);
+  const int ROUNDS = 48;
+  // Fixed point, not float.
+  //
+  // The reduction sums one partial buffer per worker, and float addition is
+  // not associative: (a+b)+c differs from a+(b+c) in the last bits, so the
+  // same particles split eight ways give a different total than split two
+  // ways. Every other cause of core-count dependence was fixed and the hashes
+  // still differed across 1/2/3/4/8 workers because of exactly this.
+  //
+  // Integer addition is associative and commutative, so any partition of the
+  // same deltas reduces to the identical value. 2^40 over a map normalised to
+  // 0..1 gives a resolution of 9.1e-13, six orders below float's 1.2e-7 at
+  // 1.0, and leaves +/-8.4e6 of headroom in int64.
+  const double FP = 1099511627776.0; // 2^40
+  const double FP_INV = 1.0 / FP;
+  // One shared accumulator, not one per worker.
+  //
+  // Per-worker buffers reduced in a fixed order are also partition-independent,
+  // but they cost T times the memory traffic: at 512 with eight workers that
+  // was 50 MB cleared and 50 MB read every round, and at 48 rounds it made the
+  // solver 5.4x slower (109 -> 593 ms). A relaxed atomic fetch_add on int64
+  // needs no reduction pass and one buffer instead of T, and is just as
+  // partition-independent - integer addition is associative *and* commutative,
+  // so the order the atomics happen to land in cannot change the total.
+  //
+  // Relaxed is the right ordering: the join after each round is the
+  // synchronisation edge, and nothing reads these until then.
+  auto make_acc = [N] {
+    auto a = std::make_unique<std::atomic<int64_t>[]>(N);
+    for (size_t i = 0; i < N; ++i) a[i].store(0, std::memory_order_relaxed);
+    return a;
+  };
+  auto dmap = make_acc(), dero = make_acc(), ddep = make_acc();
 
   auto simulate = [&](unsigned tid, int round) {
-    std::vector<float> &acc = dmap[tid];
-    std::vector<float> &acc_e = dero[tid];
-    std::vector<float> &acc_d = ddep[tid];
-    // A worker samples the shared map plus its own accumulated changes, so
-    // erosion stays self-limiting exactly like the sequential solver while
-    // never reading another worker's data.
+    // one place that turns a delta into fixed point, so the rounding rule is
+    // the same for every contribution
+    auto fx = [FP](float v) { return (int64_t)std::llround((double)v * FP); };
+    auto bump = [](std::atomic<int64_t> *a, size_t i, int64_t v) {
+      a[i].fetch_add(v, std::memory_order_relaxed);
+    };
+    // Reads the shared map only. Adding this worker's accumulator here is
+    // what made the solver's output a function of the core count.
     auto height_grad = [&](float px, float py, float &hgt, float &gx, float &gy) {
       int xi = std::clamp((int)px, 0, w - 2), yi = std::clamp((int)py, 0, h - 2);
       float fx = px - xi, fy = py - yi;
-      auto at = [&](int x, int y) {
-        size_t i = (size_t)y * w + x;
-        return map.v[i] + acc[i];
-      };
+      auto at = [&](int x, int y) { return map.v[(size_t)y * w + x]; };
       float h00 = at(xi, yi), h10 = at(xi + 1, yi);
       float h01 = at(xi, yi + 1), h11 = at(xi + 1, yi + 1);
       gx = (h10 - h00) * (1 - fy) + (h11 - h01) * fy;
@@ -88,11 +138,22 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
     long long chunk = per_round / T;
     long long i0 = base + (long long)tid * chunk;
     long long i1 = (tid + 1 == T) ? base + per_round : i0 + chunk;
-    std::mt19937 rng((uint32_t)(seed + 7919u * (uint32_t)round +
-                                104729u * (uint32_t)tid));
-    std::uniform_real_distribution<float> dist(0.f, 1.f);
+    // Counter-based, so the stream belongs to the particle rather than to the
+    // worker that happened to draw it. splitmix64's finalizer: integer-only,
+    // identical on every compiler, no distribution object involved.
+    auto mix = [](uint64_t z) {
+      z += 0x9e3779b97f4a7c15ull;
+      z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+      z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+      return z ^ (z >> 31);
+    };
+    auto unit = [](uint64_t r) { // top 24 bits -> [0,1)
+      return (float)(r >> 40) * (1.0f / 16777216.0f);
+    };
     for (long long i = i0; i < i1; ++i) {
-    float px = dist(rng) * (w - 1), py = dist(rng) * (h - 1);
+    uint64_t k = mix(((uint64_t)seed << 32) ^ ((uint64_t)round << 48) ^
+                     (uint64_t)i);
+    float px = unit(k) * (w - 1), py = unit(mix(k)) * (h - 1);
     float dx = 0, dy = 0, speed = 1, water = 1, sediment = 0;
     for (int life = 0; life < p.max_lifetime; ++life) {
       float hgt, gx, gy;
@@ -114,12 +175,12 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
                               : (sediment - cap) * p.deposit_rate;
         sediment -= amount;
         int xi = (int)px, yi = (int)py;
-        float fx = px - xi, fy = py - yi;
-        acc[(size_t)yi * w + xi] += amount * (1 - fx) * (1 - fy);
-        acc[(size_t)yi * w + xi + 1] += amount * fx * (1 - fy);
-        acc[(size_t)(yi + 1) * w + xi] += amount * (1 - fx) * fy;
-        acc[(size_t)(yi + 1) * w + xi + 1] += amount * fx * fy;
-        acc_d[(size_t)yi * w + xi] += amount;
+        float fbx = px - xi, fby = py - yi;
+        bump(dmap.get(), (size_t)yi * w + xi, fx(amount * (1 - fbx) * (1 - fby)));
+        bump(dmap.get(), (size_t)yi * w + xi + 1, fx(amount * fbx * (1 - fby)));
+        bump(dmap.get(), (size_t)(yi + 1) * w + xi, fx(amount * (1 - fbx) * fby));
+        bump(dmap.get(), (size_t)(yi + 1) * w + xi + 1, fx(amount * fbx * fby));
+        bump(ddep.get(), (size_t)yi * w + xi, fx(amount));
       } else {
         float amount = std::min((cap - sediment) * p.erode_rate, -dh);
         int cx = (int)px, cy = (int)py;
@@ -127,9 +188,9 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
           int ex = cx + bx[b], ey = cy + by[b];
           if (ex < 0 || ex >= w || ey < 0 || ey >= h) continue;
           float delta = amount * bw[b];
-          acc[(size_t)ey * w + ex] -= delta;
+          bump(dmap.get(), (size_t)ey * w + ex, -fx(delta));
           sediment += delta;
-          acc_e[(size_t)ey * w + ex] += delta;
+          bump(dero.get(), (size_t)ey * w + ex, fx(delta));
         }
       }
       speed = std::sqrt(std::max(speed * speed + dh * -p.gravity, 0.f));
@@ -147,29 +208,24 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
     simulate(0, round);
     for (auto &th : pool) th.join();
     // Fixed-order reduction => reproducible floating-point accumulation.
-    // Workers cannot see each other's deposits within a round, so several
-    // may fill the same sink; clamp each cell's per-round change (the map is
+    // No particle in a round can see any other's deposits, so several may
+    // fill the same sink; clamp each cell's per-round change (the map is
     // normalised to 0..1 here) to keep that from building spikes.
     const float MAX_STEP = 0.05f;
     // per-cell and independent, so parallelising keeps it deterministic
+    // Apply and clear in one pass over each cell: a separate clearing sweep
+    // doubled the memory traffic for no reason.
     parallel_index(N, [&](size_t i0, size_t i1) {
       for (size_t i = i0; i < i1; ++i) {
-        float d = 0, de = 0, dd = 0;
-        for (unsigned t = 0; t < T; ++t) {
-          d += dmap[t][i];
-          de += dero[t][i];
-          dd += ddep[t][i];
-        }
-        map.v[i] += std::clamp(d, -MAX_STEP, MAX_STEP);
-        if (erosion_out) erosion_out->v[i] += de;
-        if (deposit_out) deposit_out->v[i] += dd;
+        int64_t d = dmap[i].exchange(0, std::memory_order_relaxed);
+        int64_t de = dero[i].exchange(0, std::memory_order_relaxed);
+        int64_t dd = ddep[i].exchange(0, std::memory_order_relaxed);
+        if (!d && !de && !dd) continue; // most cells are untouched in a round
+        map.v[i] += std::clamp((float)(d * FP_INV), -MAX_STEP, MAX_STEP);
+        if (erosion_out) erosion_out->v[i] += (float)(de * FP_INV);
+        if (deposit_out) deposit_out->v[i] += (float)(dd * FP_INV);
       }
     });
-    for (unsigned t = 0; t < T; ++t) {
-      std::fill(dmap[t].begin(), dmap[t].end(), 0.f);
-      std::fill(dero[t].begin(), dero[t].end(), 0.f);
-      std::fill(ddep[t].begin(), ddep[t].end(), 0.f);
-    }
   }
 }
 
@@ -601,10 +657,34 @@ REGISTER_NODE(
       float strength = n.attrs.get_f("strength", 0.4f) * amp * 0.002f;
       int carry = std::max(2, (int)(n.attrs.get_f("carry_dist", 0.03f) * out.w));
       float shadow = n.attrs.get_f("shadow_angle", 1.f) * amp / out.w;
-      Heightmap delta(out.w, out.h);
+      // A cell lifts material from itself and drops it on a cell up to `carry`
+      // steps downwind - which is very often in another worker's band. Writing
+      // that through one shared delta buffer was an unsynchronised
+      // read-modify-write: a race, so two workers could lose an update
+      // outright, and the result depended on how the rows were split. The
+      // thread-count determinism test caught it at 5 workers.
+      //
+      // Deltas go through one shared atomic int64 accumulator, for the same
+      // reason as the droplet solver: integer addition is associative and
+      // commutative, so however the atomics interleave the total is identical,
+      // while float partial sums would still make it depend on the partition.
+      const size_t N = out.v.size();
+      const double FP = 1099511627776.0; // 2^40
+      const double FP_INV = 1.0 / FP;
+      unsigned T = std::max(1u, std::min<unsigned>(gpx::worker_count(),
+                                                   (unsigned)std::max(1, out.h / 16)));
+      auto delta = std::make_unique<std::atomic<int64_t>[]>(N);
+      for (size_t i = 0; i < N; ++i)
+        delta[i].store(0, std::memory_order_relaxed);
+      int band = (out.h + (int)T - 1) / (int)T;
       for (int it = 0; it < iters; ++it) {
-        std::fill(delta.v.begin(), delta.v.end(), 0.f);
-        parallel_rows(out.h, [&](int y0, int y1) {
+        auto sweep = [&](unsigned tid) {
+          auto add = [&](int x, int y, float v) {
+            delta[(size_t)y * out.w + x].fetch_add(
+                (int64_t)std::llround((double)v * FP),
+                std::memory_order_relaxed);
+          };
+          int y0 = (int)tid * band, y1 = std::min(out.h, y0 + band);
           for (int y = y0; y < y1; ++y)
             for (int x = 0; x < out.w; ++x) {
               // exposure: height above upwind neighbor => abrasion
@@ -613,7 +693,7 @@ REGISTER_NODE(
               float exposure = here - up;
               if (exposure <= 0) continue;
               float lift = std::min(exposure * 0.5f, strength);
-              delta.at(x, y) -= lift;
+              add(x, y, -lift);
               // deposit downwind at first shadowed cell
               for (int s = 2; s <= carry; ++s) {
                 int dxp = x + (int)std::round(wx * s);
@@ -621,14 +701,23 @@ REGISTER_NODE(
                 if (dxp < 0 || dxp >= out.w || dyp < 0 || dyp >= out.h) break;
                 float drop = here - out.at(dxp, dyp);
                 if (drop > shadow * s || s == carry) {
-                  delta.at(dxp, dyp) += lift;
+                  add(dxp, dyp, lift);
                   break;
                 }
               }
             }
-        });
-        parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
-          for (size_t i = i0; i < i1; ++i) out.v[i] += delta.v[i];
+        };
+        std::vector<std::thread> pool;
+        for (unsigned t = 1; t < T; ++t) pool.emplace_back(sweep, t);
+        sweep(0);
+        for (auto &th : pool) th.join();
+        // apply and clear in one pass; integer addition is commutative, so the
+        // order the atomics landed in cannot change the total
+        parallel_index(N, [&](size_t i0, size_t i1) {
+          for (size_t i = i0; i < i1; ++i) {
+            int64_t d = delta[i].exchange(0, std::memory_order_relaxed);
+            if (d) out.v[i] += (float)(d * FP_INV);
+          }
         });
       }
       apply_mask_blend(n.in_hmap("mask"), *in, out);

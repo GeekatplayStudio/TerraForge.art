@@ -5,6 +5,7 @@
 #include "gpx/metanode.hpp"
 #include <vector>
 #include "gpx/node_graph.hpp"
+#include "gpx/parallel.hpp"
 #include "gpx/serialization.hpp"
 #include <cctype>
 #include <cmath>
@@ -356,6 +357,59 @@ static void test_material_library_roundtrip() {
 
 // Every workflow step must be reproducible: same graph + same seeds =>
 // identical output, and re-running a step after a no-op edit changes nothing.
+// AGENTS.md engine rule 1 says "every run, on every thread count". Nothing
+// tested the second half, and it was false: the droplet solver dealt particles
+// out as per_round/T, seeded its RNG from the worker id, and let each worker
+// read its own accumulator, so the partition decided which particles existed,
+// where they started, and what they saw. Measured at 256 with one seed,
+// workers 1/2/3/4/8 produced five different terrains.
+//
+// The suite could not see it because it runs at whatever the machine has.
+// gpx::set_worker_count() exists so this test can vary it.
+static void test_thread_count_determinism() {
+  std::printf("thread-count determinism...\n");
+  // Every solver that splits work across workers. A per-cell filter cannot be
+  // partition-dependent; these accumulate, which is where the hazard lives.
+  struct Case { const char *type; const char *note; };
+  const Case cases[] = {
+      {"Hydraulic", "droplet/pipe hydraulic erosion"},
+      {"Thermal", "thermal talus"},
+      {"StreamPower", "stream power incision"},
+      {"SedimentDeposit", "sediment deposition"},
+      {"Wind", "aeolian transport"},
+  };
+  const unsigned counts[] = {1, 2, 3, 5, 8};
+
+  for (const Case &c : cases) {
+    std::vector<float> reference;
+    bool have_ref = false;
+    for (unsigned T : counts) {
+      gpx::set_worker_count(T);
+      gpx::Graph g;
+      g.resolution = 128;
+      gpx::Node *src = g.add_node("Noise");
+      if (!src) continue;
+      src->attrs.find("seed")->seed = 4242;
+      gpx::Node *n = g.add_node(c.type);
+      if (!n) break;
+      g.add_link(src->id, "output", n->id, "input");
+      if (gpx::Attribute *s = n->attrs.find("seed")) s->seed = 99;
+      CHECK(g.evaluate(), std::string(c.type) + " evaluates");
+      gpx::Port *out = n->port("output", gpx::PortDir::Out);
+      if (!out || !out->hmap) break;
+      if (!have_ref) {
+        reference = out->hmap->v;
+        have_ref = true;
+      } else {
+        CHECK(out->hmap->v == reference,
+              std::string(c.note) + " differs at " + std::to_string(T) +
+                  " workers - its result depends on the machine's core count");
+      }
+    }
+  }
+  gpx::set_worker_count(0); // back to the default for the rest of the suite
+}
+
 static void test_workflow_determinism() {
   std::printf("workflow determinism...\n");
   const char *chain[] = {"Noise", "WarpNoise", "Hydraulic", "StreamPower",
@@ -2250,6 +2304,7 @@ int main() {
   test_material_graph();
   test_material_library_roundtrip();
   test_workflow_determinism();
+  test_thread_count_determinism();
   test_camera_math();
   test_ai_spec();
   test_terrain_effects();

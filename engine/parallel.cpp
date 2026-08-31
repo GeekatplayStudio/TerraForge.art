@@ -1,14 +1,29 @@
 #include "gpx/parallel.hpp"
 #include <algorithm>
+#include <cstdlib>
 #include <thread>
 #include <vector>
 
 namespace gpx {
 
-static unsigned worker_count() {
+static unsigned g_forced_workers = 0;
+
+unsigned worker_count() {
+  if (g_forced_workers) return g_forced_workers;
+  // Read once: the tests set this through set_worker_count(), and a solver
+  // asking the environment on every call would be both slow and racy.
+  static const unsigned from_env = [] {
+    const char *e = std::getenv("GPX_WORKERS");
+    if (!e) return 0u;
+    long v = std::strtol(e, nullptr, 10);
+    return (v > 0 && v < 4096) ? (unsigned)v : 0u;
+  }();
+  if (from_env) return from_env;
   unsigned n = std::thread::hardware_concurrency();
   return n ? n : 4;
 }
+
+void set_worker_count(unsigned n) { g_forced_workers = n; }
 
 void parallel_rows(int h, const std::function<void(int, int)> &fn) {
   unsigned nt = std::min<unsigned>(worker_count(), std::max(1, h / 16));

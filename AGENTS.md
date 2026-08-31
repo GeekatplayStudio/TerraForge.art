@@ -318,3 +318,46 @@ belongs to; do not fake a field node with a 1×1 buffer.
    35 % and `deposition_map` 30 %. They are differences of similar numbers fed
    through an iterative solver. Validate them by conservation residual and
    sign, never by value equality against another build.
+
+## Deterministic parallelism
+
+Engine rule 1 promises bit-identical output "on every thread count". That half
+was untested and false. `test_thread_count_determinism` now runs the parallel
+solvers at 1, 2, 3, 5 and 8 workers and demands one answer; `gpx::worker_count()`
+is overridable (`set_worker_count()`, `GPX_WORKERS`) so it can.
+
+1. **A worker id must never reach the physics.** The droplet solver dealt
+   particles out as `per_round / T`, seeded its RNG from `tid`, and let each
+   worker sample its own accumulator. The partition therefore decided which
+   particles existed, where they started and what they saw: workers 1/2/3/4/8
+   gave five different terrains from one seed.
+2. **Seed from the item, not the worker.** A particle's start comes from a
+   counter hash of `(seed, round, global index)`, so it lands in the same place
+   under any partition. This also removes `std::uniform_real_distribution`,
+   which the standard does not specify — libstdc++ and MSVC produce different
+   streams from the same engine, so it can never appear in a canonical path.
+3. **Read only shared state inside a parallel section.** Reading a per-worker
+   accumulator is what coupled the physics to the partition.
+4. **Reduce in integers, never in floats.** Float addition is not associative,
+   so the same deltas split eight ways total differently from two ways. Every
+   other cause was fixed and the hashes still differed until the accumulators
+   became fixed point at 2^40 — 9.1e-13 resolution, six orders below float's
+   1.2e-7 at 1.0, with ±8.4e6 of int64 headroom.
+5. **Prefer one shared atomic accumulator to T private ones.** Integer add is
+   associative *and* commutative, so a relaxed `fetch_add` needs no reduction
+   pass and no per-worker buffers. Per-worker fixed-point buffers were equally
+   correct and 5.5× slower (Hydraulic 512²: 95 → 575 ms); the shared atomic
+   brings it to 164 ms. Apply and clear in one `exchange` pass — a separate
+   clearing sweep doubles the memory traffic.
+6. **A scatter write inside `parallel_rows` is a race.** `Wind` pushed material
+   downwind with `delta.at(dxp, dyp) += lift`, and `dyp` routinely lands in
+   another worker's band: an unsynchronised read-modify-write, so updates could
+   be lost outright. The determinism test found it at 5 workers. Any solver
+   that writes somewhere other than the cell it is visiting needs the atomic
+   accumulator.
+7. **Removing within-round coupling costs rounds.** With particles no longer
+   seeing each other inside a round, `ROUNDS` had to rise 8 → 48 or erosion
+   spikes: mean |Laplacian| 0.0227 → 0.0087, and at 8 the surface punched
+   below the normalised floor (range started at −0.0058 instead of +0.0288).
+   That is what engine rule 2 is about, and it is why Hydraulic is 1.7× slower
+   than the racy version. Wind, Thermal and StreamPower are unchanged.

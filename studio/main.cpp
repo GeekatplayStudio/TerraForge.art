@@ -17,9 +17,10 @@ void run_main(); // app.cpp
 } // namespace studio
 
 int main() {
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  // Hints must come *after* glfwInit(): it calls glfwDefaultWindowHints()
+  // and resets every one of them. An identical block used to sit above this
+  // call doing nothing - harmless while the two agreed, and a silent trap
+  // the day someone bumps the version in the wrong one.
   if (!glfwInit()) {
     std::fprintf(stderr, "GLFW init failed\n");
     return 1;
@@ -27,7 +28,11 @@ int main() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  glfwWindowHint(GLFW_SAMPLES, 4);
+  // No MSAA on the default framebuffer. Every 3D pass renders into its own
+  // single-sampled FBO, so the swapchain only ever receives ImGui geometry,
+  // which is already antialiased. Asking for 4x here bought a larger
+  // swapchain and a resolve pass that cannot improve anything.
+  glfwWindowHint(GLFW_SAMPLES, 0);
   GLFWwindow *win = glfwCreateWindow(1760, 1000,
                                      "Geekatplay TerraForge \xC2\xB7 Vladimir Shopine",
                                      nullptr, nullptr);
