@@ -28,6 +28,26 @@ void scene_init_builtins() {
   add(SceneObject::Atmosphere, "Atmosphere");
   add(SceneObject::Group, "Cameras"); // parent for every camera
   scene_add_camera("Camera 1");
+
+  // Terragen's central premise, and the thing we had all the machinery for but
+  // never switched on: "every scene is built in the context of an entire
+  // planet… Having the planet as a background ensures that the scene doesn't
+  // just end, nor does it just go on forever as it would with an infinite
+  // plane. Instead it always curves realistically down to the horizon."
+  // (Terragen 2 guide, p5.)
+  //
+  // So a new scene starts on a planet: the tile continues past its own edges
+  // to a curved horizon, and the ground under you is flat until you displace
+  // it — which is what the terrain graph is for.
+  int gnd = scene_add_infinite_surface(-1, "Planet surface");
+  if (gnd >= 0 && gnd < (int)s.objects.size()) {
+    InfiniteSurfaceData &d = s.objects[gnd].surf;
+    // Flat by default. The layer exists to carry the ground to the horizon,
+    // not to invent scenery the user did not ask for.
+    d.layer.amplitude = 0.f;
+    d.layer.frequency = 1.5f;
+    d.height_scale = 1.f;
+  }
 }
 
 static int g_active_camera = -1;    // -1 = free viewport camera

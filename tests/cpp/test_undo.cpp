@@ -317,17 +317,23 @@ static void test_planets_in_scene() {
   float dz = scene().objects[p].pos[2] - scene().objects[p2].pos[2];
   CHECK(dx * dx + dz * dz > 4.f, "auto-placement keeps planets apart");
 
-  // ground-plane infinite terrain is separate from planet layers
+  // Ground-plane infinite terrain is separate from planet layers. Counted
+  // relative to what was already there: a new scene now ships with a planet
+  // surface of its own, and the claim being tested is that adding a layer
+  // registers one *more*, not that only one can exist.
+  const int ground_before = (int)scene_surface_layers(-1).size();
   undo_push(a, "Add infinite terrain");
   int gsurf = scene_add_infinite_surface(-1);
-  CHECK((int)scene_surface_layers(-1).size() == 1, "ground layer registered");
+  CHECK((int)scene_surface_layers(-1).size() == ground_before + 1,
+        "ground layer registered");
   CHECK((int)scene_surface_layers(p).size() == 1,
         "planet layers unaffected by ground layers");
   (void)gsurf;
 
   // undo unwinds the whole stack back to nothing
   undo_perform(a);
-  CHECK((int)scene_surface_layers(-1).empty(), "undo removed the ground layer");
+  CHECK((int)scene_surface_layers(-1).size() == ground_before,
+        "undo removed the ground layer");
   undo_perform(a);
   undo_perform(a);
   CHECK((int)scene().objects.size() == before, "undo removed both planets");
@@ -354,6 +360,7 @@ static void test_planet_persistence() {
   scene_add_infinite_surface(-1, "Home horizon");
   int planets_before = (int)scene_planet_indices().size();
   int psurf_before = (int)scene_surface_layers(p).size();
+  int gsurf_before = (int)scene_surface_layers(-1).size();
 
   const char *path = "test_planets_roundtrip.gpxt";
   CHECK(project_save(a, path), "project saved");
@@ -376,7 +383,8 @@ static void test_planet_persistence() {
     CHECK((int)scene_surface_layers(planets[0]).size() == psurf_before,
           "planet surface layers restored and re-parented");
   }
-  CHECK((int)scene_surface_layers(-1).size() == 1, "ground layer restored");
+  CHECK((int)scene_surface_layers(-1).size() == gsurf_before,
+        "ground layers restored");
 }
 
 // A saved MetaNode has to come back as the same node in a different project,

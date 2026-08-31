@@ -109,12 +109,13 @@ static void section_planet(RenderSettings &rs) {
                       "the surface stays fractal instead of turning into\n"
                       "flat grid cells.");
   ImGui::SliderFloat("Detail scale", &rs.fractal_scale, 8.f, 400.f, "%.0f");
-  ImGui::SliderFloat("Planet radius", &rs.planet_radius, 0.f, 400.f, "%.0f");
+  ImGui::SliderFloat("Planet radius", &rs.planet_radius, 0.f, 4000.f, "%.0f",
+                     ImGuiSliderFlags_Logarithmic);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("0 = flat world. Larger values curve the ground away\n"
                       "with distance, giving a planetary horizon. The terrain\n"
-                      "tile is 1 unit across, so a radius of 100 is roughly\n"
-                      "a 100-tile-wide planet.");
+                      "tile is 1 unit across, so at a 5 km tile 1275 is about\n"
+                      "Earth — which is where a new scene starts.");
   if (rs.planet_radius > 0.f) {
     float horizon = std::sqrt(2.f * rs.planet_radius * 0.02f);
     ImGui::TextDisabled("horizon about %.1f tiles away at eye height", horizon);

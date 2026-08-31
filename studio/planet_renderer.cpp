@@ -190,7 +190,7 @@ layout(location=0) in vec2 in_p; // -1..1 param, concentrated near the tile
 uniform mat4 u_mvp;
 uniform sampler2D u_height;
 uniform vec3 u_cam;
-uniform float u_hscale, u_curve, u_amp;
+uniform float u_hscale, u_curve, u_amp, u_base;
 PL_FN_PLACEHOLDER
 out vec3 v_world;
 out vec2 v_uv;
@@ -204,7 +204,11 @@ void main(){
   float dout = length(uv - uvc);
   float cam_d = max(length(u_cam.xz - uv) * 0.15, 0.02);
   float octf = clamp(9.0 - log2(cam_d) * 1.2, 2.0, 10.0);
-  float proc = pl_height(vec3(uv.x, 0.37, uv.y), octf) * u_amp + u_hscale*0.25;
+  // The surround has to meet the tile at the tile's own level, or a step
+  // appears all the way round it. This used to be a hardcoded fraction of the
+  // height scale, which only looked right while every terrain was normalised
+  // to fill 0..1; u_base is the tile's actual mean height.
+  float proc = pl_height(vec3(uv.x, 0.37, uv.y), octf) * u_amp + u_base;
   float tile = texture(u_height, uvc).r * u_hscale;
   float s = smoothstep(0.0, 0.35, dout);
   float h = mix(tile, proc, s);
@@ -518,6 +522,7 @@ void infinite_draw(const InfiniteFrame &f) {
   // the surround's relief budget follows the tile's own height scale
   float amp = f.height_scale * 1.2f;
   puni1(prog_inf, "u_amp", amp);
+  puni1(prog_inf, "u_base", f.base_height);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, f.tex_height);
   punii(prog_inf, "u_height", 0);

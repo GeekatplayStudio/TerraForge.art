@@ -171,20 +171,38 @@ bool project_load(App &a, const std::string &path) {
 }
 
 // startup demo: ridged mountains -> warp -> hydraulic erosion -> texture
+// A new scene is a planet with flat ground on it.
+//
+// Terragen starts the same way and for the same reason: the planet is the
+// context, and terrain is what you displace its surface *with*. Starting with
+// a mountain already built hides that — it makes the terrain look like the
+// scene rather than like one shader in it, and it means the first thing a user
+// does is delete something.
+//
+// Flat does not mean empty: the ground curves to a horizon, the sky and water
+// are there, and the Terrain menu drops a complete editable chain — Mountain,
+// Ridged peaks, Eroded mountain, Canyon, Dunes, Iceberg, Lunar — in one click.
 void project_default_graph(App &a) {
   std::lock_guard<std::mutex> lk(a.graph_mtx);
   a.graph.clear();
   a.graph.resolution = 512;
-  gpx::Node *noise = a.graph.add_node("Noise", 0, 120);
-  gpx::Node *warp = a.graph.add_node("WarpNoise", 260, 120);
-  gpx::Node *erode = a.graph.add_node("Hydraulic", 520, 120);
-  gpx::Node *tex = a.graph.add_node("TerrainTexture", 820, 260);
-  if (noise && warp && erode && tex) {
-    a.graph.add_link(noise->id, "output", warp->id, "input");
-    a.graph.add_link(warp->id, "output", erode->id, "input");
-    a.graph.add_link(erode->id, "output", tex->id, "input");
-    a.view_node = erode->id;
-    a.selected_node = erode->id;
+  gpx::Node *base = a.graph.add_node("Constant", 0, 120);
+  gpx::Node *out = a.graph.add_node("TerrainOutput", 300, 120);
+  gpx::Node *tex = a.graph.add_node("TerrainTexture", 300, 320);
+  if (base && out && tex) {
+    // sea level sits at 0.08, so the ground starts just above the water
+    if (gpx::Attribute *v = base->attrs.find("value")) v->f = 0.12f;
+    // Remapping a *constant* buffer is degenerate — min equals max, so the
+    // whole tile collapses to one end of the range and sinks under the sea.
+    // Flat ground has to pass through untouched.
+    if (gpx::Attribute *r = out->attrs.find("remap")) r->b = false;
+    // the tile is already flat; fading its edges to zero would dig a moat
+    // around it, and the planet surface it blends into is flat too
+    if (gpx::Attribute *z = out->attrs.find("zero_edges")) z->f = 0.f;
+    a.graph.add_link(base->id, "output", out->id, "heightmap");
+    a.graph.add_link(out->id, "heightmap", tex->id, "input");
+    a.view_node = out->id;
+    a.selected_node = out->id;
   }
 }
 

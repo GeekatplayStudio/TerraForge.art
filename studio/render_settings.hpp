@@ -135,9 +135,12 @@ struct RenderSettings {
   // adaptive path is never coarser than what it took over from
   float tess_min = 8.f;
   float tess_max = 32.f;    // Vue's "limit automatic subdivision"
-  // planetary curvature: 0 = flat, otherwise the horizon falls away.
-  // radius is in world units (the terrain tile is 1 unit across).
-  float planet_radius = 0.f;
+  // Planetary curvature: 0 = flat, otherwise the horizon falls away. Radius is
+  // in world units, and the terrain tile is 1 unit across — so at the default
+  // 5 km tile, 1275 units is roughly Earth. A scene starts on a planet rather
+  // than on an infinite plane, because that is what makes distance read
+  // correctly (Terragen guide p5); set it to 0 for true infinite flatness.
+  float planet_radius = 1275.f;
 
   // terrain / global
   float height_scale = 0.22f;

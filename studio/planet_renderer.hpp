@@ -44,6 +44,10 @@ struct InfiniteFrame {
   unsigned tex_height;    // the tile heightmap, for edge blending
   unsigned tex_albedo;    // 0 if none
   float height_scale;
+  // The tile's mean height, in world units. The surround settles to this away
+  // from the tile so the two meet without a step, whatever the terrain's
+  // absolute altitude happens to be.
+  float base_height;
   float planet_radius;    // curvature (0 = flat)
   int fog_type;
   float fog_density;

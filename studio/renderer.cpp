@@ -71,6 +71,8 @@ struct Camera {
 static Camera CAM;
 
 static GLuint prog_terrain = 0, prog_water = 0, prog_sky = 0, prog_depth = 0;
+// mean height of the uploaded tile, so the infinite surround can meet it
+static float g_terrain_mean = 0.f;
 static GLuint prog_lines = 0, prog_bg = 0, prog_mesh = 0, prog_gizmo = 0;
 static GLuint prog_matprev = 0;
 static GLuint matprev_fbo = 0, matprev_tex = 0, matprev_depth = 0;
@@ -1627,9 +1629,24 @@ void renderer_shutdown() {
 }
 
 void renderer_set_terrain(const gpx::Heightmap &h, const gpx::TextureRGBA *albedo) {
+  // Upload what the graph produced, at the height it produced it.
+  //
+  // This used to stretch every heightmap to fill 0..1, which quietly threw
+  // away absolute altitude: a terrain spanning 0.4-0.5 displayed identically
+  // to one spanning 0-1, so sea level, the snow line and every altitude-keyed
+  // material meant nothing. Flat ground was worse still — min equals max, so
+  // the whole tile collapsed to zero and sank under the sea, which made a flat
+  // planet surface impossible to show at all.
+  //
+  // Normalising is the graph's job and it is already exposed there, on by
+  // default: TerrainOutput's "Remap to range" and every node's own output
+  // block. The renderer's business is to show what it is handed.
   gpx::Heightmap norm = h;
-  norm.remap(0.f, 1.f);
   hm_w = norm.w;
+  // the level the surrounding ground should settle to, so the two meet
+  double sum = 0;
+  for (float v : norm.v) sum += v;
+  g_terrain_mean = norm.v.empty() ? 0.f : (float)(sum / norm.v.size());
   glBindTexture(GL_TEXTURE_2D, tex_height);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, norm.w, norm.h, 0, GL_RED, GL_FLOAT,
@@ -2087,6 +2104,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.tex_height = tex_height;
     inf.tex_albedo = (has_albedo && RS.use_albedo && textured) ? tex_albedo : 0;
     inf.height_scale = RS.height_scale;
+    inf.base_height = g_terrain_mean * RS.height_scale;
     inf.planet_radius = RS.planet_radius;
     inf.fog_type = atmosphere ? RS.fog_type : 0;
     inf.fog_density = RS.fog_density;
