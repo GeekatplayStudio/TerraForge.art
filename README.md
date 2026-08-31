@@ -51,10 +51,20 @@ real-time OpenGL viewport.
 - **Zones** confine a field to a sphere or box with a smooth fade, and expose
   the region on its own as a mask.
 - **Live on the GPU:** wire a field into a `TerrainDisplacement` node and the
-  viewport compiles it to a shader and evaluates it per vertex, normals
-  included. A field has no resolution, so the relief keeps resolving as the
-  camera closes in. If a graph produces a shader that will not build, the
-  viewport keeps the last good one instead of going black.
+  viewport compiles it to a shader and evaluates it per vertex, normals and
+  shadows included. A field has no resolution, so the relief keeps resolving
+  as the camera closes in. If a graph produces a shader that will not build,
+  the viewport keeps the last good one instead of going black.
+- **Adaptive subdivision.** The terrain is tessellated to whatever the camera
+  needs rather than to a fixed grid — 64×64 patches subdivided per edge by
+  that edge's length in pixels, from an effective 512 across (exactly the
+  fixed grid it replaces, so it is never coarser) up to 2048 where the camera
+  is close. Levels are chosen per edge from its two endpoints, so adjacent
+  patches always agree and no crack can open; spacing is fractional, so a
+  patch's level changes continuously instead of popping.
+- **Both domains, both directions.** A graph that samples a buffer can drive
+  the viewport too, so an *eroded* heightfield can shade or displace the
+  surface — bake a field for erosion, then take the result back out.
 
 ### Environment-sensitive materials
 - **Distribution** answers *where a material belongs* — by altitude, steepness

@@ -130,7 +130,20 @@ belongs to; do not fake a field node with a 1×1 buffer.
    carry its own copy of a generated prelude. Duplicate definitions only
    collide *within* one stage — so when a stage holds **two** generated
    functions, emit the prelude once and `field_glsl_strip_prelude()` the rest.
-7. **Build a declaration with `EmitCtx::declare()`, never by streaming into
+7. **Every pass that draws the terrain must see the same surface.** The vertex
+   and tessellation-evaluation shaders share one body (`TERRAIN_VERT_COMMON`)
+   so they cannot drift, and the shadow pass carries the same displacement —
+   terrain casting a shadow from where it used to be reads as broken, not as
+   an approximation.
+8. **Tessellation needs a floor as well as a ceiling.** Displacement and
+   fractal relief are evaluated per vertex, so a purely screen-space metric
+   throws them away whenever the whole tile is small on screen. The minimum
+   subdivision is set so the adaptive path is never coarser than the fixed
+   grid it replaced.
+9. **Bind every sampler the generated code declares.** An unbound sampler
+   reads black — not a crash, a silently wrong picture. If there are not
+   enough texture units, refuse the graph and say so on the node.
+10. **Build a declaration with `EmitCtx::declare()`, never by streaming into
    `body`.** Resolving an input appends that subtree's declarations to the same
    buffer; a `<<` chain therefore splices them into the middle of the line
    being written. A function call evaluates its arguments first, so `declare()`
