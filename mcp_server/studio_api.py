@@ -193,6 +193,12 @@ class Studio:
     def set_workspace(self, workspace) -> Dict[str, Any]:
         return self.send({"op": "set_workspace", "workspace": workspace})
 
+    def set_viewport(self, **kw: Any) -> Dict[str, Any]:
+        """How the terrain surface is drawn: subdivision, per-patch culling,
+        height scale, planetary radius, fractal relief, displacement strength,
+        shadows, exposure. Only the keys given are changed."""
+        return self.send({"op": "set_viewport", **kw})
+
     def evaluate(self) -> Dict[str, Any]:
         return self.send({"op": "evaluate"})
 

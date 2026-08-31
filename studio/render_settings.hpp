@@ -135,6 +135,9 @@ struct RenderSettings {
   // adaptive path is never coarser than what it took over from
   float tess_min = 8.f;
   float tess_max = 32.f;    // Vue's "limit automatic subdivision"
+  // Discard patches that cannot be on screen before the tessellator subdivides
+  // them. Off is the old behaviour, kept so the two can be compared directly.
+  bool frustum_cull = true;
   // Planetary curvature: 0 = flat, otherwise the horizon falls away. Radius is
   // in world units, and the terrain tile is 1 unit across — so at the default
   // 5 km tile, 1275 units is roughly Earth. A scene starts on a planet rather
@@ -198,6 +201,9 @@ void renderer_set_field_textures(
 const char *renderer_field_error();
 // Whether adaptive subdivision is actually running, and at what settings.
 std::string renderer_tess_status();
+// How many terrain patches survived the frustum test on the last camera pass.
+std::string renderer_cull_status();
+int renderer_patches_visible();
 // camera navigation for the active camera (scene camera or free viewport)
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);

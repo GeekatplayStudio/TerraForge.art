@@ -50,7 +50,7 @@ ALIASES = {
 def handled_ops():
     """Every op the C++ actually accepts, read from the source."""
     ops = set()
-    for name in ("ai_assist.cpp", "ai_ops_graph.cpp"):
+    for name in ("ai_assist.cpp", "ai_ops_graph.cpp", "ai_ops_view.cpp"):
         text = (STUDIO / name).read_text(encoding="utf-8", errors="replace")
         ops |= set(re.findall(r'op == "([a-z_]+)"', text))
     return ops

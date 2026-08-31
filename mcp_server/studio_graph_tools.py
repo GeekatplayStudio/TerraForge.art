@@ -88,6 +88,24 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "offers.",
         "params": {"workspace": "int|str"},
     },
+    "studio_set_viewport": {
+        "description": "How the terrain surface is drawn: adaptive "
+                       "subdivision (tessellation, tess_pixels, tess_min, "
+                       "tess_max), per-patch culling (frustum_cull), the "
+                       "surface itself (height_scale, planet_radius, "
+                       "fractal_detail, fractal_scale, field_displacement) "
+                       "and shading (wireframe, shadows, shadow_softness, "
+                       "exposure, use_albedo, layout, engine). Send only the "
+                       "settings you want to change.",
+        "params": {"tessellation": "bool", "tess_pixels": "float",
+                   "tess_min": "float", "tess_max": "float",
+                   "frustum_cull": "bool", "height_scale": "float",
+                   "planet_radius": "float", "fractal_detail": "float",
+                   "fractal_scale": "float", "field_displacement": "float",
+                   "wireframe": "bool", "shadows": "bool",
+                   "shadow_softness": "float", "exposure": "float",
+                   "use_albedo": "bool", "layout": "int", "engine": "int"},
+    },
     "studio_evaluate": {
         "description": "Re-evaluate the whole graph. Poll studio_get_graph and "
                        "watch eval.running / eval.serial to know when it is "
@@ -116,6 +134,7 @@ _SIMPLE = {
     "studio_view_node": "view_node",
     "studio_select_node": "select_node",
     "studio_set_workspace": "set_workspace",
+    "studio_set_viewport": "set_viewport",
     "studio_evaluate": "evaluate",
     "studio_verify_field_gpu": "verify_field_gpu",
 }

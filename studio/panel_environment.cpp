@@ -1,6 +1,7 @@
 ﻿// Geekatplay TerraForge â€” Environment panel: sun (manual/geographic),
 // atmosphere, fog/haze/pollution, water materials.
 #include "app.hpp"
+#include "gpu_timer.hpp"
 #include "render_settings.hpp"
 #include <imgui.h>
 
@@ -146,6 +147,16 @@ static void section_subdivision(RenderSettings &rs) {
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The ceiling, for when detail is not worth the cost.");
     ImGui::TextDisabled("%s", renderer_tess_status().c_str());
+    Checkbox("Cull patches off screen", &rs.frustum_cull);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Discard a patch before subdividing it when its whole\n"
+                        "bounding box is outside the view. Off submits all\n"
+                        "4096 every frame, which is what this replaced.");
+    ImGui::TextDisabled("%s", renderer_cull_status().c_str());
+    // GPU time for the terrain pass. Wall-clock frame time is pinned to the
+    // refresh rate, so it cannot show what any of the settings above cost.
+    if (double t = gpu_timer_ms("terrain"))
+      ImGui::TextDisabled("terrain pass: %.3f ms on the GPU", t);
   }
 
   ImGui::Separator();

@@ -120,6 +120,8 @@ set(STUDIO_SOURCES
     studio/sculpt.cpp
     studio/renderer.cpp
     studio/shaders_terrain.cpp
+    studio/terrain_cull.cpp
+    studio/gpu_timer.cpp
     studio/shaders_scene.cpp
     studio/planet_renderer.cpp
     studio/field_gpu_check.cpp
@@ -138,6 +140,7 @@ set(STUDIO_SOURCES
     studio/panel_camera.cpp
     studio/ai_assist.cpp
     studio/ai_ops_graph.cpp
+    studio/ai_ops_view.cpp
     studio/studio_api.cpp
     studio/i18n.cpp
     studio/file_dialogs.cpp
@@ -196,12 +199,20 @@ add_executable(node_tests tests/cpp/test_nodes.cpp)
 target_link_libraries(node_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# Renderer maths that needs no GL context: per-patch visibility, and the
+# packing helpers that follow it.
+add_executable(render_tests tests/cpp/test_render.cpp studio/terrain_cull.cpp)
+target_include_directories(render_tests PRIVATE studio)
+target_link_libraries(render_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 enable_testing()
 add_test(NAME RegressionLock COMMAND regression_tests)
 add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
+add_test(NAME RenderTests COMMAND render_tests)
 
 
 

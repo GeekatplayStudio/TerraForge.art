@@ -25,6 +25,12 @@ bool ai_apply_actions(App &a, const std::string &json_text, std::string &err);
 int ai_graph_op(App &a, const std::string &op, const nlohmann::json &act,
                 std::string &err);
 
+// Viewport and surface quality (ai_ops_view.cpp): subdivision, per-patch
+// culling, height scale, planetary radius, fractal relief, displacement
+// strength, shadows, exposure. Same return convention as ai_graph_op.
+int ai_view_op(App &a, const std::string &op, const nlohmann::json &act,
+               std::string &err);
+
 // The JSON action schema, for prompts, docs and the MCP tool description.
 std::string ai_action_schema(AiDomain domain);
 } // namespace studio

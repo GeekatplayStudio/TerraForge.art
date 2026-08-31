@@ -471,10 +471,16 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         }
       }
     } else {
-      // node-level graph editing lives in ai_ops_graph.cpp; -1 means it did
-      // not recognise the op either, and it falls through to "unsupported"
-      std::lock_guard<std::mutex> lk(a.graph_mtx);
-      int r = ai_graph_op(a, op, act, err);
+      // Viewport settings touch no graph state, so they are tried first and
+      // without the lock — waiting on a running evaluation to change the
+      // exposure would be a stall for nothing.
+      int r = ai_view_op(a, op, act, err);
+      if (r < 0) {
+        // node-level graph editing lives in ai_ops_graph.cpp; -1 means it did
+        // not recognise the op either, and it falls through to "unsupported"
+        std::lock_guard<std::mutex> lk(a.graph_mtx);
+        r = ai_graph_op(a, op, act, err);
+      }
       if (r > 0) ++applied;
     }
   }

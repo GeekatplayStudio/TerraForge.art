@@ -40,6 +40,22 @@ each one was a bug we already paid for. Do not regress them.
 3. **Node previews are not regenerated during interactive drags.**
 4. Measure before and after. Node timings are on every node in the graph and
    the totals are in the toolbar.
+5. **Never measure a renderer change with wall-clock frame time.** With vsync
+   on, the GPU finishes early and waits, so every frame is 16.7 ms whatever the
+   draw costs. Per-patch culling measured as a 0.5 % *regression* that way and
+   as 47 % faster when timed properly. Use `GpuTimer::Scope` around the pass
+   (`studio/gpu_timer.hpp`); it reads results from a query issued several
+   frames earlier so the instrument never stalls the pipeline.
+6. **A performance number that no mechanism explains is a measurement error
+   until proven otherwise.** A benchmark once reported culling 24 % faster
+   while drawing every patch — impossible, and it was smoothing bleed between
+   arms. This is why the patch count is published beside the timing: the two
+   check each other.
+7. **A conservative bound must be built from the real data.** Patch height
+   bounds come from the full-resolution heightmap, not the 256² picking copy,
+   and are widened by a texel because bilinear filtering reaches the
+   neighbour. A bound that under-covers does not cost performance — it puts a
+   hole in the terrain.
 
 ## Engine rules
 

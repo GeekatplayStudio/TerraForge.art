@@ -373,6 +373,9 @@ std::string field_gpu_verify_all(App &a) {
                     : std::string("ok (no link error)")) +
            "\n";
     out += renderer_tess_status() + "\n";
+    // Culling only runs inside the tessellation program, so a report that
+    // shows one without the other cannot say whether it is live.
+    out += renderer_cull_status() + "\n";
   }
 
   // also drop it beside the API state so it can be read from a script — the

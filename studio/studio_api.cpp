@@ -4,6 +4,7 @@
 // code path (ai_apply_actions).
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "gpu_timer.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
@@ -109,6 +110,27 @@ static void publish_state(App &a) {
   j["terrain"] = {{"resolution", a.graph.resolution},
                   {"height_scale", rs.height_scale},
                   {"size_m", rs.terrain_size_m}};
+  // How the surface is being drawn, and what that is costing. Published so a
+  // performance claim can be checked from a script instead of asserted: the
+  // frame time is the renderer's own, and patches_visible is the count the
+  // culling shader arrived at.
+  j["viewport"] = {{"tessellation", rs.tessellation},
+                   {"tess_pixels", rs.tess_pixels},
+                   {"tess_min", rs.tess_min},
+                   {"tess_max", rs.tess_max},
+                   {"frustum_cull", rs.frustum_cull},
+                   {"patches_visible", renderer_patches_visible()},
+                   {"patches_total", 64 * 64},
+                   {"frame_ms", ImGui::GetIO().DeltaTime * 1000.0f},
+                   {"terrain_gpu_ms", gpu_timer_ms("terrain")},
+                   {"planet_radius", rs.planet_radius},
+                   {"fractal_detail", rs.fractal_detail},
+                   {"field_displacement", rs.field_displacement},
+                   {"wireframe", rs.wireframe},
+                   {"shadows", rs.shadows},
+                   {"exposure", rs.exposure},
+                   {"layout", rs.viewport_layout},
+                   {"engine", rs.viewport_engine}};
 
   // The graph itself. Without this an agent can write to the graph and never
   // read it: it cannot see what nodes exist, so it can only ever bolt more on,
