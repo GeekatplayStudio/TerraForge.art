@@ -53,6 +53,12 @@ public:
   AttrSet attrs;
   std::vector<Port> ports;
   bool dirty = true;
+  // Bypass. A disabled node is not computed and does not appear in the data
+  // flow: anything reading its output reads straight through to its own input
+  // instead, so the graph behaves as though the node were not there. Same
+  // semantic as Terragen's Enable checkbox, and it costs each node nothing
+  // because the graph implements it during link resolution.
+  bool enabled = true;
   double last_compute_ms = 0;
   std::string error;
 

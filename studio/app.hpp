@@ -1,4 +1,4 @@
-// Geekatplay Studio — application state shared by all panels
+﻿// Geekatplay Studio â€” application state shared by all panels
 #pragma once
 #include "gpx/node_graph.hpp"
 #include <atomic>
@@ -50,6 +50,7 @@ struct App {
     std::string type, category, error;
     float pos_x = 0, pos_y = 0;
     double ms = 0;
+    bool enabled = true;
     std::vector<PortView> ports;
   };
   struct LinkView {
@@ -155,3 +156,4 @@ bool project_load(App &a, const std::string &path);
 void project_default_graph(App &a);
 
 } // namespace studio
+

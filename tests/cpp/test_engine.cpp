@@ -2,6 +2,8 @@
 #include "gpx/camera_math.hpp"
 #include "gpx/planet_math.hpp"
 #include "gpx/field_glsl.hpp"
+#include "gpx/metanode.hpp"
+#include <vector>
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <cmath>
@@ -10,12 +12,19 @@
 #include <string>
 
 static int g_failures = 0;
+// Overloaded rather than a bare printf: passing a std::string to "%s" is
+// undefined behaviour, and a test suite that crashes while reporting a failure
+// is worse than useless.
+static void check_fail(const char *msg, int line) {
+  std::printf("  [FAIL] %s (line %d)\n", msg, line);
+  ++g_failures;
+}
+static void check_fail(const std::string &msg, int line) {
+  check_fail(msg.c_str(), line);
+}
 #define CHECK(cond, msg)                                                        \
   do {                                                                          \
-    if (!(cond)) {                                                              \
-      std::printf("  [FAIL] %s (line %d)\n", msg, __LINE__);                    \
-      g_failures++;                                                             \
-    }                                                                           \
+    if (!(cond)) check_fail(msg, __LINE__);                                     \
   } while (0)
 
 static bool finite_map(const gpx::Heightmap &m) {
@@ -930,7 +939,244 @@ static void test_field_glsl() {
   }
 }
 
+// ------------------------------------------------------------------ bypass
+// "The network is processed as if the node did not even exist" (Terragen p15).
+// The graph implements this during link resolution, so it holds for every node
+// in both domains without per-node code.
+static void test_bypass() {
+  std::printf("node bypass...\n");
+  // a run of bypassed nodes is walked through, not just one
+  {
+    gpx::Graph g;
+    g.resolution = 48;
+    gpx::Node *src = g.add_node("Noise");
+    gpx::Node *a = g.add_node("Smooth");
+    gpx::Node *b = g.add_node("Terrace");
+    gpx::Node *c = g.add_node("Plateau");
+    gpx::Node *sink = g.add_node("Thru");
+    g.add_link(src->id, "output", a->id, "input");
+    g.add_link(a->id, "output", b->id, "input");
+    g.add_link(b->id, "output", c->id, "input");
+    g.add_link(c->id, "output", sink->id, "input");
+    g.evaluate();
+    std::vector<float> full = out_of(sink)->v;
+
+    a->enabled = b->enabled = c->enabled = false;
+    g.mark_all_dirty();
+    g.evaluate();
+    const gpx::Heightmap *seen = sink->in_hmap("input");
+    CHECK(seen != nullptr, "three bypassed nodes still resolve");
+    CHECK(seen && seen->v == out_of(src)->v,
+          "a chain of bypassed nodes reads straight back to the source");
+    CHECK(seen && seen->v != full, "bypassing actually changed the result");
+
+    // and re-enabling restores exactly what was there before
+    a->enabled = b->enabled = c->enabled = true;
+    g.mark_all_dirty();
+    g.evaluate();
+    CHECK(out_of(sink)->v == full, "re-enabling restores the original result");
+  }
+
+  // a bypassed node with nothing feeding it yields nothing, rather than
+  // silently handing on stale output from before it was disabled
+  {
+    gpx::Graph g;
+    g.resolution = 32;
+    gpx::Node *sm = g.add_node("Smooth");
+    gpx::Node *sink = g.add_node("Thru");
+    g.add_link(sm->id, "output", sink->id, "input");
+    sm->enabled = false;
+    g.mark_all_dirty();
+    g.evaluate();
+    CHECK(sink->in_hmap("input") == nullptr,
+          "a bypassed node with no input resolves to nothing");
+  }
+
+  // the field domain resolves through bypasses too
+  {
+    gpx::Graph g;
+    gpx::Node *c = g.add_node("FieldConstant");
+    gpx::Node *curve = g.add_node("FieldCurve");
+    gpx::Node *math = g.add_node("FieldMath");
+    c->attrs.find("value")->f = 0.25f;
+    curve->attrs.find("shape")->i = 4; // invert: 1 - x
+    g.add_link(c->id, "out", curve->id, "in");
+    g.add_link(curve->id, "out", math->id, "a");
+    math->attrs.find("op")->i = 0;              // add
+    math->attrs.find("b_default")->f = 0.f;
+    gpx::FieldContext ctx;
+    CHECK(std::fabs(math->eval_field("out", ctx).number() - 0.75f) < 1e-6f,
+          "field chain evaluates through the curve");
+    curve->enabled = false;
+    CHECK(std::fabs(math->eval_field("out", ctx).number() - 0.25f) < 1e-6f,
+          "bypassing a field node reads through to its input");
+  }
+
+  // bypass survives save/load, and older files without the flag load enabled
+  {
+    gpx::Graph g;
+    g.resolution = 32;
+    gpx::Node *n1 = g.add_node("Noise");
+    gpx::Node *sm = g.add_node("Smooth");
+    g.add_link(n1->id, "output", sm->id, "input");
+    sm->enabled = false;
+    std::string json = gpx::graph_to_json(g);
+    CHECK(json.find("\"enabled\"") != std::string::npos,
+          "a bypassed node records the flag");
+    gpx::Graph g2;
+    std::string err;
+    CHECK(gpx::graph_from_json(g2, json, err), "reloads");
+    gpx::Node *sm2 = nullptr;
+    for (auto &n : g2.nodes)
+      if (n->type == "Smooth") sm2 = n.get();
+    CHECK(sm2 && !sm2->enabled, "bypass survives the round trip");
+
+    // a project written before bypass existed has no flag and must load enabled
+    gpx::Graph g3;
+    std::string legacy =
+        R"({"resolution":32,"nodes":[{"id":1,"type":"Noise","pos":[0,0],)"
+        R"("attrs":{}}],"links":[]})";
+    CHECK(gpx::graph_from_json(g3, legacy, err), "legacy project loads");
+    CHECK(!g3.nodes.empty() && g3.nodes[0]->enabled,
+          "a node with no recorded flag defaults to enabled");
+  }
+}
+
+// --------------------------------------------------------------- MetaNodes
+// The guarantee that makes grouping safe: collapsing part of a graph must not
+// change what it computes, and expanding it again must give back exactly what
+// was there.
+static void test_metanodes() {
+  std::printf("MetaNodes...\n");
+  auto build = [](gpx::Graph &g, uint64_t ids[3]) {
+    g.resolution = 48;
+    gpx::Node *src = g.add_node("Noise", 0, 0);
+    gpx::Node *a = g.add_node("Smooth", 200, 0);
+    gpx::Node *b = g.add_node("Terrace", 400, 0);
+    gpx::Node *sink = g.add_node("Thru", 600, 0);
+    g.add_link(src->id, "output", a->id, "input");
+    g.add_link(a->id, "output", b->id, "input");
+    g.add_link(b->id, "output", sink->id, "input");
+    ids[0] = src->id;
+    ids[1] = a->id;
+    ids[2] = b->id;
+    return sink;
+  };
+
+  gpx::Graph g;
+  uint64_t ids[3];
+  gpx::Node *sink = build(g, ids);
+  g.evaluate();
+  std::vector<float> before = out_of(sink)->v;
+  CHECK(!before.empty(), "reference graph evaluated");
+
+  // collapse the two filters into a MetaNode
+  std::string err;
+  gpx::Node *meta = gpx::metanode_group(g, {ids[1], ids[2]}, err);
+  CHECK(meta != nullptr, "grouping succeeded: " + err);
+  if (!meta) return;
+  CHECK(meta->type == "MetaNode", "a MetaNode was created");
+  CHECK(g.find_node(ids[1]) == nullptr, "inner nodes left the outer graph");
+  int ins = 0, outs = 0;
+  for (const gpx::Port &p : meta->ports)
+    (p.dir == gpx::PortDir::In ? ins : outs)++;
+  CHECK(ins == 1, "one boundary input");
+  CHECK(outs == 1, "one boundary output");
+
+  g.mark_all_dirty();
+  g.evaluate();
+  gpx::Heightmap *after = sink->in_hmap("input")
+                              ? const_cast<gpx::Heightmap *>(sink->in_hmap("input"))
+                              : nullptr;
+  CHECK(after != nullptr, "the MetaNode feeds the sink");
+  if (after)
+    CHECK(after->v == before,
+          "a MetaNode computes exactly what the nodes it replaced computed");
+
+  // and expanding it restores the original graph and result
+  std::vector<uint64_t> restored = gpx::metanode_ungroup(g, meta->id, err);
+  CHECK(restored.size() == 2, "ungrouping restored both nodes: " + err);
+  g.mark_all_dirty();
+  g.evaluate();
+  CHECK(out_of(sink)->v == before, "ungrouping restores the original result");
+  bool has_smooth = false, has_terrace = false;
+  for (const auto &n : g.nodes) {
+    if (n->type == "Smooth") has_smooth = true;
+    if (n->type == "Terrace") has_terrace = true;
+  }
+  CHECK(has_smooth && has_terrace, "the inner node types came back");
+  for (const auto &n : g.nodes)
+    CHECK(n->type != "MetaNode", "the MetaNode itself is gone");
+}
+
+// Publishing lifts an inner parameter onto the MetaNode, so a group can expose
+// a small interface instead of everything it contains.
+static void test_metanode_published() {
+  std::printf("MetaNode published parameters...\n");
+  gpx::Graph g;
+  g.resolution = 48;
+  gpx::Node *src = g.add_node("Noise", 0, 0);
+  gpx::Node *ter = g.add_node("Terrace", 200, 0);
+  gpx::Node *sink = g.add_node("Thru", 400, 0);
+  g.add_link(src->id, "output", ter->id, "input");
+  g.add_link(ter->id, "output", sink->id, "input");
+  uint64_t inner_id = ter->id;
+
+  std::string err;
+  gpx::Node *meta = gpx::metanode_group(g, {inner_id}, err);
+  CHECK(meta != nullptr, "grouped: " + err);
+  if (!meta) return;
+
+  CHECK(gpx::metanode_publish(*meta, inner_id, "levels", "Step count"),
+        "published an inner parameter");
+  CHECK(!gpx::metanode_publish(*meta, inner_id, "levels", "again"),
+        "publishing the same parameter twice is refused");
+  auto pubs = gpx::metanode_published(*meta);
+  CHECK(pubs.size() == 1, "one published parameter recorded");
+  CHECK(pubs[0].label == "Step count", "the published label is kept");
+
+  // the mirrored attribute exists on the MetaNode with the inner type/range
+  std::string mirror = "pub_" + std::to_string(inner_id) + "_levels";
+  gpx::Attribute *m = meta->attrs.find(mirror);
+  CHECK(m != nullptr, "a real widget is mirrored onto the MetaNode");
+  if (!m) return;
+  CHECK(m->type == gpx::AttrType::Int, "the mirror keeps the inner type");
+  CHECK(m->label == "Step count", "the mirror uses the published label");
+
+  // changing the published value must change what the MetaNode computes
+  g.mark_all_dirty();
+  g.evaluate();
+  std::vector<float> at_default = out_of(sink)->v;
+  m->i = m->imin + 1;
+  g.mark_dirty(meta->id);
+  g.evaluate();
+  CHECK(out_of(sink)->v != at_default,
+        "editing a published parameter changes the MetaNode's result");
+
+  // and it survives a save/load round trip with the graph
+  std::string json = gpx::graph_to_json(g);
+  gpx::Graph g2;
+  CHECK(gpx::graph_from_json(g2, json, err), "graph with a MetaNode reloads");
+  gpx::Node *meta2 = nullptr;
+  for (auto &n : g2.nodes)
+    if (n->type == "MetaNode") meta2 = n.get();
+  CHECK(meta2 != nullptr, "the MetaNode survived");
+  if (meta2) {
+    CHECK(gpx::metanode_published(*meta2).size() == 1,
+          "published parameters survived the round trip");
+    gpx::Graph inner;
+    CHECK(gpx::metanode_open(*meta2, inner, err),
+          "the inner graph survived: " + err);
+    CHECK(!inner.nodes.empty(), "inner graph has its nodes");
+  }
+
+  CHECK(gpx::metanode_unpublish(*meta, inner_id, "levels"), "unpublished");
+  CHECK(meta->attrs.find(mirror) == nullptr, "the mirror widget was removed");
+}
+
 int main() {
+  // unbuffered: if a test crashes, the last line printed tells us where
+  std::setvbuf(stdout, nullptr, _IONBF, 0);
   std::printf("=== Geekatplay Studio engine tests ===\n");
   test_registry();
   test_graph_eval();
@@ -952,6 +1198,9 @@ int main() {
   test_field_domain();
   test_field_bridges();
   test_field_glsl();
+  test_bypass();
+  test_metanodes();
+  test_metanode_published();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;
@@ -959,5 +1208,8 @@ int main() {
   std::printf("%d FAILURES\n", g_failures);
   return 1;
 }
+
+
+
 
 

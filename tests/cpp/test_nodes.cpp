@@ -1,19 +1,19 @@
-// Geekatplay TerraForge — universal node contract (test tier 1).
+﻿// Geekatplay TerraForge â€” universal node contract (test tier 1).
 //
 // One data-driven battery applied to EVERY node in the registry. Adding a node
 // automatically brings it under test, so coverage can never quietly fall behind
-// the node count — which is exactly how a 90-node engine ends up with 12 tested
+// the node count â€” which is exactly how a 90-node engine ends up with 12 tested
 // nodes.
 //
 // The contract each node must satisfy:
-//   metadata     — category and description present; description is a sentence
-//   attributes   — labelled, defaults inside their declared range, tooltips on
+//   metadata     â€” category and description present; description is a sentence
+//   attributes   â€” labelled, defaults inside their declared range, tooltips on
 //                  anything not self-evident
-//   evaluation   — produces finite output from a plausible input, no crash
-//   determinism  — same inputs twice, bit-identical output
-//   seed         — a seeded node reacts to its seed
-//   serialization— attributes survive a JSON round trip exactly
-//   robustness   — extreme attribute values do not produce NaN/Inf
+//   evaluation   â€” produces finite output from a plausible input, no crash
+//   determinism  â€” same inputs twice, bit-identical output
+//   seed         â€” a seeded node reacts to its seed
+//   serializationâ€” attributes survive a JSON round trip exactly
+//   robustness   â€” extreme attribute values do not produce NaN/Inf
 #include "gpx/field_glsl.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
@@ -46,7 +46,7 @@ static bool needs_file(const std::string &t) {
   return t == "HeightmapFile" || t == "TextureFile" || t == "Stamp" ||
          t == "PBRMaterial";
 }
-// Nodes that write to disk when evaluated — skipped so the suite has no side
+// Nodes that write to disk when evaluated â€” skipped so the suite has no side
 // effects on the working tree.
 static bool writes_file(const std::string &t) {
   return t.rfind("Export", 0) == 0;
@@ -62,6 +62,11 @@ static bool is_config_node(const std::string &t) {
 static bool is_sink(const std::string &t) {
   return t == "ExportMesh" || t == "ExportTexture";
 }
+// Containers get their ports and their behaviour from what is put inside them,
+// so an empty one having neither is correct rather than a defect. MetaNodes are
+// exercised properly by test_metanodes in the engine suite, which groups a real
+// graph and checks the result is unchanged.
+static bool is_container(const std::string &t) { return t == "MetaNode"; }
 
 static bool finite_map(const gpx::Heightmap &m) {
   for (float v : m.v)
@@ -276,7 +281,8 @@ static void check_ports(gpx::Node *n) {
       ++outs;
     }
   }
-  if (!is_sink(n->type)) CHECK(outs >= 1, "has at least one output");
+  if (!is_sink(n->type) && !is_container(n->type))
+    CHECK(outs >= 1, "has at least one output");
 }
 
 static void check_eval_and_determinism(const std::string &type) {
@@ -289,13 +295,13 @@ static void check_eval_and_determinism(const std::string &type) {
     return;
   }
   g.evaluate();
-  CHECK(n->error.empty() || needs_file(type),
+  CHECK(n->error.empty() || needs_file(type) || is_container(type),
         "evaluates without error (got: " + n->error + ")");
   int produced = check_outputs_finite(n);
   check_field_outputs(n);
   check_field_transpiles(n);
   if (has_raster_output(n) && !needs_file(type) && !is_config_node(type) &&
-      !is_sink(type))
+      !is_sink(type) && !is_container(type))
     CHECK(produced >= 1, "produced at least one non-empty output");
 
   std::vector<float> first = snapshot(n);
@@ -390,6 +396,49 @@ static void check_serialization(const std::string &type) {
   }
 }
 
+// Bypass is universal: disabling any node must make the graph behave as though
+// it were not there. For a filter that means its consumer sees the filter's own
+// input. This is checked on every node so a new one cannot opt out by accident.
+static void check_bypass(const std::string &type) {
+  gpx::Graph g;
+  g.resolution = 32;
+  std::vector<gpx::Node *> feeders;
+  gpx::Node *n = build(g, type, feeders);
+  if (!n) return;
+  // needs a heightmap in and out to have a pass-through channel at all
+  gpx::Port *in = nullptr, *out = nullptr;
+  for (gpx::Port &p : n->ports) {
+    if (p.dir == gpx::PortDir::In && p.type == gpx::DataType::Heightmap && !in)
+      in = &p;
+    if (p.dir == gpx::PortDir::Out && p.type == gpx::DataType::Heightmap && !out)
+      out = &p;
+  }
+  if (!in || !out) return;
+  gpx::Node *src = g.upstream_node(*n, in->name);
+  if (!src) return;
+
+  // read the node's output through a downstream consumer, which is where the
+  // bypass has to take effect
+  gpx::Node *sink = g.add_node("Thru", 800, 0);
+  if (!sink) return;
+  if (!g.add_link(n->id, out->name, sink->id, "input")) return;
+  g.evaluate();
+  const gpx::Heightmap *upstream_out = src->port("output", gpx::PortDir::Out)
+                                           ? src->port("output", gpx::PortDir::Out)->hmap.get()
+                                           : nullptr;
+  if (!upstream_out) return;
+
+  n->enabled = false;
+  g.mark_all_dirty();
+  g.evaluate();
+  const gpx::Heightmap *seen = sink->in_hmap("input");
+  CHECK(seen != nullptr, "bypassed node still resolves for its consumer");
+  if (seen)
+    CHECK(seen->v == upstream_out->v,
+          "bypassed node passes its input straight through");
+  CHECK(n->last_compute_ms == 0.0, "bypassed node is not computed at all");
+}
+
 // Extreme but legal attribute values must not produce NaN/Inf. This is where
 // the "user drags a slider to the end" class of bug lives.
 static void check_extremes(const std::string &type) {
@@ -448,6 +497,7 @@ void test_all_nodes_contract() {
       continue; // would touch the working tree
     }
     check_eval_and_determinism(d->type);
+    check_bypass(d->type);
     check_seed_matters(d->type);
     check_serialization(d->type);
     check_extremes(d->type);
@@ -464,3 +514,4 @@ int main() {
               g_failures ? "FAILED" : "all passed", g_failures);
   return g_failures ? 1 : 0;
 }
+

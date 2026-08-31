@@ -55,6 +55,7 @@ MaskToTexture|Material
 MaterialOutput|Material
 MathGradient|Operator
 Math|Operator
+MetaNode|Group
 MixLayers|Operator
 Noise|Primitive
 NormalBlend|Material

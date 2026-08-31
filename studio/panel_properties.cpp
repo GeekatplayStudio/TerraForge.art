@@ -565,6 +565,7 @@ struct NodeMirror {
   uint64_t id = 0;
   std::string type, category, error;
   gpx::AttrSet attrs;
+  bool enabled = true;
   bool valid = false;
   bool pending = false; // mirror holds edits not yet written to the node
 };
@@ -587,6 +588,7 @@ static void node_properties(App &a) {
       g_mirror.type = live->type;
       g_mirror.category = live->category;
       g_mirror.error = live->error;
+      g_mirror.enabled = live->enabled;
       g_mirror.attrs = live->attrs;
       g_mirror.valid = true;
     } else {
@@ -614,9 +616,35 @@ static void node_properties(App &a) {
     if (ImGui::Button("Inspect object instead")) a.prop_tab = TAB_OBJECT;
     return;
   }
+  // Bypass sits at the top of every node, the way Terragen puts Enable there:
+  // it is the fastest way to answer "what is this node actually doing?"
+  {
+    bool on = n->enabled;
+    if (studio::Checkbox("##enabled", &on)) {
+      undo_push(a, on ? "Enable " + n->type : "Bypass " + n->type);
+      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      if (gpx::Node *live = a.graph.find_node(n->id)) {
+        live->enabled = on;
+        n->enabled = on;
+        a.graph.mark_dirty(live->id);
+        a.request_eval();
+      }
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Bypass this node.\n"
+                        "The graph is evaluated as though it were not there:\n"
+                        "whatever reads its output reads its input instead.");
+    ImGui::SameLine();
+  }
   ImGui::Text("%s", n->type.c_str());
   ImGui::SameLine();
   ImGui::TextDisabled("Â· %s", n->category.c_str());
+  if (!n->enabled) {
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.55f, 0.20f, 1.f));
+    ImGui::TextUnformatted("bypassed");
+    ImGui::PopStyleColor();
+  }
   if (ImGui::SmallButton("view in 3D")) {
     a.view_node = n->id;
     a.uploaded_serial = 0;
@@ -798,5 +826,6 @@ void draw_panel_properties(App &a) {
 }
 
 } // namespace studio
+
 
 

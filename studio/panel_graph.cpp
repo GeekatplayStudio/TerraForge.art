@@ -1,6 +1,7 @@
 ﻿// Geekatplay Studio â€” node graph panel (imgui-node-editor)
 #include "app.hpp"
 #include "undo.hpp"
+#include "gpx/metanode.hpp"
 #include <imgui.h>
 #include <imgui_node_editor.h>
 #include <algorithm>
@@ -42,10 +43,15 @@ static ImU32 port_color(bool is_texture) {
 }
 
 static void draw_node(App &a, const App::NodeView &n) {
-  ed::PushStyleColor(ed::StyleColor_NodeBg, ImVec4(0.12f, 0.12f, 0.12f, 0.96f));
+  // a bypassed node stays visible but reads as inert, so you can see the
+  // structure you are keeping without mistaking it for part of the result
+  ed::PushStyleColor(ed::StyleColor_NodeBg,
+                     n.enabled ? ImVec4(0.12f, 0.12f, 0.12f, 0.96f)
+                               : ImVec4(0.09f, 0.09f, 0.09f, 0.80f));
   ed::PushStyleColor(ed::StyleColor_NodeBorder,
-                     n.error.empty() ? ImVec4(0.04f, 0.04f, 0.04f, 1.f)
-                                     : ImVec4(0.8f, 0.2f, 0.15f, 1.f));
+                     !n.error.empty() ? ImVec4(0.8f, 0.2f, 0.15f, 1.f)
+                     : n.enabled     ? ImVec4(0.04f, 0.04f, 0.04f, 1.f)
+                                     : ImVec4(0.55f, 0.36f, 0.14f, 1.f));
   ed::PushStyleVar(ed::StyleVar_NodeRounding, 0.f);
   ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(10, 6, 10, 8));
   ed::BeginNode(n.id);
@@ -58,6 +64,12 @@ static void draw_node(App &a, const App::NodeView &n) {
   dl->AddRectFilled(ImVec2(hp.x - 6, hp.y - 2), ImVec2(hp.x - 2, hp.y + 14), hc);
   ImGui::TextUnformatted(n.type.c_str());
   ImGui::PopStyleColor();
+  if (!n.enabled) {
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(217, 140, 51, 255));
+    ImGui::TextUnformatted("(bypassed)");
+    ImGui::PopStyleColor();
+  }
   ImGui::Spacing();
 
   // pins: inputs left column, outputs right column
@@ -297,6 +309,63 @@ void draw_panel_graph(App &a) {
     }
   }
 
+  // group the selection into a MetaNode (Ctrl+G) / expand one (Ctrl+Shift+G)
+  if (!eval_running && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) &&
+      ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_G, false)) {
+    ed::NodeId sel[64];
+    int count = ed::GetSelectedNodes(sel, 64);
+    std::string err;
+    if (ImGui::GetIO().KeyShift) {
+      // expand: only meaningful on a MetaNode
+      for (int i = 0; i < count; ++i) {
+        gpx::Node *n = a.graph.find_node((uint64_t)sel[i].Get());
+        if (!n || n->type != "MetaNode") continue;
+        undo_push_locked(a, "Expand MetaNode");
+        std::vector<uint64_t> back = gpx::metanode_ungroup(a.graph, n->id, err);
+        a.status = back.empty() ? "expand failed: " + err
+                                : "expanded into " + std::to_string(back.size()) +
+                                      " nodes";
+        a.graph_layout_serial++;
+        a.request_eval();
+        break;
+      }
+    } else if (count > 0) {
+      std::vector<uint64_t> ids;
+      for (int i = 0; i < count; ++i) ids.push_back((uint64_t)sel[i].Get());
+      undo_push_locked(a, "Group into MetaNode");
+      gpx::Node *meta = gpx::metanode_group(a.graph, ids, err);
+      if (meta) {
+        a.selected_node = meta->id;
+        a.status = "grouped " + std::to_string(ids.size()) + " nodes";
+      } else {
+        a.status = "group failed: " + err;
+      }
+      a.graph_layout_serial++;
+      a.request_eval();
+    }
+  }
+
+  // bypass the selection (Ctrl+E) — the shortcut every node app has for
+  // "take this out of the chain and show me what changes"
+  if (!eval_running && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) &&
+      ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_E, false)) {
+    ed::NodeId sel[32];
+    int count = ed::GetSelectedNodes(sel, 32);
+    if (count > 0) {
+      undo_push_locked(a, count > 1 ? "Bypass nodes" : "Bypass node");
+      // flip them all to match the first, so a mixed selection becomes uniform
+      gpx::Node *first = a.graph.find_node((uint64_t)sel[0].Get());
+      bool target = first ? !first->enabled : false;
+      for (int i = 0; i < count; ++i)
+        if (gpx::Node *n = a.graph.find_node((uint64_t)sel[i].Get())) {
+          n->enabled = target;
+          a.graph.mark_dirty(n->id);
+        }
+      a.request_eval();
+      a.status = target ? "nodes enabled" : "nodes bypassed";
+    }
+  }
+
   // copy / paste selected nodes (Ctrl+C / Ctrl+V)
   {
     struct ClipNode {
@@ -386,6 +455,7 @@ void draw_panel_graph(App &a) {
 }
 
 } // namespace studio
+
 
 
 

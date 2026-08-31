@@ -151,10 +151,23 @@
       "description": "Field graphs compile to GLSL: shared nodes emitted once, samplers declared, unsupported nodes rejected loudly. Every field node must have an emitter or the contract suite fails.",
       "test_file": "test_engine.cpp", "test_symbol": "test_field_glsl" },
 
+    { "id": "framework.bypass", "area": "framework", "phase": "P0.3",
+      "description": "Any node can be bypassed: the graph is evaluated as though it were not there, through chains, in both domains, and it survives save/load",
+      "test_file": "test_engine.cpp", "test_symbol": "test_bypass" },
+
+    { "id": "framework.metanodes", "area": "framework", "phase": "P0.3",
+      "description": "Grouping a selection into a MetaNode does not change what the graph computes, and ungrouping restores it exactly",
+      "test_file": "test_engine.cpp", "test_symbol": "test_metanodes" },
+
+    { "id": "framework.published_params", "area": "framework", "phase": "P0.3",
+      "description": "MetaNode parameters can be published with their real type and range, drive the inner graph, and survive save/load",
+      "test_file": "test_engine.cpp", "test_symbol": "test_metanode_published" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
   ]
 }
+
 
 

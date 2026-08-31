@@ -1,4 +1,4 @@
-#include "gpx/serialization.hpp"
+﻿#include "gpx/serialization.hpp"
 #include <algorithm>
 #include <cstring>
 #include <fstream>
@@ -168,6 +168,7 @@ std::string graph_to_json(const Graph &g) {
     json attrs;
     for (const auto &a : n->attrs.items) attrs[a.key] = attr_to_json(a);
     jn["attrs"] = attrs;
+    if (!n->enabled) jn["enabled"] = false;
     nodes.push_back(jn);
   }
   j["nodes"] = nodes;
@@ -197,6 +198,7 @@ bool graph_from_json(Graph &g, const std::string &text, std::string &err) {
                          jn["pos"][0].get<float>(), jn["pos"][1].get<float>());
     if (!n) continue; // unknown node type: skip, keep loading
     idmap[jn["id"].get<uint64_t>()] = n->id;
+    n->enabled = jn.value("enabled", true);
     if (jn.contains("attrs"))
       for (auto &a : n->attrs.items)
         if (jn["attrs"].contains(a.key)) attr_from_json(a, jn["attrs"][a.key]);
@@ -378,6 +380,7 @@ std::string material_to_json(const Graph &g, uint64_t material_node_id) {
     json attrs;
     for (const auto &at : n->attrs.items) attrs[at.key] = attr_to_json(at);
     jn["attrs"] = attrs;
+    if (!n->enabled) jn["enabled"] = false;
     nodes.push_back(jn);
   }
   j["nodes"] = nodes;
@@ -413,6 +416,7 @@ uint64_t material_from_json(Graph &g, const std::string &text, std::string &err,
                          y + jn["pos"][1].get<float>());
     if (!n) continue;
     idmap[jn["id"].get<uint64_t>()] = n->id;
+    n->enabled = jn.value("enabled", true);
     if (jn.contains("attrs"))
       for (auto &at : n->attrs.items)
         if (jn["attrs"].contains(at.key)) attr_from_json(at, jn["attrs"][at.key]);
@@ -493,3 +497,4 @@ std::string registry_catalog_for_ai(const std::vector<std::string> &categories) 
 }
 
 } // namespace gpx
+

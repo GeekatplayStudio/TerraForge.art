@@ -67,6 +67,7 @@ set(ENGINE_SOURCES
     engine/serialization.cpp
     engine/parallel.cpp
     engine/field_glsl.cpp
+    engine/metanode.cpp
     engine/nodes/nodes_primitives.cpp
     engine/nodes/nodes_filters.cpp
     engine/nodes/nodes_erosion.cpp
@@ -189,6 +190,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
+
 
 
 

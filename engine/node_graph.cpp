@@ -94,12 +94,19 @@ FieldValue Node::eval_field(const std::string &name,
   return FieldValue(0.f);
 }
 
+// A buffer parked directly on an input port wins over the link. This is how a
+// MetaNode feeds values across its boundary into the inner graph: the inner
+// node has no upstream link to follow, so the value is injected instead.
 const Heightmap *Node::in_hmap(const std::string &name) const {
+  if (const Port *local = const_cast<Node *>(this)->port(name, PortDir::In))
+    if (local->hmap) return local->hmap.get();
   const Port *up = graph ? graph->upstream(*this, name) : nullptr;
   return up && up->hmap ? up->hmap.get() : nullptr;
 }
 
 const TextureRGBA *Node::in_tex(const std::string &name) const {
+  if (const Port *local = const_cast<Node *>(this)->port(name, PortDir::In))
+    if (local->tex) return local->tex.get();
   const Port *up = graph ? graph->upstream(*this, name) : nullptr;
   return up && up->tex ? up->tex.get() : nullptr;
 }
@@ -245,20 +252,54 @@ void Graph::clear() {
   links.clear();
 }
 
-const Port *Graph::upstream(const Node &n, const std::string &in_port) const {
-  for (const Link &l : links)
-    if (l.to_node == n.id && l.to_port == in_port) {
-      Node *up = find_node(l.from_node);
-      if (!up) return nullptr;
-      return up->port(l.from_port, PortDir::Out);
+// Which of a bypassed node's inputs stands in for the output being asked for.
+// Prefer a port literally named "input", then the first input of the same data
+// type — that is the pass-through channel for essentially every filter we have.
+static const Link *bypass_source(const Graph &g, const Node &n,
+                                 const Port *out_port) {
+  const Link *typed = nullptr;
+  for (const Link &l : g.links) {
+    if (l.to_node != n.id) continue;
+    const Port *in = const_cast<Node &>(n).port(l.to_port, PortDir::In);
+    if (!in) continue;
+    if (l.to_port == "input") return &l;
+    if (!typed && out_port && in->type == out_port->type) typed = &l;
+  }
+  return typed;
+}
+
+// Resolve a link, walking through any bypassed nodes on the way. Recursion is
+// depth-limited rather than cycle-tracked because add_link already rejects
+// cycles; the limit is a belt-and-braces guard for a corrupt file.
+static const Port *resolve_upstream(const Graph &g, const Node &n,
+                                    const std::string &in_port, Node **out_node,
+                                    int depth) {
+  if (depth > 64) return nullptr;
+  for (const Link &l : g.links) {
+    if (l.to_node != n.id || l.to_port != in_port) continue;
+    Node *up = g.find_node(l.from_node);
+    if (!up) return nullptr;
+    Port *p = up->port(l.from_port, PortDir::Out);
+    if (up->enabled) {
+      if (out_node) *out_node = up;
+      return p;
     }
+    // bypassed: read through it to whatever feeds its own input
+    const Link *src = bypass_source(g, *up, p);
+    if (!src) return nullptr;
+    return resolve_upstream(g, *up, src->to_port, out_node, depth + 1);
+  }
   return nullptr;
 }
 
+const Port *Graph::upstream(const Node &n, const std::string &in_port) const {
+  return resolve_upstream(*this, n, in_port, nullptr, 0);
+}
+
 Node *Graph::upstream_node(const Node &n, const std::string &in_port) const {
-  for (const Link &l : links)
-    if (l.to_node == n.id && l.to_port == in_port) return find_node(l.from_node);
-  return nullptr;
+  Node *found = nullptr;
+  resolve_upstream(*this, n, in_port, &found, 0);
+  return found;
 }
 
 void Graph::mark_dirty(uint64_t node_id) {
@@ -304,10 +345,17 @@ bool Graph::evaluate() {
   if (order.empty() && !nodes.empty()) return false;
   int idx = 0, total = 0;
   for (Node *n : order)
-    if (n->dirty) total++;
+    if (n->dirty && n->enabled) total++;
   for (Node *n : order) {
     if (cancel.load()) return false;
     if (!n->dirty) continue;
+    // a bypassed node costs nothing: readers already resolve through it
+    if (!n->enabled) {
+      n->dirty = false;
+      n->error.clear();
+      n->last_compute_ms = 0;
+      continue;
+    }
     const NodeDef *def = NodeRegistry::instance().find(n->type);
     if (!def) continue;
     if (on_progress) on_progress(idx, total, n->type);

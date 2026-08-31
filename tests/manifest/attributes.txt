@@ -229,6 +229,9 @@ MaterialOutput.translucency|float
 MaterialOutput.transparency|float
 Math.op|choice
 Math.value|float
+MetaNode.inner_graph|text
+MetaNode.note|text
+MetaNode.published|text
 MixLayers.smooth_k|float
 Noise.angle|float
 Noise.gain|float
