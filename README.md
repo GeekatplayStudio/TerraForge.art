@@ -27,6 +27,19 @@ real-time OpenGL viewport.
   detail, snow with settle-thaw, rivers and coastlines.
 - **Modeling:** import heightfield images and stamp them onto the terrain
   with blending and falloff.
+- **Sculpting:** brush directly on the terrain in any viewport — raise,
+  flatten, smooth, terrace, noise and erase, with radius/flow/falloff, an
+  on-surface brush ring and mouse-wheel resizing. Strokes live in a
+  `TerrainSculpt` node in the graph as their own layer, so retuning the
+  procedural terrain underneath never destroys your hand edits, and each
+  stroke is one undo step.
+- **Effects:** one-click, deterministic finishing nodes — Grit, Gravel
+  (slope-seeking debris), Peaks, Sharpen, Cracks, Glaciation (U-valleys
+  below an ice line), Dissolve (stream-carving with a flow-map output), and
+  altitude clipping with flat tops, holes and a clip mask.
+- **Style presets:** the Terrain menu drops complete editable node chains —
+  Mountain, Ridged peaks, Eroded mountain, Canyon, Dunes, Iceberg, Lunar —
+  with a fresh seed every click.
 
 ### Materials
 - **PBR terrain shading:** roughness, metallic, specular, sky reflections,

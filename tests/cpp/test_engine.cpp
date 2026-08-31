@@ -485,6 +485,145 @@ static void test_ai_spec() {
   CHECK(cat.find("snow_line") != std::string::npos, "catalog lists attrs");
 }
 
+static void test_terrain_effects() {
+  std::printf("terrain effects...\n");
+  for (const char *t : {"Grit", "Gravel", "Peaks", "Sharpen", "Cracks",
+                        "Glaciation", "Dissolve", "TerrainClip", "TerrainSculpt"})
+    CHECK(gpx::NodeRegistry::instance().find(t) != nullptr, t);
+
+  // every effect runs, keeps the map finite, and reproduces bit-identically
+  for (const char *t : {"Grit", "Gravel", "Peaks", "Sharpen", "Cracks",
+                        "Glaciation", "Dissolve", "TerrainClip"}) {
+    gpx::Graph g;
+    g.resolution = 96;
+    gpx::Node *src = g.add_node("Fractal");
+    gpx::Node *fx = g.add_node(t);
+    CHECK(src && fx, "nodes created");
+    if (!src || !fx) continue;
+    g.add_link(src->id, "output", fx->id, "input");
+    g.evaluate();
+    gpx::Heightmap *o1 = out_of(fx);
+    CHECK(o1 && finite_map(*o1), t);
+    std::vector<float> first = o1->v;
+    g.mark_all_dirty();
+    g.evaluate();
+    gpx::Heightmap *o2 = out_of(fx);
+    bool same = o2 && o2->v == first;
+    CHECK(same, (std::string(t) + " deterministic").c_str());
+  }
+
+  // Dissolve carves and produces a flow map
+  {
+    gpx::Graph g;
+    g.resolution = 96;
+    gpx::Node *src = g.add_node("Fractal");
+    gpx::Node *fx = g.add_node("Dissolve");
+    g.add_link(src->id, "output", fx->id, "input");
+    g.evaluate();
+    gpx::Heightmap *flow = out_of(fx, "flow_map");
+    CHECK(flow && finite_map(*flow), "Dissolve flow map");
+    float mn, mx;
+    flow->minmax(mn, mx);
+    CHECK(mx > mn, "flow map is not flat");
+  }
+
+  // TerrainClip flattens above the high mark and outputs the hole mask
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *src = g.add_node("Fractal");
+    gpx::Node *fx = g.add_node("TerrainClip");
+    g.add_link(src->id, "output", fx->id, "input");
+    if (gpx::Attribute *r = fx->attrs.find("clip")) {
+      r->v2[0] = 0.2f;
+      r->v2[1] = 0.7f;
+    }
+    if (gpx::Attribute *m = fx->attrs.find("low_mode")) m->i = 2; // hole
+    g.evaluate();
+    gpx::Heightmap *out = out_of(fx);
+    gpx::Heightmap *mask = out_of(fx, "clip_mask");
+    CHECK(out && mask, "clip outputs exist");
+    if (out && mask) {
+      float mn, mx, imn, imx;
+      out->minmax(mn, mx);
+      out_of(fx) /* keep */;
+      gpx::Heightmap *in = out_of(src);
+      in->minmax(imn, imx);
+      float d = imx - imn;
+      CHECK(mx <= imn + 0.7f * d + 1e-4f, "high clip flattened the peaks");
+      float mmin, mmax;
+      mask->minmax(mmin, mmax);
+      CHECK(mmin < 0.5f && mmax > 0.5f, "clip mask marks the holes");
+    }
+  }
+}
+
+static void test_sculpt_layer() {
+  std::printf("sculpt layer...\n");
+  gpx::Graph g;
+  g.resolution = 96;
+  gpx::Node *src = g.add_node("Fractal");
+  gpx::Node *sc = g.add_node("TerrainSculpt");
+  CHECK(src && sc, "nodes created");
+  g.add_link(src->id, "output", sc->id, "input");
+  g.evaluate();
+  gpx::Heightmap *base = out_of(sc);
+  CHECK(base && finite_map(*base), "empty sculpt passes the terrain through");
+  gpx::Heightmap *in = out_of(src);
+  bool passthrough = base && in && base->v == in->v;
+  CHECK(passthrough, "unpainted layer is a no-op");
+
+  // paint a bump into the field and check it lands on the surface
+  gpx::Attribute *fa = sc->attrs.find("delta");
+  CHECK(fa && fa->fw > 0, "delta field declared");
+  fa->field.assign((size_t)fa->fw * fa->fh, 0.f);
+  int cx = fa->fw / 2, cy = fa->fh / 2;
+  for (int y = -6; y <= 6; ++y)
+    for (int x = -6; x <= 6; ++x)
+      fa->field[(size_t)(cy + y) * fa->fw + (cx + x)] = 0.5f;
+  g.mark_dirty(sc->id);
+  g.evaluate();
+  gpx::Heightmap *bumped = out_of(sc);
+  CHECK(bumped, "sculpted eval");
+  if (bumped && in) {
+    float before = in->sample(0.5f, 0.5f);
+    float after = bumped->sample(0.5f, 0.5f);
+    CHECK(after > before + 1e-4f, "the stroke raised the surface");
+    // corners untouched
+    CHECK(std::fabs(bumped->sample(0.05f, 0.05f) - in->sample(0.05f, 0.05f)) <
+              1e-5f,
+          "unpainted areas unchanged");
+  }
+  gpx::Heightmap *smask = out_of(sc, "stroke_mask");
+  CHECK(smask && smask->sample(0.5f, 0.5f) > 0.2f, "stroke mask marks the edit");
+
+  // the painted field must survive a save/load round trip bit-exactly enough
+  // to reproduce the same surface (16-bit quantization over its own range)
+  std::string j = gpx::graph_to_json(g);
+  gpx::Graph g2;
+  std::string err;
+  CHECK(gpx::graph_from_json(g2, j, err), "graph with field round trips");
+  gpx::Node *sc2 = nullptr;
+  for (auto &n : g2.nodes)
+    if (n->type == "TerrainSculpt") sc2 = n.get();
+  CHECK(sc2 != nullptr, "sculpt node restored");
+  if (sc2) {
+    const gpx::Attribute *fb = sc2->attrs.find("delta");
+    CHECK(fb && fb->field.size() == fa->field.size(), "field data restored");
+    if (fb && fb->field.size() == fa->field.size()) {
+      float worst = 0;
+      for (size_t i = 0; i < fb->field.size(); ++i)
+        worst = std::max(worst, std::fabs(fb->field[i] - fa->field[i]));
+      CHECK(worst < 1e-4f, "field survives 16-bit quantization");
+    }
+    g2.evaluate();
+    gpx::Heightmap *b2 = out_of(sc2);
+    CHECK(b2 && std::fabs(b2->sample(0.5f, 0.5f) - bumped->sample(0.5f, 0.5f)) <
+                    1e-3f,
+          "restored sculpt reproduces the surface");
+  }
+}
+
 int main() {
   std::printf("=== Geekatplay Studio engine tests ===\n");
   test_registry();
@@ -501,6 +640,8 @@ int main() {
   test_workflow_determinism();
   test_camera_math();
   test_ai_spec();
+  test_terrain_effects();
+  test_sculpt_layer();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;

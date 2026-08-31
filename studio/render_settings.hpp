@@ -141,6 +141,12 @@ void renderer_get_camera(float eye[3], float target[3], float *fovy_deg);
 // pick a scene object under normalized view coords (0..1); -1 = nothing
 int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float v,
                   int w, int h);
+// where the cursor lands on the terrain surface, in normalized terrain
+// coords — positions the sculpt brush
+bool renderer_pick_terrain(int slot, const RenderSettings::ViewConfig &vc, float u,
+                           float v, int w, int h, float &tx, float &tz);
+// brush ring drawn on the terrain this frame (radius <= 0 hides it)
+void renderer_set_brush_cursor(float tx, float tz, float radius, bool erasing);
 // upload extra material maps (any may be null)
 // version changes only when the map data changed; equal versions skip the
 // (expensive) GPU upload entirely

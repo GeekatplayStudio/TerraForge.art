@@ -1,14 +1,110 @@
 #include "gpx/serialization.hpp"
 #include <algorithm>
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <set>
 #include <vector>
 #include <json.hpp>
+#include <miniz/miniz.h>
 
 using json = nlohmann::json;
 
 namespace gpx {
+
+// ---- painted fields -------------------------------------------------------
+// A sculpt layer is far too big to write as a JSON array of floats, so it is
+// quantized to 16 bits over its own range, deflated, and base64'd. Sparse
+// strokes compress to almost nothing, which also keeps undo snapshots small.
+static const char B64[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static std::string b64_encode(const std::vector<uint8_t> &in) {
+  std::string out;
+  out.reserve((in.size() + 2) / 3 * 4);
+  for (size_t i = 0; i < in.size(); i += 3) {
+    uint32_t v = in[i] << 16;
+    if (i + 1 < in.size()) v |= in[i + 1] << 8;
+    if (i + 2 < in.size()) v |= in[i + 2];
+    out += B64[(v >> 18) & 63];
+    out += B64[(v >> 12) & 63];
+    out += (i + 1 < in.size()) ? B64[(v >> 6) & 63] : '=';
+    out += (i + 2 < in.size()) ? B64[v & 63] : '=';
+  }
+  return out;
+}
+
+static std::vector<uint8_t> b64_decode(const std::string &in) {
+  int8_t rev[256];
+  std::memset(rev, -1, sizeof rev);
+  for (int i = 0; i < 64; ++i) rev[(uint8_t)B64[i]] = (int8_t)i;
+  std::vector<uint8_t> out;
+  out.reserve(in.size() / 4 * 3);
+  uint32_t acc = 0;
+  int bits = 0;
+  for (char c : in) {
+    int8_t d = rev[(uint8_t)c];
+    if (d < 0) continue; // '=' and any whitespace
+    acc = (acc << 6) | (uint32_t)d;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out.push_back((uint8_t)((acc >> bits) & 0xff));
+    }
+  }
+  return out;
+}
+
+static json field_to_json(const Attribute &a) {
+  json j;
+  j["fw"] = a.fw;
+  j["fh"] = a.fh;
+  if (a.field.empty()) return j;
+  float mn = a.field[0], mx = a.field[0];
+  for (float v : a.field) {
+    mn = std::min(mn, v);
+    mx = std::max(mx, v);
+  }
+  j["lo"] = mn;
+  j["hi"] = mx;
+  float d = (mx - mn) > 1e-20f ? (mx - mn) : 1.f;
+  std::vector<uint8_t> raw(a.field.size() * 2);
+  for (size_t i = 0; i < a.field.size(); ++i) {
+    uint16_t q = (uint16_t)std::lround((a.field[i] - mn) / d * 65535.f);
+    raw[i * 2] = (uint8_t)(q & 0xff);
+    raw[i * 2 + 1] = (uint8_t)(q >> 8);
+  }
+  mz_ulong cap = mz_compressBound((mz_ulong)raw.size());
+  std::vector<uint8_t> packed(cap);
+  if (mz_compress2(packed.data(), &cap, raw.data(), (mz_ulong)raw.size(),
+                   MZ_BEST_SPEED) == MZ_OK) {
+    packed.resize(cap);
+    j["z"] = b64_encode(packed);
+  }
+  return j;
+}
+
+static void field_from_json(Attribute &a, const json &j) {
+  if (j.contains("fw")) a.fw = j["fw"].get<int>();
+  if (j.contains("fh")) a.fh = j["fh"].get<int>();
+  a.field.clear();
+  if (!j.contains("z") || a.fw <= 0 || a.fh <= 0) return;
+  std::vector<uint8_t> packed = b64_decode(j["z"].get<std::string>());
+  size_t count = (size_t)a.fw * a.fh;
+  std::vector<uint8_t> raw(count * 2);
+  mz_ulong got = (mz_ulong)raw.size();
+  if (mz_uncompress(raw.data(), &got, packed.data(),
+                    (mz_ulong)packed.size()) != MZ_OK ||
+      got != raw.size())
+    return; // corrupt payload: leave the field empty rather than guess
+  float mn = j.value("lo", 0.f), mx = j.value("hi", 0.f);
+  float d = (mx - mn) > 1e-20f ? (mx - mn) : 1.f;
+  a.field.resize(count);
+  for (size_t i = 0; i < count; ++i) {
+    uint16_t q = (uint16_t)(raw[i * 2] | (raw[i * 2 + 1] << 8));
+    a.field[i] = mn + (q / 65535.f) * d;
+  }
+}
 
 static json attr_to_json(const Attribute &a) {
   json j;
@@ -29,11 +125,16 @@ static json attr_to_json(const Attribute &a) {
     } break;
     case AttrType::Filename:
     case AttrType::Text: j["s"] = a.s; break;
+    case AttrType::Field: j = field_to_json(a); break;
   }
   return j;
 }
 
 static void attr_from_json(Attribute &a, const json &j) {
+  if (a.type == AttrType::Field) {
+    field_from_json(a, j);
+    return;
+  }
   if (j.contains("f")) a.f = j["f"].get<float>();
   if (j.contains("i")) a.i = j["i"].get<int>();
   if (j.contains("b")) a.b = j["b"].get<bool>();

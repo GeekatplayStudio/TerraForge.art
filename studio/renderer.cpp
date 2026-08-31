@@ -90,6 +90,9 @@ static int grid_n = 512, index_count = 0;
 static int hm_w = 0;
 static bool has_albedo = false;
 static gpx::Heightmap cpu_height; // normalized copy, for picking
+// sculpt brush cursor: uv, radius (<=0 hidden), erase flag. Reset every frame
+// by the viewport, so a hidden panel never leaves a stale ring behind.
+static float g_brush[4] = {0, 0, -1.f, 0};
 static GLuint fbo[6] = {0}, fbo_color[6] = {0}, fbo_depth[6] = {0};
 static int fbo_w[6] = {0}, fbo_h[6] = {0};
 static GLuint shadow_fbo = 0, shadow_tex = 0;
@@ -212,6 +215,8 @@ uniform float u_translucency, u_transparency, u_normal_strength;
 uniform int u_fog_type;
 uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
 uniform vec3 u_fog_color, u_absorb;
+// sculpt brush cursor: xy = terrain uv, z = radius (<=0 hides), w = erase flag
+uniform vec4 u_brush;
 // cloud shadows
 uniform int u_cloud_shadows;
 uniform vec3 u_cam_unused_marker;
@@ -394,6 +399,18 @@ void main(){
   col = apply_fog(col, v_world, u_cam, d);
   col = aces(col * u_exposure);
   col = pow(col, vec3(1.0/2.2));
+  // sculpt brush ring, drawn on the surface after grading so it stays legible
+  if (u_brush.z > 0.0) {
+    float bd = distance(v_uv, u_brush.xy);
+    float ring = abs(bd - u_brush.z);
+    float px = fwidth(bd) * 1.5;
+    float line = 1.0 - smoothstep(px, px * 2.5, ring);
+    vec3 bcol = u_brush.w > 0.5 ? vec3(0.85, 0.30, 0.22) : vec3(0.90, 0.55, 0.20);
+    col = mix(col, bcol, line * 0.85);
+    // soft fill hinting at falloff
+    float fill = 1.0 - smoothstep(0.0, u_brush.z, bd);
+    col = mix(col, bcol, fill * fill * 0.10);
+  }
   frag = vec4(col, 1.0 - u_transparency);
 })GLSL";
 
@@ -1421,6 +1438,8 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni1(prog_terrain, "u_disp_strength", RS.mat_displacement);
     uni1(prog_terrain, "u_frac_amount", RS.fractal_detail);
     uni1(prog_terrain, "u_frac_scale", RS.fractal_scale);
+    glUniform4f(glGetUniformLocation(prog_terrain, "u_brush"), g_brush[0],
+                g_brush[1], g_brush[2], g_brush[3]);
     uni1(prog_terrain, "u_planet_radius", RS.planet_radius);
     unii(prog_terrain, "u_shadows", (RS.shadows && vc.display != 0) ? 1 : 0);
     unii(prog_terrain, "u_quality", cinematic ? 1 : 0);
@@ -1786,6 +1805,13 @@ void renderer_get_camera(float eye[3], float target[3], float *fovy_deg) {
   *fovy_deg = 0.9f * 57.29578f;
 }
 
+void renderer_set_brush_cursor(float tx, float tz, float radius, bool erasing) {
+  g_brush[0] = tx;
+  g_brush[1] = tz;
+  g_brush[2] = radius;
+  g_brush[3] = erasing ? 1.f : 0.f;
+}
+
 // ------------------------------------------------------------------ picking
 static bool ray_sphere(const float *ro, const float *rd, const float *c, float r,
                        float &t) {
@@ -1800,13 +1826,14 @@ static bool ray_sphere(const float *ro, const float *rd, const float *c, float r
   return t > 0;
 }
 
-int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float v,
-                  int w, int h) {
+// World-space ray through a view coordinate. Shared by object picking and by
+// the terrain brushes, so both agree on where the cursor is pointing.
+static bool view_ray(const RenderSettings::ViewConfig &vc, float u, float v, int w,
+                     int h, float ro[3], float rd[3]) {
   RenderSettings &RS = render_settings();
   float eye[3], mvp[16], inv_vp[16];
   if (vc.camera == 0) camera_matrices(w, h, eye, mvp, inv_vp);
   else ortho_matrices(vc, w, h, RS.height_scale, eye, mvp, inv_vp);
-  // unproject near/far
   float ndc_x = u * 2.f - 1.f, ndc_y = 1.f - v * 2.f;
   auto unproject = [&](float z, float *out) {
     float p[4] = {ndc_x, ndc_y, z, 1.f};
@@ -1818,13 +1845,59 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
     float iw = std::fabs(r[3]) > 1e-9f ? 1.f / r[3] : 1.f;
     out[0] = r[0] * iw; out[1] = r[1] * iw; out[2] = r[2] * iw;
   };
-  float pn[3], pf[3];
-  unproject(-1.f, pn);
+  float pf[3];
+  unproject(-1.f, ro);
   unproject(1.f, pf);
-  float rd[3] = {pf[0] - pn[0], pf[1] - pn[1], pf[2] - pn[2]};
+  rd[0] = pf[0] - ro[0];
+  rd[1] = pf[1] - ro[1];
+  rd[2] = pf[2] - ro[2];
   float rl = std::sqrt(rd[0] * rd[0] + rd[1] * rd[1] + rd[2] * rd[2]);
-  if (rl < 1e-9f) return -1;
-  for (float &d : rd) d /= rl;
+  if (rl < 1e-9f) return false;
+  for (int i = 0; i < 3; ++i) rd[i] /= rl;
+  return true;
+}
+
+// March the height field and report where the cursor lands on it, in
+// normalized terrain coordinates. This is what positions a sculpt brush.
+bool renderer_pick_terrain(int slot, const RenderSettings::ViewConfig &vc, float u,
+                           float v, int w, int h, float &tx, float &tz) {
+  (void)slot;
+  RenderSettings &RS = render_settings();
+  if (cpu_height.empty()) return false;
+  float pn[3], rd[3];
+  if (!view_ray(vc, u, v, w, h, pn, rd)) return false;
+  float prev_diff = 0;
+  bool have_prev = false;
+  float step = 0.003f;
+  for (float tt = 0.f; tt < 12.f; tt += step) {
+    float x = pn[0] + rd[0] * tt, y = pn[1] + rd[1] * tt, z = pn[2] + rd[2] * tt;
+    if (x < 0.f || x > 1.f || z < 0.f || z > 1.f) {
+      have_prev = false;
+      if (y < -0.5f) break;
+      continue;
+    }
+    float terr = cpu_height.sample(x, z) * RS.height_scale;
+    float diff = y - terr;
+    if (have_prev && prev_diff > 0 && diff <= 0) {
+      float f = diff / (diff - prev_diff + 1e-9f);
+      float hit = tt - step * f;
+      tx = std::clamp(pn[0] + rd[0] * hit, 0.f, 1.f);
+      tz = std::clamp(pn[2] + rd[2] * hit, 0.f, 1.f);
+      return true;
+    }
+    prev_diff = diff;
+    have_prev = true;
+    step = std::min(step * 1.02f, 0.04f);
+  }
+  return false;
+}
+
+int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float v,
+                  int w, int h) {
+  (void)slot;
+  RenderSettings &RS = render_settings();
+  float pn[3], rd[3];
+  if (!view_ray(vc, u, v, w, h, pn, rd)) return -1;
 
   SceneState &sc = scene();
   int best_idx = -1;

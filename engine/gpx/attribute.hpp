@@ -20,7 +20,8 @@ enum class AttrType {
   Color,   // rgba
   Gradient,// color gradient stops
   Filename,// path + browse
-  Text     // string
+  Text,    // string
+  Field    // painted 2D scalar buffer (sculpt strokes, hand-drawn masks)
 };
 
 struct GradientStop {
@@ -44,6 +45,10 @@ struct Attribute {
   std::vector<std::string> labels; // Choice
   std::string s;                   // Filename / Text / Choice value
   bool log_scale = false;
+  // Field: a buffer the user paints into rather than types. Kept as plain
+  // floats in memory and quantized + compressed on the way to disk.
+  std::vector<float> field;
+  int fw = 0, fh = 0;
 };
 
 // Ordered attribute container; preserves declaration order for UI.
@@ -92,5 +97,10 @@ Attribute &add_filename(AttrSet &s, const std::string &key, const std::string &l
                         const std::string &def, const std::string &group = "");
 Attribute &add_text(AttrSet &s, const std::string &key, const std::string &label,
                     const std::string &def, const std::string &group = "");
+// A painted buffer. Starts empty (all zero) and is filled in by brush strokes;
+// `mn`/`mx` bound what a stroke may write.
+Attribute &add_field(AttrSet &s, const std::string &key, const std::string &label,
+                     int w, int h, float mn, float mx,
+                     const std::string &group = "");
 
 } // namespace gpx

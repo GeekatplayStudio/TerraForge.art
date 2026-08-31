@@ -151,4 +151,16 @@ Attribute &add_text(AttrSet &s, const std::string &key, const std::string &label
   return s.add(a);
 }
 
+Attribute &add_field(AttrSet &s, const std::string &key, const std::string &label,
+                     int w, int h, float mn, float mx,
+                     const std::string &group) {
+  Attribute a = base(AttrType::Field, key, label, group);
+  a.fw = w > 0 ? w : 0;
+  a.fh = h > 0 ? h : 0;
+  a.fmin = mn;
+  a.fmax = mx;
+  // left empty: an unpainted field costs nothing to carry or store
+  return s.add(a);
+}
+
 } // namespace gpx

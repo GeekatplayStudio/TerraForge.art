@@ -4,7 +4,9 @@
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "sculpt.hpp"
 #include <imgui.h>
+#include <algorithm>
 #include <cstdio>
 
 namespace studio {
@@ -157,6 +159,8 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
   toggle("water", &vc.show_water_view, "Show the water surface");
   toggle("grid", &vc.grid, "Ground reference grid");
   toggle("outline", &vc.outlines, "Highlight the selected object with an outline");
+  sculpt_toolbar(a);
+  ImGui::SameLine();
 
   // "more" menu â€” roomy, padded, with section headers
   if (ImGui::SmallButton("view options")) ImGui::OpenPopup("view_more");
@@ -174,23 +178,53 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
                ImVec2(1, 0));
   if (ImGui::IsItemHovered()) {
     ImGuiIO &io = ImGui::GetIO();
-    bool rot = ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+    SculptState &SC = sculpt_state();
+    float u = (io.MousePos.x - p0.x) / (float)w;
+    float v = (io.MousePos.y - p0.y) / (float)h;
+
+    // sculpt mode: the left button brushes instead of orbiting the camera
+    bool sculpting = SC.active;
+    if (sculpting) {
+      float tx, tz;
+      bool on_terrain = renderer_pick_terrain(slot, vc, u, v, w, h, tx, tz);
+      bool erase_look = SC.tool == SculptTool::Erase ||
+                        (SC.invert != io.KeyAlt); // live Alt flips the ring
+      if (on_terrain)
+        renderer_set_brush_cursor(tx, tz, SC.radius,
+                                  SC.tool == SculptTool::Erase ? true
+                                                               : erase_look);
+      // brush size on the wheel — the shortcut every sculpting app shares
+      if (io.MouseWheel != 0.f) {
+        ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+        SC.radius = std::clamp(SC.radius * (io.MouseWheel > 0 ? 1.12f : 0.89f),
+                               0.005f, 0.4f);
+      }
+      if (on_terrain && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+          !io.KeyCtrl) {
+        bool saved_inv = SC.invert;
+        if (io.KeyAlt) SC.invert = !SC.invert;
+        sculpt_apply(a, tx, tz, io.DeltaTime);
+        SC.invert = saved_inv;
+      }
+      if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) sculpt_end_stroke(a);
+    }
+
+    bool rot = !sculpting && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
                ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f);
     bool pan = ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
                ImGui::IsMouseDown(ImGuiMouseButton_Right);
     // Ctrl+drag dollies (moves the camera along its view axis)
     bool dolly = io.KeyCtrl && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    float wheel = sculpting ? 0.f : io.MouseWheel;
     if (vc.camera == 0)
-      renderer_camera_input(io.MouseDelta.x, io.MouseDelta.y, io.MouseWheel,
+      renderer_camera_input(io.MouseDelta.x, io.MouseDelta.y, wheel,
                             rot && !dolly, pan, dolly);
     else
-      renderer_view_input(vc, io.MouseDelta.x, io.MouseDelta.y, io.MouseWheel, rot,
+      renderer_view_input(vc, io.MouseDelta.x, io.MouseDelta.y, wheel, rot,
                           pan, w);
     // click (without dragging) selects the object under the cursor
-    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
+    if (!sculpting && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
         !ImGui::IsMouseDragging(ImGuiMouseButton_Left, 3.f)) {
-      float u = (io.MousePos.x - p0.x) / (float)w;
-      float v = (io.MousePos.y - p0.y) / (float)h;
       int hit = renderer_pick(slot, vc, u, v, w, h);
       if (hit >= 0) {
         scene().selected = hit; // shared: updates every view and the panels
@@ -227,6 +261,10 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
 
 void draw_panel_viewport(App &a) {
   RenderSettings &rs = render_settings();
+  // the brush ring only lives while a hovered view re-arms it each frame
+  renderer_set_brush_cursor(0, 0, -1.f, false);
+  // a stroke that leaves the window still ends when the button comes up
+  if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) sculpt_end_stroke(a);
   int view_count = std::clamp(prefs().view_count, 1, 6);
   for (int slot = 0; slot < view_count; ++slot) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
