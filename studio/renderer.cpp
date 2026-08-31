@@ -545,14 +545,29 @@ void main(){
   frag = vec4(col, 1.0 - u_transparency);
 })GLSL";
 
-static const char *VS_DEPTH = R"GLSL(#version 430 core
+// The shadow pass has to see the same surface the camera does. It always
+// ignored the fractal micro-relief, which is fine — that detail is far below
+// the shadow map's resolution. A graph displacement is not: it can move the
+// surface by a large fraction of the terrain's whole height, and terrain that
+// casts a shadow from where it used to be looks broken rather than subtle.
+//
+// The detail budget is fixed rather than camera-derived, because there is no
+// camera here — the shadow map is rendered from the sun.
+static const char *VS_DEPTH_SRC = R"GLSL(#version 430 core
 layout(location=0) in vec2 in_uv;
 uniform sampler2D u_height;
 uniform mat4 u_light_mvp;
 uniform float u_hscale;
+uniform float u_field_strength;
+FRACTAL_FN_PLACEHOLDER
+GPX_FIELD_PLACEHOLDER
 void main(){
-  float h = texture(u_height, in_uv).r;
-  gl_Position = u_light_mvp * vec4(in_uv.x, h * u_hscale, in_uv.y, 1.0);
+  float h = texture(u_height, in_uv).r * u_hscale;
+  vec3 p = vec3(in_uv.x, h, in_uv.y);
+  if (u_field_strength != 0.0)
+    p.y += gpx_terrain_field(p, vec3(0.0,1.0,0.0), h, 1.0, 0.0, 0.0, 7.0).x *
+           u_field_strength;
+  gl_Position = u_light_mvp * vec4(p, 1.0);
 })GLSL";
 
 static const char *FS_DEPTH = R"GLSL(#version 430 core
@@ -1263,6 +1278,16 @@ static bool rebuild_terrain_program(std::string &err) {
   if (prog_terrain) glDeleteProgram(prog_terrain);
   prog_terrain = p;
 
+  // The shadow pass carries the same displacement, so the terrain does not
+  // cast a shadow from where it used to be.
+  std::string derr;
+  if (GLuint d = link_checked(inject_sky(VS_DEPTH_SRC), FS_DEPTH, derr)) {
+    if (prog_depth) glDeleteProgram(prog_depth);
+    prog_depth = d;
+  } else {
+    std::fprintf(stderr, "shadow shader:\n%s\n", derr.c_str());
+  }
+
   // The tessellated program is an optimisation, not a requirement: if it does
   // not build we keep the fixed grid and say so, rather than losing the
   // terrain entirely. Everything below this point is allowed to fail.
@@ -1338,7 +1363,6 @@ bool renderer_init() {
   }
   prog_water = link_prog(VS_WATER, fs_water.c_str());
   prog_sky = link_prog(VS_SKY, fs_sky.c_str());
-  prog_depth = link_prog(VS_DEPTH, FS_DEPTH);
   prog_lines = link_prog(VS_LINES, FS_LINES);
   prog_bg = link_prog(VS_BG, FS_BG);
   prog_mesh = link_prog(VS_MESH, FS_MESH);
@@ -1731,6 +1755,8 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glUniformMatrix4fv(glGetUniformLocation(prog_depth, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);
     uni1(prog_depth, "u_hscale", RS.height_scale);
+    uni1(prog_depth, "u_field_strength",
+         g_field_glsl.empty() ? 0.f : RS.field_displacement);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_height);
     unii(prog_depth, "u_height", 0);
