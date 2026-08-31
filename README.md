@@ -95,7 +95,7 @@ ollama pull llava            # AI terrain from a photograph
 
 Runs the engine suite (node registry, evaluation and caching, cycle
 rejection, determinism, erosion, materials, serialization, AI graph
-building) and the Python suite.
+building), the undo/redo suite and the Python suite.
 
 ---
 
@@ -119,7 +119,27 @@ building) and the Python suite.
   Node) that follows what you select and has a search box.
 - **Right-click a viewport** for view options; the same menu sets how many
   view windows you want. Layouts persist between sessions.
+- **Undo/redo** (`Ctrl+Z` / `Ctrl+Y`, also `Ctrl+Shift+Z`) covers the node
+  graph, scene objects and world settings as one history. Every step is
+  named, and **Edit > History** lists them so you can jump straight back to
+  any earlier point. Changes made by the AI assistant, the Python API and
+  MCP are ordinary history steps, so they can be taken back the same way.
 - Projects are saved as `.gpxt` JSON files.
+
+### Undo/redo from automation
+
+```python
+from mcp_server.studio_api import Studio
+
+s = Studio()
+s.set_sun(azimuth=250, altitude=12)   # one history step, named "AI: set_sun"
+s.undo()                              # take it back
+s.redo()                              # and put it back
+```
+
+The same is available over MCP as `studio_undo` / `studio_redo`, and to the
+in-app assistant as `{"op": "undo", "steps": 1}`. All four surfaces run the
+same action schema, so a change is undoable no matter which one made it.
 
 ## License
 

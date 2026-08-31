@@ -1,6 +1,7 @@
 ﻿// Geekatplay Studio â€” properties panel: auto-generated UI from attributes
 #include "app.hpp"
 #include "ai_assist.hpp"
+#include "undo.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include <imgui.h>
@@ -593,6 +594,7 @@ static void node_properties(App &a) {
   bool item_active = ImGui::IsAnyItemActive();
   static bool was_active = false;
   if (changed) {
+    if (!was_active) undo_push(a, "Edit " + n->type);
     a.eval_interactive.store(item_active);
     g_mirror.pending = true;
   }
@@ -721,4 +723,5 @@ void draw_panel_properties(App &a) {
 }
 
 } // namespace studio
+
 

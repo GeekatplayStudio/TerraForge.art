@@ -1,5 +1,6 @@
-// Geekatplay Studio — node library panel (click to add at view center)
+﻿// Geekatplay Studio â€” node library panel (click to add at view center)
 #include "app.hpp"
+#include "undo.hpp"
 #include <imgui.h>
 #include <string>
 
@@ -32,6 +33,7 @@ void draw_panel_library(App &a) {
     if (!open) continue;
     ImGui::Indent(8);
     if (ImGui::Selectable(d->type.c_str())) {
+      undo_push(a, "Add " + d->type);
       std::lock_guard<std::mutex> lk(a.graph_mtx);
       // place near last node or at origin
       float x = 40, y = 40;
@@ -53,3 +55,5 @@ void draw_panel_library(App &a) {
 }
 
 } // namespace studio
+
+

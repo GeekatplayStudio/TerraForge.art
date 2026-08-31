@@ -4,6 +4,7 @@
 #include "app.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "undo.hpp"
 #include <imgui.h>
 #include <functional>
 
@@ -158,6 +159,7 @@ void draw_panel_scene(App &a) {
     if (sc.objects[i].parent < 0) draw_row(i, 0);
 
   if (delete_idx >= 0) {
+    undo_push(a, "Delete object");
     auto fix = [&](int &v) {
       if (v > delete_idx) v--;
       else if (v == delete_idx) v = -1;
@@ -173,6 +175,7 @@ void draw_panel_scene(App &a) {
   }
 
   if (ImGui::Button("+ add camera", ImVec2(-1, 0))) {
+    undo_push(a, "Add camera");
     int idx = scene_add_camera();
     sc.selected = idx;
     a.scene_selection_serial++;
@@ -201,6 +204,7 @@ void draw_panel_scene(App &a) {
 }
 
 } // namespace studio
+
 
 
 

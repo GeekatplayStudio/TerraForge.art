@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 project(GeekatplayTerraForge VERSION 2.0.0 LANGUAGES C CXX RC)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -105,6 +105,7 @@ set(STUDIO_SOURCES
     studio/panel_library.cpp
     studio/panel_viewport.cpp
     studio/toolbar.cpp
+    studio/undo.cpp
     studio/renderer.cpp
     studio/preview.cpp
     studio/project_io.cpp
@@ -155,6 +156,18 @@ add_executable(engine_tests tests/cpp/test_engine.cpp)
 target_link_libraries(engine_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# Undo works on studio state, but none of the state it touches needs a GL
+# context, so it tests without the renderer.
+add_executable(undo_tests
+    tests/cpp/test_undo.cpp
+    studio/undo.cpp
+    studio/scene.cpp)
+target_include_directories(undo_tests PRIVATE studio)
+target_link_libraries(undo_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 enable_testing()
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
+add_test(NAME UndoTests COMMAND undo_tests)
+

@@ -1,5 +1,6 @@
 ﻿// Geekatplay Studio â€” node graph panel (imgui-node-editor)
 #include "app.hpp"
+#include "undo.hpp"
 #include <imgui.h>
 #include <imgui_node_editor.h>
 #include <algorithm>
@@ -146,6 +147,7 @@ static void add_node_popup(App &a) {
       last_cat = d->category;
     }
     if (ImGui::MenuItem(d->type.c_str())) {
+      undo_push_locked(a, "Add " + d->type);
       ImVec2 cp = ed::ScreenToCanvas(click_pos);
       gpx::Node *n = a.graph.add_node(d->type, cp.x, cp.y);
       if (n) {
@@ -249,6 +251,7 @@ void draw_panel_graph(App &a) {
             fp->type != tp->type || fn == tn) {
           ed::RejectNewItem(ImVec4(0.8f, 0.2f, 0.15f, 1.f), 2.f);
         } else if (ed::AcceptNewItem()) {
+          undo_push_locked(a, "Connect nodes");
           if (a.graph.add_link(fn->id, fp->name, tn->id, tp->name))
             a.request_eval();
         }
@@ -262,14 +265,16 @@ void draw_panel_graph(App &a) {
     ed::LinkId lid;
     while (ed::QueryDeletedLink(&lid)) {
       if (ed::AcceptDeletedItem()) {
-          a.graph.remove_link((uint64_t)lid.Get());
+        undo_push_locked(a, "Delete link");
+        a.graph.remove_link((uint64_t)lid.Get());
         a.request_eval();
       }
     }
     ed::NodeId nid;
     while (ed::QueryDeletedNode(&nid)) {
       if (ed::AcceptDeletedItem()) {
-          a.graph.remove_node((uint64_t)nid.Get());
+        undo_push_locked(a, "Delete node");
+        a.graph.remove_node((uint64_t)nid.Get());
         if (a.selected_node == (uint64_t)nid.Get()) a.selected_node = 0;
         a.request_eval();
       }
@@ -324,9 +329,10 @@ void draw_panel_graph(App &a) {
       if (!clip_nodes.empty())
         a.status = "copied " + std::to_string(clip_nodes.size()) + " node(s)";
     }
-    if (editor_focused && io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_V, false) &&
-        !clip_nodes.empty()) {
+    if (!eval_running && editor_focused && io.KeyCtrl &&
+        ImGui::IsKeyPressed(ImGuiKey_V, false) && !clip_nodes.empty()) {
       std::map<uint64_t, uint64_t> remap;
+      undo_push_locked(a, "Paste nodes");
       ed::ClearSelection();
       for (const ClipNode &cn : clip_nodes) {
         gpx::Node *n = a.graph.add_node(cn.type, cn.x + 48, cn.y + 48);
@@ -353,9 +359,15 @@ void draw_panel_graph(App &a) {
   }
 
   ed::Suspend();
-  if (ed::ShowBackgroundContextMenu()) ImGui::OpenPopup("add_node");
+  // Adding a node mutates the graph, so it waits for a frame that holds the
+  // lock — the same rule the connect and delete paths follow.
+  if (!eval_running && ed::ShowBackgroundContextMenu())
+    ImGui::OpenPopup("add_node");
   if (ImGui::BeginPopup("add_node")) {
-    add_node_popup(a);
+    if (eval_running)
+      ImGui::TextDisabled("computing...");
+    else
+      add_node_popup(a);
     ImGui::EndPopup();
   }
   ed::Resume();
@@ -374,6 +386,10 @@ void draw_panel_graph(App &a) {
 }
 
 } // namespace studio
+
+
+
+
 
 
 

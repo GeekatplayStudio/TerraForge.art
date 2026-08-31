@@ -6,6 +6,7 @@
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "undo.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -191,15 +192,44 @@ static void menu_file(App &a) {
 }
 
 static void menu_edit(App &a) {
-  if (!ImGui::BeginMenu("Edit")) return;
+  if (!ImGui::BeginMenu(tr("menu.edit"))) return;
+  {
+    std::string ulabel = tr("menu.edit.undo");
+    std::string rlabel = tr("menu.edit.redo");
+    if (undo_can_undo()) ulabel += " " + undo_next_label();
+    if (undo_can_redo()) rlabel += " " + undo_redo_label();
+    if (ImGui::MenuItem(ulabel.c_str(), "Ctrl+Z", false, undo_can_undo())) {
+      undo_perform(a);
+      a.status = "undo";
+    }
+    if (ImGui::MenuItem(rlabel.c_str(), "Ctrl+Y", false, undo_can_redo())) {
+      redo_perform(a);
+      a.status = "redo";
+    }
+    if (ImGui::BeginMenu(tr("menu.edit.history"),
+                         undo_can_undo() || undo_can_redo())) {
+      const std::string *labels = nullptr;
+      int n = undo_history(&labels);
+      int pos = undo_history_position();
+      for (int i = n - 1; i >= 0; --i) {
+        bool current = i == pos;
+        if (ImGui::MenuItem(labels[i].c_str(), nullptr, current) && !current)
+          undo_jump_to(a, i);
+      }
+      ImGui::EndMenu();
+    }
+  }
+  ImGui::Separator();
   bool has_sel = a.selected_node != 0;
-  if (ImGui::MenuItem("Delete node", "Del", false, has_sel)) {
+  if (ImGui::MenuItem(tr("menu.edit.delete"), "Del", false, has_sel)) {
+    undo_push(a, "Delete node");
     std::lock_guard<std::mutex> lk(a.graph_mtx);
     a.graph.remove_node(a.selected_node);
     a.selected_node = 0;
     a.request_eval();
   }
-  if (ImGui::MenuItem("Duplicate node", "Ctrl+D", false, has_sel)) {
+  if (ImGui::MenuItem(tr("menu.edit.duplicate"), "Ctrl+D", false, has_sel)) {
+    undo_push(a, "Duplicate node");
     std::lock_guard<std::mutex> lk(a.graph_mtx);
     gpx::Node *src = a.graph.find_node(a.selected_node);
     if (src) {
@@ -496,6 +526,14 @@ void draw_toolbar(App &a) {
     std::lock_guard<std::mutex> lk(a.graph_mtx);
     a.graph.mark_all_dirty();
     a.request_eval();
+  }
+  // undo / redo, with the usual Windows and Blender-style shortcuts
+  if (io.KeyCtrl && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+    if (undo_perform(a)) a.status = "undo";
+  }
+  if ((io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y, false)) ||
+      (io.KeyCtrl && io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false))) {
+    if (redo_perform(a)) a.status = "redo";
   }
 }
 

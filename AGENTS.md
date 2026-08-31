@@ -64,6 +64,25 @@ each one was a bug we already paid for. Do not regress them.
    model the constraints (for example the exposure triangle) rather than
    clamping away a physically correct result.
 
+## Undo
+
+1. **Every mutation is preceded by `undo_push(a, "what changed")`.** A change a
+   user can see and cannot take back is a bug. That includes changes made by
+   the assistant, the API and MCP — `ai_apply_actions` pushes one step for the
+   whole action document.
+2. `undo_push` is called **before** the mutation and names it. The resulting
+   state is recorded lazily, so a slider drag that fires every frame collapses
+   into one step ending at the value the user released on. Push on the first
+   frame of an interaction only, never per frame.
+3. Snapshots hold the graph as JSON, plus the scene and world settings. **Node
+   ids are reassigned when that JSON is loaded**, so anything referring to a
+   node across a restore travels as an index, not an id.
+4. Imported mesh vertices are shared between snapshots rather than copied.
+   Keep any new bulk data out of the per-step copy the same way.
+5. `undo_tests` covers restore correctness, redo branching, history jumps and
+   that a restored graph recomputes bit-identically. Extend it when you add
+   state that undo must cover.
+
 ## Before you commit
 
 - `.\build.ps1` must succeed (it fails loudly; do not trust a stale binary).

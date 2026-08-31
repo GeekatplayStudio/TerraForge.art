@@ -8,6 +8,7 @@
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "undo.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/serialization.hpp"
 #include <imgui.h>
@@ -80,6 +81,11 @@ The world is a unit tile: terrain spans x 0..1, z 0..1.)";
 Use this to build terrain or material node graphs.)";
       break;
   }
+  s += R"(
+Available in every domain:
+- {"op":"undo","steps":1}   (revert the last change, including your own)
+- {"op":"redo","steps":1}
+)";
   s += "\nOmit any field you do not want to change. Return only JSON.";
   return s;
 }
@@ -223,6 +229,21 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
     err = "no actions";
     return false;
   }
+  // Anything the assistant, a script or an MCP tool does is a single undo
+  // step, so an AI change can be reverted like any other edit.
+  {
+    std::string what = "AI change";
+    if (actions.size() == 1 && actions[0].contains("op"))
+      what = "AI: " + actions[0]["op"].get<std::string>();
+    else
+      what = "AI: " + std::to_string(actions.size()) + " changes";
+    bool only_history = true;
+    for (const json &act : actions) {
+      std::string op = act.value("op", "");
+      if (op != "undo" && op != "redo") only_history = false;
+    }
+    if (!only_history) undo_push(a, what);
+  }
   RenderSettings &rs = render_settings();
   SceneState &sc = scene();
   int applied = 0;
@@ -314,6 +335,14 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
     } else if (op == "render") {
       a.request_camera_render = scene_active_camera();
       ++applied;
+    } else if (op == "undo") {
+      int n = act.value("steps", 1);
+      for (int i = 0; i < n && undo_perform(a); ++i) ++applied;
+      if (!applied) err = "nothing to undo";
+    } else if (op == "redo") {
+      int n = act.value("steps", 1);
+      for (int i = 0; i < n && redo_perform(a); ++i) ++applied;
+      if (!applied) err = "nothing to redo";
     } else if (op == "select") {
       if (act.contains("name")) {
         std::string want = act["name"].get<std::string>();

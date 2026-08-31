@@ -112,6 +112,13 @@ class Studio:
         acts.append({"op": "render"})
         return self.send(*acts)
 
+    def undo(self, steps: int = 1) -> Dict[str, Any]:
+        """Revert the last change, including one made through this API."""
+        return self.send({"op": "undo", "steps": steps})
+
+    def redo(self, steps: int = 1) -> Dict[str, Any]:
+        return self.send({"op": "redo", "steps": steps})
+
     def wait_for_state(self, timeout_s: float = 5.0) -> Dict[str, Any]:
         """Blocks until the app republishes its scene state."""
         start = os.path.getmtime(self.state_path) if os.path.exists(self.state_path) else 0
@@ -167,6 +174,16 @@ MCP_TOOLS = {
         "params": {"engine": "str", "width": "int", "height": "int",
                    "samples": "int", "output": "str"},
     },
+    "studio_undo": {
+        "description": "Revert the last change. Every edit is one step, "
+                       "including changes made through this API, so a change "
+                       "you just made can be taken back. Field: steps.",
+        "params": {"steps": "int"},
+    },
+    "studio_redo": {
+        "description": "Re-apply the last undone change. Field: steps.",
+        "params": {"steps": "int"},
+    },
 }
 
 
@@ -196,4 +213,8 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.graph(params.get("spec", {}))}
     if tool == "studio_render":
         return {"status": "success", "sent": s.render(**params)}
+    if tool == "studio_undo":
+        return {"status": "success", "sent": s.undo(int(params.get("steps", 1)))}
+    if tool == "studio_redo":
+        return {"status": "success", "sent": s.redo(int(params.get("steps", 1)))}
     return {"status": "error", "message": f"unknown tool: {tool}"}

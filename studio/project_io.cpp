@@ -1,5 +1,6 @@
-// Geekatplay Studio — project save/load + default startup graph
+﻿// Geekatplay Studio â€” project save/load + default startup graph
 #include "app.hpp"
+#include "undo.hpp"
 #include "gpx/serialization.hpp"
 
 namespace studio {
@@ -26,6 +27,7 @@ bool project_load(App &a, const std::string &path) {
   bool ok = gpx::load_project(a.graph, path, err);
   a.status = ok ? ("loaded " + path) : ("LOAD FAILED: " + err);
   if (ok) {
+    undo_clear(); // a loaded project starts a fresh history
     a.project_path = path;
     a.selected_node = a.view_node = 0;
     a.graph_layout_serial++;
@@ -53,3 +55,4 @@ void project_default_graph(App &a) {
 }
 
 } // namespace studio
+

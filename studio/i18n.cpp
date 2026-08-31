@@ -1,4 +1,4 @@
-#include "i18n.hpp"
+﻿#include "i18n.hpp"
 #include <map>
 #include <string>
 #include <vector>
@@ -30,6 +30,9 @@ static const std::map<std::string, const char *> &english() {
       {"menu.file.properties", "Project Properties..."},
       {"menu.file.exit", "Exit"},
       {"menu.edit", "Edit"},
+      {"menu.edit.undo", "Undo"},
+      {"menu.edit.redo", "Redo"},
+      {"menu.edit.history", "History"},
       {"menu.edit.delete", "Delete node"},
       {"menu.edit.duplicate", "Duplicate node"},
       {"menu.edit.recompute", "Recompute all"},
@@ -118,3 +121,4 @@ const char *tr(const char *tag) {
 }
 
 } // namespace studio
+
