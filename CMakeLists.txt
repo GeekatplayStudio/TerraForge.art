@@ -112,6 +112,7 @@ set(STUDIO_SOURCES
     studio/sculpt.cpp
     studio/renderer.cpp
     studio/planet_renderer.cpp
+    studio/field_gpu_check.cpp
     studio/preview.cpp
     studio/project_io.cpp
     studio/panel_environment.cpp
@@ -188,6 +189,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
+
 
 
 

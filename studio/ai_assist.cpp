@@ -1,4 +1,4 @@
-// Geekatplay TerraForge — natural-language assistant shared by every tab.
+﻿// Geekatplay TerraForge â€” natural-language assistant shared by every tab.
 // The model returns a small JSON action document; ai_apply_actions executes
 // it. The scripting API and the MCP server call the same function, so text,
 // script and tool calls all take one code path.
@@ -24,6 +24,8 @@ using json = nlohmann::json;
 namespace studio {
 
 std::string dialog_open_file(const char *filter, const char *def_ext);
+// CPU/GPU agreement check for field graphs (studio/field_gpu_check.cpp)
+std::string field_gpu_verify_all(App &a);
 
 // ---------------------------------------------------------------- schema
 std::string ai_action_schema(AiDomain domain) {
@@ -441,6 +443,16 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       sc.selected = idx;
       a.scene_selection_serial++;
       ++applied;
+    } else if (op == "verify_field_gpu") {
+
+      // the load-bearing check of the dual-domain design: does the generated
+
+      // shader compute the same numbers as the CPU evaluator?
+
+      a.status = "field GPU check:\n" + field_gpu_verify_all(a);
+
+      ++applied;
+
     } else if (op == "graph") {
       if (act.contains("spec")) {
         std::string spec = act["spec"].dump();
@@ -569,3 +581,5 @@ void ai_assist_bar(App &a, AiDomain domain, const char *hint) {
 }
 
 } // namespace studio
+
+
