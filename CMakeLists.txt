@@ -117,6 +117,8 @@ set(STUDIO_SOURCES
     studio/undo.cpp
     studio/sculpt.cpp
     studio/renderer.cpp
+    studio/shaders_terrain.cpp
+    studio/shaders_scene.cpp
     studio/planet_renderer.cpp
     studio/field_gpu_check.cpp
     studio/preview.cpp
