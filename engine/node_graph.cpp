@@ -170,6 +170,84 @@ void Graph::adopt(Graph &other) {
   mark_all_dirty();
 }
 
+// The node's own input, captured before it computes, so the blend has
+// something to mix back toward. Only the primary heightmap input is used —
+// that is the channel a filter is transforming.
+static const Heightmap *primary_input_of(Node &n) {
+  // prefer a port literally called "input", else the first heightmap input
+  if (const Heightmap *h = n.in_hmap("input")) return h;
+  for (const Port &p : n.ports)
+    if (p.dir == PortDir::In && p.type == DataType::Heightmap &&
+        p.name != "blend")
+      if (const Heightmap *h = n.in_hmap(p.name)) return h;
+  return nullptr;
+}
+
+// Snapshot the input before compute overwrites the outputs.
+static thread_local std::vector<float> g_blend_before;
+static void apply_universal_blend_pre(Node &n) {
+  g_blend_before.clear();
+  if (!n.attrs.find("blend_invert")) return; // node has no universal blend
+  if (!n.graph || !n.graph->upstream(n, "blend")) return;
+  if (const Heightmap *in = primary_input_of(n)) g_blend_before = in->v;
+}
+
+// After compute: mix each heightmap output back toward the untouched input,
+// wherever the blend mask says this node should not apply.
+static void apply_universal_blend_post(Node &n) {
+  if (g_blend_before.empty()) return;
+  const Heightmap *mask = n.in_hmap("blend");
+  if (!mask || mask->empty()) return;
+  bool invert = n.attrs.get_b("blend_invert");
+  // the mask may be any range; normalize so "bright applies the effect" holds
+  float mn, mx;
+  mask->minmax(mn, mx);
+  float span = (mx - mn) > 1e-9f ? (mx - mn) : 1.f;
+  for (Port &p : n.ports) {
+    if (p.dir != PortDir::Out || !p.hmap) continue;
+    Heightmap &out = *p.hmap;
+    if (out.v.size() != g_blend_before.size()) continue;
+    for (size_t i = 0; i < out.v.size(); ++i) {
+      float m = (mask->v[i] - mn) / span;
+      if (invert) m = 1.f - m;
+      m = m < 0.f ? 0.f : (m > 1.f ? 1.f : m);
+      out.v[i] = g_blend_before[i] + (out.v[i] - g_blend_before[i]) * m;
+    }
+  }
+  g_blend_before.clear();
+}
+
+// Terragen puts blend controls at the bottom of most nodes (guide p16): any
+// node that transforms a heightmap can have its effect confined to part of the
+// terrain. Rather than making every node author remember, the graph gives one
+// to any node that transforms a heightmap and does not already declare its own
+// mask input. The port is optional, so an unused one costs nothing.
+static void add_universal_blend(Node &n) {
+  // Only nodes that turn a terrain into a terrain: blending a selector's mask
+  // or a router's passthrough toward a heightmap would be meaningless, and
+  // exporters are sinks. The "input"/"output" naming is the convention every
+  // such filter already follows.
+  if (n.category == "Logic" || n.category == "Export" || n.category == "Mask" ||
+      n.category == "Group")
+    return;
+  bool has_in = false, has_out = false, has_mask = false;
+  for (const Port &p : n.ports) {
+    if (p.type != DataType::Heightmap) continue;
+    if (p.dir == PortDir::In) {
+      if (p.name == "input") has_in = true;
+      if (p.name == "mask" || p.name == "blend" || p.name == "envelope")
+        has_mask = true;
+    } else if (p.name == "output") {
+      has_out = true;
+    }
+  }
+  if (!has_in || !has_out || has_mask) return;
+  n.add_in("blend", DataType::Heightmap, true);
+  add_bool(n.attrs, "blend_invert", "Invert blend", false, "Blend")
+      .tooltip = "Applies this node where the blend input is dark instead of\n"
+                 "where it is bright.";
+}
+
 Node *Graph::add_node(const std::string &type, float x, float y) {
   const NodeDef *def = NodeRegistry::instance().find(type);
   if (!def) return nullptr;
@@ -181,6 +259,7 @@ Node *Graph::add_node(const std::string &type, float x, float y) {
   n->pos_y = y;
   n->graph = this;
   def->setup(*n);
+  add_universal_blend(*n);
   Node *raw = n.get();
   nodes.push_back(std::move(n));
   return raw;
@@ -358,11 +437,13 @@ bool Graph::evaluate() {
     }
     const NodeDef *def = NodeRegistry::instance().find(n->type);
     if (!def) continue;
+    apply_universal_blend_pre(*n);
     if (on_progress) on_progress(idx, total, n->type);
     n->error.clear();
     auto t0 = std::chrono::steady_clock::now();
     try {
       def->compute(*n);
+      apply_universal_blend_post(*n);
     } catch (const std::exception &e) {
       n->error = e.what();
     }

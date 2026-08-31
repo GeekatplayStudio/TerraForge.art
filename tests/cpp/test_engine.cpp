@@ -1174,6 +1174,92 @@ static void test_metanode_published() {
   CHECK(meta->attrs.find(mirror) == nullptr, "the mirror widget was removed");
 }
 
+// ------------------------------------------------------------ universal blend
+// Terragen puts blend controls on most nodes: any node that transforms a
+// heightmap can have its effect confined. The graph provides it, so it works on
+// every such node without the node author doing anything.
+static void test_universal_blend() {
+  std::printf("universal blend...\n");
+  // the port exists on filters, and not on nodes that already have their own
+  {
+    gpx::Graph g;
+    gpx::Node *ter = g.add_node("Terrace");
+    bool has_blend = false, has_mask = false;
+    for (const gpx::Port &p : ter->ports)
+      if (p.dir == gpx::PortDir::In) {
+        if (p.name == "blend") has_blend = true;
+        if (p.name == "mask") has_mask = true;
+      }
+    CHECK(has_mask, "Terrace has its own mask input");
+    CHECK(!has_blend, "a node with its own mask does not get a duplicate blend");
+
+    gpx::Node *plateau = g.add_node("WarpNoise");
+    bool p_blend = false;
+    for (const gpx::Port &p : plateau->ports)
+      if (p.dir == gpx::PortDir::In && p.name == "blend") p_blend = true;
+    CHECK(p_blend, "a filter without its own mask gains a blend input");
+    CHECK(plateau->attrs.find("blend_invert") != nullptr,
+          "and the matching invert control");
+  }
+
+  // an unconnected blend changes nothing at all
+  {
+    gpx::Graph g;
+    g.resolution = 48;
+    gpx::Node *src = g.add_node("Noise");
+    gpx::Node *f = g.add_node("WarpNoise");
+    g.add_link(src->id, "output", f->id, "input");
+    g.evaluate();
+    std::vector<float> unblended = out_of(f)->v;
+    CHECK(!unblended.empty(), "filter evaluated");
+    g.mark_all_dirty();
+    g.evaluate();
+    CHECK(out_of(f)->v == unblended,
+          "an unused blend port leaves the result untouched");
+  }
+
+  // with a mask connected, the effect is confined to it
+  {
+    gpx::Graph g;
+    g.resolution = 48;
+    gpx::Node *src = g.add_node("Noise");
+    gpx::Node *f = g.add_node("WarpNoise");
+    gpx::Node *maskgen = g.add_node("Shape"); // a smooth spatial gradient
+    g.add_link(src->id, "output", f->id, "input");
+    g.evaluate();
+    std::vector<float> full = out_of(f)->v;
+    std::vector<float> input = out_of(src)->v;
+
+    g.add_link(maskgen->id, "output", f->id, "blend");
+    g.mark_all_dirty();
+    g.evaluate();
+    std::vector<float> blended = out_of(f)->v;
+    CHECK(blended.size() == full.size(), "blended result is the same size");
+    CHECK(blended != full, "connecting a blend mask changed the result");
+
+    // every blended sample must lie between the untouched input and the full
+    // effect — that is what "confined" means
+    bool between = true;
+    int moved = 0;
+    for (size_t i = 0; i < blended.size(); ++i) {
+      float lo = std::min(input[i], full[i]), hi = std::max(input[i], full[i]);
+      if (blended[i] < lo - 1e-4f || blended[i] > hi + 1e-4f) between = false;
+      if (std::fabs(blended[i] - input[i]) > 1e-5f) ++moved;
+    }
+    CHECK(between, "blending stays between the input and the full effect");
+    CHECK(moved > 0, "the effect still applies somewhere");
+    CHECK(moved < (int)blended.size(), "and is held back somewhere else");
+
+    gpx::Attribute *inv = f->attrs.find("blend_invert");
+    CHECK(inv != nullptr, "the invert control exists");
+    if (!inv) return;
+    inv->b = true;
+    g.mark_all_dirty();
+    g.evaluate();
+    CHECK(out_of(f)->v != blended, "inverting the blend changes where it lands");
+  }
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -1201,6 +1287,7 @@ int main() {
   test_bypass();
   test_metanodes();
   test_metanode_published();
+  test_universal_blend();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;
@@ -1208,6 +1295,8 @@ int main() {
   std::printf("%d FAILURES\n", g_failures);
   return 1;
 }
+
+
 
 
 

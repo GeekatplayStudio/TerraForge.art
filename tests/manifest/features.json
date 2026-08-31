@@ -163,11 +163,16 @@
       "description": "MetaNode parameters can be published with their real type and range, drive the inner graph, and survive save/load",
       "test_file": "test_engine.cpp", "test_symbol": "test_metanode_published" },
 
+    { "id": "framework.universal_blend", "area": "framework", "phase": "P0.3",
+      "description": "Any terrain-transforming node can have its effect confined by a blend mask, provided by the graph rather than per node; unconnected it is a no-op",
+      "test_file": "test_engine.cpp", "test_symbol": "test_universal_blend" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
   ]
 }
+
 
 
 

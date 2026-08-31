@@ -45,6 +45,7 @@ CloudLayer.wind_dir|float
 CloudLayer.wind_speed|float
 Coast.beach_slope|float
 Coast.beach_width|float
+Coast.blend_invert|bool
 Coast.bluff|float
 Coast.underwater_smooth|float
 Coast.water_level|float
@@ -72,6 +73,7 @@ Craggy.seed|seed
 Craggy.slope_min|float
 Craggy.slope_soft|float
 Craggy.strength|float
+Crater.blend_invert|bool
 Crater.center|vec2
 Crater.count|int
 Crater.depth|float
@@ -116,6 +118,7 @@ ExportMesh.max_verts_side|int
 ExportMesh.path|filename
 ExportTexture.auto_export|bool
 ExportTexture.path|filename
+FakeStones.blend_invert|bool
 FakeStones.density|float
 FakeStones.pancake|float
 FakeStones.seed|seed
@@ -164,6 +167,7 @@ Fractal.roughness|float
 Fractal.seed|seed
 Fractal.type|choice
 GammaCorrection.gamma|float
+GeologicalStrata.blend_invert|bool
 GeologicalStrata.hardness|float
 GeologicalStrata.layers|int
 GeologicalStrata.post_gain|float
@@ -227,6 +231,7 @@ MaterialOutput.roughness|float
 MaterialOutput.specular|float
 MaterialOutput.translucency|float
 MaterialOutput.transparency|float
+Math.blend_invert|bool
 Math.op|choice
 Math.value|float
 MetaNode.inner_graph|text
@@ -279,6 +284,7 @@ Rasterize.post_range|range
 Rasterize.post_remap|bool
 Rasterize.post_zero_edges|float
 Rasterize.size|float
+Remap.blend_invert|bool
 Remap.range|range
 RenderCamera.exposure|float
 RenderCamera.height_scale|float
@@ -291,6 +297,7 @@ RenderQuality.width|int
 Repeat.count|int
 Repeat.op|choice
 Repeat.strength|float
+Rivers.blend_invert|bool
 Rivers.depth|float
 Rivers.headwaters|int
 Rivers.seed|seed
@@ -332,6 +339,7 @@ Sharpen.amount|float
 Sharpen.radius|float
 Sharpen.slope_bias|float
 Shear.amount|float
+Shear.blend_invert|bool
 Shear.direction|float
 Shear.folding|float
 Shear.scale|float
@@ -339,12 +347,14 @@ Shear.seed|seed
 Shear.self_modulated|bool
 Smooth.radius|float
 Snow.amount|float
+Snow.blend_invert|bool
 Snow.falloff|float
 Snow.melt|float
 Snow.settle|int
 Snow.slip_angle|float
 Snow.snowline|float
 Splatmap.normalize|bool
+Stamp.blend_invert|bool
 Stamp.blend|choice
 Stamp.falloff|float
 Stamp.height|float
@@ -436,13 +446,16 @@ Threshold.invert|bool
 Threshold.level|float
 Threshold.softness|float
 Transform.angle|float
+Transform.blend_invert|bool
 Transform.extend|choice
 Transform.scale|vec2
 Transform.translate|vec2
 WarpDirectional.amplitude|float
 WarpDirectional.angle|float
+WarpDirectional.blend_invert|bool
 WarpDirectional.by_height|bool
 WarpNoise.amplitude|float
+WarpNoise.blend_invert|bool
 WarpNoise.kw|vec2
 WarpNoise.octaves|int
 WarpNoise.seed|seed
