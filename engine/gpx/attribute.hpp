@@ -90,6 +90,9 @@ Attribute &add_range(AttrSet &s, const std::string &key, const std::string &labe
 Attribute &add_vec2(AttrSet &s, const std::string &key, const std::string &label,
                     float x, float y, float mn, float mx,
                     const std::string &group = "");
+Attribute &add_color(AttrSet &s, const std::string &key, const std::string &label,
+                     float r, float g, float b, float a = 1.f,
+                     const std::string &group = "");
 Attribute &add_gradient(AttrSet &s, const std::string &key, const std::string &label,
                         std::vector<GradientStop> stops,
                         const std::string &group = "");

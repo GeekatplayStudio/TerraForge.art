@@ -82,6 +82,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_hydro.cpp
     engine/nodes/nodes_logic.cpp
     external/miniz/miniz.c
+    engine/nodes/nodes_field.cpp
     engine/nodes/nodes_terrain_fx.cpp
     engine/nodes/nodes_export.cpp
 )
@@ -186,6 +187,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
+
 
 
 

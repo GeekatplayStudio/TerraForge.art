@@ -23,6 +23,22 @@ ExportHeightmap|Export
 ExportMesh|Export
 ExportTexture|Export
 FakeStones|Primitive
+FieldAltitude|Field Input
+FieldColorConstant|Field Input
+FieldConstant|Field Input
+FieldCurve|Field Math
+FieldGradient|Field Color
+FieldMath|Field Math
+FieldMix|Field Math
+FieldNoise|Field Noise
+FieldNormal|Field Input
+FieldOrientation|Field Input
+FieldPosition|Field Input
+FieldRemap|Field Math
+FieldSlope|Field Input
+FieldTime|Field Input
+FieldTrig|Field Math
+FieldVectorOp|Field Math
 FlatColor|Material
 Fold|Filter
 Fractal|Primitive
@@ -47,11 +63,13 @@ PBRMaterial|Material
 Peaks|Effect
 Plateau|Filter
 PowerFractal|Filter
+Rasterize|Field Bridge
 Remap|Filter
 RenderCamera|Render
 RenderQuality|Render
 Repeat|Logic
 Rivers|Erosion
+Sample|Field Bridge
 SedimentDeposit|Erosion
 SelectAltitude|Mask
 SelectCavities|Mask

@@ -128,6 +128,17 @@ Attribute &add_vec2(AttrSet &s, const std::string &key, const std::string &label
   return s.add(a);
 }
 
+Attribute &add_color(AttrSet &s, const std::string &key, const std::string &label,
+                     float r, float g, float b, float a,
+                     const std::string &group) {
+  Attribute at = base(AttrType::Color, key, label, group);
+  at.col[0] = r;
+  at.col[1] = g;
+  at.col[2] = b;
+  at.col[3] = a;
+  return s.add(at);
+}
+
 Attribute &add_gradient(AttrSet &s, const std::string &key, const std::string &label,
                         std::vector<GradientStop> stops, const std::string &group) {
   Attribute a = base(AttrType::Gradient, key, label, group);

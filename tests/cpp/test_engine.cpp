@@ -690,6 +690,168 @@ static void test_planet_math() {
   CHECK(height(d1, L3, 1) == 0.f, "coverage 0 = no contribution");
 }
 
+// ---------------------------------------------------------- field domain
+// The second evaluation domain (P0.1): functions evaluated per point, with no
+// resolution anywhere in them. These tests pin the properties the whole
+// framework rests on.
+static void test_field_domain() {
+  std::printf("field domain...\n");
+  for (const char *t : {"FieldPosition", "FieldNormal", "FieldAltitude",
+                        "FieldSlope", "FieldOrientation", "FieldTime",
+                        "FieldConstant", "FieldColorConstant", "FieldMath",
+                        "FieldTrig", "FieldRemap", "FieldCurve", "FieldMix",
+                        "FieldVectorOp", "FieldNoise", "FieldGradient",
+                        "Rasterize", "Sample"})
+    CHECK(gpx::NodeRegistry::instance().find(t) != nullptr, t);
+
+  // inputs report what the context says
+  {
+    gpx::Graph g;
+    gpx::Node *alt = g.add_node("FieldAltitude");
+    gpx::Node *slope = g.add_node("FieldSlope");
+    gpx::FieldContext ctx;
+    ctx.altitude = 12.5f;
+    ctx.slope = 0.25f;
+    CHECK(alt->eval_field("out", ctx).number() == 12.5f, "altitude input");
+    CHECK(slope->eval_field("out", ctx).number() == 0.25f, "slope input");
+  }
+
+  // a field is resolution-independent: the value at a point does not depend on
+  // any buffer size, and asking twice gives the same answer
+  {
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::FieldContext a = gpx::FieldContext::at(0.31f, 0.f, 0.72f);
+    float first = noise->eval_field("out", a).number();
+    float again = noise->eval_field("out", a).number();
+    CHECK(first == again, "field evaluation is deterministic");
+    CHECK(std::isfinite(first), "field value is finite");
+    // a nearby point differs, a far point differs more: it is a real field
+    gpx::FieldContext b = gpx::FieldContext::at(0.62f, 0.f, 0.11f);
+    CHECK(noise->eval_field("out", b).number() != first, "field varies in space");
+  }
+
+  // math chains pull through links
+  {
+    gpx::Graph g;
+    gpx::Node *ca = g.add_node("FieldConstant");
+    gpx::Node *cb = g.add_node("FieldConstant");
+    gpx::Node *m = g.add_node("FieldMath");
+    ca->attrs.find("value")->f = 3.f;
+    cb->attrs.find("value")->f = 4.f;
+    CHECK(g.add_link(ca->id, "out", m->id, "a"), "field link a");
+    CHECK(g.add_link(cb->id, "out", m->id, "b"), "field link b");
+    gpx::FieldContext ctx;
+    m->attrs.find("op")->i = 0; // add
+    CHECK(m->eval_field("out", ctx).number() == 7.f, "add");
+    m->attrs.find("op")->i = 2; // multiply
+    CHECK(m->eval_field("out", ctx).number() == 12.f, "multiply");
+    m->attrs.find("op")->i = 3; // divide
+    CHECK(std::fabs(m->eval_field("out", ctx).number() - 0.75f) < 1e-6f, "divide");
+    // division by zero must not poison the graph with NaN
+    cb->attrs.find("value")->f = 0.f;
+    CHECK(std::isfinite(m->eval_field("out", ctx).number()), "divide by zero is safe");
+  }
+
+  // an unconnected input falls back, so a half-built graph still previews
+  {
+    gpx::Graph g;
+    gpx::Node *m = g.add_node("FieldMath");
+    m->attrs.find("a_default")->f = 2.f;
+    m->attrs.find("b_default")->f = 5.f;
+    m->attrs.find("op")->i = 0;
+    gpx::FieldContext ctx;
+    CHECK(m->eval_field("out", ctx).number() == 7.f,
+          "unconnected inputs use their defaults");
+  }
+
+  // type conversion is permissive: a colour read as a number is its luminance
+  {
+    gpx::FieldValue c = gpx::FieldValue::color(1.f, 1.f, 1.f);
+    CHECK(std::fabs(c.number() - 1.f) < 1e-5f, "white reads as 1.0");
+    gpx::FieldValue v = gpx::FieldValue::vector(3.f, 4.f, 0.f);
+    CHECK(std::fabs(v.number() - 5.f) < 1e-5f, "vector reads as its length");
+  }
+
+  // level of detail caps octaves, so a distant point costs less but stays sane
+  {
+    gpx::Graph g;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    noise->attrs.find("octaves")->i = 10;
+    gpx::FieldContext near_pt = gpx::FieldContext::at(0.4f, 0.f, 0.4f);
+    gpx::FieldContext far_pt = near_pt;
+    far_pt.lod = 2.f;
+    float hi = noise->eval_field("out", near_pt).number();
+    float lo = noise->eval_field("out", far_pt).number();
+    CHECK(std::isfinite(lo), "low-detail evaluation is finite");
+    CHECK(hi != lo, "detail budget actually changes the result");
+  }
+}
+
+// The bridges are what keep the two domains one system: erosion must stay
+// reachable from a field graph, and an eroded heightfield must be able to
+// drive a shader.
+static void test_field_bridges() {
+  std::printf("field/raster bridges...\n");
+  // field -> buffer
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *rast = g.add_node("Rasterize");
+    CHECK(g.add_link(noise->id, "out", rast->id, "field"), "field feeds Rasterize");
+    g.evaluate();
+    gpx::Heightmap *out = out_of(rast);
+    CHECK(out && finite_map(*out), "rasterized output is finite");
+    float mn, mx;
+    out->minmax(mn, mx);
+    CHECK(mx > mn, "rasterized field has relief");
+  }
+
+  // the whole point: a field can be eroded
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *noise = g.add_node("FieldNoise");
+    gpx::Node *rast = g.add_node("Rasterize");
+    gpx::Node *ero = g.add_node("Hydraulic");
+    ero->attrs.find("particles")->i = 8;
+    g.add_link(noise->id, "out", rast->id, "field");
+    g.add_link(rast->id, "output", ero->id, "input");
+    g.evaluate();
+    gpx::Heightmap *out = out_of(ero);
+    CHECK(out && finite_map(*out), "a field graph can be eroded");
+    CHECK(ero->error.empty(), "erosion of a rasterized field has no error");
+  }
+
+  // buffer -> field, and back again: the round trip must preserve the shape
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *src = g.add_node("Noise");
+    gpx::Node *samp = g.add_node("Sample");
+    gpx::Node *rast = g.add_node("Rasterize");
+    g.add_link(src->id, "output", samp->id, "input");
+    g.add_link(samp->id, "out", rast->id, "field");
+    // keep the values as they are so the comparison is meaningful
+    rast->attrs.find("post_remap")->b = false;
+    g.evaluate();
+    gpx::Heightmap *before = out_of(src);
+    gpx::Heightmap *after = out_of(rast);
+    CHECK(before && after, "round trip evaluated");
+    if (before && after) {
+      // sampling is bilinear, so allow a small tolerance away from the edges
+      float worst = 0.f;
+      for (int y = 4; y < 60; ++y)
+        for (int x = 4; x < 60; ++x)
+          worst = std::max(worst,
+                           std::fabs(before->at(x, y) - after->at(x, y)));
+      CHECK(worst < 0.02f,
+            "buffer -> field -> buffer preserves the terrain");
+    }
+  }
+}
+
 int main() {
   std::printf("=== Geekatplay Studio engine tests ===\n");
   test_registry();
@@ -709,6 +871,8 @@ int main() {
   test_terrain_effects();
   test_sculpt_layer();
   test_planet_math();
+  test_field_domain();
+  test_field_bridges();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;

@@ -82,7 +82,8 @@ static gpx::Node *build(gpx::Graph &g, const std::string &type,
   int fy = 0;
   for (const gpx::Port &p : n->ports) {
     if (p.dir != gpx::PortDir::In) continue;
-    // feed heightmap inputs with noise, texture inputs with a colorized noise
+    // feed heightmap inputs with noise, texture inputs with a colorized noise,
+    // field inputs with a field source of the matching value type
     if (p.type == gpx::DataType::Heightmap) {
       gpx::Node *src = g.add_node("Noise", 0, (float)fy);
       if (!src) continue;
@@ -94,6 +95,14 @@ static gpx::Node *build(gpx::Graph &g, const std::string &type,
       if (!src || !cv) continue;
       g.add_link(src->id, "output", cv->id, "input");
       g.add_link(cv->id, "texture", n->id, p.name);
+      feeders.push_back(src);
+    } else if (p.type == gpx::DataType::Field) {
+      const char *src_type = "FieldNoise";
+      if (p.field_type == gpx::FieldType::Vector) src_type = "FieldPosition";
+      else if (p.field_type == gpx::FieldType::Color) src_type = "FieldColorConstant";
+      gpx::Node *src = g.add_node(src_type, 0, (float)fy);
+      if (!src) continue;
+      g.add_link(src->id, "out", n->id, p.name);
       feeders.push_back(src);
     }
     fy += 130;
@@ -119,6 +128,50 @@ static int check_outputs_finite(gpx::Node *n) {
   return produced;
 }
 
+static bool has_raster_output(gpx::Node *n) {
+  for (const gpx::Port &p : n->ports)
+    if (p.dir == gpx::PortDir::Out && p.type != gpx::DataType::Field) return true;
+  return false;
+}
+
+// A spread of points a field node is asked about. Includes an origin, negative
+// coordinates and a far-away point, because those are where a careless
+// implementation produces NaN.
+static std::vector<gpx::FieldContext> field_probe_points() {
+  std::vector<gpx::FieldContext> pts;
+  const float coords[][3] = {{0, 0, 0},        {0.5f, 0.2f, 0.5f},
+                             {-1.3f, 0.f, 2.7f}, {123.4f, -8.f, -56.f},
+                             {1e-4f, 1e-4f, 1e-4f}};
+  for (const auto &c : coords) {
+    gpx::FieldContext ctx = gpx::FieldContext::at(c[0], c[1], c[2]);
+    ctx.normal[0] = 0.3f; ctx.normal[1] = 0.9f; ctx.normal[2] = -0.31f;
+    ctx.derive_from_normal();
+    ctx.time = 1.5f;
+    pts.push_back(ctx);
+  }
+  return pts;
+}
+
+// Field outputs are pull-evaluated rather than computed into a buffer, so they
+// are checked on their own terms: finite and deterministic everywhere.
+static void check_field_outputs(gpx::Node *n) {
+  auto pts = field_probe_points();
+  for (const gpx::Port &p : n->ports) {
+    if (p.dir != gpx::PortDir::Out || p.type != gpx::DataType::Field) continue;
+    CHECK(p.field_eval != nullptr,
+          "field output '" + p.name + "' has an evaluator");
+    if (!p.field_eval) continue;
+    for (const gpx::FieldContext &ctx : pts) {
+      gpx::FieldValue a = n->eval_field(p.name, ctx);
+      gpx::FieldValue b = n->eval_field(p.name, ctx);
+      CHECK(a.finite(), "field '" + p.name + "' is finite at every probe point");
+      CHECK(a == b, "field '" + p.name + "' is deterministic");
+      CHECK(a.type == p.field_type,
+            "field '" + p.name + "' returns its declared type");
+    }
+  }
+}
+
 // snapshot every output so two runs can be compared bit for bit
 static std::vector<float> snapshot(gpx::Node *n) {
   std::vector<float> out;
@@ -126,6 +179,12 @@ static std::vector<float> snapshot(gpx::Node *n) {
     if (p.dir != gpx::PortDir::Out) continue;
     if (p.hmap) out.insert(out.end(), p.hmap->v.begin(), p.hmap->v.end());
     if (p.tex) out.insert(out.end(), p.tex->v.begin(), p.tex->v.end());
+    // include field outputs so determinism covers them too
+    if (p.type == gpx::DataType::Field && p.field_eval)
+      for (const gpx::FieldContext &ctx : field_probe_points()) {
+        gpx::FieldValue v = n->eval_field(p.name, ctx);
+        out.insert(out.end(), v.v, v.v + 4);
+      }
   }
   return out;
 }
@@ -207,7 +266,9 @@ static void check_eval_and_determinism(const std::string &type) {
   CHECK(n->error.empty() || needs_file(type),
         "evaluates without error (got: " + n->error + ")");
   int produced = check_outputs_finite(n);
-  if (!needs_file(type) && !is_config_node(type) && !is_sink(type))
+  check_field_outputs(n);
+  if (has_raster_output(n) && !needs_file(type) && !is_config_node(type) &&
+      !is_sink(type))
     CHECK(produced >= 1, "produced at least one non-empty output");
 
   std::vector<float> first = snapshot(n);

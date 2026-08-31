@@ -4,6 +4,7 @@
 // propagation and per-node output caching.
 #pragma once
 #include "gpx/attribute.hpp"
+#include "gpx/field.hpp"
 #include "gpx/heightmap.hpp"
 #include <atomic>
 #include <functional>
@@ -14,17 +15,31 @@
 
 namespace gpx {
 
-enum class DataType { Heightmap, Texture };
+// Heightmap/Texture are the raster domain (buffers at the graph resolution).
+// Field is the second domain: a function evaluated per point, with its own
+// value type carried alongside. See gpx/field.hpp for why both exist.
+enum class DataType { Heightmap, Texture, Field };
 enum class PortDir { In, Out };
+
+class Node;
+
+// A field port carries no buffer — it carries the promise that the node can be
+// asked for a value at any point. Evaluation is pull-based: asking an output
+// port for a value walks upstream through the links.
+using FieldEvalFn = std::function<FieldValue(const Node &, const FieldContext &)>;
 
 struct Port {
   std::string name;
   PortDir dir = PortDir::In;
   DataType type = DataType::Heightmap;
   bool optional = false;
-  // output storage
+  // output storage (raster domain)
   std::shared_ptr<Heightmap> hmap;
   std::shared_ptr<TextureRGBA> tex;
+  // field domain: what kind of value this port carries, and (on outputs) how
+  // to produce it
+  FieldType field_type = FieldType::Number;
+  FieldEvalFn field_eval;
 };
 
 class Graph;
@@ -52,6 +67,26 @@ public:
   void add_in(const std::string &name, DataType t = DataType::Heightmap,
               bool optional = false);
   void add_out(const std::string &name, DataType t = DataType::Heightmap);
+
+  // ---- field domain -------------------------------------------------------
+  // A field input declares the value type it expects; a field output declares
+  // what it produces and how. `eval` receives the node and the point being
+  // asked about, so field nodes are stateless and re-entrant — which is what
+  // lets them be evaluated in parallel and transpiled to GLSL.
+  void add_field_in(const std::string &name, FieldType t = FieldType::Number,
+                    bool optional = false);
+  void add_field_out(const std::string &name, FieldType t, FieldEvalFn eval);
+
+  // Pull a value from a connected field input. If nothing is connected,
+  // `fallback` is returned, so every field node has a defined result even in a
+  // half-built graph — a partially wired graph must still preview.
+  FieldValue in_field(const std::string &name, const FieldContext &ctx,
+                      FieldValue fallback = FieldValue(0.f)) const;
+  float in_number(const std::string &name, const FieldContext &ctx,
+                  float fallback = 0.f) const;
+  bool field_connected(const std::string &name) const;
+  // Evaluate one of this node's own field outputs.
+  FieldValue eval_field(const std::string &name, const FieldContext &ctx) const;
 
   // resolved input (follows link to upstream out-port); null if unconnected
   const Heightmap *in_hmap(const std::string &name) const;

@@ -42,6 +42,58 @@ void Node::add_out(const std::string &name, DataType t) {
   ports.push_back(std::move(p));
 }
 
+// ------------------------------------------------------------ field domain
+void Node::add_field_in(const std::string &name, FieldType t, bool optional) {
+  Port p;
+  p.name = name;
+  p.dir = PortDir::In;
+  p.type = DataType::Field;
+  p.field_type = t;
+  p.optional = optional;
+  ports.push_back(std::move(p));
+}
+
+void Node::add_field_out(const std::string &name, FieldType t, FieldEvalFn eval) {
+  Port p;
+  p.name = name;
+  p.dir = PortDir::Out;
+  p.type = DataType::Field;
+  p.field_type = t;
+  p.field_eval = std::move(eval);
+  ports.push_back(std::move(p));
+}
+
+bool Node::field_connected(const std::string &name) const {
+  return graph && graph->upstream(*this, name) != nullptr;
+}
+
+// Pull-based evaluation: walk up the link and ask the producing node for a
+// value at this point. There is no cache here on purpose — a field is a
+// function, and the caller (rasterizer, GLSL transpiler, picker) decides how
+// often to sample it.
+FieldValue Node::in_field(const std::string &name, const FieldContext &ctx,
+                          FieldValue fallback) const {
+  if (!graph) return fallback;
+  const Node *src = graph->upstream_node(*this, name);
+  const Port *up = graph->upstream(*this, name);
+  if (!src || !up || !up->field_eval) return fallback;
+  return up->field_eval(*src, ctx);
+}
+
+float Node::in_number(const std::string &name, const FieldContext &ctx,
+                      float fallback) const {
+  if (!field_connected(name)) return fallback;
+  return in_field(name, ctx, FieldValue(fallback)).number();
+}
+
+FieldValue Node::eval_field(const std::string &name,
+                            const FieldContext &ctx) const {
+  for (const Port &p : ports)
+    if (p.dir == PortDir::Out && p.name == name && p.field_eval)
+      return p.field_eval(*this, ctx);
+  return FieldValue(0.f);
+}
+
 const Heightmap *Node::in_hmap(const std::string &name) const {
   const Port *up = graph ? graph->upstream(*this, name) : nullptr;
   return up && up->hmap ? up->hmap.get() : nullptr;

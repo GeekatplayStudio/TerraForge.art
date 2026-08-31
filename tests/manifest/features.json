@@ -1,13 +1,13 @@
-{
+﻿{
   "_comment": [
-    "Feature manifest — the regression lock's human-auditable checklist.",
+    "Feature manifest â€” the regression lock's human-auditable checklist.",
     "Every shipped user-visible capability appears here and names the test that",
     "owns it. regression_tests verifies each named test symbol still exists in",
     "its source file, so deleting a test fails the build. Add an entry whenever",
     "a phase ships something a user can see; never delete one without a written",
     "reason in the commit message.",
     "Node-level and attribute-level coverage is handled separately and",
-    "exhaustively by nodes.txt / attributes.txt — this file is for capabilities."
+    "exhaustively by nodes.txt / attributes.txt â€” this file is for capabilities."
   ],
   "features": [
 
@@ -48,7 +48,7 @@
       "test_file": "test_engine.cpp", "test_symbol": "test_workflow_determinism" },
 
     { "id": "terrain.effects", "area": "terrain", "phase": "16",
-      "description": "Grit, Gravel, Peaks, Sharpen, Cracks, Glaciation, Dissolve, TerrainClip — all deterministic, Dissolve emits a flow map, TerrainClip flattens and emits a hole mask",
+      "description": "Grit, Gravel, Peaks, Sharpen, Cracks, Glaciation, Dissolve, TerrainClip â€” all deterministic, Dissolve emits a flow map, TerrainClip flattens and emits a hole mask",
       "test_file": "test_engine.cpp", "test_symbol": "test_terrain_effects" },
 
     { "id": "terrain.sculpt_layer", "area": "terrain", "phase": "16",
@@ -139,8 +139,17 @@
       "description": "Every manifest feature names a test that still exists",
       "test_file": "test_regression.cpp", "test_symbol": "check_feature_manifest" },
 
+    { "id": "field.domain", "area": "framework", "phase": "P0.1",
+      "description": "Field domain: per-point evaluation with no resolution, standard inputs, deterministic, type-permissive, LOD-aware",
+      "test_file": "test_engine.cpp", "test_symbol": "test_field_domain" },
+
+    { "id": "field.bridges", "area": "framework", "phase": "P0.1",
+      "description": "Rasterize and Sample bridge the field and raster domains: a field can be eroded, and a buffer can drive a shader",
+      "test_file": "test_engine.cpp", "test_symbol": "test_field_bridges" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
   ]
 }
+
