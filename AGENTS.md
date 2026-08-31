@@ -95,6 +95,50 @@ belongs to; do not fake a field node with a 1×1 buffer.
 7. **`for (x : json::parse(s)["nodes"])` iterates a subobject of a destroyed
    temporary.** Parse into a named value first. This silently produced empty
    MetaNode inner graphs.
+8. **A GLSL emitter must resolve its inputs before it streams.** Resolving an
+   input appends that subtree's declarations to the same body, so interleaving
+   it with a `<<` chain splices them into the middle of the statement being
+   written. Compute the strings first, then write the line. A structural test
+   (`glsl_declared_before_use`) catches this without a GPU.
+9. **The transpiler's type conversions must mirror `FieldValue` exactly** — a
+   number broadcasts to a vector, a vector read as a number is its length, a
+   colour is its luminance. They did not, and a scalar redirect offset became
+   `(n,0,0)` on the GPU against `(n,n,n)` on the CPU: a graph that rendered
+   differently for no visible reason.
+10. **Nodes may have several field outputs, and they are different values.**
+    Emission is keyed by node *and* port, and by the evaluation point, since a
+    redirect asks for the same subtree somewhere else.
+
+## Generated shaders
+
+1. **Always substitute the placeholder**, with the generated function or with
+   a stub. A shader that is well-formed either way has no second code path to
+   get wrong.
+2. **Check `GL_LINK_STATUS` on anything generated** (`link_checked`). The
+   built-in shaders are known good, which is why nothing checked before;
+   generated code comes from the user's graph and a silently unlinked program
+   renders nothing at all.
+3. **Keep the old program until the new one links**, so a bad graph leaves the
+   viewport as it was rather than turning it black.
+4. **Remember the request, not just the live source.** Clearing the source on
+   failure makes the next frame see a difference and relink again — that
+   pinned a core until the app stopped responding.
+5. **Displace the normal wherever you displace the geometry.** The fragment
+   stage takes central differences of the same function; moving vertices alone
+   lights a surface that is not there.
+6. The vertex and fragment stages are separate translation units, so each may
+   carry its own copy of a generated prelude. Duplicate definitions only
+   collide *within* one stage.
+
+## Persisted UI state
+
+1. **Never hand a saved layout or view file to a widget without validating
+   it.** A node-editor view file with a collapsed zoom and `INT_MIN` positions
+   made the editor lay out a canvas billions of units across and never finish
+   a frame — so the app spun behind a black window on *every* launch, for ever,
+   with nothing to say why. See `graph_view_is_sane`.
+2. Prefer discarding unusable UI state to trying to repair it. Losing pan and
+   zoom is trivial; an application that will not start is not.
 
 ## Tests
 

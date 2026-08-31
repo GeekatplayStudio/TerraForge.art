@@ -37,6 +37,33 @@ real-time OpenGL viewport.
   smooth or constant), sampled before evaluation. *The timeline UI is not
   built yet.*
 
+### Displacement
+- **Redirect** moves where another field is evaluated. Warp, flow, swirl and
+  domain distortion are all this one node, and it works on anything — noise,
+  a sampled heightfield, another redirect.
+- **Displace** turns a value into relief: along the surface normal, straight
+  up, along a vector or a fixed direction; depth in real units or relative to
+  a reference size; smoothing; a **quality boost** so relief can resolve finer
+  than the geometry carrying it; and displace-outwards-only.
+- **Compute Normal** recovers the surface direction *after* displacement, so
+  "snow above this altitude on slopes below this angle" means the displaced
+  terrain rather than the flat plane underneath it.
+- **Zones** confine a field to a sphere or box with a smooth fade, and expose
+  the region on its own as a mask.
+- **Live on the GPU:** wire a field into a `TerrainDisplacement` node and the
+  viewport compiles it to a shader and evaluates it per vertex, normals
+  included. A field has no resolution, so the relief keeps resolving as the
+  camera closes in. If a graph produces a shader that will not build, the
+  viewport keeps the last good one instead of going black.
+
+### Terrain analysis
+- **Flow accumulation** (D8): how much water passes through each point.
+- **Wetness index** — `ln(a/tan b)`, the standard measure of where water
+  collects. High in flat hollows fed from above, low on steep ground, so a
+  vegetation or moss mask sits where you would expect it.
+- **Resample** at half, quarter, double or a custom sampling — detail control
+  without changing the buffer size.
+
 ### Terrain
 - **Node graph engine** with dirty-tracking evaluation, multithreaded solvers,
   per-node previews and timings, and any resolution from 64 to 8192.
@@ -161,13 +188,13 @@ Six suites, all of which must pass before a commit:
 | `nodeterrain_tests` | The original solver library and CLI |
 | `engine_tests` | Registry, evaluation and caching, cycle rejection, determinism, erosion, materials, serialization, field domain, GLSL transpiler, bypass, MetaNodes, blend, animation |
 | `undo_tests` | Restore correctness, redo branching, history jumps, node library round-trip |
-| `node_tests` | **Universal node contract** — one data-driven battery over all 106 node types: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
-| `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, 11 committed projects must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
+| `node_tests` | **Universal node contract** — one data-driven battery over all 115 node types: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
+| `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, 13 committed projects must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
 | `pytest` | Render backends and AI helpers |
 
 The contract and regression suites are the reason features do not quietly
-disappear: 5,275 contract assertions and 1,423 regression checks over 106
-node types, 481 attributes and 43 manifest features. If a change to a golden
+disappear: 5,902 contract assertions and 1,650 regression checks over 115
+node types, 512 attributes and 56 manifest features. If a change to a golden
 is intentional, `regression_tests --update` re-records it — review that diff
 rather than trusting it.
 
