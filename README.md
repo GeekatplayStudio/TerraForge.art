@@ -272,7 +272,7 @@ rather than trusting it.
 from mcp_server.studio_api import Studio
 
 s = Studio()
-s.set_sun(azimuth=250, altitude=12)   # one history step, named "AI: set_sun"
+s.set_sun(azimuth_deg=250, altitude_deg=12)  # one history step, "AI: set_sun"
 s.undo()                              # take it back
 s.redo()                              # and put it back
 ```

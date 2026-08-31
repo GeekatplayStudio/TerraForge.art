@@ -12,6 +12,8 @@ from core.dag import TerrainDAGSolver, NodeRegistry
 from core.persistence import WALProjectManager
 from orchestrator.graph import MultiAgentGraph
 
+from .studio_api import all_tools as studio_all_tools, handle_mcp as studio_handle
+
 
 class NodeTerrainMCPServer:
     """Model Context Protocol (MCP) Server implementation for Geekatplay NodeTerrain."""
@@ -30,6 +32,12 @@ class NodeTerrainMCPServer:
             "terrain_generate_from_prompt": self.tool_generate_from_prompt,
             "terrain_export_heightfield": self.tool_export_heightfield,
         }
+        # The studio tools drive the *running application* through the shared
+        # ai_apply_actions path, which is what AGENTS.md has always claimed MCP
+        # does. Until now this server exposed only the Python-side prototype
+        # above, so that claim was false and none of the app's 30-odd
+        # operations were reachable over MCP at all.
+        self.studio_tools = studio_all_tools()
 
     def tool_get_state(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Returns the current node graph structure and metadata."""
@@ -151,10 +159,19 @@ class NodeTerrainMCPServer:
             if method in self.tools:
                 result = self.tools[method](params)
                 return json.dumps({"jsonrpc": "2.0", "result": result, "id": req_id})
+            elif method in self.studio_tools:
+                # straight onto the running app
+                result = studio_handle(method, params)
+                return json.dumps({"jsonrpc": "2.0", "result": result, "id": req_id})
             elif method == "tools/list":
                 tool_list = [
                     {"name": name, "description": fn.__doc__ or ""}
                     for name, fn in self.tools.items()
+                ]
+                tool_list += [
+                    {"name": name, "description": spec.get("description", ""),
+                     "params": spec.get("params", {})}
+                    for name, spec in self.studio_tools.items()
                 ]
                 return json.dumps({"jsonrpc": "2.0", "result": {"tools": tool_list}, "id": req_id})
             else:

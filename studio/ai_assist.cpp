@@ -458,7 +458,11 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         std::string spec = act["spec"].dump();
         std::string gerr;
         std::lock_guard<std::mutex> lk(a.graph_mtx);
-        if (gpx::graph_from_ai_spec(a.graph, spec, gerr, nullptr, true)) {
+        // replace:true clears first, so a script can author a whole scene
+        // rather than only ever bolting more onto what is already there
+        bool merge = !act.value("replace", false);
+        if (gpx::graph_from_ai_spec(a.graph, spec, gerr, nullptr, merge)) {
+          if (!merge) a.view_node = a.selected_node = 0;
           a.graph_layout_serial++;
           a.request_eval();
           ++applied;
@@ -466,6 +470,12 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
           err = gerr;
         }
       }
+    } else {
+      // node-level graph editing lives in ai_ops_graph.cpp; -1 means it did
+      // not recognise the op either, and it falls through to "unsupported"
+      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      int r = ai_graph_op(a, op, act, err);
+      if (r > 0) ++applied;
     }
   }
   if (!applied) {

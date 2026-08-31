@@ -127,6 +127,89 @@ class Studio:
     def planets(self) -> List[Dict[str, Any]]:
         return self.state().get("planets", [])
 
+    # ---------------------------------------------------------- the graph
+    # Reading the graph back is what turns this from a write-only interface
+    # into one an agent can actually work with.
+    def nodes(self) -> List[Dict[str, Any]]:
+        return self.state().get("nodes", [])
+
+    def links(self) -> List[Dict[str, Any]]:
+        return self.state().get("links", [])
+
+    def node(self, ident) -> Optional[Dict[str, Any]]:
+        """Find a node by id or, failing that, by type name."""
+        ns = self.nodes()
+        for n in ns:
+            if n.get("id") == ident:
+                return n
+        for n in reversed(ns):
+            if n.get("type") == ident:
+                return n
+        return None
+
+    def add_node(self, type: str, **kw: Any) -> Dict[str, Any]:
+        return self.send({"op": "add_node", "type": type, **kw})
+
+    def delete_node(self, node: Any) -> Dict[str, Any]:
+        return self.send({"op": "delete_node", "node": node})
+
+    def connect(self, frm: Any, to: Any, **kw: Any) -> Dict[str, Any]:
+        return self.send({"op": "connect", "from": frm, "to": to, **kw})
+
+    def disconnect(self, **kw: Any) -> Dict[str, Any]:
+        return self.send({"op": "disconnect", **kw})
+
+    def set_attr(self, node: Any, key: str = None, value: Any = None,
+                 **kw: Any) -> Dict[str, Any]:
+        act: Dict[str, Any] = {"op": "set_attr", "node": node}
+        if key is not None:
+            act["key"] = key
+            act["value"] = value
+        if kw:
+            act["attrs"] = {**act.get("attrs", {}), **kw}
+        return self.send(act)
+
+    def bypass(self, node: Any, bypass: bool = True) -> Dict[str, Any]:
+        return self.send({"op": "bypass", "node": node, "bypass": bypass})
+
+    def move_node(self, node: Any, x: float, y: float) -> Dict[str, Any]:
+        return self.send({"op": "move_node", "node": node, "x": x, "y": y})
+
+    def clear_graph(self) -> Dict[str, Any]:
+        return self.send({"op": "clear_graph"})
+
+    def set_resolution(self, resolution: int) -> Dict[str, Any]:
+        return self.send({"op": "set_resolution", "resolution": resolution})
+
+    def view_node(self, node: Any = None) -> Dict[str, Any]:
+        act: Dict[str, Any] = {"op": "view_node"}
+        if node is not None:
+            act["node"] = node
+        return self.send(act)
+
+    def select_node(self, node: Any) -> Dict[str, Any]:
+        return self.send({"op": "select_node", "node": node})
+
+    def evaluate(self) -> Dict[str, Any]:
+        return self.send({"op": "evaluate"})
+
+    def wait_for_eval(self, timeout: float = 60.0) -> bool:
+        """Block until evaluation finishes. Watches the published eval serial,
+        so this waits for a real event rather than for a file's timestamp."""
+        start = time.time()
+        begun = False
+        while time.time() - start < timeout:
+            ev = self.state().get("eval", {})
+            if ev.get("running"):
+                begun = True
+            elif begun:
+                return True
+            time.sleep(0.15)
+        return False
+
+    def verify_field_gpu(self) -> Dict[str, Any]:
+        return self.send({"op": "verify_field_gpu"})
+
     def undo(self, steps: int = 1) -> Dict[str, Any]:
         """Revert the last change, including one made through this API."""
         return self.send({"op": "undo", "steps": steps})
@@ -183,6 +266,17 @@ MCP_TOOLS = {
                        "project.",
         "params": {"spec": "obj"},
     },
+    "studio_set_render": {
+        "description": "Configure the active camera's render output without "
+                       "starting a render. Fields: engine, width, height, "
+                       "samples, output.",
+        "params": {"engine": "str", "width": "int", "height": "int",
+                   "samples": "int", "output": "str"},
+    },
+    "studio_select": {
+        "description": "Select a scene object by name.",
+        "params": {"name": "str"},
+    },
     "studio_render": {
         "description": "Render the active camera. Fields: engine, width, "
                        "height, samples, output.",
@@ -226,10 +320,23 @@ MCP_TOOLS = {
 }
 
 
+def all_tools() -> Dict[str, Any]:
+    """Every studio MCP tool: scene/world/camera plus the graph tools."""
+    from .studio_graph_tools import GRAPH_TOOLS
+    merged = dict(MCP_TOOLS)
+    merged.update(GRAPH_TOOLS)
+    return merged
+
+
 def handle_mcp(tool: str, params: Dict[str, Any],
                studio: Optional[Studio] = None) -> Dict[str, Any]:
     """Dispatches an MCP tool call onto the shared action schema."""
     s = studio or Studio()
+    # graph tools live in their own module so neither file grows unbounded
+    from .studio_graph_tools import handle_graph_tool
+    handled = handle_graph_tool(tool, params, s)
+    if handled is not None:
+        return handled
     if tool == "studio_get_state":
         return {"status": "success", "state": s.state()}
     if tool == "studio_add_camera":
@@ -252,6 +359,12 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.graph(params.get("spec", {}))}
     if tool == "studio_render":
         return {"status": "success", "sent": s.render(**params)}
+    if tool == "studio_set_render":
+        # configure output without firing a render, which studio_render
+        # cannot do because it always appends the render action
+        return {"status": "success", "sent": s.set_render(**params)}
+    if tool == "studio_select":
+        return {"status": "success", "sent": s.select(params.get("name", ""))}
     if tool == "studio_add_planet":
         return {"status": "success", "sent": s.add_planet(**params)}
     if tool == "studio_set_planet":

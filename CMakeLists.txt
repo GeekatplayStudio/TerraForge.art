@@ -133,6 +133,7 @@ set(STUDIO_SOURCES
     studio/node_library.cpp
     studio/panel_camera.cpp
     studio/ai_assist.cpp
+    studio/ai_ops_graph.cpp
     studio/studio_api.cpp
     studio/i18n.cpp
     studio/file_dialogs.cpp

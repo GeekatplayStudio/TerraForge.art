@@ -109,6 +109,50 @@ static void publish_state(App &a) {
   j["terrain"] = {{"resolution", a.graph.resolution},
                   {"height_scale", rs.height_scale},
                   {"size_m", rs.terrain_size_m}};
+
+  // The graph itself. Without this an agent can write to the graph and never
+  // read it: it cannot see what nodes exist, so it can only ever bolt more on,
+  // never inspect, tune or repair. Published from the lock-free UI snapshot,
+  // so this costs nothing and cannot block evaluation.
+  {
+    json nodes = json::array();
+    for (const App::NodeView &n : a.node_views) {
+      json jn = {{"id", n.id},
+                 {"type", n.type},
+                 {"category", n.category},
+                 {"pos", {n.pos_x, n.pos_y}},
+                 {"enabled", n.enabled},
+                 {"ms", n.ms}};
+      if (!n.error.empty()) jn["error"] = n.error;
+      json ports = json::array();
+      for (const App::PortView &p : n.ports)
+        ports.push_back({{"name", p.name},
+                         {"in", p.is_input},
+                         {"texture", p.is_texture},
+                         {"optional", p.optional}});
+      jn["ports"] = ports;
+      nodes.push_back(jn);
+    }
+    j["nodes"] = nodes;
+    json links = json::array();
+    for (const App::LinkView &l : a.link_views)
+      links.push_back({{"id", l.id},
+                       {"from", l.from_node},
+                       {"from_port", l.from_port},
+                       {"to", l.to_node},
+                       {"to_port", l.to_port}});
+    j["links"] = links;
+    j["selected_node"] = a.selected_node;
+    j["view_node"] = a.view_node;
+    j["project_path"] = a.project_path;
+    // so a caller can wait for an actual event rather than for the file's
+    // modification time to move
+    j["eval"] = {{"running", a.eval.running.load()},
+                 {"serial", a.eval_serial},
+                 {"done", a.eval.progress_done.load()},
+                 {"total", a.eval.progress_total.load()}};
+  }
+
   fs::path tmp = api_dir() / "scene_state.json.tmp";
   {
     std::ofstream f(tmp);
