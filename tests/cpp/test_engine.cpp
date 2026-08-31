@@ -1,4 +1,5 @@
 // Geekatplay Studio — engine test suite (graph, nodes, serialization)
+#include "gpx/camera_math.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <cmath>
@@ -396,6 +397,54 @@ static void test_workflow_determinism() {
   }
 }
 
+static void test_camera_math() {
+  std::printf("camera math...\n");
+  using namespace gpx::cam;
+  int nf = 0;
+  const SensorFormat *F = sensor_formats(&nf);
+  CHECK(nf >= 7, "sensor formats registered");
+  CHECK(std::fabs(F[0].width_mm - 36.f) < 1e-4f, "full frame is 36mm wide");
+
+  // a 50mm lens on full frame is the classic ~39.6 deg vertical / 46.8 horizontal
+  float fy = fov_y_deg(50.f, 24.f);
+  CHECK(std::fabs(fy - 27.0f) < 0.5f, "50mm full frame vertical fov ~27 deg");
+  float fx = fov_x_deg(50.f, 36.f);
+  CHECK(std::fabs(fx - 39.6f) < 0.5f, "50mm full frame horizontal fov ~39.6 deg");
+  // wider lens => wider view, longer lens => narrower
+  CHECK(fov_y_deg(24.f, 24.f) > fy, "24mm is wider than 50mm");
+  CHECK(fov_y_deg(200.f, 24.f) < fy, "200mm is narrower than 50mm");
+  // a smaller sensor crops the same lens
+  CHECK(fov_y_deg(50.f, 15.7f) < fov_y_deg(50.f, 24.f), "APS-C crops");
+
+  // exposure: the reference triangle is neutral
+  float m = exposure_multiplier(8.f, 1.f / 125.f, 100.f);
+  CHECK(std::fabs(m - 1.f) < 0.05f, "f/8 1/125 ISO100 is the neutral exposure");
+  // one stop wider open doubles the light
+  CHECK(exposure_multiplier(5.6f, 1.f / 125.f, 100.f) > m * 1.8f,
+        "opening one stop roughly doubles exposure");
+  // doubling ISO doubles exposure; halving shutter halves it
+  CHECK(exposure_multiplier(8.f, 1.f / 125.f, 200.f) > m * 1.8f,
+        "ISO 200 is one stop brighter");
+  CHECK(exposure_multiplier(8.f, 1.f / 250.f, 100.f) < m * 0.6f,
+        "1/250 is one stop darker");
+  // EV maths
+  CHECK(std::fabs(ev100(1.f, 1.f, 100.f)) < 1e-4f, "f/1 1s ISO100 is EV 0");
+  CHECK(std::fabs(ev100(2.f, 1.f, 100.f) - 2.f) < 1e-4f, "f/2 1s is EV 2");
+
+  int nfilm = 0;
+  const FilmStock *S = film_stocks(&nfilm);
+  CHECK(nfilm >= 6, "film stocks registered");
+  CHECK(std::fabs(S[0].saturation - 1.f) < 1e-4f, "digital stock is neutral");
+  bool has_bw = false;
+  for (int i = 0; i < nfilm; ++i)
+    if (S[i].saturation <= 0.001f) has_bw = true;
+  CHECK(has_bw, "a black and white stock exists");
+
+  CHECK(aperture_radius(50.f, 2.f, 0.001f) >
+            aperture_radius(50.f, 8.f, 0.001f),
+        "wider aperture gives a larger blur circle");
+}
+
 static void test_ai_spec() {
   std::printf("AI spec builder...\n");
   const char *spec = R"({
@@ -450,6 +499,7 @@ int main() {
   test_material_graph();
   test_material_library_roundtrip();
   test_workflow_determinism();
+  test_camera_math();
   test_ai_spec();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");

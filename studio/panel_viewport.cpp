@@ -178,8 +178,14 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
                ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f);
     bool pan = ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
                ImGui::IsMouseDown(ImGuiMouseButton_Right);
-    renderer_view_input(vc, io.MouseDelta.x, io.MouseDelta.y, io.MouseWheel, rot,
-                        pan, w);
+    // Ctrl+drag dollies (moves the camera along its view axis)
+    bool dolly = io.KeyCtrl && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (vc.camera == 0)
+      renderer_camera_input(io.MouseDelta.x, io.MouseDelta.y, io.MouseWheel,
+                            rot && !dolly, pan, dolly);
+    else
+      renderer_view_input(vc, io.MouseDelta.x, io.MouseDelta.y, io.MouseWheel, rot,
+                          pan, w);
     // click (without dragging) selects the object under the cursor
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
         !ImGui::IsMouseDragging(ImGuiMouseButton_Left, 3.f)) {

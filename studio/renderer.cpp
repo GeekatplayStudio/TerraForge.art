@@ -6,6 +6,7 @@
 #include "cloud_noise.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "gpx/camera_math.hpp"
 #include <glad/gl.h>
 #include <imgui.h>
 #include <cmath>
@@ -157,7 +158,14 @@ uniform float u_cl_cov, u_cl_alt, u_cl_time;
 uniform vec2 u_cl_wind;
 const float PI = 3.14159265;
 SKY_FN_PLACEHOLDER
-vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
+uniform vec3 u_grade;
+uniform float u_sat;
+vec3 aces(vec3 x){
+  x *= u_grade;
+  float lum = dot(x, vec3(0.299, 0.587, 0.114));
+  x = mix(vec3(lum), x, u_sat);
+  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
+}
 
 vec3 get_normal(vec2 uv){
   float e = u_texel;
@@ -350,7 +358,14 @@ uniform vec3 u_foam_color;
 uniform float u_foam_amount, u_foam_scale, u_foam_crests;
 uniform float u_roughness, u_reflection;
 SKY_FN_PLACEHOLDER
-vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
+uniform vec3 u_grade;
+uniform float u_sat;
+vec3 aces(vec3 x){
+  x *= u_grade;
+  float lum = dot(x, vec3(0.299, 0.587, 0.114));
+  x = mix(vec3(lum), x, u_sat);
+  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
+}
 float hash21(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
 float vnoise(vec2 p){
   vec2 i = floor(p), f = fract(p);
@@ -426,7 +441,14 @@ uniform int u_hdr;
 uniform int u_no_sun;
 const float PI = 3.14159265;
 SKY_FN_PLACEHOLDER
-vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
+uniform vec3 u_grade;
+uniform float u_sat;
+vec3 aces(vec3 x){
+  x *= u_grade;
+  float lum = dot(x, vec3(0.299, 0.587, 0.114));
+  x = mix(vec3(lum), x, u_sat);
+  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
+}
 float remap01(float v, float lo, float hi){ return clamp((v-lo)/max(hi-lo,1e-4), 0.0, 1.0); }
 // remap that allows a negative low bound (the standard cloud shaping form)
 float remapf(float v, float lo, float hi, float nlo, float nhi){
@@ -558,7 +580,14 @@ out vec4 frag;
 uniform vec3 u_color, u_sun, u_sun_color;
 uniform float u_exposure;
 uniform int u_selected;
-vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
+uniform vec3 u_grade;
+uniform float u_sat;
+vec3 aces(vec3 x){
+  x *= u_grade;
+  float lum = dot(x, vec3(0.299, 0.587, 0.114));
+  x = mix(vec3(lum), x, u_sat);
+  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
+}
 void main(){
   float ndl = max(dot(normalize(v_nrm), u_sun), 0.0);
   vec3 col = u_color * (u_sun_color * 1.8 * ndl + vec3(0.35,0.38,0.45));
@@ -618,7 +647,14 @@ uniform float u_roughness, u_metallic, u_specular, u_reflection;
 uniform vec3 u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_exposure, u_sun_intensity, u_ambient;
 const float PI = 3.14159265;
-vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
+uniform vec3 u_grade;
+uniform float u_sat;
+vec3 aces(vec3 x){
+  x *= u_grade;
+  float lum = dot(x, vec3(0.299, 0.587, 0.114));
+  x = mix(vec3(lum), x, u_sat);
+  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
+}
 void main(){
   vec3 N = normalize(v_nrm);
   vec3 albedo = (u_has_albedo == 1) ? pow(texture(u_albedo, v_uv).rgb, vec3(2.2))
@@ -727,6 +763,19 @@ static void mat_mul(float *o, const float *a, const float *b) {
 }
 
 static bool mat_inverse(float *out, const float *m);
+
+// active photographic grading (set per-frame from the active camera)
+static float g_grade[3] = {1.f, 1.f, 1.f};
+static float g_saturation = 1.f;
+static float g_exposure_mult = 1.f;
+
+void renderer_set_film(const float tint[3], float saturation, float exposure_mult) {
+  g_grade[0] = tint[0];
+  g_grade[1] = tint[1];
+  g_grade[2] = tint[2];
+  g_saturation = saturation;
+  g_exposure_mult = exposure_mult;
+}
 
 static void uni3(GLuint prog, const char *name, const float *v) {
   glUniform3fv(glGetUniformLocation(prog, name), 1, v);
@@ -1007,6 +1056,75 @@ void renderer_set_material_maps(const void *normal, const void *roughness,
   up(tex_disp, (const gpx::TextureRGBA *)displacement, false, has_disp_map);
 }
 
+// Drives whichever camera is active. Scene cameras store an explicit
+// eye/target, so orbit/pan/dolly operate on that pair directly.
+static bool camera_object_input(float dx, float dy, float wheel, bool rotating,
+                                bool panning, bool dolly) {
+  SceneState &sc = scene();
+  int active = scene_active_camera();
+  if (active < 0 || active >= (int)sc.objects.size() ||
+      sc.objects[active].type != SceneObject::Camera)
+    return false;
+  CameraData &cd = sc.objects[active].cam;
+  float d[3] = {cd.eye[0] - cd.target[0], cd.eye[1] - cd.target[1],
+                cd.eye[2] - cd.target[2]};
+  float dist = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+  if (dist < 1e-5f) dist = 1e-5f;
+  float yaw = std::atan2(d[0], d[2]);
+  float pitch = std::asin(std::clamp(d[1] / dist, -1.f, 1.f));
+  if (rotating) {
+    yaw += dx * 0.01f;
+    pitch = std::clamp(pitch + dy * 0.01f, -1.55f, 1.55f);
+  }
+  if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.1f), 0.02f, 20.f);
+  if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 0.02f, 20.f);
+  if (panning) {
+    // pan moves eye and target together, across the view plane
+    float s = dist * 0.0015f;
+    float cy = std::cos(yaw), sy = std::sin(yaw);
+    float mx = (-dx * cy - dy * sy) * s, mz = (dx * sy - dy * cy) * s;
+    cd.target[0] += mx;
+    cd.target[2] += mz;
+  }
+  float cp = std::cos(pitch);
+  cd.eye[0] = cd.target[0] + dist * cp * std::sin(yaw);
+  cd.eye[1] = cd.target[1] + dist * std::sin(pitch);
+  cd.eye[2] = cd.target[2] + dist * cp * std::cos(yaw);
+  return true;
+}
+
+void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
+                           bool panning, bool dolly) {
+  if (camera_object_input(dx, dy, wheel, rotating, panning, dolly)) return;
+  if (dolly)
+    CAM.dist = std::fmin(std::fmax(CAM.dist * (1.f + dy * 0.005f), 0.15f), 8.f);
+  renderer_handle_input(dx, dy, wheel, rotating, panning);
+}
+
+// point the active camera at a world position, keeping its distance
+void renderer_camera_look_at(const float target[3], float distance) {
+  SceneState &sc = scene();
+  int active = scene_active_camera();
+  if (active >= 0 && active < (int)sc.objects.size() &&
+      sc.objects[active].type == SceneObject::Camera) {
+    CameraData &cd = sc.objects[active].cam;
+    float d[3] = {cd.eye[0] - cd.target[0], cd.eye[1] - cd.target[1],
+                  cd.eye[2] - cd.target[2]};
+    float dist = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+    if (distance > 0) dist = distance;
+    if (dist < 1e-4f) dist = 1.f;
+    float len = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+    if (len < 1e-5f) { d[0] = 0; d[1] = 0.4f; d[2] = 1.f; len = 1.077f; }
+    for (int i = 0; i < 3; ++i) {
+      cd.target[i] = target[i];
+      cd.eye[i] = target[i] + d[i] / len * dist;
+    }
+    return;
+  }
+  for (int i = 0; i < 3; ++i) CAM.target[i] = target[i];
+  if (distance > 0) CAM.dist = distance;
+}
+
 void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
                            bool panning) {
   if (rotating) {
@@ -1134,7 +1252,9 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_sky, "u_cam", view_eye);
     uni3(prog_sky, "u_sun", sun);
     uni3(prog_sky, "u_sun_color", RS.sun_color);
-    uni1(prog_sky, "u_exposure", RS.exposure);
+    uni1(prog_sky, "u_exposure", (RS.exposure) * g_exposure_mult);
+    uni3(prog_sky, "u_grade", g_grade);
+    uni1(prog_sky, "u_sat", g_saturation);
     uni3(prog_sky, "u_sky_zenith", RS.sky_zenith);
     uni3(prog_sky, "u_sky_horizon", RS.sky_horizon);
     uni1(prog_sky, "u_atmo", RS.atmosphere_density);
@@ -1195,7 +1315,9 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni1(prog_terrain, "u_ambient", RS.ambient_intensity);
     uni1(prog_terrain, "u_atmo", RS.atmosphere_density);
     uni3(prog_terrain, "u_cam", view_eye);
-    uni1(prog_terrain, "u_exposure", RS.exposure);
+    uni1(prog_terrain, "u_exposure", (RS.exposure) * g_exposure_mult);
+    uni3(prog_terrain, "u_grade", g_grade);
+    uni1(prog_terrain, "u_sat", g_saturation);
     uni1(prog_terrain, "u_texel", hm_w > 0 ? 1.f / hm_w : 1.f / 512.f);
     unii(prog_terrain, "u_has_albedo", (has_albedo && RS.use_albedo && textured) ? 1 : 0);
     unii(prog_terrain, "u_has_normal", (has_normal_map && textured) ? 1 : 0);
@@ -1285,7 +1407,9 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_mesh, "u_color", o.color);
     uni3(prog_mesh, "u_sun", sun);
     uni3(prog_mesh, "u_sun_color", RS.sun_color);
-    uni1(prog_mesh, "u_exposure", RS.exposure);
+    uni1(prog_mesh, "u_exposure", (RS.exposure) * g_exposure_mult);
+    uni3(prog_mesh, "u_grade", g_grade);
+    uni1(prog_mesh, "u_sat", g_saturation);
     unii(prog_mesh, "u_selected", is_sel ? 1 : 0);
     glBindVertexArray(o.vao);
     glDrawArrays(GL_TRIANGLES, 0, o.vert_count);
@@ -1333,7 +1457,9 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_water, "u_sun_color", RS.sun_color);
     uni3(prog_water, "u_cam", view_eye);
     uni1(prog_water, "u_time", time_acc);
-    uni1(prog_water, "u_exposure", RS.exposure);
+    uni1(prog_water, "u_exposure", (RS.exposure) * g_exposure_mult);
+    uni3(prog_water, "u_grade", g_grade);
+    uni1(prog_water, "u_sat", g_saturation);
     uni3(prog_water, "u_deep", RS.water_deep_color);
     uni3(prog_water, "u_shallow", RS.water_shallow_color);
     uni1(prog_water, "u_wave_amp", RS.water_wave_amp);
@@ -1425,14 +1551,33 @@ static void ortho_matrices(const RenderSettings::ViewConfig &vc, int w, int h,
   mat_inverse(inv_vp, mvp);
 }
 
+// Builds the view/projection for either the free viewport camera or a scene
+// camera object (which carries an explicit eye/target and a physical lens).
 static void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
-  float cp = std::cos(CAM.pitch), sp = std::sin(CAM.pitch);
-  float cy = std::cos(CAM.yaw), sy = std::sin(CAM.yaw);
-  eye[0] = CAM.target[0] + CAM.dist * cp * sy;
-  eye[1] = CAM.target[1] + CAM.dist * sp;
-  eye[2] = CAM.target[2] + CAM.dist * cp * cy;
-  float fz[3] = {CAM.target[0] - eye[0], CAM.target[1] - eye[1],
-                 CAM.target[2] - eye[2]};
+  float target[3];
+  float fovy_rad = 0.9f;
+  SceneState &sc = scene();
+  int active = scene_active_camera();
+  if (active >= 0 && active < (int)sc.objects.size() &&
+      sc.objects[active].type == SceneObject::Camera) {
+    const CameraData &cd = sc.objects[active].cam;
+    for (int i = 0; i < 3; ++i) {
+      eye[i] = cd.eye[i];
+      target[i] = cd.target[i];
+    }
+    int nf = 0;
+    const gpx::cam::SensorFormat *F = gpx::cam::sensor_formats(&nf);
+    const gpx::cam::SensorFormat &f = F[std::clamp(cd.format, 0, nf - 1)];
+    fovy_rad = gpx::cam::fov_y_deg(cd.focal_mm, f.height_mm) * 0.017453293f;
+  } else {
+    float cp = std::cos(CAM.pitch), sp = std::sin(CAM.pitch);
+    float cy = std::cos(CAM.yaw), sy = std::sin(CAM.yaw);
+    eye[0] = CAM.target[0] + CAM.dist * cp * sy;
+    eye[1] = CAM.target[1] + CAM.dist * sp;
+    eye[2] = CAM.target[2] + CAM.dist * cp * cy;
+    for (int i = 0; i < 3; ++i) target[i] = CAM.target[i];
+  }
+  float fz[3] = {target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]};
   float fl = std::sqrt(fz[0] * fz[0] + fz[1] * fz[1] + fz[2] * fz[2]);
   for (float &v : fz) v /= fl;
   float up[3] = {0, 1, 0};
@@ -1448,8 +1593,8 @@ static void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp)
                     -(sx[0] * eye[0] + sx[1] * eye[1] + sx[2] * eye[2]),
                     -(uy[0] * eye[0] + uy[1] * eye[1] + uy[2] * eye[2]),
                     fz[0] * eye[0] + fz[1] * eye[1] + fz[2] * eye[2], 1};
-  float aspect = w / float(h), fovy = 0.9f, znear = 0.01f, zfar = 40.f;
-  float f = 1.f / std::tan(fovy * 0.5f);
+  float aspect = w / float(h), znear = 0.01f, zfar = 40.f;
+  float f = 1.f / std::tan(fovy_rad * 0.5f);
   float proj[16] = {f / aspect, 0, 0, 0, 0, f, 0, 0,
                     0, 0, (zfar + znear) / (znear - zfar), -1,
                     0, 0, 2 * zfar * znear / (znear - zfar), 0};
@@ -1694,7 +1839,9 @@ unsigned renderer_material_preview(int size, int shape, float spin) {
   uni3(prog_matprev, "u_sky_zenith", RS.sky_zenith);
   uni3(prog_matprev, "u_sky_horizon", RS.sky_horizon);
   uni1(prog_matprev, "u_ambient", RS.ambient_intensity);
-  uni1(prog_matprev, "u_exposure", RS.exposure);
+  uni1(prog_matprev, "u_exposure", (RS.exposure) * g_exposure_mult);
+    uni3(prog_matprev, "u_grade", g_grade);
+    uni1(prog_matprev, "u_sat", g_saturation);
   uni1(prog_matprev, "u_roughness", RS.mat_roughness);
   uni1(prog_matprev, "u_metallic", RS.mat_metallic);
   uni1(prog_matprev, "u_specular", RS.mat_specular);
@@ -1753,7 +1900,9 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     uni3(prog_sky, "u_sun", sun);
     uni3(prog_sky, "u_sun_color", RS.sun_color);
     uni1(prog_sky, "u_sun_intensity", RS.sun_intensity);
-    uni1(prog_sky, "u_exposure", RS.exposure);
+    uni1(prog_sky, "u_exposure", (RS.exposure) * g_exposure_mult);
+    uni3(prog_sky, "u_grade", g_grade);
+    uni1(prog_sky, "u_sat", g_saturation);
     uni3(prog_sky, "u_sky_zenith", RS.sky_zenith);
     uni3(prog_sky, "u_sky_horizon", RS.sky_horizon);
     uni1(prog_sky, "u_atmo", RS.atmosphere_density);
@@ -1872,4 +2021,6 @@ static bool mat_inverse(float *inv_out, const float *m) {
 }
 
 } // namespace studio
+
+
 

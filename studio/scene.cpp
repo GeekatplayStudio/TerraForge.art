@@ -26,6 +26,62 @@ void scene_init_builtins() {
   add(SceneObject::Water, "Water");
   add(SceneObject::Sun, "Sun");
   add(SceneObject::Atmosphere, "Atmosphere");
+  add(SceneObject::Group, "Cameras"); // parent for every camera
+  scene_add_camera("Camera 1");
+}
+
+static int g_active_camera = -1;    // -1 = free viewport camera
+static int g_last_used_camera = -1;
+
+int &scene_active_camera() { return g_active_camera; }
+int &scene_last_used_camera() { return g_last_used_camera; }
+
+int scene_cameras_group() {
+  SceneState &s = scene();
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (s.objects[i].type == SceneObject::Group && s.objects[i].name == "Cameras")
+      return i;
+  SceneObject g;
+  g.type = SceneObject::Group;
+  g.name = "Cameras";
+  g.builtin = true;
+  s.objects.push_back(g);
+  return (int)s.objects.size() - 1;
+}
+
+std::vector<int> scene_camera_indices() {
+  SceneState &s = scene();
+  std::vector<int> out;
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (s.objects[i].type == SceneObject::Camera) out.push_back(i);
+  return out;
+}
+
+int scene_add_camera(const std::string &name) {
+  SceneState &s = scene();
+  int group = scene_cameras_group();
+  SceneObject c;
+  c.type = SceneObject::Camera;
+  c.parent = group;
+  // a new camera inherits everything from the last used camera
+  if (g_last_used_camera >= 0 && g_last_used_camera < (int)s.objects.size() &&
+      s.objects[g_last_used_camera].type == SceneObject::Camera) {
+    c.cam = s.objects[g_last_used_camera].cam;
+    // offset a little so the copy is visibly a new camera
+    c.cam.eye[0] += 0.15f;
+  }
+  if (name.empty()) {
+    int n = 1;
+    for (const auto &o : s.objects)
+      if (o.type == SceneObject::Camera) ++n;
+    c.name = "Camera " + std::to_string(n);
+  } else {
+    c.name = name;
+  }
+  s.objects.push_back(std::move(c));
+  int idx = (int)s.objects.size() - 1;
+  g_last_used_camera = idx;
+  return idx;
 }
 
 int scene_import_obj(const std::string &path, std::string &err) {

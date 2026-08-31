@@ -137,6 +137,13 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
 // upload extra material maps (any may be null)
 void renderer_set_material_maps(const void *normal, const void *roughness,
                                 const void *displacement);
+// camera navigation for the active camera (scene camera or free viewport)
+void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
+                           bool panning, bool dolly);
+void renderer_camera_look_at(const float target[3], float distance);
+// photographic grading applied to every pass this frame
+void renderer_set_film(const float tint[3], float saturation,
+                       float exposure_mult);
 // renders the current material onto a lit preview shape
 // (0 sphere, 1 cube, 2 flat); spin = turntable angle in radians
 unsigned renderer_material_preview(int size, int shape = 0, float spin = 0.f);

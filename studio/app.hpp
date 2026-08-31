@@ -42,6 +42,7 @@ struct App {
   int workspace = 0;
   bool graph_show_all_domains = false;
   uint64_t scene_selection_serial = 1; // bumped when the scene selection changes
+  int request_camera_render = -1;      // camera index queued for rendering
   // Blender-style Properties editor: which vertical tab is active.
   // 0 Render, 1 Scene, 2 World, 3 Object, 4 Material, 5 Node
   int prop_tab = 3;
@@ -87,6 +88,10 @@ void world_properties_ui(App &a);
 void material_properties_ui(App &a);
 void render_properties_ui(App &a);
 void draw_render_window(App &a); // live progressive render view
+struct SceneObject;
+void camera_properties_ui(App &a, SceneObject &obj);
+void camera_apply_film();
+void studio_api_tick(App &a); // scripting / MCP bridge
 void apply_scene_nodes(App &a);
 // true when the Properties search box is empty or matches this label
 bool prop_filter_match(const char *text);

@@ -1,5 +1,6 @@
 ﻿// Geekatplay Studio â€” properties panel: auto-generated UI from attributes
 #include "app.hpp"
+#include "ai_assist.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include <imgui.h>
@@ -301,11 +302,25 @@ static void object_properties(App &a) {
                    : o.type == SceneObject::Water   ? "Water object"
                    : o.type == SceneObject::Sun     ? "Light"
                    : o.type == SceneObject::Atmosphere ? "Environment"
-                                                       : "Mesh object";
+                   : o.type == SceneObject::Camera ? "Camera"
+                   : o.type == SceneObject::Group  ? "Group"
+                                                   : "Mesh object";
   ImGui::TextDisabled("Â· %s", kind);
   studio::Checkbox("Visible", &o.visible);
   ImGui::Separator();
 
+  if (o.type == SceneObject::Camera) {
+    camera_properties_ui(a, o);
+    return;
+  }
+  if (o.type == SceneObject::Group) {
+    ImGui::TextDisabled("Group — expand it in the Outliner to reach its members.");
+    int n = 0;
+    for (const auto &c : sc.objects)
+      if (&c != &o && c.parent >= 0 && &sc.objects[c.parent] == &o) ++n;
+    ImGui::TextDisabled("%d child object%s", n, n == 1 ? "" : "s");
+    return;
+  }
   switch (o.type) {
     case SceneObject::Terrain:
       ImGui::SeparatorText("Shape");
@@ -539,6 +554,7 @@ void draw_panel_properties(App &a) {
   bool has_material = have_obj && (otype == SceneObject::Terrain ||
                                    otype == SceneObject::Water ||
                                    otype == SceneObject::Mesh);
+  bool is_camera = have_obj && otype == SceneObject::Camera;
   bool has_node = a.selected_node != 0;
 
   struct TabDef { int id; const char *label; const char *tip; bool shown; };
@@ -546,7 +562,10 @@ void draw_panel_properties(App &a) {
       {TAB_RENDER, "Render", "Output engine, resolution, samples", true},
       {TAB_SCENE, "Scene", "Resolution, world scale, statistics", true},
       {TAB_WORLD, "World", "Sun, sky, clouds, fog, water", true},
-      {TAB_OBJECT, "Object", "The selected object's properties", have_obj},
+      {TAB_OBJECT, is_camera ? "Camera" : "Object",
+       is_camera ? "Lens, exposure, film and render for this camera"
+                 : "The selected object's properties",
+       have_obj},
       {TAB_MATERIAL, "Material", "Surface of the selected object", has_material},
       {TAB_NODE, "Node", "The selected node's parameters", has_node},
   };
@@ -604,12 +623,37 @@ void draw_panel_properties(App &a) {
   ImGui::SameLine();
   ImGui::BeginChild("##body", ImVec2(0, 0), ImGuiChildFlags_Borders);
   switch (a.prop_tab) {
-    case TAB_RENDER: render_properties_ui(a); break;
-    case TAB_SCENE: scene_properties(a); break;
-    case TAB_WORLD: world_properties_ui(a); break;
-    case TAB_OBJECT: object_properties(a); break;
-    case TAB_MATERIAL: material_properties_ui(a); break;
-    default: node_properties(a); break;
+    case TAB_RENDER:
+      render_properties_ui(a);
+      ai_assist_bar(a, AiDomain::Render,
+                    "render 4k with mitsuba, 512 samples");
+      break;
+    case TAB_SCENE:
+      scene_properties(a);
+      ai_assist_bar(a, AiDomain::Object,
+                    "put the rock in front of the terrain");
+      break;
+    case TAB_WORLD:
+      world_properties_ui(a);
+      ai_assist_bar(a, AiDomain::World,
+                    "low golden sunset, heavy haze, towering cumulonimbus");
+      break;
+    case TAB_OBJECT:
+      object_properties(a);
+      ai_assist_bar(a, is_camera
+                           ? AiDomain::Camera
+                           : AiDomain::Object,
+                    is_camera ? "35mm camera, 50mm lens, cinematic, Kodak film"
+                              : "place this object on the ridge");
+      break;
+    case TAB_MATERIAL:
+      material_properties_ui(a);
+      break; // the Material tab has its own material-graph AI
+    default:
+      node_properties(a);
+      ai_assist_bar(a, AiDomain::Terrain,
+                    "add ridged mountains with river erosion");
+      break;
   }
   ImGui::EndChild();
   ImGui::End();

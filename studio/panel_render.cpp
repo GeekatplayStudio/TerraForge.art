@@ -4,6 +4,7 @@
 // layer so the render matches the preview.
 #include "app.hpp"
 #include "render_settings.hpp"
+#include "scene.hpp"
 #include "gpx/heightmap.hpp"
 #include <imgui.h>
 #include <json.hpp>
@@ -365,11 +366,55 @@ void render_properties_ui(App &a) {
   static int width = 1920, height = 1080, spp = 128;
   static char out_path[512] = "terraforge_render.png";
 
+  // when a camera is active, the Render tab edits that camera's assignment
+  SceneState &sc = scene();
+  int cam = scene_active_camera();
+  RenderAssign *assign = nullptr;
+  if (cam >= 0 && cam < (int)sc.objects.size() &&
+      sc.objects[cam].type == SceneObject::Camera) {
+    assign = &sc.objects[cam].cam.render;
+    engine = assign->engine;
+    width = assign->width;
+    height = assign->height;
+    spp = assign->samples;
+    snprintf(out_path, sizeof out_path, "%s", assign->output.c_str());
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.55f, 0.24f, 1.f));
+    ImGui::Text("Render settings of %s", sc.objects[cam].name.c_str());
+    ImGui::PopStyleColor();
+  }
+
+  // a camera asked to render itself
+  if (a.request_camera_render >= 0) {
+    int c = a.request_camera_render;
+    a.request_camera_render = -1;
+    if (c >= 0 && c < (int)sc.objects.size() &&
+        sc.objects[c].type == SceneObject::Camera) {
+      const RenderAssign &r = sc.objects[c].cam.render;
+      engine = r.engine;
+      width = r.width;
+      height = r.height;
+      spp = r.samples;
+      snprintf(out_path, sizeof out_path, "%s", r.output.c_str());
+      std::string err;
+      if (export_scene(a, out_path, width, height, spp,
+                       ENGINES[std::clamp(engine, 0, ENGINE_COUNT - 1)].key, err)) {
+        render_window_open = true;
+        progress_line.clear();
+        render_running.store(true);
+        std::thread(run_render, (render_workdir() / "scene.json").string(),
+                    std::string(out_path), project_root().string()).detach();
+      } else {
+        std::lock_guard<std::mutex> lk(render_mtx);
+        render_status = err;
+      }
+    }
+  }
+
   ImGui::SeparatorText("Engine");
   const char *items = "Mitsuba 3 (path tracer)\0Blender Cycles\0LuxCoreRender\0"
                       "appleseed\0OpenGL viewport (instant)\0";
   ImGui::SetNextItemWidth(-1);
-  ImGui::Combo("##engine", &engine, items);
+  if (ImGui::Combo("##engine", &engine, items) && assign) assign->engine = engine;
   ImGui::TextDisabled("install: %s", ENGINES[engine].install);
   if (engine == 3)
     ImGui::TextDisabled("appleseed has had no release since 2019; the adapter\n"
@@ -391,16 +436,17 @@ void render_properties_ui(App &a) {
 
   ImGui::SeparatorText("Output");
   ImGui::SetNextItemWidth(-90);
-  ImGui::InputInt("Width", &width);
+  if (ImGui::InputInt("Width", &width) && assign) assign->width = width;
   ImGui::SetNextItemWidth(-90);
-  ImGui::InputInt("Height", &height);
+  if (ImGui::InputInt("Height", &height) && assign) assign->height = height;
   ImGui::SetNextItemWidth(-90);
-  ImGui::SliderInt("Samples", &spp, 8, 1024);
+  if (ImGui::SliderInt("Samples", &spp, 8, 1024) && assign) assign->samples = spp;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("More samples = less noise, longer render.\n"
                       "32 preview, 128 good, 512+ final.");
   ImGui::SetNextItemWidth(-90);
-  ImGui::InputText("File", out_path, sizeof out_path);
+  if (ImGui::InputText("File", out_path, sizeof out_path) && assign)
+    assign->output = out_path;
   if (ImGui::Button("choose file...")) {
     std::string p = dialog_save_file("PNG image\0*.png\0", "png", out_path);
     if (!p.empty()) snprintf(out_path, sizeof out_path, "%s", p.c_str());

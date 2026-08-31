@@ -3,6 +3,8 @@
 #include "app.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
+#include "scene.hpp"
+#include <vector>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -241,6 +243,40 @@ void draw_toolbar(App &a) {
         }
       }
       if (active) ImGui::PopStyleColor(2);
+    }
+
+    // --- camera switcher ---
+    ImGui::Separator();
+    {
+      SceneState &sc = scene();
+      std::vector<int> cams = scene_camera_indices();
+      int active = scene_active_camera();
+      std::string label = "Free camera";
+      if (active >= 0 && active < (int)sc.objects.size())
+        label = sc.objects[active].name;
+      ImGui::SetNextItemWidth(140);
+      if (ImGui::BeginCombo("##camsel", label.c_str())) {
+        if (ImGui::Selectable("Free camera", active < 0))
+          scene_active_camera() = -1;
+        for (int idx : cams) {
+          bool sel = idx == active;
+          if (ImGui::Selectable(sc.objects[idx].name.c_str(), sel)) {
+            scene_active_camera() = idx;
+            scene_last_used_camera() = idx;
+          }
+        }
+        ImGui::EndCombo();
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Which camera the perspective views look through.");
+      if (ImGui::SmallButton("+cam")) {
+        int idx = scene_add_camera();
+        scene_active_camera() = idx;
+        sc.selected = idx;
+        a.scene_selection_serial++;
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Add a camera (inherits the last camera's settings)");
     }
 
     // --- tool strip ---

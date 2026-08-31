@@ -150,7 +150,8 @@ void run_main() {
     ImGui::Begin("##host", nullptr, host_flags);
     ImGui::PopStyleVar();
 
-    draw_toolbar(a); // menu bar + tool strip
+    camera_apply_film(); // exposure + film stock of the active camera
+    draw_toolbar(a);     // menu bar + tool strip
 
     // version bumped whenever the default layout changes shape
     ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV6");
@@ -201,6 +202,7 @@ void run_main() {
     draw_panel_ai(a);
     draw_panel_scene(a); // Outliner
     draw_render_window(a);
+    studio_api_tick(a); // apply queued script/MCP actions, publish state
 
     // upload fresh eval results to GPU (main thread only)
     if (a.uploaded_serial != a.eval_serial && !a.eval.running.load()) {
