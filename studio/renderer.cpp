@@ -8,6 +8,7 @@
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
+#include "gpx/field_glsl.hpp"
 #include <glad/gl.h>
 #include <imgui.h>
 #include <cmath>
@@ -244,8 +245,10 @@ uniform float u_cl_cov, u_cl_alt, u_cl_time;
 uniform vec2 u_cl_wind;
 const float PI = 3.14159265;
 uniform float u_field_strength;
+uniform int u_surface_on;
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
+GPX_SURFACE_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
@@ -375,7 +378,15 @@ void main(){
   }
   float h = texture(u_height, v_uv).r;
   vec3 albedo;
-  if (u_has_albedo == 1) {
+  if (u_surface_on == 1) {
+    // A colour field shades the terrain per pixel. Slope and facing come from
+    // the shaded normal, so a distribution keyed on steepness follows detail
+    // finer than the heightmap carrying it.
+    float sl = N.y;
+    float orient = atan(N.x, N.z) / PI;
+    albedo = gpx_terrain_surface(v_world, N, v_world.y, sl, orient, 0.0,
+                                 gp_octavesf(length(u_cam - v_world), 11.0)).rgb;
+  } else if (u_has_albedo == 1) {
     albedo = pow(texture(u_albedo, v_uv).rgb, vec3(2.2));
   } else {
     float slope = 1.0 - N.y;
@@ -878,6 +889,11 @@ static const char *GPX_FIELD_STUB =
     "vec4 gpx_terrain_field(vec3 P, vec3 N, float alt, float slope,\n"
     "                       float orient, float t, float lod){\n"
     "  return vec4(0.0);\n}\n";
+static const char *GPX_SURFACE_STUB =
+    "vec4 gpx_terrain_surface(vec3 P, vec3 N, float alt, float slope,\n"
+    "                         float orient, float t, float lod){\n"
+    "  return vec4(0.5, 0.5, 0.5, 1.0);\n}\n";
+static std::string g_surface_want, g_surface_glsl;
 // The source the graph asked for, and the source actually spliced into the
 // live program. They differ only while a relink is owed, or after one failed:
 // on failure the program falls back to the stub but the request is remembered,
@@ -898,10 +914,18 @@ static std::string inject_sky(const char *src) {
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
   // The vertex and fragment stages are separate translation units, so each
-  // gets its own copy of the generated code and its prelude; duplicate
-  // definitions only collide within one stage.
-  sub("GPX_FIELD_PLACEHOLDER",
-      g_field_glsl.empty() ? GPX_FIELD_STUB : g_field_glsl.c_str());
+  // gets its own copy of the prelude; duplicate definitions only collide
+  // within one stage. But a stage may hold two generated functions, and then
+  // the second must not bring its own copy — so the prelude is emitted once,
+  // here, and stripped from everything spliced after it.
+  std::string first = gpx::field_glsl_prelude();
+  first += g_field_glsl.empty() ? GPX_FIELD_STUB
+                                : gpx::field_glsl_strip_prelude(g_field_glsl);
+  sub("GPX_FIELD_PLACEHOLDER", first.c_str());
+  std::string second = g_surface_glsl.empty()
+                           ? GPX_SURFACE_STUB
+                           : gpx::field_glsl_strip_prelude(g_surface_glsl);
+  sub("GPX_SURFACE_PLACEHOLDER", second.c_str());
   return s;
 }
 
@@ -1127,6 +1151,14 @@ void renderer_set_field_program(const std::string &glsl,
   if (glsl == g_field_want) return;
   g_field_want = glsl;
   g_field_dirty = true;
+}
+
+void renderer_set_surface_program(const std::string &glsl,
+                                  unsigned long long version) {
+  (void)version;
+  if (glsl == g_surface_want) return;
+  g_surface_want = glsl;
+  g_field_dirty = true; // one program carries both; one relink covers them
 }
 
 // Empty when the displacement graph is compiling cleanly. The Properties panel
@@ -1622,6 +1654,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     // the stub call in both stages
     uni1(prog_terrain, "u_field_strength",
          g_field_glsl.empty() ? 0.f : RS.field_displacement);
+    unii(prog_terrain, "u_surface_on", g_surface_glsl.empty() ? 0 : 1);
     glUniform4f(glGetUniformLocation(prog_terrain, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
     uni1(prog_terrain, "u_planet_radius", RS.planet_radius);
@@ -1971,16 +2004,18 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   if (g_field_dirty) {
     g_field_dirty = false;
     g_field_glsl = g_field_want;
+    g_surface_glsl = g_surface_want;
     std::string err;
     if (rebuild_terrain_program(err)) {
       g_field_error.clear();
     } else {
-      g_field_error = err.empty() ? "displacement shader failed to link" : err;
-      std::fprintf(stderr, "terrain displacement shader:\n%s\n", g_field_error.c_str());
-      // fall back to the stub, which is known good, so the viewport keeps
-      // drawing. g_field_want still holds the broken source, so this is not
+      g_field_error = err.empty() ? "generated terrain shader failed to link" : err;
+      std::fprintf(stderr, "terrain shader:\n%s\n", g_field_error.c_str());
+      // fall back to the stubs, which are known good, so the viewport keeps
+      // drawing. The *requests* still hold the broken sources, so this is not
       // retried until the graph actually changes.
       g_field_glsl.clear();
+      g_surface_glsl.clear();
       rebuild_terrain_program(err);
     }
   }

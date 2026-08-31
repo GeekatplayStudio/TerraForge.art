@@ -47,4 +47,12 @@ bool field_glsl_supports(const std::string &node_type);
 // gpx::planet::pl_* exactly. Exposed so the renderer can emit it once.
 const char *field_glsl_prelude();
 
+// The same program with its leading prelude removed.
+//
+// Every generated program carries a copy of the prelude, which is right when
+// it is the only one in a shader stage and fatal when it is the second: the
+// duplicate gpxf_* definitions collide at link time. So a stage emits the
+// prelude once and strips it from every function after the first.
+std::string field_glsl_strip_prelude(const std::string &code);
+
 } // namespace gpx

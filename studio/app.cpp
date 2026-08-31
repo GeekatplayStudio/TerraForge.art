@@ -266,29 +266,46 @@ void run_main() {
       // viewport evaluates it per vertex. Transpiling is pure string work on
       // the CPU; the relink happens at draw time where the context is current.
       {
-        gpx::Node *disp = nullptr;
-        for (auto &cand : a.graph.nodes)
-          if (cand->type == "TerrainDisplacement" && cand->enabled) disp = cand.get();
-        std::string glsl;
-        if (disp && disp->attrs.get_b("live", true) &&
-            disp->field_connected("field")) {
-          if (gpx::Node *src = a.graph.upstream_node(*disp, "field")) {
-            const gpx::Port *sp = a.graph.upstream(*disp, "field");
-            gpx::GlslProgram prog =
-                gpx::field_to_glsl(*src, sp ? sp->name : "", "gpx_terrain_field");
-            // A graph reading a buffer needs textures bound, which the terrain
-            // pass does not do yet — better to displace by nothing than to
-            // sample an unbound sampler.
-            if (prog.ok && prog.samplers.empty()) glsl = prog.code;
-            disp->error = prog.ok ? (prog.samplers.empty()
-                                         ? std::string()
-                                         : "graphs that sample a buffer cannot "
-                                           "displace the viewport yet")
-                                  : prog.error;
+        // Compile whichever sink is present into the shader it drives. Both
+        // follow the same shape: find the node, transpile what feeds it, hand
+        // the source to the renderer, and say so on the node when we cannot.
+        auto compile_sink = [&](const char *type, const char *port,
+                                const char *fn) -> std::string {
+          gpx::Node *sink = nullptr;
+          for (auto &cand : a.graph.nodes)
+            if (cand->type == type && cand->enabled) sink = cand.get();
+          if (!sink || !sink->attrs.get_b("live", true) ||
+              !sink->field_connected(port))
+            return {};
+          gpx::Node *src = a.graph.upstream_node(*sink, port);
+          const gpx::Port *sp = a.graph.upstream(*sink, port);
+          if (!src) return {};
+          gpx::GlslProgram prog =
+              gpx::field_to_glsl(*src, sp ? sp->name : "", fn);
+          // A graph reading a buffer needs its textures bound, which the
+          // terrain pass does not do yet — better to do nothing visible than
+          // to sample an unbound sampler.
+          if (!prog.ok) {
+            sink->error = prog.error;
+            return {};
           }
-          render_settings().field_displacement = disp->attrs.get_f("strength", 0.05f);
-        }
-        renderer_set_field_program(glsl, a.eval_serial);
+          if (!prog.samplers.empty()) {
+            sink->error = "graphs that sample a buffer cannot drive the "
+                          "viewport yet";
+            return {};
+          }
+          sink->error.clear();
+          if (std::string(type) == "TerrainDisplacement")
+            render_settings().field_displacement =
+                sink->attrs.get_f("strength", 0.05f);
+          return prog.code;
+        };
+        renderer_set_field_program(
+            compile_sink("TerrainDisplacement", "field", "gpx_terrain_field"),
+            a.eval_serial);
+        renderer_set_surface_program(
+            compile_sink("TerrainSurface", "color", "gpx_terrain_surface"),
+            a.eval_serial);
       }
       uint64_t view = a.view_node ? a.view_node : a.selected_node;
       gpx::Node *n = a.graph.find_node(view);

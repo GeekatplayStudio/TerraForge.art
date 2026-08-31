@@ -59,11 +59,12 @@ static bool is_config_node(const std::string &t) {
          t == "WaterLayer" || t == "RenderCamera" || t == "RenderQuality";
 }
 // Terminal sinks: they consume and export, so having no output port is correct.
-// TerrainDisplacement is one too — what it "exports" is a compiled shader to
-// the viewport rather than a file, so it has nothing to hand a downstream node.
+// TerrainDisplacement and TerrainSurface are sinks too — what they "export" is
+// a compiled shader to the viewport rather than a file, so they have nothing
+// to hand a downstream node.
 static bool is_sink(const std::string &t) {
   return t == "ExportMesh" || t == "ExportTexture" ||
-         t == "TerrainDisplacement";
+         t == "TerrainDisplacement" || t == "TerrainSurface";
 }
 // Containers get their ports and their behaviour from what is put inside them,
 // so an empty one having neither is correct rather than a defect. MetaNodes are

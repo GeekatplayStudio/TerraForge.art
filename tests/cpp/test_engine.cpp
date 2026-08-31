@@ -496,6 +496,47 @@ static void test_ai_spec() {
   std::string cat = gpx::registry_catalog_for_ai();
   CHECK(cat.find("Hydraulic") != std::string::npos, "catalog lists Hydraulic");
   CHECK(cat.find("snow_line") != std::string::npos, "catalog lists attrs");
+
+  // Colour and gradient used to be silently ignored, so the assistant, the
+  // Python API and MCP could all ask for a colour on a material node and be
+  // quietly refused. Nothing failed; the colour simply stayed as it was.
+  {
+    const char *cspec = R"({
+      "nodes": [
+        {"id":"c","type":"FieldColorConstant","attrs":{"color":[0.2,0.4,0.6]}},
+        {"id":"k","type":"FieldColorConstant","attrs":{"color":0.25}},
+        {"id":"g","type":"FieldGradient",
+         "attrs":{"gradient":[[1.0,1,0,0],[0.0,0,0,1]]}}
+      ], "links": []
+    })";
+    gpx::Graph gc;
+    gc.resolution = 32;
+    std::string e2;
+    CHECK(gpx::graph_from_ai_spec(gc, cspec, e2, nullptr), "colour spec builds");
+    std::vector<gpx::Node *> cols;
+    gpx::Node *gr = nullptr;
+    for (auto &n : gc.nodes) {
+      if (n->type == "FieldColorConstant") cols.push_back(n.get());
+      if (n->type == "FieldGradient") gr = n.get();
+    }
+    CHECK(cols.size() == 2 && gr != nullptr, "colour nodes built");
+    if (cols.size() == 2) {
+      const gpx::Attribute *a = cols[0]->attrs.find("color");
+      const gpx::Attribute *b = cols[1]->attrs.find("color");
+      CHECK(a && std::fabs(a->col[0] - 0.2f) < 1e-6f &&
+                std::fabs(a->col[2] - 0.6f) < 1e-6f,
+            "an rgb triple sets a colour attribute");
+      CHECK(a && a->col[3] == 1.f, "an rgb triple is opaque");
+      CHECK(b && std::fabs(b->col[1] - 0.25f) < 1e-6f,
+            "a single number is taken as a grey");
+    }
+    if (gr) {
+      const gpx::Attribute *ga = gr->attrs.find("gradient");
+      CHECK(ga && ga->stops.size() == 2, "a gradient's stops are set");
+      CHECK(ga && !ga->stops.empty() && ga->stops[0].t == 0.f,
+            "stops given out of order are sorted, or the ramp draws nonsense");
+    }
+  }
 }
 
 static void test_terrain_effects() {
@@ -928,6 +969,38 @@ static void test_field_glsl() {
     if (!q.samplers.empty())
       CHECK(q.code.find("uniform sampler2D " + q.samplers[0]) != std::string::npos,
             "sampler uniform is declared in the source");
+  }
+
+  // Two generated functions can share one shader stage, which needs the
+  // prelude present exactly once. A second copy of gpxf_hash / gpxf_fbm is a
+  // link error, and sharing a stage is how the terrain shader carries a
+  // displacement and a surface colour at the same time.
+  {
+    gpx::Graph g5;
+    gpx::Node *n5 = g5.add_node("FieldNoise");
+    gpx::GlslProgram p5 = gpx::field_to_glsl(*n5, "out", "gpx_a");
+    CHECK(p5.ok, "program transpiles");
+    CHECK(p5.code.find("float gpxf_fbm") != std::string::npos,
+          "a program carries the prelude by default");
+
+    std::string stripped = gpx::field_glsl_strip_prelude(p5.code);
+    CHECK(stripped.find("float gpxf_fbm") == std::string::npos,
+          "stripping removes the prelude's definitions");
+    CHECK(stripped.find("vec4 gpx_a(") != std::string::npos,
+          "but keeps the generated function itself");
+    CHECK(stripped.find("gpxf_fbm(") != std::string::npos,
+          "which still calls into the prelude the stage emits once");
+    CHECK(gpx::field_glsl_strip_prelude(stripped) == stripped,
+          "stripping twice is harmless");
+
+    std::string stage = std::string(gpx::field_glsl_prelude()) + stripped +
+                        gpx::field_glsl_strip_prelude(
+                            gpx::field_to_glsl(*n5, "out", "gpx_b").code);
+    int defs = 0;
+    for (size_t i = stage.find("float gpxf_fbm"); i != std::string::npos;
+         i = stage.find("float gpxf_fbm", i + 1))
+      ++defs;
+    CHECK(defs == 1, "two functions in one stage define the prelude once");
   }
 
   // an unsupported node must fail loudly rather than emit broken code

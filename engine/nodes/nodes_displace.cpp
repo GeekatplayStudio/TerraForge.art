@@ -382,4 +382,24 @@ REGISTER_NODE(
       if (!n.field_connected("field")) n.error = "input 'field' not connected";
     })
 
+// ----------------------------------------------------------- the surface
+// The colour counterpart of TerrainDisplacement, and the point of the
+// distribution nodes: wire a colour field here and the viewport shades the
+// terrain with it per pixel instead of with a baked texture or the built-in
+// blend. Because it is evaluated per pixel from the shaded normal, a
+// distribution keyed on steepness follows the displaced surface — including
+// detail finer than the heightmap that carries it.
+REGISTER_NODE(
+    TerrainSurface, "Export",
+    "Shades the viewport terrain from a colour field, per pixel on the GPU",
+    [](Node &n) {
+      n.add_field_in("color", FieldType::Color);
+      add_bool(n.attrs, "live", "Update the viewport", true)
+          .tooltip = "Off: keep the graph but go back to the usual shading,\n"
+                     "without having to disconnect it.";
+    },
+    [](Node &n) {
+      if (!n.field_connected("color")) n.error = "input 'color' not connected";
+    })
+
 } // namespace gpx

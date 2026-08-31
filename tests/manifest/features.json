@@ -235,6 +235,18 @@
       "description": "Colour blending in the field domain — mix, add, multiply, screen, overlay, darken, lighten — with the factor meaning the same thing in every mode",
       "test_file": "test_engine.cpp", "test_symbol": "test_field_materials" },
 
+    { "id": "material.gpu_surface", "area": "material", "phase": "P2",
+      "description": "A TerrainSurface node shades the viewport terrain per pixel from a colour field, sharing one shader program with the displacement — the prelude is emitted once per stage and stripped from every function after the first",
+      "test_file": "test_engine.cpp", "test_symbol": "test_field_glsl" },
+
+    { "id": "ai.color_attrs", "area": "ai", "phase": "P2",
+      "description": "The assistant, the Python API and MCP can set colour and gradient parameters; an rgb triple sets a colour, a single number is a grey, and gradient stops are sorted",
+      "test_file": "test_engine.cpp", "test_symbol": "test_ai_spec" },
+
+    { "id": "meta.goldens_link", "area": "meta", "phase": "P2",
+      "description": "Every link in a golden project must actually connect, so a golden cannot silently lock a graph with half its links dropped by a wrong port name",
+      "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },
+
     { "id": "meta.goldens_vary", "area": "meta", "phase": "P1",
       "description": "Every golden project must produce varying output, so a golden cannot silently lock a flat buffer",
       "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },

@@ -2,6 +2,7 @@
 #include "gpx/node_graph.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <set>
@@ -67,6 +68,12 @@ float gpxf_band(float x, float lo, float hi, float fuzz){
 )GLSL";
 
 const char *field_glsl_prelude() { return PRELUDE; }
+
+std::string field_glsl_strip_prelude(const std::string &code) {
+  const size_t n = std::strlen(PRELUDE);
+  if (code.compare(0, n, PRELUDE) == 0) return code.substr(n);
+  return code; // already stripped, or not one of ours
+}
 
 // ----------------------------------------------------------------- emitters
 namespace {

@@ -278,6 +278,43 @@ static void ai_set_attr(Attribute &a, const json &v) {
       case AttrType::Text:
         if (v.is_string()) a.s = v.get<std::string>();
         break;
+      // Colour and gradient used to fall through to "do nothing", so the
+      // assistant, the Python API and MCP could all ask for a colour and be
+      // silently ignored — on a material node, which is where colour matters
+      // most.
+      case AttrType::Color:
+        if (v.is_array() && v.size() >= 3) {
+          for (size_t k = 0; k < 4 && k < v.size(); ++k)
+            a.col[k] = std::clamp(v[k].get<float>(), 0.f, 1.f);
+          if (v.size() < 4) a.col[3] = 1.f; // rgb given: opaque
+        } else if (v.is_number()) {
+          // a single number is a grey, which is what "set it to 0.2" means
+          float g = std::clamp(v.get<float>(), 0.f, 1.f);
+          a.col[0] = a.col[1] = a.col[2] = g;
+          a.col[3] = 1.f;
+        }
+        break;
+      case AttrType::Gradient:
+        if (v.is_array() && !v.empty()) {
+          std::vector<GradientStop> stops;
+          for (const auto &js : v) {
+            if (!js.is_array() || js.size() < 4) continue;
+            GradientStop s;
+            s.t = std::clamp(js[0].get<float>(), 0.f, 1.f);
+            s.r = std::clamp(js[1].get<float>(), 0.f, 1.f);
+            s.g = std::clamp(js[2].get<float>(), 0.f, 1.f);
+            s.b = std::clamp(js[3].get<float>(), 0.f, 1.f);
+            s.a = js.size() > 4 ? std::clamp(js[4].get<float>(), 0.f, 1.f) : 1.f;
+            stops.push_back(s);
+          }
+          // a gradient whose stops are out of order draws nothing sensible
+          std::sort(stops.begin(), stops.end(),
+                    [](const GradientStop &x, const GradientStop &y) {
+                      return x.t < y.t;
+                    });
+          if (!stops.empty()) a.stops = std::move(stops);
+        }
+        break;
       default:
         break;
     }

@@ -103,6 +103,7 @@ TerrainClip|Effect
 TerrainDisplacement|Export
 TerrainOutput|Export
 TerrainSculpt|Effect
+TerrainSurface|Export
 TerrainTexture|Texture
 TextureBlend|Material
 TextureFile|Material

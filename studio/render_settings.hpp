@@ -162,6 +162,10 @@ void renderer_set_material_maps(const void *normal, const void *roughness,
 // way as the material maps; the relink happens at the next draw.
 void renderer_set_field_program(const std::string &glsl,
                                 unsigned long long version);
+// The same for a colour field that shades the terrain per pixel. Both live in
+// one program, so setting either triggers a single relink.
+void renderer_set_surface_program(const std::string &glsl,
+                                  unsigned long long version);
 // Empty unless the last generated shader failed to link, in which case the
 // previous program is still in use and this says why.
 const char *renderer_field_error();
