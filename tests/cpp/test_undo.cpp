@@ -532,6 +532,53 @@ static void test_graph_view_sanity() {
   }
 }
 
+// An OBJ is an untrusted file, and its face indices were used directly as
+// &pos[i*3]. "f 99999" in a three-vertex file read whatever was past the end
+// of the heap, and OBJ's negative (relative) indices parsed through
+// sscanf("%u") as 4294967295. Neither was checked.
+//
+// These write real files rather than calling an internal helper, because the
+// parser is the thing being tested and the file is where it meets the parser.
+static void test_obj_import_rejects_bad_indices() {
+  std::printf("[obj import bounds]\n");
+  namespace fs = std::filesystem;
+  fs::path dir = fs::temp_directory_path() / "gpx_obj_test";
+  fs::create_directories(dir);
+
+  auto write_obj = [&](const char *name, const char *body) {
+    fs::path f = dir / name;
+    std::ofstream o(f);
+    o << body;
+    o.close();
+    return f.string();
+  };
+
+  struct Case { const char *name; const char *body; bool should_load; };
+  const Case cases[] = {
+      {"ok.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", true},
+      {"past_end.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 4\n", false},        // one past the end
+      {"way_past.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 99999\n", false},         // read arbitrary heap before
+      {"relative.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf -3 -2 -1\n", true},          // -1 is the last vertex so far
+      {"relative_bad.obj", "v 0 0 0\nv 1 0 0\nf -5 -1 -2\n", false},  // reaches before the first
+      {"zero.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 0 1 2\n", false},            // OBJ indices are 1-based
+      {"garbage.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf a b c\n", false},      // no digits at all
+      {"slashes.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1/1/1 2/2/2 3/3/3\n", true},         // a/t/n must still work
+  };
+
+  for (const Case &c : cases) {
+    std::string path = write_obj(c.name, c.body);
+    std::string err;
+    int idx = studio::scene_import_obj(path, err);
+    if (c.should_load)
+      CHECK(idx >= 0, std::string(c.name) + " should import but failed: " + err);
+    else
+      CHECK(idx < 0, std::string(c.name) +
+                         " imported a face index that does not exist");
+  }
+  std::error_code ec;
+  fs::remove_all(dir, ec);
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   test_graph_view_sanity();
@@ -547,6 +594,7 @@ int main() {
   test_planets_in_scene();
   test_planet_persistence();
   test_node_library_roundtrip();
+  test_obj_import_rejects_bad_indices();
   std::printf("\n%s (%d failures)\n", g_failures ? "FAILED" : "ALL PASSED",
               g_failures);
   return g_failures ? 1 : 0;

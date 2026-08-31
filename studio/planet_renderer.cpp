@@ -455,6 +455,9 @@ void planet_draw_all(const PlanetFrame &f) {
   glDepthMask(GL_FALSE);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
+  // restored before returning: GL_LEQUAL used to leak into every draw that
+  // followed this pass, so whatever ran next silently got a different depth
+  // comparison depending on whether a planet happened to be visible
 
   float half_tan = std::tan(f.fovy_rad * 0.5f);
   for (int idx : planets) {
@@ -498,6 +501,7 @@ void planet_draw_all(const PlanetFrame &f) {
     glDrawElements(GL_TRIANGLES, sph_count[lod], GL_UNSIGNED_INT, nullptr);
   }
   glDepthMask(GL_TRUE);
+  glDepthFunc(GL_LESS); // back to the default the rest of the frame expects
 }
 
 void infinite_draw(const InfiniteFrame &f) {

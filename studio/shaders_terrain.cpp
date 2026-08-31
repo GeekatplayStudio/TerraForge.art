@@ -262,7 +262,7 @@ uniform vec3 u_cam_unused_marker;
 uniform float u_frac_amount;
 uniform float u_frac_scale;
 in float v_detail;
-uniform float u_cl_cov, u_cl_alt, u_cl_time;
+uniform float u_cl_cov, u_cl_alt, u_cl_thick, u_cl_time;
 uniform vec2 u_cl_wind;
 const float PI = 3.14159265;
 uniform float u_field_strength;
@@ -362,12 +362,20 @@ float terrain_ao(vec2 uv, float h){
 
 float cloud_shadow(vec3 world){
   if (u_cloud_shadows == 0) return 1.0;
-  // project the point up to the cloud slab along the sun direction
-  float dy = max(u_cl_alt - world.y, 0.0);
+  // Project the point up to the *middle* of the cloud slab along the sun
+  // direction, and sample the shape volume at the frequency the sky march
+  // uses.
+  //
+  // Both were wrong. The projection landed on the slab's base, where the
+  // height gradient puts density at zero, and the sample was taken at
+  // wp * 0.35 against the march's wp * 0.18 - so the shadows on the ground
+  // were a different pattern, at roughly half the scale, from the clouds
+  // casting them. They now line up because they are the same lookup.
+  float dy = max(u_cl_alt + u_cl_thick * 0.5 - world.y, 0.0);
   if (u_sun.y < 0.05) return 1.0;
   vec3 p = world + u_sun * (dy / max(u_sun.y, 0.05));
   vec3 wp = p; wp.xz += u_cl_wind * u_cl_time;
-  vec4 sn = texture(u_cl_shape, wp * 0.35);
+  vec4 sn = texture(u_cl_shape, wp * 0.18);
   float fbm = sn.g*0.625 + sn.b*0.25 + sn.a*0.125;
   float shape = clamp((sn.r - (fbm - 1.0)) / max(2.0 - fbm, 1e-3), 0.0, 1.0);
   float d = clamp((shape - (1.0 - u_cl_cov)) / max(u_cl_cov, 1e-3), 0.0, 1.0);

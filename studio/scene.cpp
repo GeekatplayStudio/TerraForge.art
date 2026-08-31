@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <cstdlib>
 #include <sstream>
 
 namespace studio {
@@ -188,13 +189,32 @@ int scene_import_obj(const std::string &path, std::string &err) {
       }
     } else if (line[0] == 'f' && line[1] == ' ') {
       // faces may be "f a b c d" with formats a, a/t, a/t/n, a//n
+      //
+      // An OBJ is an untrusted file, and the index it names is used directly
+      // as &pos[i*3] below. This used to be sscanf("%u") with no upper bound
+      // and no handling of OBJ's negative (relative) indices, so "f -1 -2 -3"
+      // parsed as 4294967295 and "f 99999" in a ten-vertex file read whatever
+      // was past the end of the heap. Both are now rejected before they can
+      // reach the vertex array.
       std::istringstream ss(line.substr(2));
       std::vector<unsigned> face;
       std::string tok;
+      const long long nverts = (long long)(pos.size() / 3);
+      bool bad_face = false;
       while (ss >> tok) {
-        unsigned vi = 0;
-        sscanf(tok.c_str(), "%u", &vi);
-        if (vi > 0) face.push_back(vi - 1);
+        char *endp = nullptr;
+        long long v = std::strtoll(tok.c_str(), &endp, 10);
+        if (endp == tok.c_str()) { bad_face = true; break; } // no digits at all
+        // OBJ indices are 1-based; negative counts back from the last vertex
+        // defined so far, which is why this is resolved here and not later.
+        if (v < 0) v = nverts + v; else v -= 1;
+        if (v < 0 || v >= nverts) { bad_face = true; break; }
+        face.push_back((unsigned)v);
+      }
+      if (bad_face) {
+        err = "OBJ face references a vertex that does not exist (line: " +
+              line.substr(0, 64) + ")";
+        return -1;
       }
       for (size_t k = 2; k < face.size(); ++k) { // fan-triangulate
         idx.push_back(face[0]);

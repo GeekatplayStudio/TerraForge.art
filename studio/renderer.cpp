@@ -1216,6 +1216,7 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
          (clouds_ok && atmosphere && cinematic) ? 1 : 0);
     uni1(PT, "u_cl_cov", RS.cloud_coverage);
     uni1(PT, "u_cl_alt", RS.cloud_altitude);
+    uni1(PT, "u_cl_thick", RS.cloud_thickness);
     uni1(PT, "u_cl_time", cloud_time);
     glUniform2fv(glGetUniformLocation(PT, "u_cl_wind"), 1, wind);
     glActiveTexture(GL_TEXTURE0);
