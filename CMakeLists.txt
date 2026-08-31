@@ -6,10 +6,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Floating-point policy.
+#
+# We used to build with -ffast-math (/fp:fast). That implies -ffinite-math-only,
+# which tells the compiler NaN and Inf cannot occur — so GCC folds every
+# std::isfinite() to true. Measured with our exact flags: isfinite(NaN) returns
+# 1. That deleted, silently:
+#   - the NaN/Inf guard in gpx::FieldValue::finite() (engine/gpx/field.hpp)
+#   - both "output has NaN/Inf" checks in the universal node contract battery,
+#     which apply to every port of every node in the registry
+#   - nine more finiteness assertions across the engine tests
+# The whole Tier-1 finiteness requirement was passing without testing anything.
+#
+# It also permits reassociation, which makes the committed golden hashes valid
+# only for the exact compiler that produced them.
+#
+# What it bought, measured on the solvers that dominate a real graph
+# (medians of 3, same seeds; -O3 vs -O3 -ffast-math):
+#   noise 1024          50.1 -> 49.9 ms
+#   hydraulic 512      128.7 -> 125.2 ms
+#   thermal 512        253.8 -> 251.7 ms
+#   stream power 512   796.1 -> 784.8 ms
+#   5-node chain 512   404.3 -> 403.5 ms
+# About 1%, inside run-to-run noise. Not worth a safety net.
 if(MSVC)
-    add_compile_options(/O2 /permissive- /fp:fast)
+    add_compile_options(/O2 /permissive-)
 else()
-    add_compile_options(-O3 -ffast-math)
+    add_compile_options(-O3)
 endif()
 
 # ---------------------------------------------------------------- dependencies

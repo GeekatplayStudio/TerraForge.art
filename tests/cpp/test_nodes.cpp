@@ -83,6 +83,40 @@ static bool finite_tex(const gpx::TextureRGBA &t) {
   return true;
 }
 
+// Prove the finiteness checker can fail before trusting it on ninety nodes.
+//
+// It could not. The build carried -ffast-math, which implies
+// -ffinite-math-only, so the compiler folded every std::isfinite() to true and
+// both NaN/Inf checks below passed on every node whatever they contained.
+// Measured with the exact flags: isfinite(NaN) returned 1.
+//
+// A checker that cannot fail is worse than no checker, because it reads as
+// coverage. This runs first, and if the build ever picks up finite-math-only
+// again it fails immediately and says why.
+static void test_finiteness_checker_binds() {
+  std::printf("[finiteness checker]\n");
+  volatile float zero = 0.f; // volatile so the value is not folded either
+  const float nan_v = 0.f / zero, inf_v = 1.f / zero;
+  CHECK(!std::isfinite(nan_v),
+        "isfinite(NaN) is true - the build has finite-math-only enabled and "
+        "every NaN/Inf check in this suite is dead code");
+  CHECK(!std::isfinite(inf_v), "isfinite(Inf) is true - see above");
+
+  gpx::Heightmap m(4, 4);
+  for (float &v : m.v) v = 0.5f;
+  CHECK(finite_map(m), "finite_map rejects a clean heightmap");
+  m.v[7] = nan_v;
+  CHECK(!finite_map(m), "finite_map missed a NaN");
+  m.v[7] = inf_v;
+  CHECK(!finite_map(m), "finite_map missed an Inf");
+
+  gpx::TextureRGBA t(4, 4);
+  for (float &v : t.v) v = 0.25f;
+  CHECK(finite_tex(t), "finite_tex rejects a clean texture");
+  t.v[9] = nan_v;
+  CHECK(!finite_tex(t), "finite_tex missed a NaN");
+}
+
 // Build "node under test" fed by a plausible terrain on every input it has.
 // Returns the node, or null if it could not be created.
 static gpx::Node *build(gpx::Graph &g, const std::string &type,
@@ -513,6 +547,7 @@ void test_all_nodes_contract() {
 
 int main() {
   std::printf("Geekatplay TerraForge - node contract suite\n\n");
+  test_finiteness_checker_binds(); // before anything relies on it
   test_all_nodes_contract();
   std::printf("\n%d checks, %s (%d failures)\n", g_checks,
               g_failures ? "FAILED" : "all passed", g_failures);

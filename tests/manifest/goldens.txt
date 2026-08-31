@@ -1,16 +1,17 @@
 # Golden evaluation hashes per project.
 # Regenerate with: regression_tests --update  (review the diff!)
-analysis.gpxt|4a66e154c5890e2d
-displacement.gpxt|76e53aae371da6e0
-effects_all.gpxt|52249c3b22d7226a
-erosion_all.gpxt|52c49a3dedcebe5b
-field_material.gpxt|5affd8db6bac2338
-hydro.gpxt|79e5ca2c2236d8ba
-masks_logic.gpxt|b6c44ed9c294f068
-material_graph.gpxt|0f81de864aa91261
-materials.gpxt|53977e0a06f3c46a
-modeling_transform.gpxt|9d05ee98341e0562
-operators.gpxt|2b695cec721ea04f
-sculpt_layer.gpxt|3dba33173329e53c
-surface_geology.gpxt|75d6f82278958d61
-terrain_basic.gpxt|c76b5c22cc0091af
+# built by: gcc 16.1 fast-math=off finite-math-only=off
+analysis.gpxt|6c274daf7577610e
+displacement.gpxt|b96f45ee3b515fe0
+effects_all.gpxt|150eab69fcbdad02
+erosion_all.gpxt|4746300106844d50
+field_material.gpxt|cf60e4c28c158659
+hydro.gpxt|a8bfffff89bdebcb
+masks_logic.gpxt|4532c2fba91bea3a
+material_graph.gpxt|d881ccfb45356a30
+materials.gpxt|1ce14bd84b6c5eb5
+modeling_transform.gpxt|36e9cf5e5631ee8d
+operators.gpxt|30b0c210384803b2
+sculpt_layer.gpxt|2ede3fdd7308f06c
+surface_geology.gpxt|c6e705418cb0fbbf
+terrain_basic.gpxt|93914cb10f828b4f

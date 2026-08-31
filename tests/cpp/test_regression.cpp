@@ -76,6 +76,45 @@ static std::vector<std::string> read_lines(const fs::path &p) {
   return out;
 }
 
+// The toolchain that produced a golden is part of the golden.
+//
+// Every one of the fourteen goldens moved when -ffast-math left the build: the
+// flag permits reassociation and reciprocal approximation, so identical source
+// produced different floats. Thirteen projects moved by under 2e-5 on values in
+// 0..1, which is rounding. erosion_all moved by 0.84, because the derived
+// erosion and deposition maps are differences of similar numbers and an
+// iterative solver amplifies them.
+//
+// None of that is a defect, and all of it is invisible if the file records only
+// hashes. Stamping the compiler and the float flags makes a mismatch say which
+// of the two things changed - the code, or the machine that built it.
+static std::string toolchain_stamp() {
+  std::string c;
+#if defined(__clang__)
+  c = "clang " + std::to_string(__clang_major__) + "." +
+      std::to_string(__clang_minor__);
+#elif defined(_MSC_VER)
+  c = "msvc " + std::to_string(_MSC_VER);
+#elif defined(__GNUC__)
+  c = "gcc " + std::to_string(__GNUC__) + "." + std::to_string(__GNUC_MINOR__);
+#else
+  c = "unknown";
+#endif
+  // __FAST_MATH__ is the one that rewrites arithmetic and deletes every
+  // isfinite() guard, so it is named rather than implied.
+#ifdef __FAST_MATH__
+  c += " fast-math=ON";
+#else
+  c += " fast-math=off";
+#endif
+#if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
+  c += " finite-math-only=ON";
+#else
+  c += " finite-math-only=off";
+#endif
+  return c;
+}
+
 static void write_lines(const fs::path &p, const std::vector<std::string> &v,
                         const char *header) {
   std::ofstream f(p);
@@ -231,12 +270,27 @@ static void check_golden_projects(bool update) {
   std::vector<std::string> lines;
   fs::path gp = manifest_dir() / "goldens.txt";
   std::map<std::string, std::string> recorded;
-  if (!update && fs::exists(gp))
+  std::string recorded_stamp;
+  if (!update && fs::exists(gp)) {
     for (const std::string &L : read_lines(gp)) {
       size_t bar = L.find('|');
       if (bar != std::string::npos)
         recorded[L.substr(0, bar)] = L.substr(bar + 1);
     }
+    // read_lines drops comments and the stamp is one, so it is fetched
+    // separately rather than by loosening the line filter for everything.
+    std::ifstream sf(gp);
+    std::string L;
+    const std::string tag = "# built by: ";
+    while (std::getline(sf, L)) {
+      while (!L.empty() && (L.back() == '\r' || L.back() == ' '))
+        L.pop_back();
+      if (L.rfind(tag, 0) == 0) {
+        recorded_stamp = L.substr(tag.size());
+        break;
+      }
+    }
+  }
 
   for (const fs::path &f : files) {
     gpx::Graph g;
@@ -305,8 +359,17 @@ static void check_golden_projects(bool update) {
     }
     std::printf("  %-34s %d outputs  %s\n", key.c_str(), outputs, buf);
   }
-  if (update || !fs::exists(gp))
+  // The stamp goes first so a reviewer sees what built these before the
+  // hashes. Written as a comment, so an older file without one still loads.
+  lines.insert(lines.begin(), "# built by: " + toolchain_stamp());
+  if (update || !fs::exists(gp)) {
     write_lines(gp, lines, "Golden evaluation hashes per project.");
+  } else if (!recorded_stamp.empty() &&
+             recorded_stamp != toolchain_stamp()) {
+    std::printf("  NOTE: goldens recorded by [%s], this build is [%s].\n"
+                "        A mismatch above may be the toolchain, not the code.\n",
+                recorded_stamp.c_str(), toolchain_stamp().c_str());
+  }
 }
 
 // ---------------------------------------------------------- feature manifest

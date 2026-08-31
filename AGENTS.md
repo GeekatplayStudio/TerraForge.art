@@ -289,3 +289,32 @@ belongs to; do not fake a field node with a 1×1 buffer.
 - `.\test.ps1` must pass — all six suites.
 - Never commit `docs_private/`, build output, or `external/`. Roadmaps,
   development notes and progress documents stay out of the repository.
+
+## Floating point
+
+1. **Never build with `-ffast-math` / `/fp:fast`.** It implies
+   `-ffinite-math-only`, so the compiler folds every `std::isfinite()` to true.
+   Measured with our exact flags: `isfinite(NaN)` returned 1. That silently
+   deleted the guard in `gpx::FieldValue::finite()`, both "output has NaN/Inf"
+   checks in the node contract battery — which cover every port of every node —
+   and nine more assertions in the engine tests. The whole Tier-1 finiteness
+   requirement passed for months without testing anything.
+2. **What it bought was ~1%**, inside run-to-run noise, measured on the solvers
+   that dominate a real graph: noise 1024 50.1 → 49.9 ms, hydraulic 512
+   128.7 → 125.2, thermal 512 253.8 → 251.7, stream power 512 796.1 → 784.8,
+   5-node chain 512 404.3 → 403.5. A safety net is worth more than 1%.
+3. **A checker must be proved able to fail before it is trusted.**
+   `test_finiteness_checker_binds` runs first in the node suite, feeds a real
+   runtime NaN and Inf through the same helpers the battery uses, and fails
+   loudly if the build ever picks up finite-math-only again.
+4. **The toolchain is part of a golden.** All fourteen golden hashes moved when
+   the flag came out. Thirteen projects moved by under 2e-5 on 0..1 values —
+   rounding. `erosion_all` moved by 0.84. `goldens.txt` now carries a
+   `# built by:` line naming the compiler and float flags, and a mismatch
+   prints which of the two changed.
+5. **Derived difference maps are ill-conditioned; the height field is not.**
+   Same comparison, per node: `Noise` output agreed to nine decimal places and
+   `Hydraulic` output to 0.012 %, while `Hydraulic`'s `erosion_map` mean moved
+   35 % and `deposition_map` 30 %. They are differences of similar numbers fed
+   through an iterative solver. Validate them by conservation residual and
+   sign, never by value equality against another build.
