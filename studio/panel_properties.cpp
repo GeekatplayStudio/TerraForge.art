@@ -1,7 +1,10 @@
 ﻿// Geekatplay Studio â€” properties panel: auto-generated UI from attributes
 #include "app.hpp"
 #include "ai_assist.hpp"
+#include "node_library.hpp"
 #include "undo.hpp"
+#include "gpx/metanode.hpp"
+#include <vector>
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include <imgui.h>
@@ -645,6 +648,61 @@ static void node_properties(App &a) {
     ImGui::TextUnformatted("bypassed");
     ImGui::PopStyleColor();
   }
+  // A MetaNode's own controls: what it contains, how to take it apart, and how
+  // to keep it. Its published parameters render below as ordinary attributes.
+  if (n->type == "MetaNode") {
+    static char save_name[64] = "";
+    static char save_note[160] = "";
+    int inner_count = 0;
+    if (const gpx::Attribute *ia = n->attrs.find("inner_graph")) {
+      // cheap: count the node records without building a graph
+      for (size_t p = ia->s.find("\"type\""); p != std::string::npos;
+           p = ia->s.find("\"type\"", p + 1))
+        ++inner_count;
+    }
+    ImGui::TextDisabled("%d nodes inside", inner_count);
+    if (ImGui::SmallButton("expand")) {
+      undo_push(a, "Expand MetaNode");
+      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      std::string err;
+      std::vector<uint64_t> back = gpx::metanode_ungroup(a.graph, n->id, err);
+      a.status = back.empty() ? "expand failed: " + err : "expanded";
+      a.selected_node = back.empty() ? 0 : back.front();
+      a.graph_layout_serial++;
+      a.request_eval();
+      ImGui::End();
+      return;
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Put the nodes back into the graph (Ctrl+Shift+G).");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("save to library...")) ImGui::OpenPopup("save_meta");
+    if (ImGui::BeginPopup("save_meta")) {
+      ImGui::TextUnformatted("Save this group as a reusable node");
+      ImGui::SetNextItemWidth(240);
+      ImGui::InputTextWithHint("##nm", "name", save_name, sizeof save_name);
+      ImGui::SetNextItemWidth(240);
+      ImGui::InputTextWithHint("##nt", "what it is for", save_note,
+                               sizeof save_note);
+      if (ImGui::Button("Save")) {
+        std::string err;
+        if (node_library_save(a, n->id, save_name, save_note, err)) {
+          a.status = std::string("saved '") + save_name + "' to your nodes";
+          save_name[0] = save_note[0] = 0;
+          ImGui::CloseCurrentPopup();
+        } else {
+          a.status = "save failed: " + err;
+        }
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+      ImGui::EndPopup();
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Keep this group in the Library, so you can drop it\n"
+                        "into any project like a built-in node.");
+    ImGui::Separator();
+  }
   if (ImGui::SmallButton("view in 3D")) {
     a.view_node = n->id;
     a.uploaded_serial = 0;
@@ -826,6 +884,7 @@ void draw_panel_properties(App &a) {
 }
 
 } // namespace studio
+
 
 
 

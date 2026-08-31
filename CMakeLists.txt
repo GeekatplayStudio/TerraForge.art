@@ -125,6 +125,7 @@ set(STUDIO_SOURCES
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
     studio/material_library.cpp
+    studio/node_library.cpp
     studio/panel_camera.cpp
     studio/ai_assist.cpp
     studio/studio_api.cpp
@@ -169,6 +170,7 @@ add_executable(undo_tests
     tests/cpp/test_undo.cpp
     studio/undo.cpp
     studio/project_io.cpp
+    studio/node_library.cpp
     studio/scene.cpp)
 target_include_directories(undo_tests PRIVATE studio)
 target_link_libraries(undo_tests PRIVATE
@@ -190,6 +192,8 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
+
+
 
 
 

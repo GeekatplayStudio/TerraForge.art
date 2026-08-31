@@ -167,11 +167,16 @@
       "description": "Any terrain-transforming node can have its effect confined by a blend mask, provided by the graph rather than per node; unconnected it is a no-op",
       "test_file": "test_engine.cpp", "test_symbol": "test_universal_blend" },
 
+    { "id": "framework.node_library", "area": "framework", "phase": "P0.4",
+      "description": "A MetaNode can be saved to a personal library and dropped into any project as a reusable node, keeping its inner graph, exposed parameters and their tuned values",
+      "test_file": "test_undo.cpp", "test_symbol": "test_node_library_roundtrip" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
   ]
 }
+
 
 
 

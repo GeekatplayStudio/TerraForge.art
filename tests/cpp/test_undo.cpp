@@ -1,4 +1,4 @@
-// Geekatplay TerraForge — undo / redo test suite.
+﻿// Geekatplay TerraForge â€” undo / redo test suite.
 //
 // Undo is snapshot-based, so these tests check the two things that can go
 // wrong with that design: that a restored state really equals the state we
@@ -7,7 +7,9 @@
 #include "app.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "node_library.hpp"
 #include "undo.hpp"
+#include "gpx/metanode.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <cmath>
@@ -304,7 +306,7 @@ static void test_planets_in_scene() {
   scene().objects[p].planet.radius = 7.5f;
   scene().objects[p].planet.sea_level = 0.f;
 
-  // several planets coexist — the multiple-planets promise
+  // several planets coexist â€” the multiple-planets promise
   undo_push(a, "Add planet");
   int p2 = scene_add_planet();
   CHECK(p2 != p, "second planet added");
@@ -375,6 +377,98 @@ static void test_planet_persistence() {
   CHECK((int)scene_surface_layers(-1).size() == 1, "ground layer restored");
 }
 
+// A saved MetaNode has to come back as the same node in a different project,
+// with its inner graph, its exposed parameters and their tuned values intact.
+// That is what makes it a building block rather than a snapshot.
+static void test_node_library_roundtrip() {
+  std::printf("MetaNode library round trip...\n");
+  App a;
+  reset_all(a);
+  a.graph.resolution = 48;
+  gpx::Node *src = a.graph.add_node("Noise", 0, 0);
+  gpx::Node *warp = a.graph.add_node("WarpNoise", 200, 0);
+  gpx::Node *ter = a.graph.add_node("Terrace", 400, 0);
+  gpx::Node *sink = a.graph.add_node("Thru", 600, 0);
+  a.graph.add_link(src->id, "output", warp->id, "input");
+  a.graph.add_link(warp->id, "output", ter->id, "input");
+  a.graph.add_link(ter->id, "output", sink->id, "input");
+  uint64_t inner_ter = ter->id;
+
+  std::string err;
+  gpx::Node *meta = gpx::metanode_group(a.graph, {warp->id, inner_ter}, err);
+  CHECK(meta != nullptr, "grouped for saving: " + err);
+  if (!meta) return;
+  CHECK(gpx::metanode_publish(*meta, inner_ter, "levels", "Steps"),
+        "published a parameter before saving");
+  // tune it so the saved node remembers how it was set, not just its shape
+  gpx::Attribute *mirror =
+      meta->attrs.find("pub_" + std::to_string(inner_ter) + "_levels");
+  CHECK(mirror != nullptr, "mirror attribute present");
+  if (!mirror) return;
+  mirror->i = 5;
+  int saved_ports = (int)meta->ports.size();
+
+  const std::string name = "test_roundtrip_node";
+  CHECK(node_library_save(a, meta->id, name, "a test group", err),
+        "saved to the library: " + err);
+
+  // find it in a fresh scan, the way the browser would
+  std::string path;
+  for (const SavedMetaNode &m : node_library(true))
+    if (m.name == name) path = m.path;
+  CHECK(!path.empty(), "the saved node appears in the library");
+  if (path.empty()) return;
+  for (const SavedMetaNode &m : node_library())
+    if (m.name == name) {
+      CHECK(m.note == "a test group", "the note is kept");
+      CHECK(m.inner_nodes == 2, "the library reports what is inside");
+      CHECK(m.published == 1, "and how many parameters it exposes");
+    }
+
+  // load into a brand new project, as a different user would
+  App b;
+  reset_all(b);
+  b.graph.resolution = 48;
+  gpx::Node *src2 = b.graph.add_node("Noise", 0, 0);
+  unsigned long long id = node_library_load(b, path, 300, 0, err);
+  CHECK(id != 0, "loaded into a fresh project: " + err);
+  gpx::Node *meta2 = b.graph.find_node(id);
+  CHECK(meta2 != nullptr, "the loaded node exists");
+  if (!meta2) return;
+  CHECK((int)meta2->ports.size() == saved_ports,
+        "the boundary ports were rebuilt");
+  CHECK(gpx::metanode_published(*meta2).size() == 1,
+        "the exposed parameter came back");
+  gpx::Attribute *m2 =
+      meta2->attrs.find("pub_" + std::to_string(inner_ter) + "_levels");
+  CHECK(m2 != nullptr, "the exposed widget came back");
+  if (m2) {
+    CHECK(m2->i == 5, "and remembers the value it was saved at");
+    CHECK(m2->label == "Steps", "and its published label");
+  }
+
+  // and it actually computes when wired up in the new project
+  bool wired = false;
+  for (const gpx::Port &p : meta2->ports)
+    if (p.dir == gpx::PortDir::In && p.type == gpx::DataType::Heightmap)
+      wired = b.graph.add_link(src2->id, "output", meta2->id, p.name);
+  CHECK(wired, "the loaded node can be wired up");
+  b.graph.mark_all_dirty();
+  b.graph.evaluate();
+  CHECK(meta2->error.empty(),
+        "the loaded node evaluates without error: " + meta2->error);
+  bool produced = false;
+  for (const gpx::Port &p : meta2->ports)
+    if (p.dir == gpx::PortDir::Out && p.hmap && !p.hmap->empty()) produced = true;
+  CHECK(produced, "and produces terrain");
+
+  node_library_delete(path);
+  bool gone = true;
+  for (const SavedMetaNode &m : node_library(true))
+    if (m.name == name) gone = false;
+  CHECK(gone, "removing from the library works");
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   test_graph_undo();
@@ -388,7 +482,9 @@ int main() {
   test_undo_is_deterministic();
   test_planets_in_scene();
   test_planet_persistence();
+  test_node_library_roundtrip();
   std::printf("\n%s (%d failures)\n", g_failures ? "FAILED" : "ALL PASSED",
               g_failures);
   return g_failures ? 1 : 0;
 }
+
