@@ -325,7 +325,13 @@ void run_main() {
             a.eval_serial);
         renderer_set_surface_program(
             compile_sink("TerrainSurface", "color", "gpx_terrain_surface"),
+            compile_sink("TerrainSurface", "roughness", "gpx_terrain_rough"),
+            compile_sink("TerrainSurface", "bump", "gpx_terrain_bump"),
             a.eval_serial);
+        for (auto &cand : a.graph.nodes)
+          if (cand->type == "TerrainSurface" && cand->enabled)
+            renderer_set_surface_bump(cand->attrs.get_f("bump_strength", 1.f),
+                                      cand->attrs.get_f("bump_scale", 0.004f));
         renderer_set_field_textures(field_tex, a.eval_serial);
       }
       uint64_t view = a.view_node ? a.view_node : a.selected_node;

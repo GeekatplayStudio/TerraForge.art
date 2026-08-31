@@ -391,9 +391,23 @@ REGISTER_NODE(
 // detail finer than the heightmap that carries it.
 REGISTER_NODE(
     TerrainSurface, "Export",
-    "Shades the viewport terrain from a colour field, per pixel on the GPU",
+    "Shades the viewport terrain from a field graph, per pixel on the GPU",
     [](Node &n) {
+      // Vue's point about a function graph is that one graph produces several
+      // channels at once (p770): the same distribution that decides where the
+      // grass goes should decide that the grass is rougher than the rock.
+      // Each channel is its own input, compiled to its own shader function.
       n.add_field_in("color", FieldType::Color);
+      n.add_field_in("roughness", FieldType::Number, true);
+      n.add_field_in("bump", FieldType::Number, true);
+      add_float(n.attrs, "bump_strength", "Bump strength", 1.f, 0.f, 16.f)
+          .tooltip = "How strongly the bump field tilts the surface normal.\n"
+                     "This is shading only — it does not move the geometry,\n"
+                     "which is what TerrainDisplacement is for.";
+      add_float(n.attrs, "bump_scale", "Bump sample distance", 0.004f, 1e-4f,
+                0.1f)
+          .tooltip = "How far apart the bump is sampled. Too small and it is\n"
+                     "noise; too large and it flattens.";
       add_bool(n.attrs, "live", "Update the viewport", true)
           .tooltip = "Off: keep the graph but go back to the usual shading,\n"
                      "without having to disconnect it.";

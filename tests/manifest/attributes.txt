@@ -477,6 +477,8 @@ TerrainOutput.zero_edges|float
 TerrainSculpt.delta|field
 TerrainSculpt.smooth|float
 TerrainSculpt.strength|float
+TerrainSurface.bump_scale|float
+TerrainSurface.bump_strength|float
 TerrainSurface.live|bool
 TerrainTexture.beach_level|float
 TerrainTexture.breakup|float

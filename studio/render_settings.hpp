@@ -177,10 +177,14 @@ void renderer_set_material_maps(const void *normal, const void *roughness,
 // way as the material maps; the relink happens at the next draw.
 void renderer_set_field_program(const std::string &glsl,
                                 unsigned long long version);
-// The same for a colour field that shades the terrain per pixel. Both live in
-// one program, so setting either triggers a single relink.
-void renderer_set_surface_program(const std::string &glsl,
+// The surface channels a field graph can drive: colour, roughness and bump.
+// One graph, several outputs (Vue p770). All live in one program, so setting
+// any of them is a single relink; an empty string leaves that channel alone.
+void renderer_set_surface_program(const std::string &color,
+                                  const std::string &roughness,
+                                  const std::string &bump,
                                   unsigned long long version);
+void renderer_set_surface_bump(float strength, float scale);
 // Buffers those programs sample, by the uniform name the transpiler declared.
 // This is what lets an eroded heightfield drive displacement or colour.
 void renderer_set_field_textures(

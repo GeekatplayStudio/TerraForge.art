@@ -334,9 +334,15 @@ uniform vec2 u_cl_wind;
 const float PI = 3.14159265;
 uniform float u_field_strength;
 uniform int u_surface_on;
+uniform int u_surf_rough_on;
+uniform int u_surf_bump_on;
+uniform float u_surf_bump_strength;
+uniform float u_surf_bump_scale;
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
 GPX_SURFACE_PLACEHOLDER
+GPX_ROUGH_PLACEHOLDER
+GPX_BUMP_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
@@ -486,6 +492,26 @@ void main(){
   }
   float rough = clamp(u_roughness * (u_has_rough == 1 ?
                       texture(u_rough_map, v_uv).r * 2.0 : 1.0), 0.03, 1.0);
+  if (u_surf_rough_on == 1){
+    float lodr = gp_octavesf(length(u_cam - v_world), 11.0);
+    rough = clamp(gpx_terrain_rough(v_world, N, v_world.y, N.y,
+                                    atan(N.x, N.z) / PI, 0.0, lodr).x,
+                  0.03, 1.0);
+  }
+  // A bump field tilts the normal without moving the geometry. Central
+  // differences of the same function, so it describes the surface the colour
+  // graph describes.
+  if (u_surf_bump_on == 1){
+    float e = u_surf_bump_scale;
+    float lodb = gp_octavesf(length(u_cam - v_world), 11.0);
+    float o = atan(N.x, N.z) / PI;
+    float bx = gpx_terrain_bump(v_world + vec3(e,0,0), N, v_world.y, N.y, o, 0.0, lodb).x
+             - gpx_terrain_bump(v_world - vec3(e,0,0), N, v_world.y, N.y, o, 0.0, lodb).x;
+    float bz = gpx_terrain_bump(v_world + vec3(0,0,e), N, v_world.y, N.y, o, 0.0, lodb).x
+             - gpx_terrain_bump(v_world - vec3(0,0,e), N, v_world.y, N.y, o, 0.0, lodb).x;
+    float k = u_surf_bump_strength / max(2.0*e, 1e-5);
+    N = normalize(N + vec3(-bx * k, 0.0, -bz * k));
+  }
   vec3 V = normalize(u_cam - v_world);
   vec3 L = u_sun;
   vec3 H = normalize(L + V);
@@ -996,7 +1022,23 @@ static const char *GPX_SURFACE_STUB =
     "vec4 gpx_terrain_surface(vec3 P, vec3 N, float alt, float slope,\n"
     "                         float orient, float t, float lod){\n"
     "  return vec4(0.5, 0.5, 0.5, 1.0);\n}\n";
+static const char *GPX_ROUGH_STUB =
+    "vec4 gpx_terrain_rough(vec3 P, vec3 N, float alt, float slope,\n"
+    "                       float orient, float t, float lod){\n"
+    "  return vec4(0.5, 0.0, 0.0, 1.0);\n}\n";
+static const char *GPX_BUMP_STUB =
+    "vec4 gpx_terrain_bump(vec3 P, vec3 N, float alt, float slope,\n"
+    "                      float orient, float t, float lod){\n"
+    "  return vec4(0.0);\n}\n";
 static std::string g_surface_want, g_surface_glsl;
+static std::string g_rough_want, g_rough_glsl;
+static std::string g_bump_want, g_bump_glsl;
+// bump shaping, taken from the TerrainSurface node when the graph evaluates
+static float g_surf_bump_strength = 1.f, g_surf_bump_scale = 0.004f;
+void renderer_set_surface_bump(float strength, float scale) {
+  g_surf_bump_strength = strength;
+  g_surf_bump_scale = scale;
+}
 // The source the graph asked for, and the source actually spliced into the
 // live program. They differ only while a relink is owed, or after one failed:
 // on failure the program falls back to the stub but the request is remembered,
@@ -1032,10 +1074,16 @@ static std::string inject_sky(const char *src) {
   first += g_field_glsl.empty() ? GPX_FIELD_STUB
                                 : gpx::field_glsl_strip_prelude(g_field_glsl);
   sub("GPX_FIELD_PLACEHOLDER", first.c_str());
-  std::string second = g_surface_glsl.empty()
-                           ? GPX_SURFACE_STUB
-                           : gpx::field_glsl_strip_prelude(g_surface_glsl);
-  sub("GPX_SURFACE_PLACEHOLDER", second.c_str());
+  auto later = [](const std::string &code, const char *stub) {
+    return code.empty() ? std::string(stub)
+                        : gpx::field_glsl_strip_prelude(code);
+  };
+  std::string surf = later(g_surface_glsl, GPX_SURFACE_STUB);
+  sub("GPX_SURFACE_PLACEHOLDER", surf.c_str());
+  std::string rough = later(g_rough_glsl, GPX_ROUGH_STUB);
+  sub("GPX_ROUGH_PLACEHOLDER", rough.c_str());
+  std::string bump = later(g_bump_glsl, GPX_BUMP_STUB);
+  sub("GPX_BUMP_PLACEHOLDER", bump.c_str());
   return s;
 }
 
@@ -1325,12 +1373,20 @@ void renderer_set_field_program(const std::string &glsl,
   g_field_dirty = true;
 }
 
-void renderer_set_surface_program(const std::string &glsl,
+// The surface channels. All of them live in one program, so a change to any
+// one is a single relink.
+void renderer_set_surface_program(const std::string &color,
+                                  const std::string &roughness,
+                                  const std::string &bump,
                                   unsigned long long version) {
   (void)version;
-  if (glsl == g_surface_want) return;
-  g_surface_want = glsl;
-  g_field_dirty = true; // one program carries both; one relink covers them
+  if (color == g_surface_want && roughness == g_rough_want &&
+      bump == g_bump_want)
+    return;
+  g_surface_want = color;
+  g_rough_want = roughness;
+  g_bump_want = bump;
+  g_field_dirty = true;
 }
 
 // A field graph containing a Sample node reads a buffer, and the shader
@@ -1938,6 +1994,10 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni1(PT, "u_field_strength",
          g_field_glsl.empty() ? 0.f : RS.field_displacement);
     unii(PT, "u_surface_on", g_surface_glsl.empty() ? 0 : 1);
+    unii(PT, "u_surf_rough_on", g_rough_glsl.empty() ? 0 : 1);
+    unii(PT, "u_surf_bump_on", g_bump_glsl.empty() ? 0 : 1);
+    uni1(PT, "u_surf_bump_strength", g_surf_bump_strength);
+    uni1(PT, "u_surf_bump_scale", g_surf_bump_scale);
     glUniform4f(glGetUniformLocation(PT, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
     uni1(PT, "u_planet_radius", RS.planet_radius);
@@ -2300,6 +2360,8 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
     g_field_dirty = false;
     g_field_glsl = g_field_want;
     g_surface_glsl = g_surface_want;
+    g_rough_glsl = g_rough_want;
+    g_bump_glsl = g_bump_want;
     std::string err;
     if (rebuild_terrain_program(err)) {
       g_field_error.clear();
@@ -2311,6 +2373,8 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
       // retried until the graph actually changes.
       g_field_glsl.clear();
       g_surface_glsl.clear();
+      g_rough_glsl.clear();
+      g_bump_glsl.clear();
       rebuild_terrain_program(err);
     }
   }
