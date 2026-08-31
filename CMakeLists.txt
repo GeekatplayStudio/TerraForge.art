@@ -108,6 +108,7 @@ set(STUDIO_SOURCES
     studio/main.cpp
     studio/app.cpp
     studio/theme.cpp
+    studio/theme_colors.cpp
     studio/panel_graph.cpp
     studio/panel_properties.cpp
     studio/panel_library.cpp

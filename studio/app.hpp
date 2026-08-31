@@ -43,6 +43,8 @@ struct App {
     std::string name;
     bool is_input = false;
     bool is_texture = false;
+    bool is_field = false;   // the field domain rather than a buffer
+    unsigned field_type = 0; // gpx::FieldType, meaningful when is_field
     bool optional = false;
   };
   struct NodeView {

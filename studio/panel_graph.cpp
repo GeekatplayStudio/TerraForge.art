@@ -1,5 +1,6 @@
 ﻿// Geekatplay Studio â€” node graph panel (imgui-node-editor)
 #include "app.hpp"
+#include "theme_colors.hpp"
 #include "undo.hpp"
 #include "gpx/metanode.hpp"
 #include <imgui.h>
@@ -27,112 +28,158 @@ static void decode_pin(uint64_t pin, uint64_t &node, size_t &port) {
   port = (size_t)(pin % 4096) - 1;
 }
 
-static ImU32 category_color(const std::string &cat) {
-  if (cat == "Primitive") return IM_COL32(0x7a, 0x8c, 0x4f, 255);
-  if (cat == "Erosion") return IM_COL32(0x9c, 0x5a, 0x3c, 255);
-  if (cat == "Filter") return IM_COL32(0x4f, 0x6d, 0x8c, 255);
-  if (cat == "Operator") return IM_COL32(0x8c, 0x7a, 0x4f, 255);
-  if (cat == "Mask") return IM_COL32(0x6d, 0x4f, 0x8c, 255);
-  if (cat == "Transform") return IM_COL32(0x4f, 0x8c, 0x82, 255);
-  if (cat == "Texture") return IM_COL32(0xc8, 0x78, 0x30, 255);
-  if (cat == "Material") return IM_COL32(0xa8, 0x68, 0x28, 255);
-  if (cat == "Logic") return IM_COL32(0x8c, 0x8c, 0x8c, 255);
-  if (cat == "Export") return IM_COL32(0x5a, 0x5a, 0x5a, 255);
-  return IM_COL32(0x66, 0x66, 0x66, 255);
-}
+// Node metrics. Cinema 4D publishes almost no numbers — palette icon sizes are
+// the only pixel values in the whole manual — so these come from measuring the
+// reference screenshots rather than from documentation.
+namespace nodemetric {
+constexpr float HEADER_H = 20.f;   // the coloured title bar
+constexpr float PORT_R = 4.5f;     // port dot radius
+constexpr float ROW_H = 16.f;      // one port row
+constexpr float PREVIEW = 96.f;    // thumbnail edge
+constexpr float PAD_X = 9.f;
+} // namespace nodemetric
 
-static ImU32 port_color(bool is_texture) {
-  return is_texture ? IM_COL32(0xc8, 0x78, 0x30, 255)
-                    : IM_COL32(0xd6, 0xd3, 0xcd, 255);
-}
-
+// A node is drawn as a coloured header over a dark body, which is how Cinema
+// 4D and Cycles 4D draw theirs. The header *is* the category: a graph is then
+// readable at a distance, before any label is legible, which is the whole
+// reason for colouring nodes at all. Our previous design put a four-pixel tick
+// beside the title, which carried the same information and conveyed none of it.
 static void draw_node(App &a, const App::NodeView &n) {
+  const bool selected = a.selected_node == n.id;
   // a bypassed node stays visible but reads as inert, so you can see the
   // structure you are keeping without mistaking it for part of the result
   ed::PushStyleColor(ed::StyleColor_NodeBg,
-                     n.enabled ? ImVec4(0.12f, 0.12f, 0.12f, 0.96f)
-                               : ImVec4(0.09f, 0.09f, 0.09f, 0.80f));
-  ed::PushStyleColor(ed::StyleColor_NodeBorder,
-                     !n.error.empty() ? ImVec4(0.8f, 0.2f, 0.15f, 1.f)
-                     : n.enabled     ? ImVec4(0.04f, 0.04f, 0.04f, 1.f)
-                                     : ImVec4(0.55f, 0.36f, 0.14f, 1.f));
+                     ImGui::ColorConvertU32ToFloat4(
+                         n.enabled ? theme::node_bg()
+                                   : theme::fade(theme::node_bg(), 0.72f)));
+  ed::PushStyleColor(
+      ed::StyleColor_NodeBorder,
+      ImGui::ColorConvertU32ToFloat4(!n.error.empty() ? theme::error()
+                                     : selected      ? theme::accent()
+                                                     : theme::node_border()));
   ed::PushStyleVar(ed::StyleVar_NodeRounding, 0.f);
-  ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(10, 6, 10, 8));
+  ed::PushStyleVar(ed::StyleVar_NodeBorderWidth, selected ? 2.f : 1.f);
+  // no top padding: the header bar has to reach the node's own edges
+  ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(0, 0, 0, 6));
   ed::BeginNode(n.id);
 
-  // header: colored bar + title
-  ImU32 hc = category_color(n.category);
-  ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(230, 227, 220, 255));
+  ImU32 hc = theme::category_color(n.category);
+  if (!n.enabled) hc = theme::fade(theme::shade(hc, 0.55f), 0.9f);
   ImDrawList *dl = ImGui::GetWindowDrawList();
-  ImVec2 hp = ImGui::GetCursorScreenPos();
-  dl->AddRectFilled(ImVec2(hp.x - 6, hp.y - 2), ImVec2(hp.x - 2, hp.y + 14), hc);
+
+  // ---- header ----------------------------------------------------------
+  // Its width is not known until the body has been laid out, so the bar is
+  // reserved here and painted after EndNode, when the node's real rectangle
+  // is available. Guessing the width is what makes hand-drawn headers ragged.
+  const ImVec2 head_pos = ImGui::GetCursorScreenPos();
+  ImGui::Dummy(ImVec2(1, nodemetric::HEADER_H));
+
+  ImGui::SetCursorScreenPos(
+      ImVec2(head_pos.x + nodemetric::PAD_X, head_pos.y + 3.f));
+  ImGui::PushStyleColor(ImGuiCol_Text, theme::text_on_header());
   ImGui::TextUnformatted(n.type.c_str());
   ImGui::PopStyleColor();
   if (!n.enabled) {
-    ImGui::SameLine();
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(217, 140, 51, 255));
-    ImGui::TextUnformatted("(bypassed)");
+    ImGui::SameLine(0, 6);
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::accent());
+    ImGui::TextUnformatted("bypassed");
     ImGui::PopStyleColor();
   }
-  ImGui::Spacing();
+  ImGui::SetCursorScreenPos(
+      ImVec2(head_pos.x + nodemetric::PAD_X, head_pos.y + nodemetric::HEADER_H + 4.f));
 
-  // pins: inputs left column, outputs right column
+  // ---- inputs ----------------------------------------------------------
+  auto port_dot = [&](ImVec2 c, ImU32 col, bool filled) {
+    // filled = required, hollow = optional. The shape says whether you have
+    // to connect it, so that is one less thing to learn from a tooltip.
+    if (filled) dl->AddCircleFilled(c, nodemetric::PORT_R, col, 12);
+    else {
+      dl->AddCircleFilled(c, nodemetric::PORT_R, theme::node_bg(), 12);
+      dl->AddCircle(c, nodemetric::PORT_R, col, 12, 1.6f);
+    }
+  };
+
   ImGui::BeginGroup();
   for (size_t i = 0; i < n.ports.size(); ++i) {
     const App::PortView &p = n.ports[i];
     if (!p.is_input) continue;
     ed::BeginPin(pin_id(n.id, i), ed::PinKind::Input);
-    ImU32 pc = port_color(p.is_texture);
     ImVec2 c = ImGui::GetCursorScreenPos();
-    dl->AddRectFilled(ImVec2(c.x, c.y + 3), ImVec2(c.x + 8, c.y + 11), pc);
-    ImGui::Dummy(ImVec2(10, 14));
-    ImGui::SameLine();
+    ImVec2 dot(c.x + nodemetric::PORT_R, c.y + nodemetric::ROW_H * 0.5f);
+    port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type),
+             !p.optional);
+    ImGui::Dummy(ImVec2(nodemetric::PORT_R * 2 + 5.f, nodemetric::ROW_H));
+    ImGui::SameLine(0, 0);
     ImGui::PushStyleColor(ImGuiCol_Text,
-                          p.optional ? IM_COL32(125, 122, 117, 255)
-                                     : IM_COL32(214, 211, 205, 255));
+                          p.optional ? theme::text_dim() : theme::text());
     ImGui::TextUnformatted(p.name.c_str());
     ImGui::PopStyleColor();
-    ed::PinRect(ImVec2(c.x - 4, c.y), ImVec2(c.x + 12, c.y + 14));
+    ed::PinRect(ImVec2(dot.x - 7, dot.y - 7), ImVec2(dot.x + 7, dot.y + 7));
     ed::EndPin();
   }
   ImGui::EndGroup();
 
-  // preview thumbnail
-  if (unsigned tex = previews_get(n.id)) {
-    ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(112, 112));
-  }
+  if (unsigned tex = previews_get(n.id))
+    ImGui::Image((ImTextureID)(intptr_t)tex,
+                 ImVec2(nodemetric::PREVIEW, nodemetric::PREVIEW));
 
-  // outputs
+  // ---- outputs, right-aligned -------------------------------------------
+  const float body_w = ImGui::GetItemRectMax().x - head_pos.x;
   for (size_t i = 0; i < n.ports.size(); ++i) {
     const App::PortView &p = n.ports[i];
     if (p.is_input) continue;
     float tw = ImGui::CalcTextSize(p.name.c_str()).x;
-    ImGui::Dummy(ImVec2(112.f - tw - 18.f > 0 ? 112.f - tw - 18.f : 0.f, 1));
-    ImGui::SameLine();
+    float want = body_w - tw - nodemetric::PORT_R * 2 - 14.f;
+    if (want > 0.f) { ImGui::Dummy(ImVec2(want, 1)); ImGui::SameLine(0, 0); }
     ed::BeginPin(pin_id(n.id, i), ed::PinKind::Output);
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::text());
     ImGui::TextUnformatted(p.name.c_str());
-    ImGui::SameLine();
+    ImGui::PopStyleColor();
+    ImGui::SameLine(0, 5);
     ImVec2 c = ImGui::GetCursorScreenPos();
-    dl->AddRectFilled(ImVec2(c.x, c.y + 3), ImVec2(c.x + 8, c.y + 11),
-                      port_color(p.is_texture));
-    ImGui::Dummy(ImVec2(10, 14));
-    ed::PinRect(ImVec2(c.x - 4, c.y), ImVec2(c.x + 12, c.y + 14));
+    ImVec2 dot(c.x + nodemetric::PORT_R, c.y + nodemetric::ROW_H * 0.5f);
+    port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type), true);
+    ImGui::Dummy(ImVec2(nodemetric::PORT_R * 2 + 2.f, nodemetric::ROW_H));
+    ed::PinRect(ImVec2(dot.x - 7, dot.y - 7), ImVec2(dot.x + 7, dot.y + 7));
     ed::EndPin();
   }
 
+  // node-local indent: SetCursorPosX is window-relative, which throws these
+  // outside any node that is not at the window's left edge
+  auto indent = [] {
+    ImGui::Dummy(ImVec2(nodemetric::PAD_X, 0));
+    ImGui::SameLine(0, 0);
+  };
   if (n.ms > 0.01) {
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(125, 122, 117, 255));
+    indent();
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::text_dim());
     ImGui::Text("%.1f ms", n.ms);
     ImGui::PopStyleColor();
   }
   if (!n.error.empty()) {
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(220, 80, 60, 255));
+    indent();
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::error());
     ImGui::TextUnformatted(n.error.c_str());
     ImGui::PopStyleColor();
   }
   ed::EndNode();
-  ed::PopStyleVar(2);
+  ed::PopStyleVar(3);
   ed::PopStyleColor(2);
+
+  // The header can only be painted once the node's true width is known, and it
+  // has to land *behind* the title that was already written into that space.
+  // The editor keeps a per-node background list for exactly this; drawing into
+  // the ordinary list here would paint the bar over its own text.
+  ImVec2 tl = ed::GetNodePosition(n.id);
+  ImVec2 sz = ed::GetNodeSize(n.id);
+  if (sz.x > 1.f) {
+    ImDrawList *bg = ed::GetNodeBackgroundDrawList(n.id);
+    bg->AddRectFilled(tl, ImVec2(tl.x + sz.x, tl.y + nodemetric::HEADER_H), hc);
+    // a hairline under the header separates it from the body without a border
+    bg->AddLine(ImVec2(tl.x, tl.y + nodemetric::HEADER_H),
+                ImVec2(tl.x + sz.x, tl.y + nodemetric::HEADER_H),
+                theme::shade(hc, 0.6f), 1.f);
+  }
 }
 
 static void add_node_popup(App &a) {
@@ -220,12 +267,21 @@ void draw_panel_graph(App &a) {
   };
   static uint64_t layout_serial_seen = 0;
   bool push_positions = layout_serial_seen != a.graph_layout_serial;
+  // Which nodes the editor actually laid out this frame. Asking it for the
+  // position of a node it has never drawn returns (0,0), and writing that back
+  // destroys the position the node was created with — which is why a graph
+  // built by script or by a preset arrived in a single heap at the origin.
+  static std::vector<uint64_t> drawn_this_frame;
   {
     if (push_positions)
       for (const auto &n : a.node_views)
         ed::SetNodePosition(n.id, ImVec2(n.pos_x, n.pos_y));
+    drawn_this_frame.clear();
     for (const auto &n : a.node_views)
-      if (view_visible(n)) draw_node(a, n);
+      if (view_visible(n)) {
+        draw_node(a, n);
+        drawn_this_frame.push_back(n.id);
+      }
     auto find_view = [&](uint64_t id) -> const App::NodeView * {
       for (const auto &n : a.node_views)
         if (n.id == id) return &n;
@@ -303,11 +359,18 @@ void draw_panel_graph(App &a) {
 
   // selection sync + store positions
   {
-    for (auto &n : a.graph.nodes) {
-      ImVec2 p = ed::GetNodePosition(n->id);
-      n->pos_x = p.x;
-      n->pos_y = p.y;
-    }
+    // Only nodes the editor drew this frame have a position worth trusting,
+    // and never on the frame we just pushed positions into it.
+    if (!push_positions)
+      for (auto &n : a.graph.nodes) {
+        bool drawn = false;
+        for (uint64_t id : drawn_this_frame)
+          if (id == n->id) { drawn = true; break; }
+        if (!drawn) continue;
+        ImVec2 p = ed::GetNodePosition(n->id);
+        n->pos_x = p.x;
+        n->pos_y = p.y;
+      }
     ed::NodeId sel[8];
     int count = ed::GetSelectedNodes(sel, 8);
     if (count > 0) {
