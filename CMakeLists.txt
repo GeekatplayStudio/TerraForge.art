@@ -115,6 +115,7 @@ set(STUDIO_SOURCES
     studio/panel_nodelist.cpp
     studio/panel_viewport.cpp
     studio/toolbar.cpp
+    studio/toolbar_bars.cpp
     studio/undo.cpp
     studio/sculpt.cpp
     studio/renderer.cpp

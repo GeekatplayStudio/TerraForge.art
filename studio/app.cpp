@@ -195,7 +195,30 @@ void run_main() {
     ImGui::PopStyleVar();
 
     camera_apply_film(); // exposure + film stock of the active camera
-    draw_toolbar(a);     // menu bar + tool strip
+    draw_toolbar(a);     // row 1: classic text menus
+
+    // Rows 2 and 3, then the global tool column beside the dockspace. Each is
+    // its own band so the eye can find them: what you are working on, then the
+    // tools for that work, then everything else.
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 3));
+    ImGui::BeginChild("##wsbar", ImVec2(0, 30), ImGuiChildFlags_None,
+                      ImGuiWindowFlags_NoScrollbar);
+    draw_workspace_bar(a);
+    ImGui::EndChild();
+    ImGui::BeginChild("##toolbar", ImVec2(0, 28), ImGuiChildFlags_None,
+                      ImGuiWindowFlags_NoScrollbar);
+    draw_tool_bar(a);
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+
+    const float tools_w = 56.f;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3, 4));
+    ImGui::BeginChild("##globaltools", ImVec2(tools_w, 0), ImGuiChildFlags_None,
+                      ImGuiWindowFlags_NoScrollbar);
+    draw_global_tools(a);
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::SameLine(0, 0);
 
     // version bumped whenever the default layout changes shape
     ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV6");

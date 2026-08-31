@@ -317,6 +317,27 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  if (op == "set_workspace") {
+    // Which workflow the second bar has selected, and therefore which tools
+    // the third bar offers: 0 terrain, 1 materials, 2 atmosphere, 3 render.
+    const json &v = act.contains("workspace") ? act["workspace"] : act["value"];
+    int w = -1;
+    if (v.is_number()) w = v.get<int>();
+    else if (v.is_string()) {
+      std::string s = v.get<std::string>();
+      for (auto &c : s) c = (char)tolower(c);
+      const char *names[4] = {"terrain", "material", "atmosphere", "render"};
+      for (int i = 0; i < 4; ++i)
+        if (s.find(names[i]) != std::string::npos) w = i;
+    }
+    if (w < 0 || w > 3) {
+      err = "set_workspace: 0..3, or terrain/materials/atmosphere/render";
+      return 0;
+    }
+    a.workspace = w;
+    return 1;
+  }
+
   if (op == "evaluate") {
     g.mark_all_dirty();
     a.request_eval();

@@ -81,6 +81,13 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "viewport renders (use studio_view_node for that).",
         "params": {"node": "int|str"},
     },
+    "studio_set_workspace": {
+        "description": "Choose the workflow: terrain, materials, atmosphere or "
+                       "render (or 0..3). This is what the second toolbar row "
+                       "selects, and it decides which tools the third row "
+                       "offers.",
+        "params": {"workspace": "int|str"},
+    },
     "studio_evaluate": {
         "description": "Re-evaluate the whole graph. Poll studio_get_graph and "
                        "watch eval.running / eval.serial to know when it is "
@@ -108,6 +115,7 @@ _SIMPLE = {
     "studio_set_resolution": "set_resolution",
     "studio_view_node": "view_node",
     "studio_select_node": "select_node",
+    "studio_set_workspace": "set_workspace",
     "studio_evaluate": "evaluate",
     "studio_verify_field_gpu": "verify_field_gpu",
 }

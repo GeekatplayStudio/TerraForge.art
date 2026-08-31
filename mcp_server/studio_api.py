@@ -190,6 +190,9 @@ class Studio:
     def select_node(self, node: Any) -> Dict[str, Any]:
         return self.send({"op": "select_node", "node": node})
 
+    def set_workspace(self, workspace) -> Dict[str, Any]:
+        return self.send({"op": "set_workspace", "workspace": workspace})
+
     def evaluate(self) -> Dict[str, Any]:
         return self.send({"op": "evaluate"})
 

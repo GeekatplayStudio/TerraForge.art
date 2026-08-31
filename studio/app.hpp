@@ -107,7 +107,10 @@ inline int domain_of_category(const std::string &cat) {
 const char *view_window_name(int slot);
 
 // panels
-void draw_toolbar(App &a);
+void draw_toolbar(App &a);       // row 1: the classic text menus
+void draw_workspace_bar(App &a); // row 2: which workflow
+void draw_tool_bar(App &a);      // row 3: the tools for that workflow
+void draw_global_tools(App &a);  // left column: tools common to every workflow
 void draw_panel_graph(App &a);
 void draw_panel_properties(App &a);
 void draw_panel_library(App &a);
