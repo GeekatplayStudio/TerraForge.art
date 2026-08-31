@@ -147,9 +147,14 @@
       "description": "Rasterize and Sample bridge the field and raster domains: a field can be eroded, and a buffer can drive a shader",
       "test_file": "test_engine.cpp", "test_symbol": "test_field_bridges" },
 
+    { "id": "field.glsl", "area": "framework", "phase": "P0.2",
+      "description": "Field graphs compile to GLSL: shared nodes emitted once, samplers declared, unsupported nodes rejected loudly. Every field node must have an emitter or the contract suite fails.",
+      "test_file": "test_engine.cpp", "test_symbol": "test_field_glsl" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
   ]
 }
+
 

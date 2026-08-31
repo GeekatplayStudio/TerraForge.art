@@ -14,6 +14,7 @@
 //   seed         — a seeded node reacts to its seed
 //   serialization— attributes survive a JSON round trip exactly
 //   robustness   — extreme attribute values do not produce NaN/Inf
+#include "gpx/field_glsl.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <algorithm>
@@ -172,6 +173,31 @@ static void check_field_outputs(gpx::Node *n) {
   }
 }
 
+// A field node that cannot be emitted to GLSL would evaluate on the CPU but
+// silently do nothing on the GPU. Requiring an emitter for every field node
+// makes that class of divergence impossible to ship.
+static void check_field_transpiles(gpx::Node *n) {
+  bool has_field_out = false;
+  for (const gpx::Port &p : n->ports)
+    if (p.dir == gpx::PortDir::Out && p.type == gpx::DataType::Field)
+      has_field_out = true;
+  if (!has_field_out) return;
+  CHECK(gpx::field_glsl_supports(n->type),
+        "has a GLSL emitter (or it would work on CPU but not on the GPU)");
+  if (!gpx::field_glsl_supports(n->type)) return;
+  gpx::GlslProgram prog = gpx::field_to_glsl(*n, "out", "gpx_test");
+  CHECK(prog.ok, "transpiles to GLSL: " + prog.error);
+  if (!prog.ok) return;
+  CHECK(prog.code.find("vec4 gpx_test(") != std::string::npos,
+        "emits the entry function");
+  CHECK(prog.code.find("return v_") != std::string::npos,
+        "returns a generated value");
+  // nothing may be left unresolved in the emitted source
+  CHECK(prog.code.find("PLACEHOLDER") == std::string::npos,
+        "emitted code has no placeholders");
+  CHECK(prog.node_count >= 1, "emitted at least one node");
+}
+
 // snapshot every output so two runs can be compared bit for bit
 static std::vector<float> snapshot(gpx::Node *n) {
   std::vector<float> out;
@@ -267,6 +293,7 @@ static void check_eval_and_determinism(const std::string &type) {
         "evaluates without error (got: " + n->error + ")");
   int produced = check_outputs_finite(n);
   check_field_outputs(n);
+  check_field_transpiles(n);
   if (has_raster_output(n) && !needs_file(type) && !is_config_node(type) &&
       !is_sink(type))
     CHECK(produced >= 1, "produced at least one non-empty output");

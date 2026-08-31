@@ -1,6 +1,7 @@
 ﻿// Geekatplay Studio â€” engine test suite (graph, nodes, serialization)
 #include "gpx/camera_math.hpp"
 #include "gpx/planet_math.hpp"
+#include "gpx/field_glsl.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <cmath>
@@ -852,6 +853,83 @@ static void test_field_bridges() {
   }
 }
 
+// ------------------------------------------------------- field -> GLSL
+// The transpiler is what lets one authored graph drive both the CPU (tests,
+// picking, rasterizing) and the GPU (displacement at camera detail). These
+// tests pin its structure; agreement with the CPU result is verified against a
+// real GL context in the studio.
+static void test_field_glsl() {
+  std::printf("field graph -> GLSL...\n");
+  gpx::Graph g;
+  gpx::Node *pos = g.add_node("FieldPosition");
+  gpx::Node *noise = g.add_node("FieldNoise");
+  gpx::Node *curve = g.add_node("FieldCurve");
+  gpx::Node *math = g.add_node("FieldMath");
+  gpx::Node *alt = g.add_node("FieldAltitude");
+  CHECK(g.add_link(pos->id, "out", noise->id, "position"), "link position");
+  CHECK(g.add_link(noise->id, "out", curve->id, "in"), "link curve");
+  CHECK(g.add_link(curve->id, "out", math->id, "a"), "link math a");
+  CHECK(g.add_link(alt->id, "out", math->id, "b"), "link math b");
+
+  gpx::GlslProgram p = gpx::field_to_glsl(*math, "out", "gpx_terrain");
+  CHECK(p.ok, "graph transpiles: " + p.error);
+  if (!p.ok) return;
+  CHECK(p.node_count == 5, "every node in the chain was emitted");
+  CHECK(p.code.find("vec4 gpx_terrain(vec3 P") != std::string::npos,
+        "entry function has the expected signature");
+  CHECK(p.code.find("gpxf_fbm") != std::string::npos, "noise call emitted");
+  CHECK(p.code.find("alt") != std::string::npos, "altitude input reached");
+  CHECK(p.code.find("gpxf_hash") != std::string::npos, "prelude included");
+  // every generated variable must be declared before it is used
+  CHECK(p.code.find("return v_") != std::string::npos, "returns a value");
+
+  // a node feeding two consumers is emitted once and reused, not duplicated
+  {
+    gpx::Graph g2;
+    gpx::Node *n = g2.add_node("FieldNoise");
+    gpx::Node *m = g2.add_node("FieldMath");
+    g2.add_link(n->id, "out", m->id, "a");
+    g2.add_link(n->id, "out", m->id, "b");
+    gpx::GlslProgram q = gpx::field_to_glsl(*m, "out");
+    CHECK(q.ok, "diamond graph transpiles");
+    CHECK(q.node_count == 2, "shared node emitted once, not twice");
+    // count calls inside the generated function only — the prelude also
+    // contains the definition of gpxf_fbm
+    size_t body = q.code.find("vec4 gpx_field(");
+    CHECK(body != std::string::npos, "entry function present");
+    int calls = 0;
+    for (size_t p = q.code.find("gpxf_fbm(", body); p != std::string::npos;
+         p = q.code.find("gpxf_fbm(", p + 1))
+      ++calls;
+    CHECK(calls == 1, "the shared noise is evaluated once, not per consumer");
+  }
+
+  // a Sample node must declare the sampler the host has to bind
+  {
+    gpx::Graph g3;
+    g3.resolution = 32;
+    gpx::Node *src = g3.add_node("Noise");
+    gpx::Node *s = g3.add_node("Sample");
+    g3.add_link(src->id, "output", s->id, "input");
+    gpx::GlslProgram q = gpx::field_to_glsl(*s, "out");
+    CHECK(q.ok, "Sample transpiles");
+    CHECK(q.samplers.size() == 1, "declares one sampler");
+    if (!q.samplers.empty())
+      CHECK(q.code.find("uniform sampler2D " + q.samplers[0]) != std::string::npos,
+            "sampler uniform is declared in the source");
+  }
+
+  // an unsupported node must fail loudly rather than emit broken code
+  {
+    gpx::Graph g4;
+    g4.resolution = 32;
+    gpx::Node *raster = g4.add_node("Noise"); // raster node, no field output
+    gpx::GlslProgram q = gpx::field_to_glsl(*raster, "output");
+    CHECK(!q.ok, "a raster node is rejected by the transpiler");
+    CHECK(!q.error.empty(), "rejection explains itself");
+  }
+}
+
 int main() {
   std::printf("=== Geekatplay Studio engine tests ===\n");
   test_registry();
@@ -873,6 +951,7 @@ int main() {
   test_planet_math();
   test_field_domain();
   test_field_bridges();
+  test_field_glsl();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;
@@ -880,4 +959,5 @@ int main() {
   std::printf("%d FAILURES\n", g_failures);
   return 1;
 }
+
 
