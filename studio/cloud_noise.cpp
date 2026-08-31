@@ -1,4 +1,5 @@
 #include "cloud_noise.hpp"
+#include "blue_noise.hpp"
 #include "gpx/parallel.hpp"
 #include <glad/gl.h>
 #include <cmath>
@@ -144,6 +145,33 @@ bool cloud_noise_build(unsigned &shape_tex, unsigned &detail_tex) {
   shape_tex = upload3d(shape, NS);
   detail_tex = upload3d(detail, ND);
   return shape_tex != 0 && detail_tex != 0;
+}
+
+// The dither pattern the volumetric march offsets each ray with. Kept here
+// with the other generated noise textures; the pattern itself is built in
+// blue_noise.cpp, which touches no GL so it can be tested without a context.
+unsigned blue_noise_texture(int n) {
+  static unsigned tex = 0;
+  static int built_n = 0;
+  if (tex && built_n == n) return tex;
+  std::vector<float> p = blue_noise_pattern(n, 0x9E3779B9u);
+  std::vector<uint8_t> u8(p.size());
+  for (size_t i = 0; i < p.size(); ++i) u8[i] = (uint8_t)(p[i] * 255.f + 0.5f);
+  if (!tex) glGenTextures(1, &tex);
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, n, n, 0, GL_RED, GL_UNSIGNED_BYTE,
+               u8.data());
+  // NEAREST and REPEAT: the value at each pixel is the whole point, and
+  // filtering would put back the low frequencies the pattern was built to
+  // lack.
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+  built_n = n;
+  return tex;
 }
 
 } // namespace studio

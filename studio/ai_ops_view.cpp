@@ -37,10 +37,36 @@ bool take_b(const json &j, const char *key, bool &dst) {
 
 } // namespace
 
+// Renders the active camera's view straight to a PNG (renderer.cpp).
+bool renderer_render_to_file(const std::string &path, int w, int h);
+
 // Returns 1 when handled and something changed, 0 when handled but nothing
 // did, -1 when the op is not ours.
 int ai_view_op(App &a, const std::string &op, const json &act,
                std::string &err) {
+  if (op == "capture") {
+    // The viewport as a PNG. The UI could already do this from the File menu
+    // and the render panel; scripting could not, so no automated check could
+    // ever look at the picture — which is the only way to verify most of what
+    // the renderer does.
+    //
+    // Safe to call here: actions are applied from the UI loop, which is the
+    // thread holding the GL context.
+    std::string path = act.value("path", std::string());
+    if (path.empty()) {
+      err = "capture needs a 'path'";
+      return 0;
+    }
+    int w = std::clamp(act.value("width", 1280), 16, 8192);
+    int h = std::clamp(act.value("height", 720), 16, 8192);
+    if (!renderer_render_to_file(path, w, h)) {
+      err = "capture: could not write " + path;
+      return 0;
+    }
+    a.status = "captured " + path;
+    return 1;
+  }
+
   if (op != "set_viewport") return -1;
   RenderSettings &rs = render_settings();
   int n = 0;
@@ -73,6 +99,15 @@ int ai_view_op(App &a, const std::string &op, const json &act,
         std::clamp(act["graph_memory_mb"].get<int>(), 0, 1024 * 1024);
     ++n;
   }
+
+  if (act.contains("cloud_scatter_octaves") &&
+      act["cloud_scatter_octaves"].is_number()) {
+    rs.cloud_scatter_octaves =
+        std::clamp(act["cloud_scatter_octaves"].get<int>(), 1, 4);
+    ++n;
+  }
+
+  n += take_f(act, "cloud_scatter_depth", rs.cloud_scatter_depth, 0.05f, 0.99f);
 
   if (act.contains("layout") && act["layout"].is_number())
     rs.viewport_layout = std::clamp(act["layout"].get<int>(), 0, 5), ++n;

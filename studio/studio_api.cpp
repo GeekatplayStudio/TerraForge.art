@@ -131,6 +131,8 @@ static void publish_state(App &a) {
                    {"patches_total", 64 * 64},
                    {"frame_ms", ImGui::GetIO().DeltaTime * 1000.0f},
                    {"terrain_gpu_ms", gpu_timer_ms("terrain")},
+                   {"sky_gpu_ms", gpu_timer_ms("sky+clouds")},
+                   {"cloud_scatter_octaves", rs.cloud_scatter_octaves},
                    {"planet_radius", rs.planet_radius},
                    {"fractal_detail", rs.fractal_detail},
                    {"field_displacement", rs.field_displacement},

@@ -199,6 +199,13 @@ class Studio:
         shadows, exposure. Only the keys given are changed."""
         return self.send({"op": "set_viewport", **kw})
 
+    def capture(self, path: str, width: int = 1280,
+                height: int = 720) -> Dict[str, Any]:
+        """Render the active camera's viewport to a PNG. The only way a script
+        can check what the renderer actually drew."""
+        return self.send({"op": "capture", "path": path,
+                          "width": width, "height": height})
+
     def evaluate(self) -> Dict[str, Any]:
         return self.send({"op": "evaluate"})
 

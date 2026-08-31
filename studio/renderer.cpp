@@ -13,6 +13,7 @@
 #include "gpx/field_glsl.hpp"
 #include <glad/gl.h>
 #include <imgui.h>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -1107,8 +1108,23 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_3D, tex_cloud_detail);
     unii(prog_sky, "u_cl_detail", 4);
+    // The ray-march dither. An unbound sampler reads black, which would give
+    // every ray the same zero offset and put the banding straight back.
+    glActiveTexture(GL_TEXTURE9);
+    glBindTexture(GL_TEXTURE_2D, blue_noise_texture());
+    unii(prog_sky, "u_blue_noise", 9);
+    unii(prog_sky, "u_cl_octaves", std::clamp(RS.cloud_scatter_octaves, 1, 4));
+    uni1(prog_sky, "u_cl_ms_depth", std::clamp(RS.cloud_scatter_depth, 0.05f, 0.99f));
     glBindVertexArray(vao_quad);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    if (slot == 0) {
+      // Timed for the same reason the terrain pass is: the volumetric march
+      // is the most expensive thing on screen and the frame clock cannot see
+      // it move.
+      GpuTimer::Scope s(gpu_timer("sky+clouds"));
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+    } else {
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+    }
     glDepthMask(GL_TRUE);
   } else if (RS.background_mode == 1) {
     glUseProgram(prog_bg);
@@ -1968,6 +1984,13 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_3D, tex_cloud_detail);
     unii(prog_sky, "u_cl_detail", 4);
+    // The ray-march dither. An unbound sampler reads black, which would give
+    // every ray the same zero offset and put the banding straight back.
+    glActiveTexture(GL_TEXTURE9);
+    glBindTexture(GL_TEXTURE_2D, blue_noise_texture());
+    unii(prog_sky, "u_blue_noise", 9);
+    unii(prog_sky, "u_cl_octaves", std::clamp(RS.cloud_scatter_octaves, 1, 4));
+    uni1(prog_sky, "u_cl_ms_depth", std::clamp(RS.cloud_scatter_depth, 0.05f, 0.99f));
     unii(prog_sky, "u_panorama", 1);
     unii(prog_sky, "u_hdr", 1);
     unii(prog_sky, "u_no_sun", 1); // the sun is emitted separately

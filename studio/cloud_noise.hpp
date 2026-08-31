@@ -10,4 +10,9 @@ namespace studio {
 // Both tile seamlessly. Returns false if generation failed.
 bool cloud_noise_build(unsigned &shape_tex, unsigned &detail_tex);
 
+// The blue-noise dither the ray march offsets its start with, as a wrapped,
+// unfiltered R8 texture. Built once on first call. The pattern itself comes
+// from blue_noise.cpp, which needs no GL and is tested without one.
+unsigned blue_noise_texture(int n = 64);
+
 } // namespace studio

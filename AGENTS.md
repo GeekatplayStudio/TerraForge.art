@@ -51,7 +51,12 @@ each one was a bug we already paid for. Do not regress them.
    while drawing every patch — impossible, and it was smoothing bleed between
    arms. This is why the patch count is published beside the timing: the two
    check each other.
-7. **A conservative bound must be built from the real data.** Patch height
+7. **Pair and interleave benchmark arms; never sweep once and compare across
+   time.** A cloud sweep reported three scattering bounces as six times faster
+   than one, because wind moved coverage through the frame during the run.
+   Ten short A/B pairs made the drift cancel: +2.9 % median, against unpaired
+   medians 22 % apart.
+8. **A conservative bound must be built from the real data.** Patch height
    bounds come from the full-resolution heightmap, not the 256² picking copy,
    and are widened by a texel because bilinear filtering reaches the
    neighbour. A bound that under-covers does not cost performance — it puts a
@@ -124,6 +129,25 @@ belongs to; do not fake a field node with a 1×1 buffer.
 10. **Nodes may have several field outputs, and they are different values.**
     Emission is keyed by node *and* port, and by the evaluation point, since a
     redirect asks for the same subtree somewhere else.
+
+## Verifying a renderer change
+
+1. **Look at the picture.** `capture` renders the active camera to a PNG from
+   the API, MCP and `Studio.capture()`. Multi-octave cloud scattering compiled,
+   bound its uniform and timed flat while turning a shaped storm into a flat
+   pale sheet — every non-visual check was consistent with it working.
+2. **Compare against a number, not an impression.** Mean brightness and
+   contrast (std) over the captured image caught the same defect as
+   128 → 198 and 31.6 → 17.3, and later chose the default by measurement
+   rather than by taste.
+3. **Choose a scene the effect can show in.** The first cloud A/B was
+   indistinguishable because the clouds were clipped at white; added light had
+   nowhere to go. A dense cloud, lower exposure and the sun behind made the
+   same change obvious.
+4. **A technique from a paper carries the constants of the engine it was
+   written for.** The scattering octave attenuation of 0.5 assumes an
+   optical-depth scale that is not ours. Expose the constant and pick the
+   value by measuring, rather than copying it and trusting the result.
 
 ## Generated shaders
 

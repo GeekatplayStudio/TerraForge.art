@@ -106,6 +106,24 @@ struct RenderSettings {
   float cloud_ambient = 0.55f;    // sky light into clouds
   int   cloud_quality = 1;        // 0 draft, 1 normal, 2 high
   float cloud_anvil = 0.3f;       // cumulonimbus top spread
+  // Multiple-scattering octaves. 1 is single scattering, which stops light at
+  // its first hit and makes dense cloud read as plastic; each further octave
+  // re-evaluates the shadow ray we already have with lower extinction, a more
+  // isotropic phase and less energy, standing in for one more bounce.
+  //
+  // Two by default rather than the three the technique is usually written
+  // with: measured on a dense cumulonimbus, 2 octaves at the depth below
+  // lifts mean brightness by 9.5 levels while keeping 96 % of the image's
+  // contrast, where 3 octaves at the textbook depth of 0.5 lifted it by 52
+  // and left 55 % — a shaped storm turned into a flat pale sheet.
+  int   cloud_scatter_octaves = 2;
+  // How much deeper each of those bounces reaches: the extinction is
+  // multiplied by this each time, so lower means light penetrates further and
+  // the interior lifts more. The textbook 0.5 assumes an optical-depth scale
+  // that is not ours — our `sum * 2.2` was tuned against single scattering.
+  // Measured on the same scene: 0.9 keeps 94 % of contrast, 0.8 keeps 86 %,
+  // 0.5 keeps 55 %.
+  float cloud_scatter_depth = 0.9f;
 
   // terrain surface material (PBR)
   float mat_roughness = 0.85f;

@@ -99,7 +99,10 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "graph_memory_mb, the ceiling on cached node output "
                        "buffers (0 lifts it) — read memory.buffers_mb and "
                        "memory.released_mb back from the state. Send only the "
-                       "settings you want to change.",
+                       "settings you want to change. cloud_scatter_octaves (1-4) sets "
+                       "how many multiple-scattering bounces the cloud march "
+                       "approximates and cloud_scatter_depth (0.4-0.99) how "
+                       "far each reaches into the cloud.",
         "params": {"tessellation": "bool", "tess_pixels": "float",
                    "tess_min": "float", "tess_max": "float",
                    "frustum_cull": "bool", "height_scale": "float",
@@ -108,7 +111,16 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                    "wireframe": "bool", "shadows": "bool",
                    "shadow_softness": "float", "exposure": "float",
                    "use_albedo": "bool", "layout": "int", "engine": "int",
-                   "graph_memory_mb": "int"},
+                   "graph_memory_mb": "int",
+                   "cloud_scatter_octaves": "int",
+                   "cloud_scatter_depth": "float"},
+    },
+    "studio_capture": {
+        "description": "Render the active camera's viewport to a PNG at "
+                       "`path`, optionally `width` x `height` (default "
+                       "1280x720). The one way to check what the renderer "
+                       "actually put on screen.",
+        "params": {"path": "str", "width": "int", "height": "int"},
     },
     "studio_evaluate": {
         "description": "Re-evaluate the whole graph. Poll studio_get_graph and "
@@ -139,6 +151,7 @@ _SIMPLE = {
     "studio_select_node": "select_node",
     "studio_set_workspace": "set_workspace",
     "studio_set_viewport": "set_viewport",
+    "studio_capture": "capture",
     "studio_evaluate": "evaluate",
     "studio_verify_field_gpu": "verify_field_gpu",
 }

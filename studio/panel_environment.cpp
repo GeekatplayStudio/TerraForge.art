@@ -75,6 +75,21 @@ static void section_clouds(RenderSettings &rs) {
   ImGui::Combo("Quality", &rs.cloud_quality, "Draft\0Normal\0High\0");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Raymarch step count: higher is smoother but slower.");
+  ImGui::SliderInt("Scattering bounces", &rs.cloud_scatter_octaves, 1, 4);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("1 stops light at its first hit, which makes dense\n"
+                      "cloud read as plastic. Each extra bounce reuses the\n"
+                      "shadow ray already computed with lower extinction and\n"
+                      "a more even phase, so it costs very little.");
+  if (rs.cloud_scatter_octaves > 1) {
+    ImGui::SliderFloat("Bounce depth", &rs.cloud_scatter_depth, 0.4f, 0.99f,
+                       "%.2f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How much further each bounce reaches into the cloud.\n"
+                        "Lower lifts the shadowed interior more, and past\n"
+                        "about 0.7 it starts flattening the cloud's shape\n"
+                        "unless you lower Density to match.");
+  }
 }
 
 static void section_water(RenderSettings &rs) {
