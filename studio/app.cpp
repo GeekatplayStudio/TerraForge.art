@@ -1,4 +1,4 @@
-// Geekatplay Studio — main loop, docking layout, background evaluation
+﻿// Geekatplay Studio â€” main loop, docking layout, background evaluation
 #include "app.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
@@ -11,6 +11,42 @@
 #include <imgui_internal.h>
 
 namespace studio {
+
+void App::refresh_snapshot() {
+  node_views.clear();
+  link_views.clear();
+  node_views.reserve(graph.nodes.size());
+  size_t bytes = 0;
+  double total = 0;
+  for (const auto &n : graph.nodes) {
+    NodeView v;
+    v.id = n->id;
+    v.type = n->type;
+    v.category = n->category;
+    v.error = n->error;
+    v.pos_x = n->pos_x;
+    v.pos_y = n->pos_y;
+    v.ms = n->last_compute_ms;
+    total += n->last_compute_ms;
+    v.ports.reserve(n->ports.size());
+    for (const auto &p : n->ports) {
+      PortView pv;
+      pv.name = p.name;
+      pv.is_input = p.dir == gpx::PortDir::In;
+      pv.is_texture = p.type == gpx::DataType::Texture;
+      pv.optional = p.optional;
+      v.ports.push_back(std::move(pv));
+      if (p.hmap) bytes += p.hmap->v.size() * sizeof(float);
+      if (p.tex) bytes += p.tex->v.size() * sizeof(float);
+    }
+    node_views.push_back(std::move(v));
+  }
+  for (const auto &l : graph.links)
+    link_views.push_back({l.id, l.from_node, l.to_node, l.from_port, l.to_port});
+  snapshot_resolution = graph.resolution;
+  snapshot_bytes = bytes;
+  snapshot_total_ms = total;
+}
 
 static void eval_worker(App &a) {
   while (true) {
@@ -165,6 +201,11 @@ void run_main() {
     ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
     ImGui::End();
 
+    // keep the UI snapshot fresh whenever evaluation is not holding the lock
+    {
+      std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+      if (lk.owns_lock()) a.refresh_snapshot();
+    }
     if (a.show_library) draw_panel_library(a);
     if (a.show_viewport) draw_panel_viewport(a);
     draw_panel_graph(a);
@@ -191,11 +232,12 @@ void run_main() {
             return (t && !t->empty()) ? t : nullptr;
           };
           renderer_set_material_maps(chan("normal"), chan("roughness"),
-                                     chan("height"));
+                                     chan("height"), a.eval_serial);
         } else {
           renderer_set_material_maps(tex_of(rs.map_normal_node),
                                      tex_of(rs.map_roughness_node),
-                                     tex_of(rs.map_displacement_node));
+                                     tex_of(rs.map_displacement_node),
+                                     a.eval_serial);
         }
       }
     }
@@ -207,14 +249,14 @@ void run_main() {
     // upload fresh eval results to GPU (main thread only)
     if (a.uploaded_serial != a.eval_serial && !a.eval.running.load()) {
       std::lock_guard<std::mutex> lk(a.graph_mtx);
-      // skip thumbnail regeneration during interactive drags — keeps the
+      // skip thumbnail regeneration during interactive drags â€” keeps the
       // slider->viewport loop as tight as possible
       if (!a.eval_interactive.load()) previews_update(a);
       // Terragen-style: atmosphere/render nodes drive the renderer
       apply_scene_nodes(a);
       uint64_t view = a.view_node ? a.view_node : a.selected_node;
       gpx::Node *n = a.graph.find_node(view);
-      // a TerrainOutput node is the canonical final terrain — prefer it
+      // a TerrainOutput node is the canonical final terrain â€” prefer it
       // unless the user explicitly pinned another node
       if (!a.view_node) {
         for (auto &cand : a.graph.nodes)
@@ -302,3 +344,4 @@ void run_main() {
 }
 
 } // namespace studio
+

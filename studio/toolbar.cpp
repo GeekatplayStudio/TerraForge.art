@@ -1,9 +1,14 @@
 ﻿// Geekatplay TerraForge â€” menu bar (File/Edit/View/Render/Help), tool strip
 // with typed resolution, progress and resource usage.
 #include "app.hpp"
+#include "i18n.hpp"
+#include "material_library.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <vector>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -33,32 +38,145 @@ static size_t graph_memory_bytes(App &a) {
   return total;
 }
 
+// ---- recent projects (standard Windows "Open Recent" behaviour) ----------
+static std::vector<std::string> &recent_list() {
+  static std::vector<std::string> r;
+  return r;
+}
+
+static std::string recent_file_path() {
+  const char *base = std::getenv("LOCALAPPDATA");
+  std::string dir = base ? std::string(base) : std::string(".");
+  dir += "\\GeekatplayTerraForge";
+  std::filesystem::create_directories(dir);
+  return dir + "\\recent_projects.txt";
+}
+
+static void recent_load() {
+  recent_list().clear();
+  std::ifstream f(recent_file_path());
+  std::string line;
+  while (std::getline(f, line))
+    if (!line.empty()) recent_list().push_back(line);
+}
+
+static void recent_save() {
+  std::ofstream f(recent_file_path());
+  for (const auto &p : recent_list()) f << p << "\n";
+}
+
+static void recent_add(const std::string &path) {
+  if (path.empty()) return;
+  auto &r = recent_list();
+  r.erase(std::remove(r.begin(), r.end(), path), r.end());
+  r.insert(r.begin(), path);
+  if (r.size() > 10) r.resize(10);
+  recent_save();
+}
+
 static void menu_file(App &a) {
-  if (!ImGui::BeginMenu("File")) return;
-  if (ImGui::MenuItem("New project", "Ctrl+N")) {
+  static bool loaded = false;
+  if (!loaded) {
+    recent_load();
+    loaded = true;
+  }
+  if (!ImGui::BeginMenu(tr("menu.file"))) return;
+  if (ImGui::MenuItem(tr("menu.file.new"), "Ctrl+N")) {
     project_new(a);
     project_default_graph(a);
     a.graph_layout_serial++;
     a.request_eval();
   }
-  if (ImGui::MenuItem("Open...", "Ctrl+O")) {
+  if (ImGui::MenuItem(tr("menu.file.open"), "Ctrl+O")) {
     std::string p = dialog_open_file(PROJECT_FILTER, "gpxt");
-    if (!p.empty()) project_load(a, p);
+    if (!p.empty() && project_load(a, p)) recent_add(p);
+  }
+  if (ImGui::BeginMenu(tr("menu.file.open_recent"))) {
+    if (recent_list().empty()) {
+      ImGui::MenuItem(tr("menu.file.recent_empty"), nullptr, false, false);
+    } else {
+      int n = 1;
+      for (const std::string &p : std::vector<std::string>(recent_list())) {
+        char label[600];
+        snprintf(label, sizeof label, "&%d  %s", n++, p.c_str());
+        if (ImGui::MenuItem(label)) {
+          if (project_load(a, p)) recent_add(p);
+        }
+      }
+      ImGui::Separator();
+      if (ImGui::MenuItem(tr("menu.file.clear_recent"))) {
+        recent_list().clear();
+        recent_save();
+      }
+    }
+    ImGui::EndMenu();
   }
   ImGui::Separator();
-  if (ImGui::MenuItem("Save", "Ctrl+S")) {
+  if (ImGui::MenuItem(tr("menu.file.save"), "Ctrl+S")) {
     std::string p = a.project_path;
     if (p.empty()) p = dialog_save_file(PROJECT_FILTER, "gpxt", "terrain.gpxt");
-    if (!p.empty()) project_save(a, p);
+    if (!p.empty() && project_save(a, p)) recent_add(p);
   }
-  if (ImGui::MenuItem("Save As...")) {
+  if (ImGui::MenuItem(tr("menu.file.save_as"), "Ctrl+Shift+S")) {
     std::string p = dialog_save_file(PROJECT_FILTER, "gpxt",
                                      a.project_path.empty() ? "terrain.gpxt"
                                                             : a.project_path.c_str());
-    if (!p.empty()) project_save(a, p);
+    if (!p.empty() && project_save(a, p)) recent_add(p);
   }
   ImGui::Separator();
-  if (ImGui::MenuItem("Render image...")) {
+  if (ImGui::BeginMenu(tr("menu.file.import"))) {
+    if (ImGui::MenuItem(tr("menu.file.import_obj"))) {
+      std::string p = dialog_open_file("Wavefront OBJ\0*.obj\0", "obj");
+      if (!p.empty()) {
+        std::string err;
+        int idx = scene_import_obj(p, err);
+        a.status = idx >= 0 ? "imported " + p : "IMPORT FAILED: " + err;
+      }
+    }
+    if (ImGui::MenuItem(tr("menu.file.import_heightmap"))) {
+      std::string p = dialog_open_file(
+          "Heightfield\0*.png;*.tif;*.jpg;*.raw\0", nullptr);
+      if (!p.empty()) {
+        std::lock_guard<std::mutex> lk(a.graph_mtx);
+        gpx::Node *n = a.graph.add_node("HeightmapFile", 0, 400);
+        if (n) {
+          if (gpx::Attribute *at = n->attrs.find("path")) at->s = p;
+          a.graph_layout_serial++;
+          a.request_eval();
+          a.status = "added HeightmapFile node";
+        }
+      }
+    }
+    if (ImGui::MenuItem(tr("menu.file.import_material"))) {
+      std::string p = dialog_open_file(
+          "Textures\0*.png;*.jpg;*.jpeg;*.tga;*.bmp\0", nullptr);
+      if (!p.empty()) {
+        std::string err;
+        unsigned long long id = material_import_texture_set(a, p, err);
+        a.status = id ? "imported texture set" : "IMPORT FAILED: " + err;
+      }
+    }
+    ImGui::EndMenu();
+  }
+  if (ImGui::BeginMenu(tr("menu.file.export"))) {
+    auto add_export = [&](const char *label, const char *type) {
+      if (!ImGui::MenuItem(label)) return;
+      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      gpx::Node *n = a.graph.add_node(type, 1200, 400);
+      if (n) {
+        if (gpx::Attribute *at = n->attrs.find("auto_export")) at->b = true;
+        a.graph_layout_serial++;
+        a.request_eval();
+        a.status = std::string("added ") + type + " node - set its file path";
+      }
+    };
+    add_export(tr("menu.file.export_heightmap"), "ExportHeightmap");
+    add_export(tr("menu.file.export_mesh"), "ExportMesh");
+    add_export(tr("menu.file.export_texture"), "ExportTexture");
+    ImGui::EndMenu();
+  }
+  ImGui::Separator();
+  if (ImGui::MenuItem(tr("menu.file.render_image"), "F12")) {
     std::string p = dialog_save_file("PNG image\0*.png\0", "png", "render.png");
     if (!p.empty()) {
       a.status = renderer_render_to_file(p, 3840, 2160)
@@ -67,7 +185,7 @@ static void menu_file(App &a) {
     }
   }
   ImGui::Separator();
-  if (ImGui::MenuItem("Exit", "Alt+F4"))
+  if (ImGui::MenuItem(tr("menu.file.exit"), "Alt+F4"))
     glfwSetWindowShouldClose(a.window, GLFW_TRUE);
   ImGui::EndMenu();
 }

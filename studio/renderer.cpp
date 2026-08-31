@@ -97,7 +97,7 @@ static const int SHADOW_RES = 2048;
 static float cloud_time = 0.f;
 
 // ----------------------------------------------------------------- shaders
-static const char *VS_TERRAIN = R"GLSL(#version 430 core
+static const char *VS_TERRAIN_SRC = R"GLSL(#version 430 core
 layout(location=0) in vec2 in_uv;
 uniform sampler2D u_height;
 uniform sampler2D u_disp;
@@ -105,16 +105,76 @@ uniform int u_has_disp;
 uniform float u_disp_strength;
 uniform mat4 u_mvp;
 uniform float u_hscale;
+uniform vec3 u_cam;
+uniform float u_frac_amount;   // fractal detail height, world units
+uniform float u_frac_scale;    // base frequency of the detail
+uniform float u_planet_radius; // 0 = flat, else curve the world down
+FRACTAL_FN_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
+out float v_detail;
 void main(){
   float h = texture(u_height, in_uv).r * u_hscale;
   if (u_has_disp == 1)
-    h += (texture(u_disp, in_uv).r - 0.5) * u_disp_strength;
+    h += (texture(u_disp, in_uv).r - 0.5) * 2.0 * u_disp_strength;
   vec3 p = vec3(in_uv.x, h, in_uv.y);
+  // fractal micro-relief, refined by how close the camera is
+  float d = length(u_cam - p);
+  v_detail = 0.0;
+  if (u_frac_amount > 0.0){
+    int oct = gp_octaves(d, 9.0);
+    if (oct > 0){
+      float f = gp_detail(in_uv, u_frac_scale, oct, 0.5) - 0.5;
+      v_detail = f;
+      p.y += f * u_frac_amount;
+    }
+  }
+  // planetary curvature: the ground falls away with distance
+  if (u_planet_radius > 0.0){
+    vec2 flat_d = p.xz - u_cam.xz;
+    float r2 = dot(flat_d, flat_d);
+    p.y -= r2 / (2.0 * u_planet_radius);
+  }
   v_uv = in_uv; v_world = p;
   gl_Position = u_mvp * vec4(p,1.0);
 })GLSL";
+
+// Procedural fractal detail shared by the vertex and fragment stages: the
+// baked heightmap carries the large forms, these octaves keep resolving as
+// the camera closes in, so the terrain is fractal rather than a fixed grid.
+static const char *FRACTAL_FN = R"GLSL(
+float gp_hash(vec2 p){
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+float gp_vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(gp_hash(i), gp_hash(i + vec2(1,0)), f.x),
+             mix(gp_hash(i + vec2(0,1)), gp_hash(i + vec2(1,1)), f.x), f.y);
+}
+// ridged fBm; `octaves` is chosen from camera distance so cost scales with
+// how much detail is actually visible
+float gp_detail(vec2 uv, float base_freq, int octaves, float gain){
+  float sum = 0.0, amp = 1.0, norm = 0.0, freq = base_freq;
+  for (int i = 0; i < 12; ++i){
+    if (i >= octaves) break;
+    float n = gp_vnoise(uv * freq + float(i) * 17.3);
+    n = 1.0 - abs(n * 2.0 - 1.0);      // ridged
+    sum += n * amp;
+    norm += amp;
+    amp *= gain;
+    freq *= 2.03;                       // slightly irrational: avoids banding
+  }
+  return norm > 0.0 ? sum / norm : 0.0;
+}
+// how many octaves are worth evaluating at this distance
+int gp_octaves(float dist, float max_oct){
+  float lod = clamp(log2(1.0 / max(dist, 1e-4)) * 0.9 + 4.0, 0.0, max_oct);
+  return int(lod);
+}
+)GLSL";
 
 // shared sky helper injected into several shaders
 static const char *SKY_FN = R"GLSL(
@@ -154,9 +214,14 @@ uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
 uniform vec3 u_fog_color, u_absorb;
 // cloud shadows
 uniform int u_cloud_shadows;
+uniform vec3 u_cam_unused_marker;
+uniform float u_frac_amount;
+uniform float u_frac_scale;
+in float v_detail;
 uniform float u_cl_cov, u_cl_alt, u_cl_time;
 uniform vec2 u_cl_wind;
 const float PI = 3.14159265;
+FRACTAL_FN_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
@@ -173,7 +238,22 @@ vec3 get_normal(vec2 uv){
   float hr = texture(u_height, uv + vec2(e,0)).r;
   float hd = texture(u_height, uv - vec2(0,e)).r;
   float hu = texture(u_height, uv + vec2(0,e)).r;
-  return normalize(vec3((hl-hr)*u_hscale, 2.0*e, (hd-hu)*u_hscale));
+  vec3 n = normalize(vec3((hl-hr)*u_hscale, 2.0*e, (hd-hu)*u_hscale));
+  // fractal detail continues below the heightmap's resolution: perturb the
+  // normal with the same octaves the vertex stage used, plus finer ones
+  if (u_frac_amount > 0.0){
+    float dist = length(u_cam - v_world);
+    int oct = gp_octaves(dist, 11.0);
+    if (oct > 0){
+      float e2 = max(u_texel * 0.35, 1e-5);
+      float c  = gp_detail(uv, u_frac_scale, oct, 0.5);
+      float dx = gp_detail(uv + vec2(e2,0), u_frac_scale, oct, 0.5) - c;
+      float dy = gp_detail(uv + vec2(0,e2), u_frac_scale, oct, 0.5) - c;
+      float k = u_frac_amount / max(e2, 1e-5) * 0.25;
+      n = normalize(n + vec3(-dx * k, 0.0, -dy * k));
+    }
+  }
+  return n;
 }
 
 float shadow_factor(vec3 world){
@@ -721,9 +801,12 @@ void main(){
 // ------------------------------------------------------------------ helpers
 static std::string inject_sky(const char *src) {
   std::string s(src);
-  const std::string tag = "SKY_FN_PLACEHOLDER";
-  size_t p = s.find(tag);
-  if (p != std::string::npos) s.replace(p, tag.size(), SKY_FN);
+  auto sub = [&](const char *tag, const char *body) {
+    size_t p = s.find(tag);
+    if (p != std::string::npos) s.replace(p, strlen(tag), body);
+  };
+  sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
+  sub("SKY_FN_PLACEHOLDER", SKY_FN);
   return s;
 }
 
@@ -899,7 +982,8 @@ bool renderer_init() {
   std::string fs_terrain = inject_sky(FS_TERRAIN_SRC);
   std::string fs_sky = inject_sky(FS_SKY_SRC);
   std::string fs_water = inject_sky(FS_WATER);
-  prog_terrain = link_prog(VS_TERRAIN, fs_terrain.c_str());
+  std::string vs_terrain = inject_sky(VS_TERRAIN_SRC);
+  prog_terrain = link_prog(vs_terrain.c_str(), fs_terrain.c_str());
   prog_water = link_prog(VS_WATER, fs_water.c_str());
   prog_sky = link_prog(VS_SKY, fs_sky.c_str());
   prog_depth = link_prog(VS_DEPTH, FS_DEPTH);
@@ -1041,8 +1125,19 @@ void renderer_set_terrain(const gpx::Heightmap &h, const gpx::TextureRGBA *albed
   }
 }
 
+// Uploading three textures every frame was costing far more than the whole
+// rest of the frame; only re-upload when the source data actually changed.
 void renderer_set_material_maps(const void *normal, const void *roughness,
-                                const void *displacement) {
+                                const void *displacement, unsigned long long version) {
+  static unsigned long long last_version = ~0ull;
+  static const void *last_ptrs[3] = {nullptr, nullptr, nullptr};
+  const void *ptrs[3] = {normal, roughness, displacement};
+  if (version == last_version && ptrs[0] == last_ptrs[0] &&
+      ptrs[1] == last_ptrs[1] && ptrs[2] == last_ptrs[2])
+    return;
+  last_version = version;
+  for (int i = 0; i < 3; ++i) last_ptrs[i] = ptrs[i];
+
   auto up = [](GLuint tex, const gpx::TextureRGBA *t, bool mips, bool &flag) {
     flag = t && !t->empty();
     if (!flag) return;
@@ -1076,8 +1171,8 @@ static bool camera_object_input(float dx, float dy, float wheel, bool rotating,
     yaw += dx * 0.01f;
     pitch = std::clamp(pitch + dy * 0.01f, -1.55f, 1.55f);
   }
-  if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.1f), 0.02f, 20.f);
-  if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 0.02f, 20.f);
+  if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.12f), 0.0004f, 400.f);
+  if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 0.0004f, 400.f);
   if (panning) {
     // pan moves eye and target together, across the view plane
     float s = dist * 0.0015f;
@@ -1097,7 +1192,7 @@ void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly) {
   if (camera_object_input(dx, dy, wheel, rotating, panning, dolly)) return;
   if (dolly)
-    CAM.dist = std::fmin(std::fmax(CAM.dist * (1.f + dy * 0.005f), 0.15f), 8.f);
+    CAM.dist = std::fmin(std::fmax(CAM.dist * (1.f + dy * 0.005f), 0.0004f), 400.f);
   renderer_handle_input(dx, dy, wheel, rotating, panning);
 }
 
@@ -1138,7 +1233,7 @@ void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
     CAM.target[2] += (dx * sy - dy * cy) * s;
   }
   if (wheel != 0)
-    CAM.dist = std::fmin(std::fmax(CAM.dist * (1.f - wheel * 0.1f), 0.15f), 8.f);
+    CAM.dist = std::fmin(std::fmax(CAM.dist * (1.f - wheel * 0.12f), 0.0004f), 400.f);
 }
 
 static void build_light_mvp(const float *sun, float hscale, float *out) {
@@ -1324,6 +1419,9 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     unii(prog_terrain, "u_has_rough", (has_rough_map && textured) ? 1 : 0);
     unii(prog_terrain, "u_has_disp", (has_disp_map && RS.mat_displacement > 0) ? 1 : 0);
     uni1(prog_terrain, "u_disp_strength", RS.mat_displacement);
+    uni1(prog_terrain, "u_frac_amount", RS.fractal_detail);
+    uni1(prog_terrain, "u_frac_scale", RS.fractal_scale);
+    uni1(prog_terrain, "u_planet_radius", RS.planet_radius);
     unii(prog_terrain, "u_shadows", (RS.shadows && vc.display != 0) ? 1 : 0);
     unii(prog_terrain, "u_quality", cinematic ? 1 : 0);
     uni1(prog_terrain, "u_shadow_soft", RS.shadow_softness);
@@ -1593,7 +1691,10 @@ static void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp)
                     -(sx[0] * eye[0] + sx[1] * eye[1] + sx[2] * eye[2]),
                     -(uy[0] * eye[0] + uy[1] * eye[1] + uy[2] * eye[2]),
                     fz[0] * eye[0] + fz[1] * eye[1] + fz[2] * eye[2], 1};
-  float aspect = w / float(h), znear = 0.01f, zfar = 40.f;
+  float aspect = w / float(h);
+  float cam_d = std::sqrt((eye[0]-target[0])*(eye[0]-target[0]) + (eye[1]-target[1])*(eye[1]-target[1]) + (eye[2]-target[2])*(eye[2]-target[2]));
+  float znear = std::clamp(cam_d * 0.002f, 0.00002f, 0.5f);
+  float zfar = std::max(cam_d * 40.f, 60.f);
   float f = 1.f / std::tan(fovy_rad * 0.5f);
   float proj[16] = {f / aspect, 0, 0, 0, 0, f, 0, 0,
                     0, 0, (zfar + znear) / (znear - zfar), -1,
@@ -1662,7 +1763,7 @@ void renderer_view_input(RenderSettings::ViewConfig &vc, float dx, float dy,
     return;
   }
   if (wheel != 0)
-    vc.ortho_zoom = std::fmin(std::fmax(vc.ortho_zoom * (1.f - wheel * 0.1f), 0.05f), 6.f);
+    vc.ortho_zoom = std::fmin(std::fmax(vc.ortho_zoom * (1.f - wheel * 0.12f), 0.0004f), 400.f);
   if (rotating || panning) {
     float s = vc.ortho_zoom / std::max(view_w, 1);
     if (vc.camera == 1) {
@@ -2021,6 +2122,8 @@ static bool mat_inverse(float *inv_out, const float *m) {
 }
 
 } // namespace studio
+
+
 
 
 

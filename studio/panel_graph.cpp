@@ -35,12 +35,12 @@ static ImU32 category_color(const std::string &cat) {
   return IM_COL32(0x66, 0x66, 0x66, 255);
 }
 
-static ImU32 port_color(gpx::DataType t) {
-  return t == gpx::DataType::Heightmap ? IM_COL32(0xd6, 0xd3, 0xcd, 255)
-                                       : IM_COL32(0xc8, 0x78, 0x30, 255);
+static ImU32 port_color(bool is_texture) {
+  return is_texture ? IM_COL32(0xc8, 0x78, 0x30, 255)
+                    : IM_COL32(0xd6, 0xd3, 0xcd, 255);
 }
 
-static void draw_node(App &a, gpx::Node &n) {
+static void draw_node(App &a, const App::NodeView &n) {
   ed::PushStyleColor(ed::StyleColor_NodeBg, ImVec4(0.12f, 0.12f, 0.12f, 0.96f));
   ed::PushStyleColor(ed::StyleColor_NodeBorder,
                      n.error.empty() ? ImVec4(0.04f, 0.04f, 0.04f, 1.f)
@@ -62,10 +62,10 @@ static void draw_node(App &a, gpx::Node &n) {
   // pins: inputs left column, outputs right column
   ImGui::BeginGroup();
   for (size_t i = 0; i < n.ports.size(); ++i) {
-    gpx::Port &p = n.ports[i];
-    if (p.dir != gpx::PortDir::In) continue;
+    const App::PortView &p = n.ports[i];
+    if (!p.is_input) continue;
     ed::BeginPin(pin_id(n.id, i), ed::PinKind::Input);
-    ImU32 pc = port_color(p.type);
+    ImU32 pc = port_color(p.is_texture);
     ImVec2 c = ImGui::GetCursorScreenPos();
     dl->AddRectFilled(ImVec2(c.x, c.y + 3), ImVec2(c.x + 8, c.y + 11), pc);
     ImGui::Dummy(ImVec2(10, 14));
@@ -87,8 +87,8 @@ static void draw_node(App &a, gpx::Node &n) {
 
   // outputs
   for (size_t i = 0; i < n.ports.size(); ++i) {
-    gpx::Port &p = n.ports[i];
-    if (p.dir != gpx::PortDir::Out) continue;
+    const App::PortView &p = n.ports[i];
+    if (p.is_input) continue;
     float tw = ImGui::CalcTextSize(p.name.c_str()).x;
     ImGui::Dummy(ImVec2(112.f - tw - 18.f > 0 ? 112.f - tw - 18.f : 0.f, 1));
     ImGui::SameLine();
@@ -97,15 +97,15 @@ static void draw_node(App &a, gpx::Node &n) {
     ImGui::SameLine();
     ImVec2 c = ImGui::GetCursorScreenPos();
     dl->AddRectFilled(ImVec2(c.x, c.y + 3), ImVec2(c.x + 8, c.y + 11),
-                      port_color(p.type));
+                      port_color(p.is_texture));
     ImGui::Dummy(ImVec2(10, 14));
     ed::PinRect(ImVec2(c.x - 4, c.y), ImVec2(c.x + 12, c.y + 14));
     ed::EndPin();
   }
 
-  if (n.last_compute_ms > 0.01) {
+  if (n.ms > 0.01) {
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(125, 122, 117, 255));
-    ImGui::Text("%.1f ms", n.last_compute_ms);
+    ImGui::Text("%.1f ms", n.ms);
     ImGui::PopStyleColor();
   }
   if (!n.error.empty()) {
@@ -169,46 +169,52 @@ void draw_panel_graph(App &a) {
     ImGui::End();
     return;
   }
-  // never freeze the UI while a long evaluation holds the graph: if the
-  // mutex is busy, show a status line this frame instead of blocking
+  // The graph is always drawn from App::node_views, so it never blinks out
+  // while evaluation holds the lock. Editing needs the real graph, so those
+  // paths are simply skipped for the frames where the lock is busy.
   std::unique_lock<std::mutex> graph_lock(a.graph_mtx, std::try_to_lock);
-  if (!graph_lock.owns_lock()) {
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.47f, 0.19f, 1.f));
-    ImGui::Text("computing... (%d/%d)", a.eval.progress_done.load(),
-                a.eval.progress_total.load());
-    ImGui::PopStyleColor();
-    ImGui::End();
-    return;
-  }
+  bool can_edit = graph_lock.owns_lock();
   {
     const char *ws_names[4] = {"Terrain", "Materials", "Atmosphere", "Render"};
     ImGui::TextDisabled("%s nodes", ws_names[std::clamp(a.workspace, 0, 3)]);
     ImGui::SameLine();
     studio::Checkbox("show all domains", &a.graph_show_all_domains);
+    if (a.eval.running.load()) {
+      ImGui::SameLine();
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.47f, 0.19f, 1.f));
+      ImGui::Text("computing %d/%d", a.eval.progress_done.load(),
+                  a.eval.progress_total.load());
+      ImGui::PopStyleColor();
+    }
   }
   ed::SetCurrentEditor(ED);
   ed::PushStyleColor(ed::StyleColor_Bg, ImVec4(0.075f, 0.075f, 0.08f, 1.f));
   ed::PushStyleColor(ed::StyleColor_Grid, ImVec4(1.f, 1.f, 1.f, 0.025f));
   ed::Begin("GeekatplayGraph");
 
-  bool eval_running = a.eval.running.load();
+  bool eval_running = !can_edit;
 
-  auto node_visible = [&](const gpx::Node &n) {
+  auto view_visible = [&](const App::NodeView &n) {
     return a.graph_show_all_domains || domain_of_category(n.category) == a.workspace;
   };
   static uint64_t layout_serial_seen = 0;
   bool push_positions = layout_serial_seen != a.graph_layout_serial;
   {
     if (push_positions)
-      for (auto &n : a.graph.nodes)
-        ed::SetNodePosition(n->id, ImVec2(n->pos_x, n->pos_y));
-    for (auto &n : a.graph.nodes)
-      if (node_visible(*n)) draw_node(a, *n);
-    for (const gpx::Link &l : a.graph.links) {
-      gpx::Node *fn = a.graph.find_node(l.from_node);
-      gpx::Node *tn = a.graph.find_node(l.to_node);
+      for (const auto &n : a.node_views)
+        ed::SetNodePosition(n.id, ImVec2(n.pos_x, n.pos_y));
+    for (const auto &n : a.node_views)
+      if (view_visible(n)) draw_node(a, n);
+    auto find_view = [&](uint64_t id) -> const App::NodeView * {
+      for (const auto &n : a.node_views)
+        if (n.id == id) return &n;
+      return nullptr;
+    };
+    for (const App::LinkView &l : a.link_views) {
+      const App::NodeView *fn = find_view(l.from_node);
+      const App::NodeView *tn = find_view(l.to_node);
       if (!fn || !tn) continue;
-      if (!node_visible(*fn) || !node_visible(*tn)) continue;
+      if (!view_visible(*fn) || !view_visible(*tn)) continue;
       size_t fi = 0, ti = 0;
       for (size_t i = 0; i < fn->ports.size(); ++i)
         if (fn->ports[i].name == l.from_port) fi = i;
@@ -368,6 +374,7 @@ void draw_panel_graph(App &a) {
 }
 
 } // namespace studio
+
 
 
 

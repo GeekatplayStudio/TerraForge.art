@@ -113,6 +113,13 @@ struct RenderSettings {
   unsigned long long map_roughness_node = 0;
   unsigned long long map_displacement_node = 0;
 
+  // fractal detail: keeps resolving as the camera closes in
+  float fractal_detail = 0.0025f; // height of the procedural micro-relief
+  float fractal_scale = 90.f;     // base frequency of that relief
+  // planetary curvature: 0 = flat, otherwise the horizon falls away.
+  // radius is in world units (the terrain tile is 1 unit across).
+  float planet_radius = 0.f;
+
   // terrain / global
   float height_scale = 0.22f;
   float exposure = 1.1f;
@@ -135,8 +142,11 @@ void renderer_get_camera(float eye[3], float target[3], float *fovy_deg);
 int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float v,
                   int w, int h);
 // upload extra material maps (any may be null)
+// version changes only when the map data changed; equal versions skip the
+// (expensive) GPU upload entirely
 void renderer_set_material_maps(const void *normal, const void *roughness,
-                                const void *displacement);
+                                const void *displacement,
+                                unsigned long long version);
 // camera navigation for the active camera (scene camera or free viewport)
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);

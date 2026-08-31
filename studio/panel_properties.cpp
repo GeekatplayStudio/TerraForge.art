@@ -71,7 +71,22 @@ static void show_attr_tooltip(const gpx::Attribute &at) {
   if (tip) ImGui::SetTooltip("%s", tip);
 }
 
-// float row: [-] [drag: click types, drag slides, wheel steps] [+]
+// Draws the filled progress bar that gives these rows their slider look,
+// then leaves the frame transparent so the drag widget renders on top.
+static void slider_fill(float value, float mn, float mx) {
+  ImVec2 p = ImGui::GetCursorScreenPos();
+  float w = ImGui::CalcItemWidth(), h = ImGui::GetFrameHeight();
+  float t = (mx - mn) > 1e-9f ? (value - mn) / (mx - mn) : 0.f;
+  t = std::clamp(t, 0.f, 1.f);
+  ImDrawList *dl = ImGui::GetWindowDrawList();
+  dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h),
+                    ImGui::GetColorU32(ImGuiCol_FrameBg));
+  if (t > 0.f)
+    dl->AddRectFilled(p, ImVec2(p.x + w * t, p.y + h),
+                      ImGui::GetColorU32(ImVec4(0.55f, 0.33f, 0.13f, 0.85f)));
+}
+
+// float row: [-] [slider-look drag: click types, drag slides, wheel steps] [+]
 static bool scalar_float(const char *id, float *v, float mn, float mx,
                          bool log_scale = false) {
   bool changed = false;
@@ -84,9 +99,14 @@ static bool scalar_float(const char *id, float *v, float mn, float mx,
   }
   ImGui::SameLine(0, 2);
   ImGui::SetNextItemWidth(-btn - 2);
+  slider_fill(*v, mn, mx);
+  ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1, 1, 1, 0.06f));
+  ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(1, 1, 1, 0.10f));
   changed |= ImGui::DragFloat("##v", v, step * 0.5f, mn, mx, "%.3f",
                               (log_scale ? ImGuiSliderFlags_Logarithmic : 0) |
                                   ImGuiSliderFlags_AlwaysClamp);
+  ImGui::PopStyleColor(3);
   if (ImGui::IsItemHovered()) {
     ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY); // wheel adjusts, not scrolls
     float wheel = ImGui::GetIO().MouseWheel;
@@ -115,8 +135,13 @@ static bool scalar_int(const char *id, int *v, int mn, int mx) {
   }
   ImGui::SameLine(0, 2);
   ImGui::SetNextItemWidth(-btn - 2);
+  slider_fill((float)*v, (float)mn, (float)mx);
+  ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1, 1, 1, 0.06f));
+  ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(1, 1, 1, 0.10f));
   changed |= ImGui::DragInt("##v", v, 0.25f, mn, mx, "%d",
                             ImGuiSliderFlags_AlwaysClamp);
+  ImGui::PopStyleColor(3);
   if (ImGui::IsItemHovered()) {
     ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
     float wheel = ImGui::GetIO().MouseWheel;
@@ -456,18 +481,51 @@ static void scene_properties(App &a) {
   }
 }
 
+// The node's attributes are mirrored here so the panel keeps drawing (and
+// stays editable) while evaluation holds the graph lock. Edits land in the
+// mirror and are flushed to the real node as soon as the lock is free —
+// that is what stops the panel blinking out while you scroll a value.
+struct NodeMirror {
+  uint64_t id = 0;
+  std::string type, category, error;
+  gpx::AttrSet attrs;
+  bool valid = false;
+  bool pending = false; // mirror holds edits not yet written to the node
+};
+static NodeMirror g_mirror;
+
 static void node_properties(App &a) {
   std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
-  if (!lk.owns_lock()) {
-    ImGui::TextDisabled("computing...");
-    return;
+  if (lk.owns_lock()) {
+    gpx::Node *live = a.graph.find_node(a.selected_node);
+    if (live) {
+      if (g_mirror.pending && g_mirror.id == live->id) {
+        // write the queued edits through, then re-sync
+        for (const auto &src : g_mirror.attrs.items)
+          if (gpx::Attribute *dst = live->attrs.find(src.key)) *dst = src;
+        g_mirror.pending = false;
+        a.graph.mark_dirty(live->id);
+        a.request_eval();
+      }
+      g_mirror.id = live->id;
+      g_mirror.type = live->type;
+      g_mirror.category = live->category;
+      g_mirror.error = live->error;
+      g_mirror.attrs = live->attrs;
+      g_mirror.valid = true;
+    } else {
+      g_mirror.valid = false;
+      g_mirror.pending = false;
+    }
   }
-  gpx::Node *n = a.graph.find_node(a.selected_node);
-  if (!n) {
+  lk.unlock(); // everything below works on the mirror
+
+  if (!g_mirror.valid || g_mirror.id != a.selected_node) {
     ImGui::TextDisabled("No node selected.");
     ImGui::TextDisabled("Click a node in the graph below.");
     return;
   }
+  NodeMirror *n = &g_mirror;
   // never show a node that belongs to a different workspace â€” that was the
   // source of "terrain texture showing under Terrain"
   if (domain_of_category(n->category) != a.workspace) {
@@ -496,8 +554,12 @@ static void node_properties(App &a) {
       at.v2[0] = at.v2default[0];
       at.v2[1] = at.v2default[1];
     }
-    a.graph.mark_dirty(n->id);
-    a.request_eval();
+    g_mirror.pending = true;
+  }
+  if (!n->error.empty()) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.3f, 0.2f, 1.f));
+    ImGui::TextWrapped("%s", n->error.c_str());
+    ImGui::PopStyleColor();
   }
   ImGui::Separator();
 
@@ -525,19 +587,18 @@ static void node_properties(App &a) {
     if (!group_open) continue;
     if (draw_attribute(at)) changed = true;
   }
-  // silky adjustments: while a slider is held, evaluate at low resolution;
-  // on release, run one full-quality pass
+  // silky adjustments: while a control is held, evaluate at low resolution;
+  // on release, run one full-quality pass. Edits are queued in the mirror and
+  // written through on the next frame that can take the lock.
   bool item_active = ImGui::IsAnyItemActive();
   static bool was_active = false;
   if (changed) {
     a.eval_interactive.store(item_active);
-    a.graph.mark_dirty(n->id);
-    a.request_eval();
+    g_mirror.pending = true;
   }
-  if (was_active && !item_active && a.eval_interactive.load()) {
+  if (was_active && !item_active) {
     a.eval_interactive.store(false);
-    a.graph.mark_dirty(n->id);
-    a.request_eval();
+    g_mirror.pending = true; // force one final full-resolution pass
   }
   was_active = item_active;
 }

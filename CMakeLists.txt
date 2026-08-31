@@ -120,6 +120,7 @@ set(STUDIO_SOURCES
     studio/panel_camera.cpp
     studio/ai_assist.cpp
     studio/studio_api.cpp
+    studio/i18n.cpp
     studio/file_dialogs.cpp
     studio/prefs.cpp
     studio/ollama.cpp

@@ -34,6 +34,34 @@ struct App {
   uint64_t uploaded_serial = 0;
 
   EvalState eval;
+
+  // ---- non-blocking UI snapshot ----------------------------------------
+  // Evaluation holds graph_mtx for its whole run. Panels must never block on
+  // it (that made the graph and properties blink out while scrolling), so
+  // they draw from this snapshot, refreshed whenever the lock is free.
+  struct PortView {
+    std::string name;
+    bool is_input = false;
+    bool is_texture = false;
+    bool optional = false;
+  };
+  struct NodeView {
+    uint64_t id = 0;
+    std::string type, category, error;
+    float pos_x = 0, pos_y = 0;
+    double ms = 0;
+    std::vector<PortView> ports;
+  };
+  struct LinkView {
+    uint64_t id = 0, from_node = 0, to_node = 0;
+    std::string from_port, to_port;
+  };
+  std::vector<NodeView> node_views;
+  std::vector<LinkView> link_views;
+  int snapshot_resolution = 512;
+  size_t snapshot_bytes = 0;
+  double snapshot_total_ms = 0;
+  void refresh_snapshot(); // call only while holding graph_mtx
   // while a slider is being dragged, evaluate at a low resolution for
   // smooth realtime feedback; a full-res pass runs on release
   std::atomic<bool> eval_interactive{false};

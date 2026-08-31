@@ -378,6 +378,26 @@ static void material_editor(App &a, SceneObject &obj) {
     slider("transparency", "Transparency", 0.f, 1.f);
     slider("normal_strength", "Normal strength", 0.f, 4.f);
     slider("displacement", "Displacement", 0.f, 0.1f);
+    // displacement silently does nothing without a height channel or an
+    // assignment, so say so instead of leaving the user guessing
+    {
+      float disp = mat->attrs.get_f("displacement", 0.f);
+      bool has_height = a.graph.upstream_node(*mat, "height") != nullptr;
+      bool assigned = obj.material_node == mat->id;
+      if (disp > 0.f && !has_height) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.45f, 0.2f, 1.f));
+        ImGui::TextWrapped("Displacement needs a texture on the 'height' "
+                           "channel. Connect one (MaskToTexture from a "
+                           "heightmap, or a PBRMaterial height map).");
+        ImGui::PopStyleColor();
+      }
+      if (!assigned) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.45f, 0.2f, 1.f));
+        ImGui::TextWrapped("This material is not assigned to %s, so it does "
+                           "not affect the viewport.", obj.name.c_str());
+        ImGui::PopStyleColor();
+      }
+    }
     if (changed) {
       a.graph.mark_dirty(mat->id);
       a.request_eval();

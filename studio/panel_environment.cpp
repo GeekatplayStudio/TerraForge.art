@@ -98,6 +98,29 @@ static void section_water(RenderSettings &rs) {
   }
 }
 
+static void section_planet(RenderSettings &rs) {
+  if (!ImGui::CollapsingHeader("Planet & fractal detail",
+                               ImGuiTreeNodeFlags_DefaultOpen))
+    return;
+  ImGui::SliderFloat("Fractal detail", &rs.fractal_detail, 0.f, 0.02f, "%.4f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Procedural relief added on top of the heightmap.\n"
+                      "It keeps resolving as the camera moves closer, so\n"
+                      "the surface stays fractal instead of turning into\n"
+                      "flat grid cells.");
+  ImGui::SliderFloat("Detail scale", &rs.fractal_scale, 8.f, 400.f, "%.0f");
+  ImGui::SliderFloat("Planet radius", &rs.planet_radius, 0.f, 400.f, "%.0f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("0 = flat world. Larger values curve the ground away\n"
+                      "with distance, giving a planetary horizon. The terrain\n"
+                      "tile is 1 unit across, so a radius of 100 is roughly\n"
+                      "a 100-tile-wide planet.");
+  if (rs.planet_radius > 0.f) {
+    float horizon = std::sqrt(2.f * rs.planet_radius * 0.02f);
+    ImGui::TextDisabled("horizon about %.1f tiles away at eye height", horizon);
+  }
+}
+
 static void section_render(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Render")) return;
   ImGui::SliderFloat("Height scale", &rs.height_scale, 0.02f, 0.8f);
@@ -133,6 +156,7 @@ void world_properties_ui(App &a) {
   if (prop_filter_match("Clouds")) section_clouds(rs);
   if (prop_filter_match("Fog haze")) section_fog(rs);
   if (prop_filter_match("Water foam")) section_water(rs);
+  if (prop_filter_match("Planet fractal detail")) section_planet(rs);
   if (prop_filter_match("Render shadows")) section_render(rs);
 }
 
