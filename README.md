@@ -56,6 +56,22 @@ real-time OpenGL viewport.
   camera closes in. If a graph produces a shader that will not build, the
   viewport keeps the last good one instead of going black.
 
+### Environment-sensitive materials
+- **Distribution** answers *where a material belongs* — by altitude, steepness
+  and which way the ground faces, each with a soft band. The criteria multiply,
+  so a material sits where every condition holds, the way you would say it out
+  loud: "rock, on the steep bits, below the snow line."
+- Because a distribution reads the surface *after* displacement, "snow above
+  this altitude on slopes below this angle" means the displaced terrain rather
+  than the flat plane underneath it.
+- **Colour blending** in the field domain — mix, add, multiply, screen,
+  overlay, darken, lighten — with the factor meaning the same thing in every
+  mode.
+- **Live on the GPU:** wire a colour field into a `TerrainSurface` node and
+  the viewport shades the terrain with it per pixel. Slope and facing come
+  from the shaded normal, so the distribution follows detail finer than the
+  heightmap carrying it.
+
 ### Terrain analysis
 - **Flow accumulation** (D8): how much water passes through each point.
 - **Wetness index** — `ln(a/tan b)`, the standard measure of where water
@@ -188,13 +204,13 @@ Six suites, all of which must pass before a commit:
 | `nodeterrain_tests` | The original solver library and CLI |
 | `engine_tests` | Registry, evaluation and caching, cycle rejection, determinism, erosion, materials, serialization, field domain, GLSL transpiler, bypass, MetaNodes, blend, animation |
 | `undo_tests` | Restore correctness, redo branching, history jumps, node library round-trip |
-| `node_tests` | **Universal node contract** — one data-driven battery over all 115 node types: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
-| `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, 13 committed projects must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
+| `node_tests` | **Universal node contract** — one data-driven battery over all 118 node types: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
+| `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, 14 committed projects must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
 | `pytest` | Render backends and AI helpers |
 
 The contract and regression suites are the reason features do not quietly
-disappear: 5,902 contract assertions and 1,650 regression checks over 115
-node types, 512 attributes and 56 manifest features. If a change to a golden
+disappear: 6,056 contract assertions and 1,726 regression checks over 118
+node types, 540 attributes and 61 manifest features. If a change to a golden
 is intentional, `regression_tests --update` re-records it — review that diff
 rather than trusting it.
 

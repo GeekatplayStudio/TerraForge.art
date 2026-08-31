@@ -128,7 +128,13 @@ belongs to; do not fake a field node with a 1×1 buffer.
    lights a surface that is not there.
 6. The vertex and fragment stages are separate translation units, so each may
    carry its own copy of a generated prelude. Duplicate definitions only
-   collide *within* one stage.
+   collide *within* one stage — so when a stage holds **two** generated
+   functions, emit the prelude once and `field_glsl_strip_prelude()` the rest.
+7. **Build a declaration with `EmitCtx::declare()`, never by streaming into
+   `body`.** Resolving an input appends that subtree's declarations to the same
+   buffer; a `<<` chain therefore splices them into the middle of the line
+   being written. A function call evaluates its arguments first, so `declare()`
+   cannot get this wrong. This bug was written twice before the API was fixed.
 
 ## Persisted UI state
 
@@ -161,6 +167,14 @@ belongs to; do not fake a field node with a 1×1 buffer.
    `!tests/projects/*.gpxt`. Do not lose that line.
 6. Multi-line commit messages break PowerShell here-strings — use
    `git commit -F <file>`.
+7. **A golden must produce varying output and connect every link it declares.**
+   `graph_from_json` drops a link naming a port that does not exist, silently,
+   so a golden can look like it exercises a whole chain while half of it is
+   disconnected. Four committed goldens were doing exactly that.
+8. **A structural check only bites on a graph that exercises it.** The
+   declared-before-use test passed against a bare node because an unconnected
+   input resolves to a literal and emits nothing. Connect the inputs, and
+   prove the check can fail before trusting that it passed.
 
 ## AI, API and MCP
 
