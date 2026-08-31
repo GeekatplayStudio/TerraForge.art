@@ -252,6 +252,12 @@ REGISTER_NODE(
       fp.octaves = 4;
       fp.lacunarity = 2.f;
       fp.gain = 0.5f;
+      // Build the ridge field first, then normalize it. The raw range of the
+      // ridged fBm is an implementation detail (it is not 0..1), so thresholding
+      // it directly would make `width` mean nothing — and at some settings carve
+      // nothing at all. Normalizing first makes width literally "the top
+      // fraction of the field that becomes a fissure".
+      Heightmap ridge(out.w, out.h);
       parallel_rows(out.h, [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
           for (int x = 0; x < out.w; ++x) {
@@ -259,12 +265,17 @@ REGISTER_NODE(
             // wander the sampling position so fissures meander
             float wx = warp * noise::perlin(u * 3.f, v * 3.f, seed ^ 0x9e37u);
             float wy = warp * noise::perlin(u * 3.f + 5.2f, v * 3.f + 1.3f, seed ^ 0x85ebu);
-            float r = noise::fbm_ridged((u + wx) * sc, (v + wy) * sc, seed, fp);
-            // ridged noise peaks at 1 along thin lines: keep only the crests
-            float t = (r - (1.f - width)) / std::max(width, 1e-4f);
-            t = std::clamp(t, 0.f, 1.f);
-            out.at(x, y) -= t * t * depth;
+            ridge.at(x, y) = noise::fbm_ridged((u + wx) * sc, (v + wy) * sc, seed, fp);
           }
+      });
+      ridge.remap(0.f, 1.f);
+      parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
+        for (size_t i = i0; i < i1; ++i) {
+          // keep only the crests: the top `width` of the normalized field
+          float t = (ridge.v[i] - (1.f - width)) / std::max(width, 1e-4f);
+          t = std::clamp(t, 0.f, 1.f);
+          out.v[i] -= t * t * depth;
+        }
       });
       apply_mask_blend(n.in_hmap("mask"), *in, out);
     })

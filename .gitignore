@@ -31,6 +31,8 @@ geekatplay_graph_view.json
 terraforge_prefs.json
 imgui.ini
 *.gpxt
+# ...except the golden corpus, which is the regression lock's evidence
+!tests/projects/*.gpxt
 terraforge_render*.png
 
 # python

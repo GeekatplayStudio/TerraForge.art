@@ -1,0 +1,114 @@
+{
+ "app": "Geekatplay Studio",
+ "version": 2,
+ "resolution": 64,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "Noise",
+   "pos": [
+    0,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 2,
+   "type": "TerrainTexture",
+   "pos": [
+    200,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 3,
+   "type": "SelectSlope",
+   "pos": [
+    200,
+    200
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 4,
+   "type": "Splatmap",
+   "pos": [
+    400,
+    200
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 5,
+   "type": "SplatMaterial",
+   "pos": [
+    600,
+    100
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 6,
+   "type": "AlbedoToPBR",
+   "pos": [
+    800,
+    100
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 7,
+   "type": "MaterialOutput",
+   "pos": [
+    1000,
+    100
+   ],
+   "attrs": {}
+  }
+ ],
+ "links": [
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 2,
+   "to_port": "input"
+  },
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 3,
+   "to_port": "input"
+  },
+  {
+   "from": 3,
+   "from_port": "mask",
+   "to": 4,
+   "to_port": "mask R"
+  },
+  {
+   "from": 4,
+   "from_port": "splat",
+   "to": 5,
+   "to_port": "splat"
+  },
+  {
+   "from": 2,
+   "from_port": "texture",
+   "to": 5,
+   "to_port": "layer R"
+  },
+  {
+   "from": 5,
+   "from_port": "texture",
+   "to": 6,
+   "to_port": "albedo"
+  },
+  {
+   "from": 6,
+   "from_port": "albedo",
+   "to": 7,
+   "to_port": "base color"
+  }
+ ]
+}

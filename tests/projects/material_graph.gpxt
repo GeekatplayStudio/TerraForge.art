@@ -1,0 +1,138 @@
+{
+ "app": "Geekatplay Studio",
+ "version": 2,
+ "resolution": 64,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "Noise",
+   "pos": [
+    0,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 2,
+   "type": "MaskToTexture",
+   "pos": [
+    200,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 3,
+   "type": "ColorAdjust",
+   "pos": [
+    400,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 4,
+   "type": "Levels",
+   "pos": [
+    600,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 5,
+   "type": "GradientMap",
+   "pos": [
+    200,
+    200
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 6,
+   "type": "AOFromHeight",
+   "pos": [
+    400,
+    200
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 7,
+   "type": "CurvatureFromHeight",
+   "pos": [
+    600,
+    200
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 8,
+   "type": "NormalMap",
+   "pos": [
+    800,
+    200
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 9,
+   "type": "MaterialOutput",
+   "pos": [
+    1000,
+    0
+   ],
+   "attrs": {}
+  }
+ ],
+ "links": [
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 2,
+   "to_port": "input"
+  },
+  {
+   "from": 2,
+   "from_port": "texture",
+   "to": 3,
+   "to_port": "texture"
+  },
+  {
+   "from": 3,
+   "from_port": "texture",
+   "to": 4,
+   "to_port": "texture"
+  },
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 5,
+   "to_port": "input"
+  },
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 6,
+   "to_port": "input"
+  },
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 7,
+   "to_port": "input"
+  },
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 8,
+   "to_port": "input"
+  },
+  {
+   "from": 4,
+   "from_port": "texture",
+   "to": 9,
+   "to_port": "base color"
+  }
+ ]
+}

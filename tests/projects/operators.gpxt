@@ -1,0 +1,93 @@
+{
+ "app": "Geekatplay Studio",
+ "version": 2,
+ "resolution": 64,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "Noise",
+   "pos": [
+    0,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 2,
+   "type": "Fractal",
+   "pos": [
+    0,
+    200
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 3,
+   "type": "Math",
+   "pos": [
+    200,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 4,
+   "type": "MathGradient",
+   "pos": [
+    400,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 5,
+   "type": "MixLayers",
+   "pos": [
+    600,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 6,
+   "type": "Constant",
+   "pos": [
+    0,
+    400
+   ],
+   "attrs": {}
+  }
+ ],
+ "links": [
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 3,
+   "to_port": "input a"
+  },
+  {
+   "from": 2,
+   "from_port": "output",
+   "to": 3,
+   "to_port": "input b"
+  },
+  {
+   "from": 3,
+   "from_port": "output",
+   "to": 4,
+   "to_port": "input"
+  },
+  {
+   "from": 4,
+   "from_port": "output",
+   "to": 5,
+   "to_port": "layer 1"
+  },
+  {
+   "from": 2,
+   "from_port": "output",
+   "to": 5,
+   "to_port": "layer 2"
+  }
+ ]
+}

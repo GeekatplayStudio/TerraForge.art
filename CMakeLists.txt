@@ -170,7 +170,19 @@ target_include_directories(undo_tests PRIVATE studio)
 target_link_libraries(undo_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# Regression lock: guards every shipped capability against silent removal.
+add_executable(regression_tests tests/cpp/test_regression.cpp)
+target_link_libraries(regression_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
+# Universal node contract, applied to every node in the registry.
+add_executable(node_tests tests/cpp/test_nodes.cpp)
+target_link_libraries(node_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 enable_testing()
+add_test(NAME RegressionLock COMMAND regression_tests)
+add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)

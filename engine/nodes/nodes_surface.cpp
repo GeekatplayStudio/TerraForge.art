@@ -638,23 +638,32 @@ REGISTER_NODE(
       float talus = 0.35f * hamp / in->w;
       Heightmap delta(in->w, in->h);
       for (int it = 0; it < settle; ++it) {
-        std::fill(delta.v.begin(), delta.v.end(), 0.f);
+        // Two-pass gather, not a scatter: each cell computes what it gives away
+        // and what it receives by reading its neighbours, so a worker only ever
+        // writes its own cell. Scattering into neighbours races across the row
+        // bands and makes the result non-deterministic.
         parallel_rows(in->h, [&](int y0, int y1) {
           for (int y = y0; y < y1; ++y)
             for (int x = 0; x < in->w; ++x) {
               float surf = in->at(x, y) + depth.at(x, y);
+              float d_here = depth.at(x, y);
               static const int dx4[4] = {-1, 1, 0, 0}, dy4[4] = {0, 0, -1, 1};
+              float acc = 0.f;
               for (int k = 0; k < 4; ++k) {
                 int nx2 = std::clamp(x + dx4[k], 0, in->w - 1);
                 int ny2 = std::clamp(y + dy4[k], 0, in->h - 1);
                 float nsurf = in->at(nx2, ny2) + depth.at(nx2, ny2);
-                float diff = surf - nsurf - talus;
-                if (diff > 0 && depth.at(x, y) > 0) {
-                  float move = std::min(diff * 0.2f, depth.at(x, y) * 0.5f);
-                  delta.at(x, y) -= move;
-                  delta.at(nx2, ny2) += move;
-                }
+                float d_there = depth.at(nx2, ny2);
+                // this cell sheds onto the neighbour
+                float out_diff = surf - nsurf - talus;
+                if (out_diff > 0 && d_here > 0)
+                  acc -= std::min(out_diff * 0.2f, d_here * 0.5f);
+                // the neighbour sheds onto this cell
+                float in_diff = nsurf - surf - talus;
+                if (in_diff > 0 && d_there > 0)
+                  acc += std::min(in_diff * 0.2f, d_there * 0.5f);
               }
+              delta.at(x, y) = acc;
             }
         });
         parallel_index(depth.v.size(), [&](size_t i0, size_t i1) {

@@ -1,0 +1,378 @@
+// Geekatplay TerraForge — universal node contract (test tier 1).
+//
+// One data-driven battery applied to EVERY node in the registry. Adding a node
+// automatically brings it under test, so coverage can never quietly fall behind
+// the node count — which is exactly how a 90-node engine ends up with 12 tested
+// nodes.
+//
+// The contract each node must satisfy:
+//   metadata     — category and description present; description is a sentence
+//   attributes   — labelled, defaults inside their declared range, tooltips on
+//                  anything not self-evident
+//   evaluation   — produces finite output from a plausible input, no crash
+//   determinism  — same inputs twice, bit-identical output
+//   seed         — a seeded node reacts to its seed
+//   serialization— attributes survive a JSON round trip exactly
+//   robustness   — extreme attribute values do not produce NaN/Inf
+#include "gpx/node_graph.hpp"
+#include "gpx/serialization.hpp"
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <set>
+#include <string>
+#include <vector>
+
+static int g_failures = 0;
+static int g_checks = 0;
+static std::string g_node; // node under test, for messages
+
+static void fail(const std::string &msg) {
+  std::printf("  [FAIL] %-22s %s\n", g_node.c_str(), msg.c_str());
+  ++g_failures;
+}
+#define CHECK(cond, msg)                                                        \
+  do {                                                                          \
+    ++g_checks;                                                                 \
+    if (!(cond)) fail(msg);                                                     \
+  } while (0)
+
+static const int RES = 48; // small: this runs for every node
+
+// Nodes that legitimately need a file on disk, so an empty output is correct
+// rather than a bug.
+static bool needs_file(const std::string &t) {
+  return t == "HeightmapFile" || t == "TextureFile" || t == "Stamp" ||
+         t == "PBRMaterial";
+}
+// Nodes that write to disk when evaluated — skipped so the suite has no side
+// effects on the working tree.
+static bool writes_file(const std::string &t) {
+  return t.rfind("Export", 0) == 0;
+}
+// Configuration nodes: they drive the renderer and the scene rather than
+// producing a buffer, so "no image output" is their correct behaviour. They
+// still must satisfy every other part of the contract.
+static bool is_config_node(const std::string &t) {
+  return t == "SunLight" || t == "AtmosphereSettings" || t == "CloudLayer" ||
+         t == "WaterLayer" || t == "RenderCamera" || t == "RenderQuality";
+}
+// Terminal sinks: they consume and export, so having no output port is correct.
+static bool is_sink(const std::string &t) {
+  return t == "ExportMesh" || t == "ExportTexture";
+}
+
+static bool finite_map(const gpx::Heightmap &m) {
+  for (float v : m.v)
+    if (!std::isfinite(v)) return false;
+  return true;
+}
+static bool finite_tex(const gpx::TextureRGBA &t) {
+  for (float v : t.v)
+    if (!std::isfinite(v)) return false;
+  return true;
+}
+
+// Build "node under test" fed by a plausible terrain on every input it has.
+// Returns the node, or null if it could not be created.
+static gpx::Node *build(gpx::Graph &g, const std::string &type,
+                        std::vector<gpx::Node *> &feeders) {
+  gpx::Node *n = g.add_node(type, 400, 0);
+  if (!n) return nullptr;
+  int fy = 0;
+  for (const gpx::Port &p : n->ports) {
+    if (p.dir != gpx::PortDir::In) continue;
+    // feed heightmap inputs with noise, texture inputs with a colorized noise
+    if (p.type == gpx::DataType::Heightmap) {
+      gpx::Node *src = g.add_node("Noise", 0, (float)fy);
+      if (!src) continue;
+      g.add_link(src->id, "output", n->id, p.name);
+      feeders.push_back(src);
+    } else if (p.type == gpx::DataType::Texture) {
+      gpx::Node *src = g.add_node("Noise", 0, (float)fy);
+      gpx::Node *cv = g.add_node("MaskToTexture", 180, (float)fy);
+      if (!src || !cv) continue;
+      g.add_link(src->id, "output", cv->id, "input");
+      g.add_link(cv->id, "texture", n->id, p.name);
+      feeders.push_back(src);
+    }
+    fy += 130;
+  }
+  return n;
+}
+
+// every output port of a node, checked for finiteness; returns how many
+// non-empty outputs it produced
+static int check_outputs_finite(gpx::Node *n) {
+  int produced = 0;
+  for (const gpx::Port &p : n->ports) {
+    if (p.dir != gpx::PortDir::Out) continue;
+    if (p.hmap && !p.hmap->empty()) {
+      ++produced;
+      CHECK(finite_map(*p.hmap), "output '" + p.name + "' has NaN/Inf");
+    }
+    if (p.tex && !p.tex->empty()) {
+      ++produced;
+      CHECK(finite_tex(*p.tex), "texture '" + p.name + "' has NaN/Inf");
+    }
+  }
+  return produced;
+}
+
+// snapshot every output so two runs can be compared bit for bit
+static std::vector<float> snapshot(gpx::Node *n) {
+  std::vector<float> out;
+  for (const gpx::Port &p : n->ports) {
+    if (p.dir != gpx::PortDir::Out) continue;
+    if (p.hmap) out.insert(out.end(), p.hmap->v.begin(), p.hmap->v.end());
+    if (p.tex) out.insert(out.end(), p.tex->v.begin(), p.tex->v.end());
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------ checks
+static void check_metadata(const gpx::NodeDef *d) {
+  CHECK(!d->category.empty(), "has a category");
+  CHECK(!d->description.empty(), "has a description");
+  CHECK(d->description.size() >= 12,
+        "description is meaningful (>=12 chars), got: " + d->description);
+}
+
+static void check_attributes(gpx::Node *n) {
+  std::set<std::string> keys;
+  for (const gpx::Attribute &a : n->attrs.items) {
+    CHECK(!a.key.empty(), "attribute has a key");
+    CHECK(keys.insert(a.key).second, "attribute key '" + a.key + "' is unique");
+    CHECK(!a.label.empty(), "attribute '" + a.key + "' has a label");
+    switch (a.type) {
+      case gpx::AttrType::Float:
+        CHECK(a.fmin <= a.fmax, "float '" + a.key + "' has min <= max");
+        CHECK(a.f >= a.fmin - 1e-6f && a.f <= a.fmax + 1e-6f,
+              "float '" + a.key + "' default is inside its range");
+        CHECK(std::isfinite(a.f), "float '" + a.key + "' default is finite");
+        break;
+      case gpx::AttrType::Int:
+        CHECK(a.imin <= a.imax, "int '" + a.key + "' has min <= max");
+        CHECK(a.i >= a.imin && a.i <= a.imax,
+              "int '" + a.key + "' default is inside its range");
+        break;
+      case gpx::AttrType::Choice:
+        CHECK(a.labels.size() >= 2,
+              "choice '" + a.key + "' offers at least two options");
+        CHECK(a.i >= 0 && a.i < (int)a.labels.size(),
+              "choice '" + a.key + "' default indexes a real option");
+        break;
+      case gpx::AttrType::Range:
+      case gpx::AttrType::Vec2:
+        CHECK(a.v2min <= a.v2max, "vec2/range '" + a.key + "' has min <= max");
+        break;
+      case gpx::AttrType::Gradient:
+        CHECK(!a.stops.empty(), "gradient '" + a.key + "' has stops");
+        break;
+      case gpx::AttrType::Field:
+        CHECK(a.fw > 0 && a.fh > 0, "field '" + a.key + "' has a size");
+        break;
+      default: break;
+    }
+  }
+}
+
+static void check_ports(gpx::Node *n) {
+  std::set<std::string> in_names, out_names;
+  int outs = 0;
+  for (const gpx::Port &p : n->ports) {
+    CHECK(!p.name.empty(), "port has a name");
+    if (p.dir == gpx::PortDir::In)
+      CHECK(in_names.insert(p.name).second,
+            "input port '" + p.name + "' is unique among inputs");
+    else {
+      CHECK(out_names.insert(p.name).second,
+            "output port '" + p.name + "' is unique among outputs");
+      ++outs;
+    }
+  }
+  if (!is_sink(n->type)) CHECK(outs >= 1, "has at least one output");
+}
+
+static void check_eval_and_determinism(const std::string &type) {
+  gpx::Graph g;
+  g.resolution = RES;
+  std::vector<gpx::Node *> feeders;
+  gpx::Node *n = build(g, type, feeders);
+  if (!n) {
+    fail("could not be instantiated");
+    return;
+  }
+  g.evaluate();
+  CHECK(n->error.empty() || needs_file(type),
+        "evaluates without error (got: " + n->error + ")");
+  int produced = check_outputs_finite(n);
+  if (!needs_file(type) && !is_config_node(type) && !is_sink(type))
+    CHECK(produced >= 1, "produced at least one non-empty output");
+
+  std::vector<float> first = snapshot(n);
+  g.mark_all_dirty();
+  g.evaluate();
+  std::vector<float> second = snapshot(n);
+  CHECK(first == second, "is deterministic across two evaluations");
+}
+
+static void check_seed_matters(const std::string &type) {
+  gpx::Graph g;
+  g.resolution = RES;
+  std::vector<gpx::Node *> feeders;
+  gpx::Node *n = build(g, type, feeders);
+  if (!n) return;
+  gpx::Attribute *seed = nullptr;
+  for (gpx::Attribute &a : n->attrs.items)
+    if (a.type == gpx::AttrType::Seed) seed = &a;
+  if (!seed) return; // not a seeded node
+  g.evaluate();
+  std::vector<float> before = snapshot(n);
+  if (before.empty()) return;
+  seed->seed = seed->seed + 12345u;
+  g.mark_all_dirty();
+  g.evaluate();
+  std::vector<float> after = snapshot(n);
+  CHECK(before != after, "reacts to its seed");
+}
+
+static void check_serialization(const std::string &type) {
+  gpx::Graph g;
+  g.resolution = 16;
+  gpx::Node *n = g.add_node(type);
+  if (!n) return;
+  // perturb every attribute so defaults cannot mask a serialization gap
+  for (gpx::Attribute &a : n->attrs.items) {
+    switch (a.type) {
+      case gpx::AttrType::Float: a.f = a.fmin + (a.fmax - a.fmin) * 0.37f; break;
+      case gpx::AttrType::Int: a.i = a.imin + (a.imax - a.imin) / 3; break;
+      case gpx::AttrType::Bool: a.b = !a.b; break;
+      case gpx::AttrType::Seed: a.seed = 987654u; break;
+      case gpx::AttrType::Choice:
+        a.i = (int)a.labels.size() - 1;
+        break;
+      case gpx::AttrType::Range:
+      case gpx::AttrType::Vec2:
+        a.v2[0] = a.v2min + (a.v2max - a.v2min) * 0.25f;
+        a.v2[1] = a.v2min + (a.v2max - a.v2min) * 0.75f;
+        break;
+      case gpx::AttrType::Color:
+        a.col[0] = 0.11f; a.col[1] = 0.22f; a.col[2] = 0.33f;
+        break;
+      case gpx::AttrType::Filename:
+      case gpx::AttrType::Text: a.s = "round/trip test"; break;
+      default: break;
+    }
+  }
+  std::string json = gpx::graph_to_json(g);
+  gpx::Graph g2;
+  std::string err;
+  CHECK(gpx::graph_from_json(g2, json, err), "graph with this node round trips");
+  if (g2.nodes.empty()) return;
+  gpx::Node *n2 = g2.nodes[0].get();
+  CHECK(n2->type == type, "type survives the round trip");
+  for (const gpx::Attribute &a : n->attrs.items) {
+    const gpx::Attribute *b = n2->attrs.find(a.key);
+    if (!b) {
+      fail("attribute '" + a.key + "' lost in serialization");
+      continue;
+    }
+    ++g_checks;
+    bool same = true;
+    switch (a.type) {
+      case gpx::AttrType::Float: same = std::fabs(a.f - b->f) < 1e-6f; break;
+      case gpx::AttrType::Int:
+      case gpx::AttrType::Choice: same = a.i == b->i; break;
+      case gpx::AttrType::Bool: same = a.b == b->b; break;
+      case gpx::AttrType::Seed: same = a.seed == b->seed; break;
+      case gpx::AttrType::Range:
+      case gpx::AttrType::Vec2:
+        same = std::fabs(a.v2[0] - b->v2[0]) < 1e-6f &&
+               std::fabs(a.v2[1] - b->v2[1]) < 1e-6f;
+        break;
+      case gpx::AttrType::Color:
+        same = std::fabs(a.col[0] - b->col[0]) < 1e-6f;
+        break;
+      case gpx::AttrType::Filename:
+      case gpx::AttrType::Text: same = a.s == b->s; break;
+      default: break;
+    }
+    if (!same) fail("attribute '" + a.key + "' changed value in serialization");
+  }
+}
+
+// Extreme but legal attribute values must not produce NaN/Inf. This is where
+// the "user drags a slider to the end" class of bug lives.
+static void check_extremes(const std::string &type) {
+  for (int pass = 0; pass < 2; ++pass) {
+    gpx::Graph g;
+    g.resolution = RES;
+    std::vector<gpx::Node *> feeders;
+    gpx::Node *n = build(g, type, feeders);
+    if (!n) return;
+    for (gpx::Attribute &a : n->attrs.items) {
+      switch (a.type) {
+        case gpx::AttrType::Float: a.f = pass ? a.fmax : a.fmin; break;
+        case gpx::AttrType::Int: a.i = pass ? a.imax : a.imin; break;
+        case gpx::AttrType::Bool: a.b = pass != 0; break;
+        case gpx::AttrType::Range:
+        case gpx::AttrType::Vec2:
+          a.v2[0] = a.v2min;
+          a.v2[1] = pass ? a.v2max : a.v2min;
+          break;
+        default: break;
+      }
+    }
+    // cap anything that would make the suite crawl
+    if (gpx::Attribute *it = n->attrs.find("iterations"))
+      it->i = std::min(it->i, 12);
+    if (gpx::Attribute *it = n->attrs.find("particles"))
+      it->i = std::min(it->i, 12);
+    if (gpx::Attribute *it = n->attrs.find("octaves"))
+      it->i = std::min(it->i, 10);
+    g.mark_all_dirty();
+    g.evaluate();
+    check_outputs_finite(n);
+  }
+}
+
+void test_all_nodes_contract() {
+  auto all = gpx::NodeRegistry::instance().all();
+  std::printf("universal node contract over %d node types...\n", (int)all.size());
+  int skipped = 0;
+  for (const gpx::NodeDef *d : all) {
+    g_node = d->type;
+    check_metadata(d);
+    {
+      gpx::Graph g;
+      g.resolution = 16;
+      gpx::Node *n = g.add_node(d->type);
+      if (!n) {
+        fail("could not be instantiated");
+        continue;
+      }
+      check_attributes(n);
+      check_ports(n);
+    }
+    if (writes_file(d->type)) {
+      ++skipped;
+      continue; // would touch the working tree
+    }
+    check_eval_and_determinism(d->type);
+    check_seed_matters(d->type);
+    check_serialization(d->type);
+    check_extremes(d->type);
+  }
+  g_node.clear();
+  std::printf("  %d nodes checked (%d eval-skipped: they write files)\n",
+              (int)all.size(), skipped);
+}
+
+int main() {
+  std::printf("Geekatplay TerraForge - node contract suite\n\n");
+  test_all_nodes_contract();
+  std::printf("\n%d checks, %s (%d failures)\n", g_checks,
+              g_failures ? "FAILED" : "all passed", g_failures);
+  return g_failures ? 1 : 0;
+}

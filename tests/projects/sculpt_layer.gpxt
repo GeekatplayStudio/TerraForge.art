@@ -1,0 +1,48 @@
+{
+ "app": "Geekatplay Studio",
+ "version": 2,
+ "resolution": 64,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "Noise",
+   "pos": [
+    0,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 2,
+   "type": "TerrainSculpt",
+   "pos": [
+    200,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 3,
+   "type": "TerrainOutput",
+   "pos": [
+    400,
+    0
+   ],
+   "attrs": {}
+  }
+ ],
+ "links": [
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 2,
+   "to_port": "input"
+  },
+  {
+   "from": 2,
+   "from_port": "output",
+   "to": 3,
+   "to_port": "heightmap"
+  }
+ ]
+}

@@ -1,0 +1,153 @@
+{
+ "app": "Geekatplay Studio",
+ "version": 2,
+ "resolution": 64,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "Noise",
+   "pos": [
+    0,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 2,
+   "type": "Transform",
+   "pos": [
+    200,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 3,
+   "type": "Shear",
+   "pos": [
+    400,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 4,
+   "type": "WarpDirectional",
+   "pos": [
+    600,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 5,
+   "type": "Fold",
+   "pos": [
+    800,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 6,
+   "type": "ExpandShrink",
+   "pos": [
+    1000,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 7,
+   "type": "Plateau",
+   "pos": [
+    1200,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 8,
+   "type": "Clamp",
+   "pos": [
+    1400,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 9,
+   "type": "Remap",
+   "pos": [
+    1600,
+    0
+   ],
+   "attrs": {}
+  },
+  {
+   "id": 10,
+   "type": "GammaCorrection",
+   "pos": [
+    1800,
+    0
+   ],
+   "attrs": {}
+  }
+ ],
+ "links": [
+  {
+   "from": 1,
+   "from_port": "output",
+   "to": 2,
+   "to_port": "input"
+  },
+  {
+   "from": 2,
+   "from_port": "output",
+   "to": 3,
+   "to_port": "input"
+  },
+  {
+   "from": 3,
+   "from_port": "output",
+   "to": 4,
+   "to_port": "input"
+  },
+  {
+   "from": 4,
+   "from_port": "output",
+   "to": 5,
+   "to_port": "input"
+  },
+  {
+   "from": 5,
+   "from_port": "output",
+   "to": 6,
+   "to_port": "input"
+  },
+  {
+   "from": 6,
+   "from_port": "output",
+   "to": 7,
+   "to_port": "input"
+  },
+  {
+   "from": 7,
+   "from_port": "output",
+   "to": 8,
+   "to_port": "input"
+  },
+  {
+   "from": 8,
+   "from_port": "output",
+   "to": 9,
+   "to_port": "input"
+  },
+  {
+   "from": 9,
+   "from_port": "output",
+   "to": 10,
+   "to_port": "input"
+  }
+ ]
+}

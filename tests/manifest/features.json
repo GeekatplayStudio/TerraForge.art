@@ -1,0 +1,146 @@
+{
+  "_comment": [
+    "Feature manifest — the regression lock's human-auditable checklist.",
+    "Every shipped user-visible capability appears here and names the test that",
+    "owns it. regression_tests verifies each named test symbol still exists in",
+    "its source file, so deleting a test fails the build. Add an entry whenever",
+    "a phase ships something a user can see; never delete one without a written",
+    "reason in the commit message.",
+    "Node-level and attribute-level coverage is handled separately and",
+    "exhaustively by nodes.txt / attributes.txt — this file is for capabilities."
+  ],
+  "features": [
+
+    { "id": "engine.registry", "area": "engine", "phase": "1",
+      "description": "Self-registering node registry with categories and descriptions",
+      "test_file": "test_engine.cpp", "test_symbol": "test_registry" },
+
+    { "id": "engine.eval_cache", "area": "engine", "phase": "1",
+      "description": "Dirty-tracked evaluation: clean nodes are not recomputed, dirt flows downstream only",
+      "test_file": "test_engine.cpp", "test_symbol": "test_graph_eval" },
+
+    { "id": "engine.cycle_rejection", "area": "engine", "phase": "1",
+      "description": "Cycles are rejected when a link would create one",
+      "test_file": "test_engine.cpp", "test_symbol": "test_cycle_rejection" },
+
+    { "id": "engine.determinism", "area": "engine", "phase": "1",
+      "description": "Same seed reproduces bit-identical terrain; different seed differs",
+      "test_file": "test_engine.cpp", "test_symbol": "test_determinism" },
+
+    { "id": "engine.serialization", "area": "engine", "phase": "1",
+      "description": "Graph round-trips through JSON with attributes and links intact",
+      "test_file": "test_engine.cpp", "test_symbol": "test_serialization" },
+
+    { "id": "terrain.erosion_physics", "area": "terrain", "phase": "2",
+      "description": "Droplet and pipe-model hydraulic erosion, stream power (explicit + implicit), all preserve relief and stay bounded",
+      "test_file": "test_engine.cpp", "test_symbol": "test_erosion" },
+
+    { "id": "terrain.masks_logic", "area": "terrain", "phase": "5",
+      "description": "Slope/altitude/curvature/cavity masks and logic nodes output normalized [0,1] masks",
+      "test_file": "test_engine.cpp", "test_symbol": "test_masks_and_logic" },
+
+    { "id": "terrain.surface_hydro", "area": "terrain", "phase": "6",
+      "description": "Terragen/Gaea-class surface pack: power fractal, stratify, craggy, fake stones, snow, rivers, coast",
+      "test_file": "test_engine.cpp", "test_symbol": "test_surface_nodes" },
+
+    { "id": "terrain.workflow_determinism", "area": "terrain", "phase": "11",
+      "description": "A whole authored workflow reproduces bit-identically across runs",
+      "test_file": "test_engine.cpp", "test_symbol": "test_workflow_determinism" },
+
+    { "id": "terrain.effects", "area": "terrain", "phase": "16",
+      "description": "Grit, Gravel, Peaks, Sharpen, Cracks, Glaciation, Dissolve, TerrainClip — all deterministic, Dissolve emits a flow map, TerrainClip flattens and emits a hole mask",
+      "test_file": "test_engine.cpp", "test_symbol": "test_terrain_effects" },
+
+    { "id": "terrain.sculpt_layer", "area": "terrain", "phase": "16",
+      "description": "TerrainSculpt is a non-destructive layer: unpainted is a passthrough, strokes raise the surface, stroke mask marks edits, painted field survives save/load",
+      "test_file": "test_engine.cpp", "test_symbol": "test_sculpt_layer" },
+
+    { "id": "materials.chain", "area": "materials", "phase": "2",
+      "description": "Terrain texture, splatmap, splat material and PBR derivation produce finite textures with no node errors",
+      "test_file": "test_engine.cpp", "test_symbol": "test_materials" },
+
+    { "id": "materials.graph", "area": "materials", "phase": "10",
+      "description": "Material graph: MaterialOutput plus channel nodes evaluate as a chain",
+      "test_file": "test_engine.cpp", "test_symbol": "test_material_graph" },
+
+    { "id": "materials.library", "area": "materials", "phase": "11",
+      "description": "A material subgraph saves to and loads from the library with fresh node ids",
+      "test_file": "test_engine.cpp", "test_symbol": "test_material_library_roundtrip" },
+
+    { "id": "cameras.optics", "area": "cameras", "phase": "13",
+      "description": "Real camera optics: sensor formats, FOV from focal length, EV100 and the exposure triangle, film stocks",
+      "test_file": "test_engine.cpp", "test_symbol": "test_camera_math" },
+
+    { "id": "ai.graph_spec", "area": "ai", "phase": "4",
+      "description": "AI graph spec builder tolerates unknown types, label strings and markdown fences; registry catalog lists nodes and attributes",
+      "test_file": "test_engine.cpp", "test_symbol": "test_ai_spec" },
+
+    { "id": "planets.relief", "area": "planets", "phase": "17",
+      "description": "Planetary relief is deterministic, bounded, continuous over the sphere with no seams, seed-dependent, and silenced by zero coverage",
+      "test_file": "test_engine.cpp", "test_symbol": "test_planet_math" },
+
+    { "id": "undo.graph", "area": "undo", "phase": "15",
+      "description": "Undo/redo of node add/delete, attribute edits and links",
+      "test_file": "test_undo.cpp", "test_symbol": "test_graph_undo" },
+
+    { "id": "undo.attributes_links", "area": "undo", "phase": "15",
+      "description": "Attribute values and links are restored exactly by undo and re-applied by redo",
+      "test_file": "test_undo.cpp", "test_symbol": "test_attributes_and_links" },
+
+    { "id": "undo.world", "area": "undo", "phase": "15",
+      "description": "World settings (sun, fog) participate in the same undo history",
+      "test_file": "test_undo.cpp", "test_symbol": "test_world_undo" },
+
+    { "id": "undo.scene", "area": "undo", "phase": "15",
+      "description": "Scene objects and the active camera are restored by undo",
+      "test_file": "test_undo.cpp", "test_symbol": "test_scene_undo" },
+
+    { "id": "undo.mesh_data", "area": "undo", "phase": "15",
+      "description": "Imported mesh vertices survive an undo round trip bit-identically while being shared between snapshots",
+      "test_file": "test_undo.cpp", "test_symbol": "test_mesh_vertices_survive" },
+
+    { "id": "undo.branching", "area": "undo", "phase": "15",
+      "description": "A new edit discards the redo branch",
+      "test_file": "test_undo.cpp", "test_symbol": "test_redo_branch_truncation" },
+
+    { "id": "undo.history_jump", "area": "undo", "phase": "15",
+      "description": "Named history list with jump-to-any-point",
+      "test_file": "test_undo.cpp", "test_symbol": "test_history_and_jump" },
+
+    { "id": "undo.cap", "area": "undo", "phase": "15",
+      "description": "History cap trims oldest steps without corrupting the position",
+      "test_file": "test_undo.cpp", "test_symbol": "test_stack_overflow_is_stable" },
+
+    { "id": "undo.determinism", "area": "undo", "phase": "15",
+      "description": "Terrain after an undo recomputes bit-identically to before the edit",
+      "test_file": "test_undo.cpp", "test_symbol": "test_undo_is_deterministic" },
+
+    { "id": "planets.scene", "area": "planets", "phase": "17",
+      "description": "Multiple planets coexist with auto-placement, each with surface layers; ground-plane layers are separate; all undoable",
+      "test_file": "test_undo.cpp", "test_symbol": "test_planets_in_scene" },
+
+    { "id": "planets.persistence", "area": "planets", "phase": "17",
+      "description": "Planets and infinite terrain layers survive save/load with parenting intact",
+      "test_file": "test_undo.cpp", "test_symbol": "test_planet_persistence" },
+
+    { "id": "regression.node_census", "area": "meta", "phase": "18",
+      "description": "No node type may ever be removed or change category",
+      "test_file": "test_regression.cpp", "test_symbol": "check_node_census" },
+
+    { "id": "regression.attr_census", "area": "meta", "phase": "18",
+      "description": "No node attribute may be removed or change type",
+      "test_file": "test_regression.cpp", "test_symbol": "check_attr_census" },
+
+    { "id": "regression.goldens", "area": "meta", "phase": "18",
+      "description": "Committed projects re-evaluate to the same bits",
+      "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },
+
+    { "id": "regression.manifest", "area": "meta", "phase": "18",
+      "description": "Every manifest feature names a test that still exists",
+      "test_file": "test_regression.cpp", "test_symbol": "check_feature_manifest" },
+
+    { "id": "nodes.contract", "area": "meta", "phase": "18",
+      "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
+      "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
+  ]
+}
