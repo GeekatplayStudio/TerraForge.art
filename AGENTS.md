@@ -56,6 +56,68 @@ each one was a bug we already paid for. Do not regress them.
    properties UI, serialization, and the AI catalog all come for free. Give
    every parameter a tooltip.
 
+## Node framework
+
+The graph has **two domains**. The *raster* domain passes buffers and can look
+at neighbours — that is where erosion lives. The *field* domain evaluates one
+point in 3D, is resolution-independent, and compiles to a shader. `Rasterize`
+and `Sample` are the only bridges. Put a node in the domain its maths actually
+belongs to; do not fake a field node with a 1×1 buffer.
+
+1. **Every field node must have a GLSL emitter** in `engine/field_glsl.cpp`.
+   `node_tests` enforces it. A field node that evaluates on the CPU but has no
+   emitter silently does nothing on the GPU — the worst possible failure, so
+   it is a build-breaking omission instead.
+2. **The CPU and GLSL paths must agree.** They share `gpx::planet::pl_*` rather
+   than reimplementing noise. `verify_field_gpu` measures the agreement against
+   a real GL context; the threshold is 2e-4 and the measured worst case is
+   1.3e-5. Re-run it after touching either side.
+3. **Bypass is resolved in link resolution**, not per node
+   (`resolve_upstream` / `bypass_source`). Never add a per-node "enabled"
+   check — the graph already walks through bypassed nodes in both domains, for
+   every future node, for free. Bypass serializes only when false, so old
+   projects load enabled.
+4. **Universal blend is graph-provided.** `add_universal_blend` gives a `blend`
+   input to any node that turns terrain into terrain (has ports named exactly
+   `input` and `output`, and is not Logic/Mask/Export/Group). Do not hand-roll
+   masking on a new filter that fits that shape, and do not widen the rule —
+   blending a selector's mask or a router's passthrough toward a heightmap is
+   meaningless, and an exporter is a sink. It must stay a bit-exact no-op when
+   unconnected.
+5. **A MetaNode injects values across its boundary by parking a buffer on the
+   input port**, so `in_hmap` / `in_tex` prefer a port's own buffer over the
+   link. Keep that precedence.
+6. **Animation tracks live on `Attribute` itself**, never in a side table —
+   that is what makes copy, serialize, undo and publish carry the animation
+   automatically. `Graph::apply_animation()` samples before the topological
+   walk, so **no node knows animation exists**; it reads the attribute it
+   always read. Keep it that way.
+7. **`for (x : json::parse(s)["nodes"])` iterates a subobject of a destroyed
+   temporary.** Parse into a named value first. This silently produced empty
+   MetaNode inner graphs.
+
+## Tests
+
+1. **`node_tests` is one data-driven battery over the whole registry**, so a
+   new node is tested the moment it registers and coverage cannot lag behind
+   the node count. If a node genuinely cannot be evaluated in a test, extend
+   the exemption predicates (`needs_file`, `writes_file`, `is_config_node`,
+   `is_sink`, `is_container`) rather than special-casing it by name.
+2. **The regression lock is a ratchet.** A node may never be removed or change
+   category; an attribute may never be removed or be retyped; the golden
+   projects must keep evaluating to the same hash; every feature in
+   `tests/manifest/features.json` must keep naming a test that exists.
+3. **`regression_tests --update` is not a way to make a failure go away.**
+   Re-record only when the change was intentional, and say in the commit
+   message why the output moved. It caught two real bugs (a non-deterministic
+   Snow and a Cracks node that did nothing) by refusing to be quiet.
+4. **Add a feature manifest entry whenever a phase ships something a user can
+   see.** Never delete one without a written reason.
+5. `.gitignore` excludes `*.gpxt`; the golden corpus is re-included by
+   `!tests/projects/*.gpxt`. Do not lose that line.
+6. Multi-line commit messages break PowerShell here-strings — use
+   `git commit -F <file>`.
+
 ## AI, API and MCP
 
 1. The UI assistant, the Python API and MCP tools all execute the **same**
@@ -111,5 +173,8 @@ each one was a bug we already paid for. Do not regress them.
 ## Before you commit
 
 - `.\build.ps1` must succeed (it fails loudly; do not trust a stale binary).
-- `.\test.ps1` must pass.
-- Never commit `docs_private/`, build output, or `external/`.
+  Kill a running `geekatplay_studio` first — a locked exe fails the link with
+  `Permission denied`.
+- `.\test.ps1` must pass — all six suites.
+- Never commit `docs_private/`, build output, or `external/`. Roadmaps,
+  development notes and progress documents stay out of the repository.

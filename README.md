@@ -12,6 +12,31 @@ real-time OpenGL viewport.
 
 ## Features
 
+### The node graph
+- **Two domains, one graph.** Alongside the raster graph — buffers, neighbour-
+  aware, where erosion lives — is a **field domain**: nodes that evaluate a
+  single point in 3D and are therefore resolution-independent. `Rasterize` and
+  `Sample` bridge the two, so a procedural field can be baked for erosion and
+  an eroded heightfield can be read back by a field graph.
+- **Field graphs compile to GLSL.** A field network is transpiled to a shader
+  and evaluated on the GPU, sharing its noise implementation with the planet
+  renderer so the two agree by construction. CPU and GPU results are verified
+  to agree to within 1.3e-5 over 20,480 samples.
+- **Bypass any node** (`Ctrl+E`) — the graph resolves links straight through
+  it, so it works down chains, in both domains, and for every future node.
+- **MetaNodes** (`Ctrl+G`): group a subgraph into one node, publish the few
+  parameters that matter, and save it to your library as a reusable node with
+  its tuned values intact. Saved nodes appear under **My nodes**.
+- **Universal blend.** Any node that turns terrain into terrain gets a mask
+  input from the graph itself, so its effect can be limited anywhere without
+  each node reimplementing masking.
+- **Node List** — the same graph read as a tree from the result backwards,
+  with per-row bypass, so a scene can be built and understood without
+  untangling the network view.
+- **Animation-ready:** every parameter can carry a keyframe track (linear,
+  smooth or constant), sampled before evaluation. *The timeline UI is not
+  built yet.*
+
 ### Terrain
 - **Node graph engine** with dirty-tracking evaluation, multithreaded solvers,
   per-node previews and timings, and any resolution from 64 to 8192.
@@ -129,9 +154,22 @@ ollama pull llava            # AI terrain from a photograph
 .\test.ps1
 ```
 
-Runs the engine suite (node registry, evaluation and caching, cycle
-rejection, determinism, erosion, materials, serialization, AI graph
-building), the undo/redo suite and the Python suite.
+Six suites, all of which must pass before a commit:
+
+| Suite | Covers |
+|---|---|
+| `nodeterrain_tests` | The original solver library and CLI |
+| `engine_tests` | Registry, evaluation and caching, cycle rejection, determinism, erosion, materials, serialization, field domain, GLSL transpiler, bypass, MetaNodes, blend, animation |
+| `undo_tests` | Restore correctness, redo branching, history jumps, node library round-trip |
+| `node_tests` | **Universal node contract** — one data-driven battery over all 106 node types: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
+| `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, 11 committed projects must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
+| `pytest` | Render backends and AI helpers |
+
+The contract and regression suites are the reason features do not quietly
+disappear: 5,275 contract assertions and 1,423 regression checks over 106
+node types, 481 attributes and 43 manifest features. If a change to a golden
+is intentional, `regression_tests --update` re-records it — review that diff
+rather than trusting it.
 
 ---
 
@@ -145,6 +183,8 @@ building), the undo/redo suite and the Python suite.
 | `mcp_server/` | Tool server exposing the engine for automation |
 | `src/`, `include/` | Original C++ solver library and CLI |
 | `tests/` | C++ and Python test suites |
+| `tests/manifest/` | The regression lock's records: node, attribute, golden and feature censuses |
+| `tests/projects/` | Golden `.gpxt` projects, re-evaluated to a hash on every run |
 | `scripts/` | Dependency fetcher |
 
 ## Usage notes
@@ -155,6 +195,13 @@ building), the undo/redo suite and the Python suite.
   Node) that follows what you select and has a search box.
 - **Right-click a viewport** for view options; the same menu sets how many
   view windows you want. Layouts persist between sessions.
+- **In the node graph:** `Ctrl+E` bypasses the selected nodes, `Ctrl+G` groups
+  them into a MetaNode and `Ctrl+Shift+G` expands one back out. Bypassed nodes
+  are dimmed and tagged.
+- **Node List** (tabbed with the Library) shows the same graph as a tree from
+  the terrain result backwards, with each node's inputs indented beneath it.
+  Nodes that do not reach the result are listed separately rather than being
+  silently ignored.
 - **Undo/redo** (`Ctrl+Z` / `Ctrl+Y`, also `Ctrl+Shift+Z`) covers the node
   graph, scene objects and world settings as one history. Every step is
   named, and **Edit > History** lists them so you can jump straight back to
