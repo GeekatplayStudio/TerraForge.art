@@ -81,6 +81,10 @@ real-time OpenGL viewport.
   the viewport shades the terrain with it per pixel. Slope and facing come
   from the shaded normal, so the distribution follows detail finer than the
   heightmap carrying it.
+- **One graph, several channels.** The same node also takes **roughness** and
+  **bump**, each its own field. The distribution that decides where the grass
+  goes can say that the grass is rougher than the rock and has a finer grain.
+  An unconnected channel leaves that part of the shading alone.
 
 ### Terrain analysis
 - **Flow accumulation** (D8): how much water passes through each point.
