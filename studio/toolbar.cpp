@@ -302,6 +302,7 @@ static void prefs_dialog() {
 static void menu_view(App &a) {
   if (!ImGui::BeginMenu("View")) return;
   ImGui::MenuItem("Library", nullptr, &a.show_library);
+  ImGui::MenuItem("Node List", nullptr, &a.show_nodelist);
   ImGui::MenuItem("Properties", nullptr, &a.show_properties);
   ImGui::MenuItem("Viewport", nullptr, &a.show_viewport);
   ImGui::Separator();
@@ -646,5 +647,6 @@ void draw_toolbar(App &a) {
 }
 
 } // namespace studio
+
 
 

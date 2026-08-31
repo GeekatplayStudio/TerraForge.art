@@ -107,6 +107,7 @@ set(STUDIO_SOURCES
     studio/panel_graph.cpp
     studio/panel_properties.cpp
     studio/panel_library.cpp
+    studio/panel_nodelist.cpp
     studio/panel_viewport.cpp
     studio/toolbar.cpp
     studio/undo.cpp
@@ -192,6 +193,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
+
 
 
 

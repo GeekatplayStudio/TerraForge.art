@@ -78,6 +78,7 @@ struct App {
 
   // ui visibility
   bool show_library = true;
+  bool show_nodelist = true;
   bool show_properties = true;
   bool show_viewport = true;
   bool show_toolbar = true;
@@ -108,6 +109,7 @@ void draw_toolbar(App &a);
 void draw_panel_graph(App &a);
 void draw_panel_properties(App &a);
 void draw_panel_library(App &a);
+void draw_panel_nodelist(App &a);
 void draw_panel_viewport(App &a);
 void draw_panel_ai(App &a);
 void draw_panel_scene(App &a); // the Outliner
@@ -156,4 +158,5 @@ bool project_load(App &a, const std::string &path);
 void project_default_graph(App &a);
 
 } // namespace studio
+
 

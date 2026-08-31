@@ -102,6 +102,10 @@ static void build_default_layout(ImGuiID dockspace_id, int view_count) {
   ImGuiID top = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Up, 0.55f, nullptr,
                                             &main_id);
   ImGui::DockBuilderDockWindow("Library", left);
+  // The Node List is tabbed with the Library on purpose: it is the other way
+  // to reach the same graph, and Terragen's point is that you should be able
+  // to work entirely in it without ever opening the network.
+  ImGui::DockBuilderDockWindow("Node List", left);
   ImGui::DockBuilderDockWindow("AI", left); // tabbed with Library
   ImGui::DockBuilderDockWindow("Graph", main_id);
   // Blender layout: Outliner on top, one Properties editor below it
@@ -208,6 +212,7 @@ void run_main() {
       if (lk.owns_lock()) a.refresh_snapshot();
     }
     if (a.show_library) draw_panel_library(a);
+  if (a.show_nodelist) draw_panel_nodelist(a);
     if (a.show_viewport) draw_panel_viewport(a);
     draw_panel_graph(a);
     if (a.show_properties) draw_panel_properties(a);
@@ -345,4 +350,8 @@ void run_main() {
 }
 
 } // namespace studio
+
+
+
+
 
