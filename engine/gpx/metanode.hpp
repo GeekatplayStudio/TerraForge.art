@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” MetaNodes (P0.3).
+﻿// Geekatplay TerraForge — MetaNodes (P0.3).
 //
 // A MetaNode encapsulates part of a graph behind a single node. Vue is explicit
 // about why this is more than grouping (manual p976): because a MetaNode can be

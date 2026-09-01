@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” menu bar (File/Edit/View/Render/Help), tool strip
+﻿// Geekatplay TerraForge — menu bar (File/Edit/View/Render/Help), tool strip
 // with typed resolution, progress and resource usage.
 #include "app.hpp"
 #include "icons.hpp"
@@ -340,7 +340,7 @@ static void menu_view(App &a) {
       }
     }
     ImGui::Separator();
-    ImGui::MenuItem("Views are dockable windows â€” drag to float", nullptr, false,
+    ImGui::MenuItem("Views are dockable windows — drag to float", nullptr, false,
                     false);
     ImGui::EndMenu();
   }

@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” natural-language assistant shared by every tab.
+﻿// Geekatplay TerraForge — natural-language assistant shared by every tab.
 // The model returns a small JSON action document; ai_apply_actions executes
 // it. The scripting API and the MCP server call the same function, so text,
 // script and tool calls all take one code path.

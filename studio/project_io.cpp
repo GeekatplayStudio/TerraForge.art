@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” project save/load + default startup graph.
+﻿// Geekatplay Studio — project save/load + default startup graph.
 //
 // A project file is the graph JSON plus a "scene_bodies" section carrying the
 // planets and infinite terrain layers (the loader ignores keys it does not

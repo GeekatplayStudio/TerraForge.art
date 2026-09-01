@@ -226,6 +226,11 @@ int renderer_patches_visible();
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);
 void renderer_camera_look_at(const float target[3], float distance);
+// world-space right/up/forward of a view, for the corner orientation gizmo
+void renderer_view_basis(const RenderSettings::ViewConfig &vc, float *right,
+                         float *up, float *fwd);
+// swing the free orbit camera to look down a world axis (0=X, 1=Y, 2=Z)
+void renderer_camera_snap_axis(int axis, bool negative);
 // photographic grading applied to every pass this frame
 void renderer_set_film(const float tint[3], float saturation,
                        float exposure_mult);

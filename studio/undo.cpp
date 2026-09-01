@@ -25,7 +25,7 @@ static std::string mesh_key(const SceneObject &o) {
 //
 // Callers push before making a change, which means the state after that change
 // does not exist yet. The entry is left unfilled and materialized the moment
-// anything needs it â€” the next push, an undo, or a jump. That also means a
+// anything needs it — the next push, an undo, or a jump. That also means a
 // drag that streams many values only records its final result.
 struct Snapshot {
   std::string label;

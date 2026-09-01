@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” field domain nodes (P0.1).
+﻿// Geekatplay TerraForge — field domain nodes (P0.1).
 //
 // These are the resolution-independent half of the graph: each one answers
 // "what is the value at this point?" rather than "fill this buffer". They are
@@ -7,10 +7,10 @@
 // control possible.
 //
 // Two rules every node here follows, because both are load-bearing:
-//   * stateless â€” eval() reads only the node's attributes and the context, so
+//   * stateless — eval() reads only the node's attributes and the context, so
 //     the same point always gives the same answer and evaluation is trivially
 //     parallel and re-entrant.
-//   * no resolution â€” nothing here may know how big a buffer is. The moment a
+//   * no resolution — nothing here may know how big a buffer is. The moment a
 //     node needs neighbours or iteration it belongs in the raster domain.
 //
 // The 3D noise deliberately shares gpx::planet's implementation so a planet's
@@ -42,7 +42,7 @@ namespace gpx {
       [](Node &) {})
 
 FIELD_INPUT_NODE(FieldPosition,
-                 "Position of the point being evaluated â€” the root of most graphs",
+                 "Position of the point being evaluated — the root of most graphs",
                  FieldType::Vector,
                  { return FieldValue::vector(ctx.pos[0], ctx.pos[1], ctx.pos[2]); })
 
@@ -64,7 +64,7 @@ FIELD_INPUT_NODE(FieldOrientation,
                  "Compass direction the surface faces, as -1 to 1",
                  FieldType::Number, { return FieldValue(ctx.orientation); })
 
-FIELD_INPUT_NODE(FieldTime, "Current time in seconds â€” the hook for animation",
+FIELD_INPUT_NODE(FieldTime, "Current time in seconds — the hook for animation",
                  FieldType::Number, { return FieldValue(ctx.time); })
 
 // --------------------------------------------------------------- constants
@@ -283,7 +283,7 @@ REGISTER_NODE(
 // a graph-authored field are the same function, not two that happen to look
 // alike.
 REGISTER_NODE(
-    FieldNoise, "Field Noise", "3D coherent noise â€” the basis of procedural terrain and texture",
+    FieldNoise, "Field Noise", "3D coherent noise — the basis of procedural terrain and texture",
     [](Node &n) {
       n.add_field_in("position", FieldType::Vector, true);
       add_choice(n.attrs, "type", "Type",
@@ -356,8 +356,8 @@ REGISTER_NODE(
     [](Node &) {})
 
 // ------------------------------------------------------------------ bridges
-// Where the two domains meet. Everything the raster half already does â€”
-// erosion above all â€” stays reachable from a field graph, and vice versa.
+// Where the two domains meet. Everything the raster half already does —
+// erosion above all — stays reachable from a field graph, and vice versa.
 
 REGISTER_NODE(
     Rasterize, "Field Bridge",
@@ -369,7 +369,7 @@ REGISTER_NODE(
                "Region");
       add_float(n.attrs, "size", "Region size", 1.f, 0.001f, 100.f, "Region")
           .tooltip = "How much of the field's space this buffer covers.\n"
-                     "Smaller values zoom in â€” the field has no resolution of\n"
+                     "Smaller values zoom in — the field has no resolution of\n"
                      "its own, so this is what decides the detail you capture.";
       add_float(n.attrs, "height", "Sample height", 0.f, -10.f, 10.f, "Region")
           .tooltip = "The Y plane the field is sampled on, for 3D fields.";
@@ -450,7 +450,7 @@ REGISTER_NODE(
 // compute loads the inner graph, feeds it the boundary inputs, evaluates it and
 // copies the boundary outputs back.
 REGISTER_NODE(
-    MetaNode, "Group", "A sub-graph collapsed into one node â€” group, name and reuse",
+    MetaNode, "Group", "A sub-graph collapsed into one node — group, name and reuse",
     [](Node &n) {
       add_text(n.attrs, "inner_graph", "Inner graph", "", "Internal")
           .tooltip = "The encapsulated graph, stored with the project.\n"
@@ -458,7 +458,7 @@ REGISTER_NODE(
       add_text(n.attrs, "published", "Published parameters", "", "Internal")
           .tooltip = "Which inner parameters are exposed on this node.";
       add_text(n.attrs, "note", "Note", "", "Description")
-          .tooltip = "What this MetaNode is for â€” it becomes the tooltip when\n"
+          .tooltip = "What this MetaNode is for — it becomes the tooltip when\n"
                      "the node is reused from the library.";
     },
     [](Node &n) {
@@ -494,7 +494,7 @@ REGISTER_NODE(
       std::map<uint64_t, Node *> by_saved_id = metanode_id_map(n, inner);
 
       // inputs: copy this node's incoming buffers onto the inner target ports
-      // by substituting a Constant-like source is not needed â€” the inner node
+      // by substituting a Constant-like source is not needed — the inner node
       // reads through a link, so instead we write directly into a cache port
       for (const auto &[pname, inode, iport, is_in] : bound) {
         if (!is_in) continue;

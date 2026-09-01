@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” OpenGL scene renderer.
+﻿// Geekatplay TerraForge — OpenGL scene renderer.
 // Terrain (PBR: roughness/metallic/reflection/translucency/displacement),
 // volumetric raymarched clouds, height fog with absorption, water with foam,
 // shadow mapping, scene meshes, sun gizmo, selection outlines, object picking.
@@ -925,7 +925,7 @@ void renderer_camera_look_at(const float target[3], float distance) {
 void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
                            bool panning) {
   if (rotating) {
-    CAM.yaw += dx * 0.01f; // unbounded: full 360Â° orbit
+    CAM.yaw += dx * 0.01f; // unbounded: full 360° orbit
     CAM.pitch = std::fmin(std::fmax(CAM.pitch + dy * 0.01f, -1.55f), 1.55f);
   }
   if (panning) {
@@ -1360,9 +1360,12 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     bool is_sel = (&o - sc.objects.data()) == sc.selected;
     glUseProgram(prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(prog_mesh, "u_mvp"), 1, GL_FALSE, mvp);
-    glUniform4f(glGetUniformLocation(prog_mesh, "u_xform"), o.pos[0], o.pos[2],
-                o.scale, o.yaw * 0.017453293f);
-    uni1(prog_mesh, "u_ybase", o.pos[1] * RS.height_scale);
+    float model[16], nrm[9];
+    scene_object_matrix(o, RS.height_scale, model, nrm);
+    glUniformMatrix4fv(glGetUniformLocation(prog_mesh, "u_model"), 1, GL_FALSE,
+                       model);
+    glUniformMatrix3fv(glGetUniformLocation(prog_mesh, "u_nrm"), 1, GL_FALSE,
+                       nrm);
     uni3(prog_mesh, "u_color", o.color);
     uni3(prog_mesh, "u_sun", sun);
     uni3(prog_mesh, "u_sun_color", RS.sun_color);
@@ -1456,10 +1459,11 @@ static void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       draw_box_outline(mvp, 0.f, lv - 0.001f, 0.f, 1.f, lv + 0.001f, 1.f, orange);
     } else if (sel_type == SceneObject::Mesh) {
       const SceneObject &o = sc.objects[sc.selected];
-      float r = o.scale * 0.62f;
+      float r = scene_object_radius(o) * 0.62f;
+      float top = o.scale * std::fabs(o.scl[1]);
       draw_box_outline(mvp, o.pos[0] - r, o.pos[1] * RS.height_scale,
                        o.pos[2] - r, o.pos[0] + r,
-                       o.pos[1] * RS.height_scale + o.scale, o.pos[2] + r, orange);
+                       o.pos[1] * RS.height_scale + top, o.pos[2] + r, orange);
     } else if (sel_type == SceneObject::Sun && sun_on) {
       float gd = 1.9f, rr = 0.085f;
       float gx = 0.5f + sun[0] * gd, gy = RS.height_scale + sun[1] * gd,
@@ -1512,8 +1516,10 @@ static void ortho_matrices(const RenderSettings::ViewConfig &vc, int w, int h,
 
 // Builds the view/projection for either the free viewport camera or a scene
 // camera object (which carries an explicit eye/target and a physical lens).
-static void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
-  float target[3];
+// Where the perspective view is looking from and at: the free orbit camera,
+// or the scene camera the user is looking through. One place, so the matrices
+// and the orientation gizmo can never disagree about which way is up.
+static float perspective_eye_target(float *eye, float *target) {
   float fovy_rad = 0.9f;
   SceneState &sc = scene();
   int active = scene_active_camera();
@@ -1536,6 +1542,50 @@ static void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp)
     eye[2] = CAM.target[2] + CAM.dist * cp * cy;
     for (int i = 0; i < 3; ++i) target[i] = CAM.target[i];
   }
+  return fovy_rad;
+}
+
+// The view's right and up axes in world space. That is everything the corner
+// orientation gizmo needs in order to project the world axes onto the screen,
+// and it is derived from the same numbers the view matrix is built from.
+void renderer_view_basis(const RenderSettings::ViewConfig &vc, float *right,
+                         float *up, float *fwd) {
+  auto set = [](float *v, float x, float y, float z) { v[0]=x; v[1]=y; v[2]=z; };
+  if (vc.camera == 1) { set(right,1,0,0); set(up,0,0,-1); set(fwd,0,-1,0); return; }
+  if (vc.camera == 2) { set(right,1,0,0); set(up,0,1,0);  set(fwd,0,0,1);  return; }
+  if (vc.camera == 3) { set(right,0,0,1); set(up,0,1,0);  set(fwd,-1,0,0); return; }
+  float eye[3], target[3];
+  perspective_eye_target(eye, target);
+  float fz[3] = {target[0]-eye[0], target[1]-eye[1], target[2]-eye[2]};
+  float fl = std::sqrt(fz[0]*fz[0] + fz[1]*fz[1] + fz[2]*fz[2]);
+  if (fl < 1e-8f) { set(right,1,0,0); set(up,0,1,0); set(fwd,0,0,-1); return; }
+  for (float &v : fz) v /= fl;
+  float u0[3] = {0, 1, 0};
+  if (std::fabs(fz[1]) > 0.999f) { u0[0] = 1; u0[1] = 0; }
+  float sx[3] = {fz[1]*u0[2]-fz[2]*u0[1], fz[2]*u0[0]-fz[0]*u0[2],
+                 fz[0]*u0[1]-fz[1]*u0[0]};
+  float sl = std::sqrt(sx[0]*sx[0] + sx[1]*sx[1] + sx[2]*sx[2]);
+  for (float &v : sx) v /= sl;
+  float uy[3] = {sx[1]*fz[2]-sx[2]*fz[1], sx[2]*fz[0]-sx[0]*fz[2],
+                 sx[0]*fz[1]-sx[1]*fz[0]};
+  for (int i = 0; i < 3; ++i) { right[i] = sx[i]; up[i] = uy[i]; fwd[i] = fz[i]; }
+}
+
+// Swing the free orbit camera round to look straight down a world axis, the
+// way clicking a ball on the gizmo does in every other 3D application.
+void renderer_camera_snap_axis(int axis, bool negative) {
+  const float HALF_PI = 1.5707963f;
+  float s = negative ? -1.f : 1.f;
+  switch (axis) {
+    case 0: CAM.yaw = s * HALF_PI;  CAM.pitch = 0.f; break;          // X
+    case 1: CAM.yaw = 0.f;          CAM.pitch = s * 1.5533f; break;  // Y
+    default: CAM.yaw = negative ? 3.14159265f : 0.f; CAM.pitch = 0.f; break;
+  }
+}
+
+static void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
+  float target[3];
+  float fovy_rad = perspective_eye_target(eye, target);
   float fz[3] = {target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]};
   float fl = std::sqrt(fz[0] * fz[0] + fz[1] * fz[1] + fz[2] * fz[2]);
   for (float &v : fz) v /= fl;
@@ -1800,8 +1850,9 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
         best_idx = (int)i;
       }
     } else if (o.type == SceneObject::Mesh) {
-      float c[3] = {o.pos[0], o.pos[1] * RS.height_scale + o.scale * 0.5f, o.pos[2]};
-      if (ray_sphere(pn, rd, c, o.scale * 0.75f, t) && t < best_t) {
+      float rr = scene_object_radius(o);
+      float c[3] = {o.pos[0], o.pos[1] * RS.height_scale + rr * 0.5f, o.pos[2]};
+      if (ray_sphere(pn, rd, c, rr * 0.75f, t) && t < best_t) {
         best_t = t;
         best_idx = (int)i;
       }

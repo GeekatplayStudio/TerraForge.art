@@ -15,8 +15,11 @@ namespace studio {
 enum class Icon {
   Undo, Redo, Refresh, Brush, Wireframe, Grid, Sky, Water,
   Camera, Planet, Terrain, Light, Cloud, Mesh, Folder, Eye, EyeOff,
-  Plus, Minus, Trash, Gear, Search, Chevron, Link, Unlink, Save, Open,
+  Plus, Minus, Trash, Gear, Search, Chevron, ChevronDown, Link, Unlink,
+  Save, Open,
   Move, Rotate, Scale, Material, Node, Render, Scene, World, Object,
+  // viewport: projection, then shading, then overlays
+  ViewPersp, ViewTop, ViewFront, ViewRight, Shaded, Textured, Outline,
   Count
 };
 

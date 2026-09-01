@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” node library panel (click to add at view center)
+﻿// Geekatplay Studio — node library panel (click to add at view center)
 #include "app.hpp"
 #include "node_library.hpp"
 #include "undo.hpp"

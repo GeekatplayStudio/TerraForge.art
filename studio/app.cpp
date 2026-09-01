@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” main loop, docking layout, background evaluation
+﻿// Geekatplay Studio — main loop, docking layout, background evaluation
 #include "app.hpp"
 #include "console.hpp"
 #include "prefs.hpp"
@@ -245,7 +245,7 @@ void run_main() {
     // hand already is.
 
     // version bumped whenever the default layout changes shape
-    ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV6");
+    ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV7");
     if (first_frame || a.request_layout_reset) {
       if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr ||
           a.request_layout_reset)
@@ -306,7 +306,7 @@ void run_main() {
     // upload fresh eval results to GPU (main thread only)
     if (a.uploaded_serial != a.eval_serial && !a.eval.running.load()) {
       std::lock_guard<std::mutex> lk(a.graph_mtx);
-      // skip thumbnail regeneration during interactive drags â€” keeps the
+      // skip thumbnail regeneration during interactive drags — keeps the
       // slider->viewport loop as tight as possible
       if (!a.eval_interactive.load()) previews_update(a);
       // Terragen-style: atmosphere/render nodes drive the renderer
@@ -386,7 +386,7 @@ void run_main() {
       }
       uint64_t view = a.view_node ? a.view_node : a.selected_node;
       gpx::Node *n = a.graph.find_node(view);
-      // a TerrainOutput node is the canonical final terrain â€” prefer it
+      // a TerrainOutput node is the canonical final terrain — prefer it
       // unless the user explicitly pinned another node
       if (!a.view_node) {
         for (auto &cand : a.graph.nodes)

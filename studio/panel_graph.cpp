@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” node graph panel (imgui-node-editor)
+﻿// Geekatplay Studio — node graph panel (imgui-node-editor)
 #include "app.hpp"
 #include "theme_colors.hpp"
 #include "undo.hpp"

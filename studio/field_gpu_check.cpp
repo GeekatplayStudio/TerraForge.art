@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” CPU/GPU agreement check for field graphs (P0.2).
+﻿// Geekatplay TerraForge — CPU/GPU agreement check for field graphs (P0.2).
 //
 // The whole dual-domain design rests on one claim: the field graph you author
 // evaluates to the same numbers on the CPU (tests, picking, rasterizing) and on
@@ -222,7 +222,7 @@ std::string field_gpu_verify_all(App &a) {
     gpx::Node *n = g.add_node("FieldNoise");
     run("noise", g, n);
   }
-  {   // noise through a curve and into math with altitude â€” a real chain
+  {   // noise through a curve and into math with altitude — a real chain
     gpx::Graph g;
     gpx::Node *pos = g.add_node("FieldPosition");
     gpx::Node *n = g.add_node("FieldNoise");

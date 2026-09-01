@@ -579,6 +579,108 @@ static void test_obj_import_rejects_bad_indices() {
   fs::remove_all(dir, ec);
 }
 
+// ---------------------------------------------------------------- transforms
+// scene_object_matrix is the one definition of where an object is: the
+// renderer draws with it, picking and the selection outline measure with it,
+// and the Properties editor types into the numbers it reads. A silent change
+// to the rotation order or the scale convention would move every imported
+// object in every scene, so the convention is pinned here.
+static void test_object_matrix() {
+  std::printf("scene_object_matrix\n");
+  using studio::SceneObject;
+  auto xform = [](const float *m, float x, float y, float z, float *out) {
+    for (int r = 0; r < 3; ++r)
+      out[r] = m[0 * 4 + r] * x + m[1 * 4 + r] * y + m[2 * 4 + r] * z +
+               m[3 * 4 + r];
+  };
+  float m[16], n[9], p[3];
+
+  // identity: no rotation, unit size, and the altitude scaled by height_scale
+  {
+    SceneObject o;
+    o.pos[0] = 0.25f; o.pos[1] = 0.4f; o.pos[2] = 0.75f;
+    o.scale = 1.f;
+    studio::scene_object_matrix(o, 0.5f, m, n);
+    xform(m, 0.f, 0.f, 0.f, p);
+    CHECK(std::fabs(p[0] - 0.25f) < 1e-6f, "origin lands at pos.x");
+    CHECK(std::fabs(p[1] - 0.20f) < 1e-6f, "altitude is scaled by height_scale");
+    CHECK(std::fabs(p[2] - 0.75f) < 1e-6f, "origin lands at pos.z");
+    xform(m, 1.f, 0.f, 0.f, p);
+    CHECK(std::fabs(p[0] - 1.25f) < 1e-6f, "unrotated +X stays +X");
+  }
+
+  // heading 90 degrees turns local +X into world -Z (right-handed Ry)
+  {
+    SceneObject o;
+    o.pos[0] = o.pos[1] = o.pos[2] = 0.f;
+    o.scale = 1.f;
+    o.yaw = 90.f;
+    studio::scene_object_matrix(o, 1.f, m, n);
+    xform(m, 1.f, 0.f, 0.f, p);
+    CHECK(std::fabs(p[0]) < 1e-5f && std::fabs(p[1]) < 1e-5f &&
+              std::fabs(p[2] + 1.f) < 1e-5f,
+          "heading 90 maps +X to -Z");
+  }
+
+  // pitch tips the nose, bank rolls it, and HPB order is Ry*Rx*Rz
+  {
+    SceneObject o;
+    o.pos[0] = o.pos[1] = o.pos[2] = 0.f;
+    o.scale = 1.f;
+    o.pitch = 90.f;
+    studio::scene_object_matrix(o, 1.f, m, n);
+    xform(m, 0.f, 1.f, 0.f, p);
+    CHECK(std::fabs(p[1]) < 1e-5f && std::fabs(p[2] - 1.f) < 1e-5f,
+          "pitch 90 maps +Y to +Z");
+    SceneObject b;
+    b.pos[0] = b.pos[1] = b.pos[2] = 0.f;
+    b.scale = 1.f;
+    b.roll = 90.f;
+    studio::scene_object_matrix(b, 1.f, m, n);
+    xform(m, 1.f, 0.f, 0.f, p);
+    CHECK(std::fabs(p[0]) < 1e-5f && std::fabs(p[1] - 1.f) < 1e-5f,
+          "bank 90 maps +X to +Y");
+  }
+
+  // non-uniform scale stretches the geometry and shrinks the normal by the
+  // reciprocal - that is what keeps a squashed object shaded correctly
+  {
+    SceneObject o;
+    o.pos[0] = o.pos[1] = o.pos[2] = 0.f;
+    o.scale = 2.f;
+    o.scl[0] = 2.f; o.scl[1] = 0.5f; o.scl[2] = 1.f;
+    studio::scene_object_matrix(o, 1.f, m, n);
+    xform(m, 1.f, 1.f, 1.f, p);
+    CHECK(std::fabs(p[0] - 4.f) < 1e-5f, "x scaled by scale*scl.x");
+    CHECK(std::fabs(p[1] - 1.f) < 1e-5f, "y scaled by scale*scl.y");
+    CHECK(std::fabs(p[2] - 2.f) < 1e-5f, "z scaled by scale*scl.z");
+    CHECK(std::fabs(n[0] - 0.25f) < 1e-5f, "normal x uses 1/(scale*scl.x)");
+    CHECK(std::fabs(n[4] - 1.f) < 1e-5f, "normal y uses 1/(scale*scl.y)");
+    CHECK(std::fabs(studio::scene_object_radius(o) - 4.f) < 1e-5f,
+          "radius is scale * largest axis");
+  }
+
+  // whatever the angles, the rotation stays orthonormal: no shear, no drift
+  {
+    SceneObject o;
+    o.pos[0] = o.pos[1] = o.pos[2] = 0.f;
+    o.scale = 1.f;
+    o.yaw = 37.f; o.pitch = -64.f; o.roll = 121.f;
+    studio::scene_object_matrix(o, 1.f, m, n);
+    for (int c = 0; c < 3; ++c) {
+      float len = 0;
+      for (int r = 0; r < 3; ++r) len += m[c * 4 + r] * m[c * 4 + r];
+      CHECK(std::fabs(std::sqrt(len) - 1.f) < 1e-5f, "column is unit length");
+    }
+    for (int c = 0; c < 3; ++c) {
+      int d = (c + 1) % 3;
+      float dot = 0;
+      for (int r = 0; r < 3; ++r) dot += m[c * 4 + r] * m[d * 4 + r];
+      CHECK(std::fabs(dot) < 1e-5f, "columns are orthogonal");
+    }
+  }
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   test_graph_view_sanity();
@@ -595,6 +697,7 @@ int main() {
   test_planet_persistence();
   test_node_library_roundtrip();
   test_obj_import_rejects_bad_indices();
+  test_object_matrix();
   std::printf("\n%s (%d failures)\n", g_failures ? "FAILED" : "ALL PASSED",
               g_failures);
   return g_failures ? 1 : 0;

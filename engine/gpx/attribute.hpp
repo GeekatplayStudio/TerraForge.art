@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” declarative node parameters.
+﻿// Geekatplay Studio — declarative node parameters.
 // A node declares attributes in its setup fn; the properties panel renders
 // them automatically and serialization walks the same list.
 #pragma once

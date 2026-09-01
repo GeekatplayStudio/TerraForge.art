@@ -135,6 +135,8 @@ set(STUDIO_SOURCES
     studio/icons.cpp
     studio/panel_graph.cpp
     studio/panel_properties.cpp
+    studio/panel_properties_object.cpp
+    studio/panel_properties_node.cpp
     studio/panel_library.cpp
     studio/panel_nodelist.cpp
     studio/panel_viewport.cpp

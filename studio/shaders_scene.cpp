@@ -336,20 +336,21 @@ void main(){
   frag = vec4(col, 1.0);
 })GLSL";
 
+// The model matrix is built on the CPU (scene_object_matrix) so that the
+// renderer, picking and the selection outline all read one definition of
+// where an object is. u_nrm is R*S^-1, so a squeezed object still shades
+// correctly.
 const char *const VS_MESH = R"GLSL(#version 430 core
 layout(location=0) in vec3 in_pos;
 layout(location=1) in vec3 in_nrm;
 uniform mat4 u_mvp;
-uniform vec4 u_xform; // pos.xz, scale, yaw
-uniform float u_ybase;
+uniform mat4 u_model;
+uniform mat3 u_nrm;
 out vec3 v_nrm;
 void main(){
-  float c = cos(u_xform.w), s = sin(u_xform.w);
-  vec3 p = in_pos * u_xform.z;
-  p = vec3(p.x*c - p.z*s, p.y, p.x*s + p.z*c);
-  p += vec3(u_xform.x, u_ybase, u_xform.y);
-  v_nrm = vec3(in_nrm.x*c - in_nrm.z*s, in_nrm.y, in_nrm.x*s + in_nrm.z*c);
-  gl_Position = u_mvp * vec4(p, 1.0);
+  vec4 p = u_model * vec4(in_pos, 1.0);
+  v_nrm = normalize(u_nrm * in_nrm);
+  gl_Position = u_mvp * p;
 })GLSL";
 
 const char *const FS_MESH = R"GLSL(#version 430 core

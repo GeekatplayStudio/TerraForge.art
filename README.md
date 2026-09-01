@@ -127,7 +127,7 @@ real-time OpenGL viewport.
 - **Unlimited planets.** Each is a pure parameter block — radius, relief,
   seed, sea level, snow line, rock and water colors, atmosphere — generated
   on the GPU every frame. No textures, no meshes, no caches, so a hundred
-  planets cost the same memory as one. Add them from the Outliner or by
+  planets cost the same memory as one. Add them from the Objects panel or by
   asking the AI.
 - **Infinite procedural terrains.** Stack any number of endless terrain
   layers (rolling hills / ridged mountains / billow dunes, each with its own
@@ -136,7 +136,7 @@ real-time OpenGL viewport.
   the horizon, blending seamlessly out of the tile's own heightmap.
 - **Continuous zoom.** Pull back to see a whole planetary neighbourhood —
   the sky thins to a starfield as you leave the atmosphere — then fly to any
-  world (double-click it in the Outliner) and keep zooming until individual
+  world (double-click it in the Objects tree) and keep zooming until individual
   ridges resolve. Detail is a *continuous* function of on-screen size, so
   nothing pops as you travel.
 - **Progressive quality.** Everything scales with how much a thing is

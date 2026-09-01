@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” Environment panel: sun (manual/geographic),
+﻿// Geekatplay TerraForge — Environment panel: sun (manual/geographic),
 // atmosphere, fog/haze/pollution, water materials.
 #include "app.hpp"
 #include "gpu_timer.hpp"

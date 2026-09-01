@@ -19,7 +19,7 @@ each one was a bug we already paid for. Do not regress them.
 2. **No flicker on refresh.** Never rebuild UI state from scratch per frame in
    a way that changes layout. Cache, then diff.
 3. **Selection never steals the active Properties tab.** Clicking an object in
-   a viewport or the Outliner, or a node in the graph, must not change
+   a viewport or the Objects tree, or a node in the graph, must not change
    `App::prop_tab`. It changes only when the user clicks a tab, presses an
    explicit button, or the tab cannot apply to the selection.
 4. **Every user-visible string goes through `tr("tag")`** (see `studio/i18n.*`).

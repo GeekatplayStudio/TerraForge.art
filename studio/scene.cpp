@@ -269,4 +269,44 @@ int scene_import_obj(const std::string &path, std::string &err) {
   return (int)scene().objects.size() - 1;
 }
 
+// ------------------------------------------------------------- transforms
+// M = T * Ry(heading) * Rx(pitch) * Rz(bank) * S, column-major for OpenGL.
+// The normal matrix is R * S^-1, which is the inverse transpose of R*S given
+// that R is orthonormal - so squeezing an object no longer tilts its shading.
+void scene_object_matrix(const SceneObject &o, float height_scale, float *m16,
+                         float *n9) {
+  const float D2R = 0.017453292519943295f;
+  float ch = std::cos(o.yaw * D2R), sh = std::sin(o.yaw * D2R);
+  float cp = std::cos(o.pitch * D2R), sp = std::sin(o.pitch * D2R);
+  float cb = std::cos(o.roll * D2R), sb = std::sin(o.roll * D2R);
+  // R = Ry * Rx * Rz, rows written out
+  float r[9] = {
+      ch * cb + sh * sp * sb, -ch * sb + sh * sp * cb, sh * cp,
+      cp * sb,                 cp * cb,                -sp,
+      -sh * cb + ch * sp * sb, sh * sb + ch * sp * cb, ch * cp};
+  float sx = o.scale * o.scl[0], sy = o.scale * o.scl[1],
+        sz = o.scale * o.scl[2];
+  const float s3[3] = {sx, sy, sz};
+  for (int c = 0; c < 3; ++c)
+    for (int rr = 0; rr < 3; ++rr) m16[c * 4 + rr] = r[rr * 3 + c] * s3[c];
+  m16[3] = m16[7] = m16[11] = 0.f;
+  m16[12] = o.pos[0];
+  m16[13] = o.pos[1] * height_scale;
+  m16[14] = o.pos[2];
+  m16[15] = 1.f;
+  if (n9) {
+    for (int c = 0; c < 3; ++c) {
+      float inv = std::fabs(s3[c]) > 1e-9f ? 1.f / s3[c] : 0.f;
+      for (int rr = 0; rr < 3; ++rr) n9[c * 3 + rr] = r[rr * 3 + c] * inv;
+    }
+  }
+}
+
+float scene_object_radius(const SceneObject &o) {
+  float m = std::fabs(o.scl[0]);
+  m = std::fmax(m, std::fabs(o.scl[1]));
+  m = std::fmax(m, std::fabs(o.scl[2]));
+  return o.scale * m;
+}
+
 } // namespace studio

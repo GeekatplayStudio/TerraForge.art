@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” application state shared by all panels
+﻿// Geekatplay Studio — application state shared by all panels
 #pragma once
 #include "gpx/node_graph.hpp"
 #include <atomic>
@@ -118,10 +118,17 @@ void draw_panel_library(App &a);
 void draw_panel_nodelist(App &a);
 void draw_panel_viewport(App &a);
 void draw_panel_ai(App &a);
-void draw_panel_scene(App &a); // the Outliner
+void draw_panel_scene(App &a); // the Objects tree
+void scene_layers_ui(App &a);  // the layer list, drawn inside Properties
 void draw_console(App &a);     // the message log
 
 // Properties-editor tab bodies (no window of their own)
+void object_properties_ui(App &a);
+void node_properties_ui(App &a);
+void scene_properties_ui(App &a);
+// the labelled slider + stepper used throughout the properties editor
+bool scalar_float(const char *id, float *v, float mn, float mx,
+                  bool log_scale = false);
 void world_properties_ui(App &a);
 void material_properties_ui(App &a);
 void render_properties_ui(App &a);
@@ -133,6 +140,8 @@ void studio_api_tick(App &a); // scripting / MCP bridge
 void apply_scene_nodes(App &a);
 // true when the Properties search box is empty or matches this label
 bool prop_filter_match(const char *text);
+// true when the user has typed something into that search box
+bool prop_filter_active();
 
 enum PropTab { TAB_RENDER = 0, TAB_SCENE, TAB_WORLD, TAB_OBJECT, TAB_MATERIAL,
                TAB_NODE };

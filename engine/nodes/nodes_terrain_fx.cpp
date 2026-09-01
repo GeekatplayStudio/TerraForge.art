@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” terrain effects.
+﻿// Geekatplay Studio — terrain effects.
 //
 // The "global effects" and erosion variants a terrain editor is expected to
 // offer as one-click operations (Vue calls these Effects; World Machine and
@@ -192,7 +192,7 @@ REGISTER_NODE(
 
 // --------------------------------------------------------------- Sharpen
 REGISTER_NODE(
-    Sharpen, "Effect", "Makes steep ground steeper â€” crisp ridges and crests",
+    Sharpen, "Effect", "Makes steep ground steeper — crisp ridges and crests",
     [](Node &n) {
       fx_setup(n);
       add_float(n.attrs, "amount", "Amount", 0.6f, 0.f, 3.f, "Sharpen");
@@ -282,7 +282,7 @@ REGISTER_NODE(
 
 // ------------------------------------------------------------ Glaciation
 REGISTER_NODE(
-    Glaciation, "Erosion", "Glacial carving â€” broad U-shaped valleys, ridges left intact",
+    Glaciation, "Erosion", "Glacial carving — broad U-shaped valleys, ridges left intact",
     [](Node &n) {
       fx_setup(n);
       add_float(n.attrs, "strength", "Strength", 0.6f, 0.f, 1.f, "Glacier");
@@ -416,7 +416,7 @@ REGISTER_NODE(
 // everything above the high plane is cut flat. Cheaper and far more
 // controllable than modelling the same shapes with booleans.
 REGISTER_NODE(
-    TerrainClip, "Effect", "Clip altitudes â€” flat tops above, holes below",
+    TerrainClip, "Effect", "Clip altitudes — flat tops above, holes below",
     [](Node &n) {
       fx_setup(n);
       n.add_out("clip_mask");

@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio â€” registry-based dataflow graph.
+﻿// Geekatplay Studio — registry-based dataflow graph.
 // Nodes self-register (REGISTER_NODE) with a setup fn (declares ports +
 // attributes) and a compute fn. Evaluation is topological with dirty
 // propagation and per-node output caching.
@@ -23,7 +23,7 @@ enum class PortDir { In, Out };
 
 class Node;
 
-// A field port carries no buffer â€” it carries the promise that the node can be
+// A field port carries no buffer — it carries the promise that the node can be
 // asked for a value at any point. Evaluation is pull-based: asking an output
 // port for a value walks upstream through the links.
 using FieldEvalFn = std::function<FieldValue(const Node &, const FieldContext &)>;
@@ -65,7 +65,7 @@ public:
   Graph *graph = nullptr;
 
   Port *port(const std::string &name);
-  // direction-aware lookup â€” required when a node names an input and an
+  // direction-aware lookup — required when a node names an input and an
   // output identically (e.g. Levels' "texture" in and out)
   Port *port(const std::string &name, PortDir dir);
   Port *first_out(DataType t);
@@ -77,7 +77,7 @@ public:
   // ---- field domain -------------------------------------------------------
   // A field input declares the value type it expects; a field output declares
   // what it produces and how. `eval` receives the node and the point being
-  // asked about, so field nodes are stateless and re-entrant â€” which is what
+  // asked about, so field nodes are stateless and re-entrant — which is what
   // lets them be evaluated in parallel and transpiled to GLSL.
   void add_field_in(const std::string &name, FieldType t = FieldType::Number,
                     bool optional = false);
@@ -85,7 +85,7 @@ public:
 
   // Pull a value from a connected field input. If nothing is connected,
   // `fallback` is returned, so every field node has a defined result even in a
-  // half-built graph â€” a partially wired graph must still preview.
+  // half-built graph — a partially wired graph must still preview.
   FieldValue in_field(const std::string &name, const FieldContext &ctx,
                       FieldValue fallback = FieldValue(0.f)) const;
   float in_number(const std::string &name, const FieldContext &ctx,

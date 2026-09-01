@@ -157,6 +157,51 @@ void paint(const Pen &k, Icon ic) {
     case Icon::Chevron:
       k.tri(-0.3f, -0.4f, -0.3f, 0.4f, 0.35f, 0.f);
       break;
+    case Icon::ChevronDown:
+      k.tri(-0.4f, -0.3f, 0.4f, -0.3f, 0.f, 0.35f);
+      break;
+    // ---- viewport: the four projections ----
+    // Perspective is a frustum. Each orthographic view is the plane it shows,
+    // seen edge-on, with an arrow coming down the axis you look along - which
+    // is the one thing that actually distinguishes top from front from right.
+    case Icon::ViewPersp:
+      k.line(-0.16f, -0.62f, -0.72f, 0.62f);
+      k.line(0.16f, -0.62f, 0.72f, 0.62f);
+      k.line(-0.16f, -0.62f, 0.16f, -0.62f);
+      k.line(-0.72f, 0.62f, 0.72f, 0.62f);
+      k.line(-0.44f, 0.f, 0.44f, 0.f);
+      break;
+    case Icon::ViewTop:
+      k.line(-0.75f, 0.62f, 0.75f, 0.62f);
+      k.line(0.f, -0.72f, 0.f, 0.18f);
+      k.tri(-0.24f, 0.14f, 0.24f, 0.14f, 0.f, 0.46f);
+      break;
+    case Icon::ViewFront:
+      k.line(0.62f, -0.75f, 0.62f, 0.75f);
+      k.line(-0.72f, 0.f, 0.18f, 0.f);
+      k.tri(0.14f, -0.24f, 0.14f, 0.24f, 0.46f, 0.f);
+      break;
+    case Icon::ViewRight:
+      k.line(-0.62f, -0.75f, -0.62f, 0.75f);
+      k.line(0.72f, 0.f, -0.18f, 0.f);
+      k.tri(-0.14f, -0.24f, -0.14f, 0.24f, -0.46f, 0.f);
+      break;
+    // ---- shading ----
+    case Icon::Shaded: // a lit sphere: filled, with the terminator implied
+      k.circle(0.f, 0.f, 0.62f);
+      k.arc(0.f, 0.f, 0.62f, PI * 0.25f, PI * 1.25f);
+      k.arc(0.f, 0.f, 0.55f, PI * 0.3f, PI * 1.2f);
+      k.arc(0.f, 0.f, 0.46f, PI * 0.35f, PI * 1.15f);
+      break;
+    case Icon::Textured: // the same sphere, checkered
+      k.circle(0.f, 0.f, 0.62f);
+      k.rect(-0.44f, -0.44f, 0.f, 0.f, true);
+      k.rect(0.f, 0.f, 0.44f, 0.44f, true);
+      break;
+    case Icon::Outline: // a shape with a highlight ring around it
+      k.rect(-0.32f, -0.32f, 0.32f, 0.32f, true);
+      k.rect(-0.66f, -0.66f, 0.66f, 0.66f);
+      break;
     case Icon::Link:
       k.arc(-0.25f, 0.f, 0.38f, PI * 0.55f, PI * 1.45f);
       k.arc(0.25f, 0.f, 0.38f, PI * 1.55f, PI * 2.45f);

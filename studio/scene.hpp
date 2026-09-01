@@ -69,15 +69,38 @@ struct SceneObject {
   // imported mesh data
   std::string path;
   unsigned long long material_node = 0; // MaterialOutput node driving this object
+  // Transform. Position is in world units (1 unit = the home terrain tile =
+  // terrain_size_m metres); the interface shows every one of these as a real
+  // length. Rotation is HPB - heading about Y, then pitch about X, then bank
+  // about Z - which is the order Cinema 4D and Vue both use, so a number
+  // typed here means what it means there. `scl` squeezes the uniform `scale`
+  // per axis, so a rock can be flattened without being resized.
   float pos[3] = {0.5f, 0.05f, 0.5f};
   float scale = 0.08f;
-  float yaw = 0.f;
+  float scl[3] = {1.f, 1.f, 1.f};
+  float yaw = 0.f;   // heading, degrees
+  float pitch = 0.f; // degrees
+  float roll = 0.f;  // bank, degrees
   float color[3] = {0.62f, 0.60f, 0.57f};
   std::vector<float> verts; // interleaved pos(3) + normal(3)
   unsigned vao = 0, vbo = 0;
   int vert_count = 0;
   bool gpu_dirty = false;
 };
+
+// The object's model matrix (column-major, for OpenGL) and the matching
+// normal matrix. One definition, used by the renderer, by picking and by the
+// selection outline, so a transform can never mean two different things.
+void scene_object_matrix(const SceneObject &o, float height_scale, float *m16,
+                         float *n9);
+// Largest of the three axis scales - the radius picking and outlines use.
+float scene_object_radius(const SceneObject &o);
+
+// The tree's per-type glyph and label. Defined next to the panel that draws
+// the tree so a new object type is described in exactly one place.
+enum class Icon; // studio/icons.hpp
+Icon scene_type_icon(SceneObject::Type t);
+const char *scene_type_name(SceneObject::Type t);
 
 struct SceneLayer {
   std::string name;
