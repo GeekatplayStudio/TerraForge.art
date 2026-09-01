@@ -88,6 +88,7 @@ set(ENGINE_SOURCES
     engine/attribute.cpp
     engine/animation.cpp
     engine/node_graph.cpp
+    engine/port_catalog.cpp
     engine/serialization.cpp
     engine/parallel.cpp
     engine/field_glsl.cpp

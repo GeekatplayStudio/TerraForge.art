@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "graph.port_aware_create", "area": "studio", "phase": "22",
+      "description": "Dragging a wire onto empty canvas offers only nodes that can take it, then wires the new node up",
+      "test_file": "test_nodes.cpp", "test_symbol": "test_port_catalog" },
+
     { "id": "surface.node_graph", "area": "renderer", "phase": "22",
       "description": "Planets and the infinite ground plane are shaped by a field graph, transpiled to GLSL and spliced into the planet shader",
       "test_file": "test_nodes.cpp", "test_symbol": "test_surface_displacement_bridge" },

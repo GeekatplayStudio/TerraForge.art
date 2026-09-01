@@ -15,6 +15,7 @@
 //   serializationâ€” attributes survive a JSON round trip exactly
 //   robustness   â€” extreme attribute values do not produce NaN/Inf
 #include "gpx/field_glsl.hpp"
+#include "gpx/port_catalog.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <algorithm>
@@ -589,11 +590,92 @@ static void test_surface_displacement_bridge() {
   g_node.clear();
 }
 
+// ------------------------------------------------------- port-aware creation
+// Dragging a wire onto empty canvas offers only the nodes that could take it,
+// then wires the new one up. Two rules decide that, and both are pure, so both
+// are tested here rather than by dragging in a screenshot.
+//
+// The safety invariant is the one that matters: if a type is OFFERED, then a
+// node of that type, once created, must yield a port of the right direction
+// and data type - otherwise the menu promises a connection it cannot make.
+// Hesiod's version of this feature aborted the process on exactly that case
+// (docs/design/2026-07-22-port-aware-drag-to-create-design, crash A).
+static void test_port_catalog() {
+  std::printf("port catalog and drag-to-create rules...\n");
+  const auto all = gpx::NodeRegistry::instance().all();
+  CHECK(!all.empty(), "the registry has nodes");
+
+  const gpx::DataType TYPES[3] = {gpx::DataType::Heightmap,
+                                  gpx::DataType::Texture, gpx::DataType::Field};
+  const gpx::PortDir DIRS[2] = {gpx::PortDir::In, gpx::PortDir::Out};
+
+  int offered = 0;
+  for (const gpx::NodeDef *d : all) {
+    g_node = d->type;
+    const std::vector<gpx::PortInfo> &cat = gpx::port_catalog(d->type);
+    CHECK(!cat.empty() || is_sink(d->type) || is_container(d->type),
+          "the catalog knows this type's ports");
+
+    // the catalog must say exactly what a real node of that type declares,
+    // in the same order - it is built by the same setup, so this pins that
+    gpx::Graph g;
+    gpx::Node *live = g.add_node(d->type, 0, 0);
+    CHECK(live != nullptr, "the type can be created");
+    if (!live) continue;
+    CHECK(cat.size() == live->ports.size(), "catalog and live port count agree");
+    if (cat.size() == live->ports.size())
+      for (size_t i = 0; i < cat.size(); ++i) {
+        CHECK(cat[i].name == live->ports[i].name, "port names agree, in order");
+        CHECK(cat[i].dir == live->ports[i].dir, "port directions agree");
+        CHECK(cat[i].type == live->ports[i].type, "port data types agree");
+      }
+
+    for (gpx::DataType t : TYPES)
+      for (gpx::PortDir dir : DIRS) {
+        bool offer = gpx::node_offers(d->type, t, dir);
+        std::string port = gpx::select_port(*live, t, dir);
+        if (offer) {
+          ++offered;
+          CHECK(!port.empty(), "an offered type yields a port to connect");
+          if (!port.empty()) {
+            const gpx::Port *p = live->port(port, dir);
+            CHECK(p != nullptr, "the chosen port exists in that direction");
+            if (p) CHECK(p->type == t, "the chosen port carries the right type");
+          }
+        } else {
+          CHECK(port.empty(), "a type that is not offered yields no port");
+        }
+      }
+  }
+  g_node.clear();
+  CHECK(offered > 100, "the sweep actually exercised offers");
+
+  // an unknown type is offered rather than hidden: a node missing from the
+  // catalog must stay reachable in the menu
+  CHECK(gpx::node_offers("NoSuchNodeType", gpx::DataType::Heightmap,
+                         gpx::PortDir::In),
+        "an unknown type fails open");
+  CHECK(gpx::port_catalog("NoSuchNodeType").empty(),
+        "an unknown type has no ports");
+
+  // the conventional name wins over declaration order
+  {
+    gpx::Graph g;
+    gpx::Node *n = g.add_node("Smooth", 0, 0);
+    if (n) {
+      std::string p = gpx::select_port(*n, gpx::DataType::Heightmap,
+                                       gpx::PortDir::In);
+      CHECK(p == "input", "a port named 'input' is preferred");
+    }
+  }
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - node contract suite\n\n");
   test_finiteness_checker_binds(); // before anything relies on it
   test_all_nodes_contract();
   test_surface_displacement_bridge();
+  test_port_catalog();
   std::printf("\n%d checks, %s (%d failures)\n", g_checks,
               g_failures ? "FAILED" : "all passed", g_failures);
   return g_failures ? 1 : 0;

@@ -1,6 +1,8 @@
 ﻿// Geekatplay Studio — node graph panel (imgui-node-editor)
 #include "app.hpp"
+#include "console.hpp"
 #include "theme_colors.hpp"
+#include "gpx/port_catalog.hpp"
 #include "undo.hpp"
 #include "gpx/metanode.hpp"
 #include <imgui.h>
@@ -242,6 +244,20 @@ static void draw_node(App &a, const App::NodeView &n) {
 // which is how every DCC does this, and the search box collapses the whole
 // thing to a flat filtered list the moment you type - because when you are
 // searching, the grouping is in the way.
+// What a drag that ended on empty canvas was carrying. Set inside BeginCreate,
+// consumed by the create menu on the next frame, cleared when the menu closes.
+// Zero means the menu was opened the ordinary way and filters nothing.
+struct DragCreate {
+  uint64_t node = 0;          // the node the wire came from
+  std::string port;           // its port
+  gpx::DataType type = gpx::DataType::Heightmap;
+  gpx::FieldType field_type = gpx::FieldType::Number;
+  gpx::PortDir want_dir = gpx::PortDir::In; // what the NEW node must offer
+  bool active() const { return node != 0; }
+  void clear() { node = 0; port.clear(); }
+};
+static DragCreate g_drag_create;
+
 static void add_node_popup(App &a) {
   static char filter[64] = "";
   if (ImGui::IsWindowAppearing()) {
@@ -256,11 +272,30 @@ static void add_node_popup(App &a) {
     undo_push_locked(a, "Add " + d->type);
     ImVec2 cp = ed::ScreenToCanvas(click_pos);
     gpx::Node *n = a.graph.add_node(d->type, cp.x, cp.y);
-    if (n) {
-      ed::SetNodePosition(n->id, cp);
-      a.selected_node = n->id;
-      a.request_eval();
+    if (!n) return;
+    ed::SetNodePosition(n->id, cp);
+    a.selected_node = n->id;
+    // A node created by dragging a wire off a port is wired up on the spot.
+    // Which port is decided against the live node (gpx::select_port), so
+    // "first declared" means the order the node actually declares, and the
+    // link is made from the OUT side in both drag directions - so the
+    // direction check in add_link is unreachable rather than merely guarded.
+    if (g_drag_create.active()) {
+      gpx::Node *other = a.graph.find_node(g_drag_create.node);
+      std::string np = gpx::select_port(*n, g_drag_create.type,
+                                        g_drag_create.want_dir,
+                                        g_drag_create.field_type);
+      if (other && !np.empty()) {
+        bool ok = g_drag_create.want_dir == gpx::PortDir::In
+                      ? a.graph.add_link(other->id, g_drag_create.port, n->id, np)
+                      : a.graph.add_link(n->id, np, other->id, g_drag_create.port);
+        if (!ok)
+          log_warn("graph", "created " + d->type +
+                                " but could not connect it automatically");
+      }
+      g_drag_create.clear();
     }
+    a.request_eval();
   };
   auto entry = [&](const gpx::NodeDef *d) {
     if (ImGui::MenuItem(d->type.c_str())) place(d);
@@ -272,14 +307,43 @@ static void add_node_popup(App &a) {
            domain_of_category(d->category) == a.workspace;
   };
 
-  const auto &all = gpx::NodeRegistry::instance().all();
+  const auto all = gpx::NodeRegistry::instance().all();
+
+  // During a drag, offer only node types that could actually take the wire.
+  // If nothing can, show everything instead: a gesture that opens an empty
+  // menu reads as broken, and a permissive menu still lets the node be
+  // placed - it just will not connect itself.
+  bool filtering = g_drag_create.active();
+  if (filtering) {
+    bool any = false;
+    for (const gpx::NodeDef *d : all)
+      if (in_scope(d) &&
+          gpx::node_offers(d->type, g_drag_create.type, g_drag_create.want_dir))
+        any = true;
+    filtering = any;
+  }
+  auto offerable = [&](const gpx::NodeDef *d) {
+    return !filtering ||
+           gpx::node_offers(d->type, g_drag_create.type, g_drag_create.want_dir);
+  };
+  if (g_drag_create.active()) {
+    const char *what = g_drag_create.type == gpx::DataType::Heightmap
+                           ? "heightmap"
+                           : g_drag_create.type == gpx::DataType::Texture
+                                 ? "texture"
+                                 : "field";
+    if (filtering)
+      ImGui::TextDisabled("nodes that accept a %s", what);
+    else
+      ImGui::TextDisabled("nothing accepts a %s - showing everything", what);
+  }
 
   if (filter[0]) {
     std::string lf = filter;
     for (auto &ch : lf) ch = (char)tolower(ch);
     int shown = 0;
     for (const gpx::NodeDef *d : all) {
-      if (!in_scope(d)) continue;
+      if (!in_scope(d) || !offerable(d)) continue;
       std::string lt = d->type, lc = d->category;
       for (auto &ch : lt) ch = (char)tolower(ch);
       for (auto &ch : lc) ch = (char)tolower(ch);
@@ -302,7 +366,7 @@ static void add_node_popup(App &a) {
   std::string last_cat;
   bool open = false;
   for (const gpx::NodeDef *d : all) {
-    if (!in_scope(d)) continue;
+    if (!in_scope(d) || !offerable(d)) continue;
     if (d->category != last_cat) {
       if (open) ImGui::EndMenu();
       last_cat = d->category;
@@ -433,6 +497,32 @@ void draw_panel_graph(App &a) {
           if (a.graph.add_link(fn->id, fp->name, tn->id, tp->name))
             a.request_eval();
         }
+      }
+    }
+
+    // A wire dropped on empty canvas: offer to create something that can
+    // take it. The menu opens on the next frame, filtered by this port.
+    ed::PinId new_pin;
+    if (ed::QueryNewNode(&new_pin) && new_pin) {
+      log_trace("graph", "drag ended on canvas, pin " +
+                             std::to_string((uint64_t)new_pin.Get()));
+      uint64_t nn;
+      size_t pp;
+      decode_pin((uint64_t)new_pin.Get(), nn, pp);
+      gpx::Node *src = a.graph.find_node(nn);
+      if (src && pp < src->ports.size() && ed::AcceptNewItem()) {
+        const gpx::Port &port = src->ports[pp];
+        g_drag_create.node = nn;
+        g_drag_create.port = port.name;
+        g_drag_create.type = port.type;
+        g_drag_create.field_type = port.field_type;
+        // the new node must offer the opposite direction to the one dragged
+        g_drag_create.want_dir = port.dir == gpx::PortDir::Out
+                                     ? gpx::PortDir::In
+                                     : gpx::PortDir::Out;
+        ed::Suspend();
+        ImGui::OpenPopup("add_node");
+        ed::Resume();
       }
     }
   }
@@ -655,8 +745,10 @@ void draw_panel_graph(App &a) {
 
   // Adding a node mutates the graph, so it waits for a frame that holds the
   // lock — the same rule the connect and delete paths follow.
-  if (!eval_running && ed::ShowBackgroundContextMenu())
+  if (!eval_running && ed::ShowBackgroundContextMenu()) {
+    g_drag_create.clear(); // a plain right-click filters nothing
     ImGui::OpenPopup("add_node");
+  }
   if (ImGui::BeginPopup("add_node")) {
     if (eval_running)
       ImGui::TextDisabled("computing...");
@@ -664,6 +756,10 @@ void draw_panel_graph(App &a) {
       add_node_popup(a);
     ImGui::EndPopup();
   }
+  // A drag whose menu was dismissed must not leave the next right-click
+  // filtered by a port nobody is holding any more.
+  if (!ImGui::IsPopupOpen("add_node") && g_drag_create.active())
+    g_drag_create.clear();
   ed::Resume();
 
   // "open this in the node editor", asked for from another panel
