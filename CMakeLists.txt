@@ -132,6 +132,7 @@ set(STUDIO_SOURCES
     studio/app.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
+    studio/icons.cpp
     studio/panel_graph.cpp
     studio/panel_properties.cpp
     studio/panel_library.cpp
@@ -155,6 +156,8 @@ set(STUDIO_SOURCES
     studio/panel_ai.cpp
     studio/panel_materials.cpp
     studio/panel_scene.cpp
+    studio/panel_console.cpp
+    studio/console.cpp
     studio/panel_render.cpp
     studio/scene.cpp
     studio/cloud_noise.cpp

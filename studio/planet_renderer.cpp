@@ -1,3 +1,4 @@
+#include "console.hpp"
 #include "planet_renderer.hpp"
 #include "scene.hpp"
 #include "gpx/planet_math.hpp"
@@ -300,7 +301,7 @@ static GLuint pl_compile(GLenum type, const std::string &src) {
   if (!ok) {
     char log[4096];
     glGetShaderInfoLog(sh, sizeof log, nullptr, log);
-    std::fprintf(stderr, "planet shader error: %s\n", log);
+    log_error("shader", std::string("planet: ") + log);
   }
   return sh;
 }

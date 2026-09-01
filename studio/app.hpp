@@ -84,6 +84,7 @@ struct App {
   bool show_properties = true;
   bool show_viewport = true;
   bool show_toolbar = true;
+  bool show_console = true;
   bool request_layout_reset = false;
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
   std::string status;
@@ -118,6 +119,7 @@ void draw_panel_nodelist(App &a);
 void draw_panel_viewport(App &a);
 void draw_panel_ai(App &a);
 void draw_panel_scene(App &a); // the Outliner
+void draw_console(App &a);     // the message log
 
 // Properties-editor tab bodies (no window of their own)
 void world_properties_ui(App &a);

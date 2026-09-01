@@ -15,6 +15,7 @@
 // workflow tabs, the camera, the resolution and the statistics all had equal
 // weight and none of them were grouped.
 #include "app.hpp"
+#include "icons.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "sculpt.hpp"
@@ -314,51 +315,50 @@ void draw_tool_bar(App &a) {
 // The same in every workflow, because these are things you do *to* the
 // project rather than to one part of it. Nothing goes here that does not
 // work — a palette of dead buttons is worse than no palette.
+// The tools that mean the same thing in every workflow, as icons on the menu
+// row. Vertical text buttons down the left edge cost a whole column of window
+// and put undo where nobody looks for it.
 void draw_global_tools(App &a) {
-  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
-  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2, 2));
-  const ImVec2 sq(48, 24);
+  const float h = ImGui::GetFrameHeight();
 
-  auto tool = [&](const char *label, const char *tip, bool active = false) {
-    if (active)
-      ImGui::PushStyleColor(ImGuiCol_Button,
-                            ImGui::ColorConvertU32ToFloat4(theme::accent()));
-    bool hit = ImGui::Button(label, sq);
-    if (active) ImGui::PopStyleColor();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
-    return hit;
-  };
-
-  if (tool("undo", "Undo the last change (Ctrl+Z)")) {
+  if (IconButton(Icon::Undo, "##undo", "Undo the last change  (Ctrl+Z)", false, h)) {
     if (undo_perform(a)) a.status = "undo";
   }
-  if (tool("redo", "Redo (Ctrl+Y)")) {
+  ImGui::SameLine(0, 2);
+  if (IconButton(Icon::Redo, "##redo", "Redo  (Ctrl+Y)", false, h)) {
     if (redo_perform(a)) a.status = "redo";
   }
-  ImGui::Separator();
 
-  if (tool("eval", "Recompute the whole graph (F5)")) {
+  ImGui::SameLine(0, 10);
+  if (IconButton(Icon::Refresh, "##eval", "Recompute the whole graph  (F5)", false, h)) {
     std::lock_guard<std::mutex> lk(a.graph_mtx);
     a.graph.mark_all_dirty();
     a.request_eval();
   }
-  ImGui::Separator();
 
+  ImGui::SameLine(0, 10);
   SculptState &s = sculpt_state();
-  if (tool("brush", "Sculpt: brush directly on the terrain", s.active))
+  if (IconButton(Icon::Brush, "##brush", "Sculpt: brush directly on the terrain",
+                 s.active, h))
     s.active = !s.active;
-  ImGui::Separator();
 
+  ImGui::SameLine(0, 10);
   RenderSettings &rs = render_settings();
   RenderSettings::ViewConfig &vc = rs.views[0];
-  if (tool("wire", "Wireframe in the main view", vc.display == 0))
+  if (IconButton(Icon::Wireframe, "##wire", "Wireframe in the main view",
+                 vc.display == 0, h))
     vc.display = vc.display == 0 ? 2 : 0;
-  if (tool("grid", "Ground grid in the main view", vc.grid))
+  ImGui::SameLine(0, 2);
+  if (IconButton(Icon::Grid, "##grid", "Ground grid in the main view", vc.grid, h))
     vc.grid = !vc.grid;
-  if (tool("sky", "Sky and fog in the main view", vc.atmosphere))
+  ImGui::SameLine(0, 2);
+  if (IconButton(Icon::Sky, "##sky", "Sky and fog in the main view",
+                 vc.atmosphere, h))
     vc.atmosphere = !vc.atmosphere;
 
-  ImGui::PopStyleVar(2);
+  ImGui::SameLine(0, 10);
+  if (IconButton(Icon::Node, "##console", "Show the console", a.show_console, h))
+    a.show_console = !a.show_console;
 }
 
 } // namespace studio

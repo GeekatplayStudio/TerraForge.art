@@ -8,6 +8,7 @@
 #include <json.hpp>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -220,46 +221,80 @@ static void draw_node(App &a, const App::NodeView &n) {
   }
 }
 
+// The node list is long enough that a flat menu is unusable: a hundred and
+// eighteen types in one column. Categories become submenus that open on hover,
+// which is how every DCC does this, and the search box collapses the whole
+// thing to a flat filtered list the moment you type - because when you are
+// searching, the grouping is in the way.
 static void add_node_popup(App &a) {
   static char filter[64] = "";
   if (ImGui::IsWindowAppearing()) {
     filter[0] = 0;
     ImGui::SetKeyboardFocusHere();
   }
-  ImGui::SetNextItemWidth(220);
+  ImGui::SetNextItemWidth(240);
   ImGui::InputTextWithHint("##filter", "search nodes...", filter, sizeof filter);
-  ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
-  std::string last_cat;
-  for (const gpx::NodeDef *d : gpx::NodeRegistry::instance().all()) {
-    if (!a.graph_show_all_domains &&
-        domain_of_category(d->category) != a.workspace)
-      continue;
-    if (filter[0]) {
-      std::string lt = d->type, lf = filter;
-      for (auto &ch : lt) ch = (char)tolower(ch);
-      for (auto &ch : lf) ch = (char)tolower(ch);
-      if (lt.find(lf) == std::string::npos) continue;
+  const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+
+  auto place = [&](const gpx::NodeDef *d) {
+    undo_push_locked(a, "Add " + d->type);
+    ImVec2 cp = ed::ScreenToCanvas(click_pos);
+    gpx::Node *n = a.graph.add_node(d->type, cp.x, cp.y);
+    if (n) {
+      ed::SetNodePosition(n->id, cp);
+      a.selected_node = n->id;
+      a.request_eval();
     }
-    if (d->category != last_cat) {
-      if (!last_cat.empty()) ImGui::Spacing();
-      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(125, 122, 117, 255));
-      ImGui::TextUnformatted(d->category.c_str());
-      ImGui::PopStyleColor();
-      last_cat = d->category;
-    }
-    if (ImGui::MenuItem(d->type.c_str())) {
-      undo_push_locked(a, "Add " + d->type);
-      ImVec2 cp = ed::ScreenToCanvas(click_pos);
-      gpx::Node *n = a.graph.add_node(d->type, cp.x, cp.y);
-      if (n) {
-        ed::SetNodePosition(n->id, cp);
-        a.selected_node = n->id;
-        a.request_eval();
-      }
-    }
+  };
+  auto entry = [&](const gpx::NodeDef *d) {
+    if (ImGui::MenuItem(d->type.c_str())) place(d);
     if (ImGui::IsItemHovered() && !d->description.empty())
       ImGui::SetTooltip("%s", d->description.c_str());
+  };
+  auto in_scope = [&](const gpx::NodeDef *d) {
+    return a.graph_show_all_domains ||
+           domain_of_category(d->category) == a.workspace;
+  };
+
+  const auto &all = gpx::NodeRegistry::instance().all();
+
+  if (filter[0]) {
+    std::string lf = filter;
+    for (auto &ch : lf) ch = (char)tolower(ch);
+    int shown = 0;
+    for (const gpx::NodeDef *d : all) {
+      if (!in_scope(d)) continue;
+      std::string lt = d->type, lc = d->category;
+      for (auto &ch : lt) ch = (char)tolower(ch);
+      for (auto &ch : lc) ch = (char)tolower(ch);
+      // match the category too, so "erosion" finds the whole family
+      if (lt.find(lf) == std::string::npos && lc.find(lf) == std::string::npos)
+        continue;
+      if (++shown > 40) {
+        ImGui::TextDisabled("...more, keep typing");
+        break;
+      }
+      entry(d);
+      ImGui::SameLine();
+      ImGui::TextDisabled("%s", d->category.c_str());
+    }
+    if (!shown) ImGui::TextDisabled("nothing matches");
+    return;
   }
+
+  ImGui::Separator();
+  std::string last_cat;
+  bool open = false;
+  for (const gpx::NodeDef *d : all) {
+    if (!in_scope(d)) continue;
+    if (d->category != last_cat) {
+      if (open) ImGui::EndMenu();
+      last_cat = d->category;
+      open = ImGui::BeginMenu(last_cat.c_str());
+    }
+    if (open) entry(d);
+  }
+  if (open) ImGui::EndMenu();
 }
 
 void draw_panel_graph(App &a) {
@@ -330,11 +365,25 @@ void draw_panel_graph(App &a) {
       const App::NodeView *tn = find_view(l.to_node);
       if (!fn || !tn) continue;
       if (!view_visible(*fn) || !view_visible(*tn)) continue;
-      size_t fi = 0, ti = 0;
+      // Direction-aware, and this is not optional: a node may name an input and
+      // an output identically. TerrainOutput has `heightmap` both ways
+      // (engine/nodes/nodes_export.cpp:18,22), and matching on the name alone
+      // took the last hit - the output - so every wire feeding TerrainOutput
+      // was drawn arriving at its output pin. AGENTS.md engine rule 3.
+      size_t fi = SIZE_MAX, ti = SIZE_MAX;
       for (size_t i = 0; i < fn->ports.size(); ++i)
-        if (fn->ports[i].name == l.from_port) fi = i;
+        if (!fn->ports[i].is_input && fn->ports[i].name == l.from_port) {
+          fi = i;
+          break;
+        }
       for (size_t i = 0; i < tn->ports.size(); ++i)
-        if (tn->ports[i].name == l.to_port) ti = i;
+        if (tn->ports[i].is_input && tn->ports[i].name == l.to_port) {
+          ti = i;
+          break;
+        }
+      // A link naming a port that does not exist is a corrupt file, not a
+      // link to draw at pin 0.
+      if (fi == SIZE_MAX || ti == SIZE_MAX) continue;
       ed::Link(l.id, pin_id(l.from_node, fi), pin_id(l.to_node, ti),
                ImVec4(0.78f, 0.47f, 0.19f, 0.9f), 1.5f);
     }
@@ -536,6 +585,58 @@ void draw_panel_graph(App &a) {
   }
 
   ed::Suspend();
+  // Right-clicking a port disconnects it. Dragging a wire off a pin works, but
+  // only if you can grab it; on a dense graph the wires overlap and the pin is
+  // the thing you can actually hit.
+  static uint64_t ctx_pin = 0;
+  if (!eval_running) {
+    ed::PinId pid;
+    if (ed::ShowPinContextMenu(&pid)) {
+      ctx_pin = (uint64_t)pid.Get();
+      ImGui::OpenPopup("pin_menu");
+    }
+  }
+  if (ImGui::BeginPopup("pin_menu")) {
+    uint64_t nid = 0;
+    size_t pidx = 0;
+    decode_pin(ctx_pin, nid, pidx);
+    gpx::Node *n = a.graph.find_node(nid);
+    const gpx::Port *port = n && pidx < n->ports.size() ? &n->ports[pidx] : nullptr;
+    if (!port) {
+      ImGui::TextDisabled("no such port");
+    } else {
+      // Count first, so the item can say what it will do rather than being a
+      // verb that might be a no-op.
+      int hits = 0;
+      for (const gpx::Link &l : a.graph.links)
+        if ((port->dir == gpx::PortDir::In && l.to_node == nid &&
+             l.to_port == port->name) ||
+            (port->dir == gpx::PortDir::Out && l.from_node == nid &&
+             l.from_port == port->name))
+          ++hits;
+      ImGui::TextDisabled("%s  (%s)", port->name.c_str(),
+                          port->dir == gpx::PortDir::In ? "input" : "output");
+      ImGui::Separator();
+      if (hits == 0) {
+        ImGui::TextDisabled("nothing connected");
+      } else if (ImGui::MenuItem(hits == 1 ? "Disconnect"
+                                           : "Disconnect all")) {
+        undo_push_locked(a, "Disconnect " + port->name);
+        for (size_t k = a.graph.links.size(); k-- > 0;) {
+          const gpx::Link &l = a.graph.links[k];
+          if ((port->dir == gpx::PortDir::In && l.to_node == nid &&
+               l.to_port == port->name) ||
+              (port->dir == gpx::PortDir::Out && l.from_node == nid &&
+               l.from_port == port->name))
+            a.graph.remove_link(l.id);
+        }
+        a.request_eval();
+      }
+      if (hits > 1) ImGui::TextDisabled("%d links", hits);
+    }
+    ImGui::EndPopup();
+  }
+
   // Adding a node mutates the graph, so it waits for a frame that holds the
   // lock — the same rule the connect and delete paths follow.
   if (!eval_running && ed::ShowBackgroundContextMenu())

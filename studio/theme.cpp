@@ -65,29 +65,43 @@ static ImVec4 hex(unsigned c, float a = 1.f) {
 void apply_theme() {
   ImGuiStyle &s = ImGui::GetStyle();
 
-  // geometry: strictly flat
+  // Geometry: flat, but not sharp. Hard corners on every control read as
+  // unfinished rather than as restraint; a 3 px radius is enough to soften the
+  // silhouette without becoming a style of its own. Windows and popups keep
+  // square corners so panel edges still line up with the dock grid.
+  const float R = 3.f;
   s.WindowRounding = 0;
   s.ChildRounding = 0;
-  s.FrameRounding = 0;
   s.PopupRounding = 0;
-  s.ScrollbarRounding = 0;
-  s.GrabRounding = 0;
-  s.TabRounding = 0;
+  s.FrameRounding = R;
+  s.ScrollbarRounding = R;
+  s.GrabRounding = R;
+  s.TabRounding = R;
   s.WindowBorderSize = 1;
   s.FrameBorderSize = 0;
   s.PopupBorderSize = 1;
-  s.WindowPadding = ImVec2(12, 10);
-  s.FramePadding = ImVec2(9, 5);
-  s.ItemSpacing = ImVec2(9, 6);
-  s.ItemInnerSpacing = ImVec2(6, 4);
-  s.CellPadding = ImVec2(6, 4);
-  s.IndentSpacing = 18;
-  s.ScrollbarSize = 13;
-  s.GrabMinSize = 10;
+  // Everything below scales with the font. Fixed pixel padding is why text
+  // clipped inside buttons the moment the font size went up: the glyphs grew
+  // and the box did not.
+  // FontSizeBase is what the user asked for; GetFontSize() is whatever font
+  // happens to be bound, which is zero before the atlas exists. Falling back
+  // keeps this correct at startup and after a preferences change alike.
+  float f = ImGui::GetStyle().FontSizeBase;
+  if (f <= 0.f) f = ImGui::GetFontSize();
+  if (f <= 0.f) f = 17.f;
+  const float u = f / 17.f; // 17 px is the design size these numbers came from
+  s.WindowPadding = ImVec2(12 * u, 10 * u);
+  s.FramePadding = ImVec2(9 * u, 5 * u);
+  s.ItemSpacing = ImVec2(9 * u, 6 * u);
+  s.ItemInnerSpacing = ImVec2(6 * u, 4 * u);
+  s.CellPadding = ImVec2(6 * u, 4 * u);
+  s.IndentSpacing = 18 * u;
+  s.ScrollbarSize = 13 * u;
+  s.GrabMinSize = 10 * u;
   s.TabBarBorderSize = 1;
   s.DockingSeparatorSize = 4;
   s.SeparatorTextBorderSize = 2;
-  s.SeparatorTextPadding = ImVec2(18, 4);
+  s.SeparatorTextPadding = ImVec2(18 * u, 4 * u);
   s.FrameBorderSize = 1; // subtle inset outline on controls (C4D-style depth)
 
   const ImVec4 bg_deep = hex(0x181818);

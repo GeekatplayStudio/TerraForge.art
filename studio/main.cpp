@@ -17,10 +17,15 @@ void run_main(); // app.cpp
 } // namespace studio
 
 int main() {
-  // Hints must come *after* glfwInit(): it calls glfwDefaultWindowHints()
-  // and resets every one of them. An identical block used to sit above this
-  // call doing nothing - harmless while the two agreed, and a silent trap
-  // the day someone bumps the version in the wrong one.
+  // Hints must come *after* glfwInit(). An identical block used to sit above
+  // this call doing nothing at all: glfwWindowHint opens with
+  // _GLFW_REQUIRE_INIT() (external/glfw/src/window.c), so before init it
+  // returns immediately and posts GLFW_NOT_INITIALIZED - the value never
+  // reaches the hint state. glfwInit then calls glfwDefaultWindowHints()
+  // (init.c:428) and would have cleared it regardless.
+  //
+  // Harmless while the two blocks agreed, and a silent trap the day someone
+  // bumps the version in the wrong one.
   if (!glfwInit()) {
     std::fprintf(stderr, "GLFW init failed\n");
     return 1;

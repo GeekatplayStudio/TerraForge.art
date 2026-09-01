@@ -3,6 +3,7 @@
 // volumetric raymarched clouds, height fog with absorption, water with foam,
 // shadow mapping, scene meshes, sun gizmo, selection outlines, object picking.
 #include "app.hpp"
+#include "console.hpp"
 #include "cloud_noise.hpp"
 #include "planet_renderer.hpp"
 #include "render_settings.hpp"
@@ -213,7 +214,7 @@ static GLuint compile(GLenum type, const char *src) {
   if (!ok) {
     char log[4096];
     glGetShaderInfoLog(sh, sizeof log, nullptr, log);
-    std::fprintf(stderr, "shader error: %s\n", log);
+    log_error("shader", log);
   }
   return sh;
 }
@@ -457,7 +458,7 @@ static bool rebuild_terrain_program(std::string &err) {
     if (prog_depth) glDeleteProgram(prog_depth);
     prog_depth = d;
   } else {
-    std::fprintf(stderr, "shadow shader:\n%s\n", derr.c_str());
+    log_error("shader", "shadow pass: " + derr);
   }
 
   // The tessellated program is an optimisation, not a requirement: if it does
@@ -473,7 +474,8 @@ static bool rebuild_terrain_program(std::string &err) {
     tess_ok = true;
   } else {
     tess_ok = prog_terrain_tess != 0; // keep any program that already worked
-    std::fprintf(stderr, "terrain tessellation unavailable:\n%s\n", terr.c_str());
+    log_warn("shader",
+             "terrain tessellation unavailable, using the fixed grid: " + terr);
   }
   return true;
 }
@@ -1609,7 +1611,7 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
       g_field_error.clear();
     } else {
       g_field_error = err.empty() ? "generated terrain shader failed to link" : err;
-      std::fprintf(stderr, "terrain shader:\n%s\n", g_field_error.c_str());
+      log_error("shader", "terrain program: " + g_field_error);
       // fall back to the stubs, which are known good, so the viewport keeps
       // drawing. The *requests* still hold the broken sources, so this is not
       // retried until the graph actually changes.

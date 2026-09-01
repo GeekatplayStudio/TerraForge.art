@@ -1,5 +1,6 @@
 ﻿// Geekatplay Studio â€” main loop, docking layout, background evaluation
 #include "app.hpp"
+#include "console.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -25,6 +26,12 @@ void App::refresh_snapshot() {
     v.type = n->type;
     v.category = n->category;
     v.error = n->error;
+    // Node errors used to live only on the node, as red text you had to be
+    // looking at. Mirroring them here puts every one in the console, where it
+    // can be read after the fact and copied. log_add collapses repeats, so a
+    // node failing every frame is one line with a count.
+    if (!n->error.empty())
+      log_error("graph", n->type + ": " + n->error);
     v.pos_x = n->pos_x;
     v.pos_y = n->pos_y;
     v.ms = n->last_compute_ms;
@@ -121,7 +128,12 @@ static void build_default_layout(ImGuiID dockspace_id, int view_count) {
   // to work entirely in it without ever opening the network.
   ImGui::DockBuilderDockWindow("Node List", left);
   ImGui::DockBuilderDockWindow("AI", left); // tabbed with Library
+  // The console sits under the graph: it is where messages about the graph
+  // appear, and a log nobody can see is a log nobody reads.
+  ImGuiID bottom = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.28f,
+                                               nullptr, &main_id);
   ImGui::DockBuilderDockWindow("Graph", main_id);
+  ImGui::DockBuilderDockWindow("###console", bottom);
   // Blender layout: Outliner on top, one Properties editor below it
   ImGui::DockBuilderDockWindow("Outliner", right);
   ImGui::DockBuilderDockWindow("Properties", right_bottom);
@@ -177,6 +189,11 @@ static void build_default_layout(ImGuiID dockspace_id, int view_count) {
 }
 
 void run_main() {
+  // Before anything else can write to it: GLFW, the drivers and the shader
+  // compilers all report through stderr, and this is a windowed process, so
+  // without this those messages go nowhere at all.
+  log_capture_stderr();
+  log_info("app", "TerraForge starting");
   App &a = app();
   renderer_init();
   scene_init_builtins();
@@ -222,14 +239,10 @@ void run_main() {
     ImGui::EndChild();
     ImGui::PopStyleVar();
 
-    const float tools_w = 56.f;
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3, 4));
-    ImGui::BeginChild("##globaltools", ImVec2(tools_w, 0), ImGuiChildFlags_None,
-                      ImGuiWindowFlags_NoScrollbar);
-    draw_global_tools(a);
-    ImGui::EndChild();
-    ImGui::PopStyleVar();
-    ImGui::SameLine(0, 0);
+    // The global tools used to be a 56 px column down the left edge, which
+    // spent a whole column of the window on seven buttons and put undo where
+    // no application keeps it. They are icons on the menu row now, where the
+    // hand already is.
 
     // version bumped whenever the default layout changes shape
     ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV6");
@@ -252,6 +265,7 @@ void run_main() {
   if (a.show_nodelist) draw_panel_nodelist(a);
     if (a.show_viewport) draw_panel_viewport(a);
     draw_panel_graph(a);
+    draw_console(a);
     if (a.show_properties) draw_panel_properties(a);
     // apply material maps from the graph to the renderer
     {

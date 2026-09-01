@@ -1,6 +1,7 @@
 ﻿// Geekatplay TerraForge â€” menu bar (File/Edit/View/Render/Help), tool strip
 // with typed resolution, progress and resource usage.
 #include "app.hpp"
+#include "icons.hpp"
 #include "i18n.hpp"
 #include "material_library.hpp"
 #include "prefs.hpp"
@@ -265,11 +266,18 @@ static void prefs_dialog() {
     Prefs &p = prefs();
     ImGui::SeparatorText("Interface");
     ImGui::SetNextItemWidth(220);
-    if (ImGui::SliderFloat("Font size", &p.font_size, 12.f, 30.f, "%.0f px"))
+    // Re-apply the theme on either change: padding, spacing and control sizes
+    // are all derived from the font, so leaving them at the old size is what
+    // made text clip inside its button the moment the font grew.
+    if (ImGui::SliderFloat("Font size", &p.font_size, 12.f, 30.f, "%.0f px")) {
       ImGui::GetStyle().FontSizeBase = p.font_size;
+      apply_theme();
+    }
     ImGui::SetNextItemWidth(220);
-    if (ImGui::SliderFloat("UI scale", &p.ui_scale, 0.7f, 2.f, "%.2f"))
+    if (ImGui::SliderFloat("UI scale", &p.ui_scale, 0.7f, 2.f, "%.2f")) {
       ImGui::GetStyle().FontScaleMain = p.ui_scale;
+      apply_theme();
+    }
     ImGui::SeparatorText("Performance");
     ImGui::SetNextItemWidth(220);
     ImGui::SliderInt("Preview res while dragging", &p.interactive_res, 64, 512);
@@ -487,6 +495,13 @@ void draw_toolbar(App &a) {
     menu_terrain(a);
     menu_view(a);
     menu_help();
+
+    // The global tools, on the row the hand is already on. They used to be a
+    // 56 px column down the left edge: a whole column of window spent on seven
+    // buttons, with undo somewhere no other application keeps it.
+    ImGui::Spacing();
+    ImGui::SameLine(0, 14);
+    draw_global_tools(a);
 
     ImGui::EndMenuBar();
   }
