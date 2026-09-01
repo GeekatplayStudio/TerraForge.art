@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "field.cellular", "area": "engine", "phase": "22",
+      "description": "Cellular (Worley) noise in the field domain: F1, F2, seam distance and flat cell value, three metrics, mirrored exactly in GLSL",
+      "test_file": "test_engine.cpp", "test_symbol": "test_cellular" },
+
     { "id": "graph.port_aware_create", "area": "studio", "phase": "22",
       "description": "Dragging a wire onto empty canvas offers only nodes that can take it, then wires the new node up",
       "test_file": "test_nodes.cpp", "test_symbol": "test_port_catalog" },

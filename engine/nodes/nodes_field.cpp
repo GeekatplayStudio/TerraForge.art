@@ -317,6 +317,80 @@ REGISTER_NODE(
     },
     [](Node &) {})
 
+// --------------------------------------------------------------- cellular
+// Worley noise: scatter a point in every lattice cell, and ask how far away
+// the nearest ones are. It is the second basis pattern of procedural terrain
+// after fBm, and the one that produces everything fBm cannot - cracked mud,
+// basalt columns, scree fields, tectonic plates, crater fields.
+//
+// The four outputs are four landscapes from the same cells. Note which way up
+// each one is, because it is easy to get backwards: F1 puts a pit at every
+// cell point, F2-F1 puts a dome there and its zeros along the seams, and the
+// cell value paints each cell one flat height, which is how you get plates.
+REGISTER_NODE(
+    FieldVoronoi, "Field Noise",
+    "Cellular (Worley) noise - cracks, plates, scree and crater fields",
+    [](Node &n) {
+      n.add_field_in("position", FieldType::Vector, true);
+      add_seed(n.attrs, "seed", "Seed", 1, "Cells");
+      add_float(n.attrs, "frequency", "Cell size", 6.f, 0.01f, 200.f, "Cells")
+          .tooltip = "How many cells fit across a unit of space.\n"
+                     "Low values give continent-sized plates, high values\n"
+                     "give gravel.";
+      add_float(n.attrs, "jitter", "Jitter", 1.f, 0.f, 1.f, "Cells")
+          .tooltip = "How far each cell's point may wander from its centre.\n"
+                     "0 is a perfect grid; 1 is fully irregular.";
+      add_choice(n.attrs, "metric", "Cell shape",
+                 {"Round (Euclidean)", "Diamond (Manhattan)",
+                  "Square (Chebyshev)"},
+                 0, "Cells")
+          .tooltip = "The distance the cells are measured with, which is\n"
+                     "what decides their silhouette.";
+      add_choice(n.attrs, "output", "Pattern",
+                 {"Distance to nearest (F1)", "Distance to second (F2)",
+                  "Distance to the seam (F2 - F1)", "Flat cell value"},
+                 0, "Pattern")
+          .tooltip =
+          "F1 is zero at each cell's own point and rises outward: cell\n"
+          "centres become pits and the seams between them become ridges.\n"
+          "Crater fields, dimpled rock.\n\n"
+          "F2 is the same one cell further out - rounder, smoother swells.\n\n"
+          "F2 - F1 is zero exactly on the seam between two cells and\n"
+          "highest at the centre: domes with sharp creases between them.\n"
+          "Invert it and the seams become the cracks.\n\n"
+          "Flat cell value gives each cell one random height - plates,\n"
+          "terraces, tectonic blocks.";
+      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Pattern");
+      add_float(n.attrs, "offset", "Offset", 0.f, -4.f, 4.f, "Pattern");
+      add_bool(n.attrs, "invert", "Invert", false, "Pattern")
+          .tooltip = "Turns pits into domes, and walls into channels.";
+      n.add_field_out("out", FieldType::Number, [](const Node &self,
+                                                   const FieldContext &ctx) {
+        float p[3];
+        self.in_field("position", ctx,
+                      FieldValue::vector(ctx.pos[0], ctx.pos[1], ctx.pos[2]))
+            .as_vector(p);
+        const float f = self.attrs.get_f("frequency", 6.f);
+        float f1, f2, id;
+        planet::pl_cell(p[0] * f, p[1] * f, p[2] * f,
+                        self.attrs.get_seed("seed"),
+                        self.attrs.get_f("jitter", 1.f),
+                        self.attrs.get_choice("metric"), f1, f2, id);
+        float v;
+        switch (self.attrs.get_choice("output")) {
+          case 1: v = f2; break;
+          case 2: v = f2 - f1; break;
+          case 3: v = id; break;
+          default: v = f1; break;
+        }
+        v = v * self.attrs.get_f("amplitude", 1.f) +
+            self.attrs.get_f("offset", 0.f);
+        if (self.attrs.get_b("invert", false)) v = 1.f - v;
+        return FieldValue(v);
+      });
+    },
+    [](Node &) {})
+
 // ------------------------------------------------------------------ colour
 REGISTER_NODE(
     FieldGradient, "Field Color", "Turns a number into a colour through a gradient",

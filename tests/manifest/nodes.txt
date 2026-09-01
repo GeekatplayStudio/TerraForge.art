@@ -45,6 +45,7 @@ FieldTexCoord|Field Input
 FieldTime|Field Input
 FieldTrig|Field Math
 FieldVectorOp|Field Math
+FieldVoronoi|Field Noise
 FieldZone|Field Displace
 FlatColor|Material
 FlowAccumulation|Analysis

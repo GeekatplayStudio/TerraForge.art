@@ -52,6 +52,36 @@ float gpxf_fbm(vec3 p, uint seed, int octaves, int type){
   if (type == 1) v = v*v;
   return v - 0.5;
 }
+// Cellular (Worley) noise, mirroring gpx::planet::pl_cell line for line.
+// Returns (f1, f2, id): nearest distance, second nearest, and a stable random
+// value for the nearest cell.
+uint gpxf_hash_bits(vec3 ip, uint seed){
+  uvec3 q = uvec3(ivec3(ip));
+  uint h = q.x*374761393u + q.y*668265263u + q.z*2147483647u + seed*3266489917u;
+  h = (h ^ (h>>13u)) * 1274126177u;
+  h ^= h>>16u;
+  return h;
+}
+vec3 gpxf_cell(vec3 p, uint seed, float jitter, int metric){
+  vec3 i = floor(p), f = p - i;
+  float f1 = 1e9, f2 = 1e9, id = 0.0;
+  for (int dz = -1; dz <= 1; ++dz)
+  for (int dy = -1; dy <= 1; ++dy)
+  for (int dx = -1; dx <= 1; ++dx){
+    vec3 d3 = vec3(float(dx), float(dy), float(dz));
+    uint h = gpxf_hash_bits(i + d3, seed);
+    vec3 o = vec3(float(h & 0x3ffu), float((h>>10u) & 0x3ffu),
+                  float((h>>20u) & 0x3ffu)) * (1.0/1023.0);
+    vec3 q = d3 + vec3(0.5) + (o - vec3(0.5)) * jitter - f;
+    float d;
+    if (metric == 1) d = abs(q.x) + abs(q.y) + abs(q.z);
+    else if (metric == 2) d = max(abs(q.x), max(abs(q.y), abs(q.z)));
+    else d = sqrt(dot(q, q));
+    if (d < f1){ f2 = f1; f1 = d; id = float(h & 0xffffffu) * (1.0/16777215.0); }
+    else if (d < f2) f2 = d;
+  }
+  return vec3(f1, f2, id);
+}
 // guarded division: the CPU side returns 0 rather than NaN, so must this
 float gpxf_div(float a, float b){ return abs(b) > 1e-9 ? a/b : 0.0; }
 // Soft membership of a band. Deliberately not smoothstep: smoothstep(e,e,x) is
@@ -336,6 +366,28 @@ static void install_emitters() {
                     ", " + std::to_string(n.attrs.get_choice("type")) + ")";
     e = "(" + e + " * " + f2s(n.attrs.get_f("amplitude", 1.f)) + " + " +
         f2s(n.attrs.get_f("offset", 0.f)) + ")";
+    return "vec4(" + e + ", 0.0, 0.0, 1.0)";
+  });
+
+  reg("FieldVoronoi", [](const Node &n, const InputFn &in, EmitCtx &ctx) {
+    std::string p = in("#position", ctx.pos.c_str());
+    float f = n.attrs.get_f("frequency", 6.f);
+    std::string c = ctx.declare(
+        "vec3", "cell",
+        "gpxf_cell(" + p + " * " + f2s(f) + ", " +
+            std::to_string(n.attrs.get_seed("seed")) + "u, " +
+            f2s(n.attrs.get_f("jitter", 1.f)) + ", " +
+            std::to_string(n.attrs.get_choice("metric")) + ")");
+    std::string e;
+    switch (n.attrs.get_choice("output")) {
+      case 1: e = c + ".y"; break;                    // F2
+      case 2: e = "(" + c + ".y - " + c + ".x)"; break; // F2 - F1: cell walls
+      case 3: e = c + ".z"; break;                    // cell value
+      default: e = c + ".x"; break;                   // F1
+    }
+    e = "(" + e + " * " + f2s(n.attrs.get_f("amplitude", 1.f)) + " + " +
+        f2s(n.attrs.get_f("offset", 0.f)) + ")";
+    if (n.attrs.get_b("invert", false)) e = "(1.0 - " + e + ")";
     return "vec4(" + e + ", 0.0, 0.0, 1.0)";
   });
 

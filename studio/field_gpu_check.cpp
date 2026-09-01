@@ -323,6 +323,49 @@ std::string field_gpu_verify_all(App &a) {
     run("zone", g, z);
     run_port("zone (mask)", g, z, "mask");
   }
+  // ---- cellular ----------------------------------------------------------
+  // Worley noise is the one pattern where a CPU/GPU split is easy to miss by
+  // eye: a wrong bit slice in the per-cell offset still produces a plausible
+  // cell pattern, just a different one. So all four outputs and all three
+  // metrics are checked, plus a jitterless grid where every cell point sits
+  // exactly on a lattice centre and any rounding difference shows up as a
+  // whole-cell jump.
+  {
+    const char *out_name[4] = {"F1", "F2", "walls", "cell value"};
+    for (int o = 0; o < 4; ++o) {
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldVoronoi");
+      n->attrs.find("output")->i = o;
+      n->attrs.find("frequency")->f = 5.f;
+      run((std::string("voronoi ") + out_name[o]).c_str(), g, n);
+    }
+    const char *metric_name[3] = {"round", "diamond", "square"};
+    for (int m = 0; m < 3; ++m) {
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldVoronoi");
+      n->attrs.find("metric")->i = m;
+      n->attrs.find("output")->i = 2; // walls: the most sensitive output
+      run((std::string("voronoi ") + metric_name[m]).c_str(), g, n);
+    }
+    {
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldVoronoi");
+      n->attrs.find("jitter")->f = 0.f;
+      run("voronoi (no jitter)", g, n);
+    }
+    {   // cells warped by noise, which is how it is actually used
+      gpx::Graph g;
+      gpx::Node *w = g.add_node("FieldNoise");
+      w->attrs.find("frequency")->f = 2.f;
+      gpx::Node *v = g.add_node("FieldVoronoi");
+      gpx::Node *r = g.add_node("FieldRedirect");
+      r->attrs.find("strength")->f = 0.25f;
+      g.add_link(v->id, "out", r->id, "input");
+      g.add_link(w->id, "out", r->id, "redirect");
+      run("voronoi warped by noise", g, r);
+    }
+  }
+
   {   // texture coordinates with a rotation, where sin/cos signs can flip
     gpx::Graph g;
     gpx::Node *tc = g.add_node("FieldTexCoord");

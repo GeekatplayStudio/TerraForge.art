@@ -2288,6 +2288,120 @@ static void test_buffer_budget() {
   CHECK(unl && unl->v == expect, "a zero budget changed the result");
 }
 
+// --------------------------------------------------------------- cellular
+// Worley noise has properties that a wrong implementation still *looks*
+// plausible while violating - a truncated neighbourhood gives a pattern that
+// reads as cells until you notice the seams jump, and a bad bit slice gives a
+// different but perfectly cell-like pattern. So the invariants are asserted
+// rather than eyeballed.
+static void test_cellular() {
+  std::printf("cellular (Worley) noise...\n");
+  using gpx::planet::pl_cell;
+  float f1, f2, id;
+
+  // f2 is never nearer than f1, and neither is negative
+  {
+    bool ok = true;
+    for (int i = 0; i < 4000; ++i) {
+      float x = (float)((i * 37) % 211) * 0.043f - 4.f;
+      float y = (float)((i * 53) % 197) * 0.051f - 4.f;
+      float z = (float)((i * 71) % 173) * 0.037f - 4.f;
+      pl_cell(x, y, z, 7, 1.f, i % 3, f1, f2, id);
+      if (!(f2 >= f1) || f1 < 0.f || !std::isfinite(f1) || !std::isfinite(f2))
+        ok = false;
+      if (id < 0.f || id > 1.f) ok = false;
+    }
+    CHECK(ok, "f2 >= f1 >= 0, all finite, id in 0..1");
+  }
+
+  // no jitter puts every feature point at its cell centre, so the centre of a
+  // cell is exactly on one and exactly one unit from its six neighbours
+  {
+    pl_cell(3.5f, 2.5f, -1.5f, 11, 0.f, 0, f1, f2, id);
+    CHECK(std::fabs(f1) < 1e-6f, "no jitter: the cell centre is the point");
+    CHECK(std::fabs(f2 - 1.f) < 1e-6f,
+          "no jitter: the next point is one cell away");
+  }
+
+  // same input, same answer - this is a terrain generator
+  {
+    float a1, a2, ai, b1, b2, bi;
+    pl_cell(1.234f, -5.678f, 0.9f, 42, 0.8f, 0, a1, a2, ai);
+    pl_cell(1.234f, -5.678f, 0.9f, 42, 0.8f, 0, b1, b2, bi);
+    CHECK(a1 == b1 && a2 == b2 && ai == bi, "deterministic");
+    float c1, c2, ci;
+    pl_cell(1.234f, -5.678f, 0.9f, 43, 0.8f, 0, c1, c2, ci);
+    CHECK(a1 != c1 || ai != ci, "a different seed is a different pattern");
+  }
+
+  // the nearest-cell value is flat across a cell and changes between cells:
+  // that is what makes the "plates" output a plate rather than a gradient
+  {
+    float mid_id;
+    pl_cell(6.5f, 6.5f, 6.5f, 3, 0.f, 0, f1, f2, mid_id);
+    bool flat = true;
+    for (int i = 0; i < 20; ++i) {
+      float o = -0.35f + 0.035f * (float)i;
+      pl_cell(6.5f + o, 6.5f + o * 0.5f, 6.5f, 3, 0.f, 0, f1, f2, id);
+      if (id != mid_id) flat = false;
+    }
+    CHECK(flat, "the cell value is constant inside its cell");
+    pl_cell(7.5f, 6.5f, 6.5f, 3, 0.f, 0, f1, f2, id);
+    CHECK(id != mid_id, "and different in the next cell");
+  }
+
+  // Continuity is the one that catches a truncated search. f1 is a distance
+  // to the nearest of a fixed set of points, so it is 1-Lipschitz: stepping
+  // by h can never change it by more than h. Search only the 8 nearest cells
+  // instead of all 27 and this fails at the seams.
+  {
+    const float h = 0.002f;
+    float worst = 0.f;
+    for (int i = 0; i < 3000; ++i) {
+      float x = (float)((i * 13) % 401) * 0.021f - 4.f;
+      float y = (float)((i * 29) % 307) * 0.027f - 4.f;
+      float z = (float)((i * 47) % 251) * 0.019f - 4.f;
+      float a1, a2, ai, b1, b2, bi;
+      pl_cell(x, y, z, 9, 1.f, 0, a1, a2, ai);
+      pl_cell(x + h, y, z, 9, 1.f, 0, b1, b2, bi);
+      float d = std::fabs(b1 - a1);
+      if (d > worst) worst = d;
+    }
+    CHECK(worst <= h * 1.001f + 1e-6f,
+          "f1 is 1-Lipschitz: the whole 3x3x3 neighbourhood is searched");
+  }
+
+  // the three metrics really are three shapes
+  {
+    float e1, m1, c1;
+    pl_cell(0.2f, 0.7f, 0.4f, 5, 1.f, 0, e1, f2, id);
+    pl_cell(0.2f, 0.7f, 0.4f, 5, 1.f, 1, m1, f2, id);
+    pl_cell(0.2f, 0.7f, 0.4f, 5, 1.f, 2, c1, f2, id);
+    CHECK(c1 <= e1 + 1e-6f && e1 <= m1 + 1e-6f,
+          "Chebyshev <= Euclidean <= Manhattan, as the norms require");
+  }
+
+  // and the node wired to it agrees with the maths
+  {
+    gpx::Graph g;
+    gpx::Node *n = g.add_node("FieldVoronoi", 0, 0);
+    CHECK(n != nullptr, "FieldVoronoi is registered");
+    if (n) {
+      n->attrs.find("frequency")->f = 4.f;
+      n->attrs.find("jitter")->f = 0.6f;
+      n->attrs.find("output")->i = 0; // F1
+      n->attrs.find("amplitude")->f = 1.f;
+      n->attrs.find("offset")->f = 0.f;
+      gpx::FieldContext ctx;
+      ctx.pos[0] = 0.31f; ctx.pos[1] = 0.42f; ctx.pos[2] = 0.53f;
+      float got = n->eval_field("out", ctx).v[0];
+      pl_cell(0.31f * 4.f, 0.42f * 4.f, 0.53f * 4.f,
+              n->attrs.get_seed("seed"), 0.6f, 0, f1, f2, id);
+      CHECK(std::fabs(got - f1) < 1e-6f, "the node reports F1 as computed");
+    }
+  }
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2310,6 +2424,7 @@ int main() {
   test_terrain_effects();
   test_sculpt_layer();
   test_planet_math();
+  test_cellular();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

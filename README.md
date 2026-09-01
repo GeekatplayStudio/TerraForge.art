@@ -134,6 +134,13 @@ real-time OpenGL viewport.
   scale, amplitude, coverage and seed). Parented to a planet they shape its
   surface; at the root they extend the home terrain tile past its edges to
   the horizon, blending seamlessly out of the tile's own heightmap.
+- **Two noise bases, not one.** fBm for ridges and rolling ground, and
+  cellular (Worley) noise for everything fBm cannot make: cracked mud, basalt
+  columns, scree, crater fields and tectonic plates. `FieldVoronoi` gives the
+  distance to the nearest cell point, to the second, to the seam between them,
+  or one flat height per cell - through round, diamond or square cells. Being
+  a field node it compiles to GLSL, so it shapes planets and infinite terrain
+  at any scale as well as the finite tile.
 - **Shaped by a node graph.** A planet's surface and the endless ground plane
   have no heightmap - they are functions, evaluated on the GPU at whatever
   detail the camera has earned. So they are authored as functions: wire a

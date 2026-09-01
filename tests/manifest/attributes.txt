@@ -187,6 +187,14 @@ FieldTrig.degrees|bool
 FieldTrig.fn|choice
 FieldTrig.scale|float
 FieldVectorOp.op|choice
+FieldVoronoi.amplitude|float
+FieldVoronoi.frequency|float
+FieldVoronoi.invert|bool
+FieldVoronoi.jitter|float
+FieldVoronoi.metric|choice
+FieldVoronoi.offset|float
+FieldVoronoi.output|choice
+FieldVoronoi.seed|seed
 FieldZone.center_y|float
 FieldZone.center|vec2
 FieldZone.fade|float

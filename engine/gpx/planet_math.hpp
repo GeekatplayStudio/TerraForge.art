@@ -40,6 +40,64 @@ inline float pl_hash(float x, float y, float z, uint32_t seed) {
   return (h & 0xffffff) / 16777215.f;
 }
 
+// The same lattice hash, before it is squeezed into 0..1. Cellular noise needs
+// three independent numbers per cell and one hash carries enough entropy for
+// all three, so it slices this rather than hashing three times.
+inline uint32_t pl_hash_bits(int xi, int yi, int zi, uint32_t seed) {
+  uint32_t h = (uint32_t)xi * 374761393u + (uint32_t)yi * 668265263u +
+               (uint32_t)zi * 2147483647u + seed * 3266489917u;
+  h = (h ^ (h >> 13)) * 1274126177u;
+  h ^= h >> 16;
+  return h;
+}
+
+// ---- 3D cellular (Worley) noise -------------------------------------------
+// Scatters one feature point per lattice cell and reports the distance to the
+// nearest (f1) and second nearest (f2), plus a stable random value for the
+// nearest cell (id). Those three cover what cellular noise is actually used
+// for: f1 is bubbles and craters, f2-f1 draws the cell walls that read as
+// cracked ground and basalt columns, and id paints flat plates.
+//
+// Mirrored in GLSL as gpxf_cell (engine/field_glsl.cpp). The two must agree —
+// the CPU/GPU agreement check exists to keep them honest.
+//
+// metric: 0 Euclidean (round cells), 1 Manhattan (diamond), 2 Chebyshev (square).
+inline void pl_cell(float x, float y, float z, uint32_t seed, float jitter,
+                    int metric, float &f1, float &f2, float &id) {
+  const int xi = (int)std::floor(x), yi = (int)std::floor(y),
+            zi = (int)std::floor(z);
+  const float fx = x - (float)xi, fy = y - (float)yi, fz = z - (float)zi;
+  f1 = 1e9f;
+  f2 = 1e9f;
+  id = 0.f;
+  for (int dz = -1; dz <= 1; ++dz)
+    for (int dy = -1; dy <= 1; ++dy)
+      for (int dx = -1; dx <= 1; ++dx) {
+        const uint32_t h = pl_hash_bits(xi + dx, yi + dy, zi + dz, seed);
+        // three offsets out of one hash, from disjoint bit ranges
+        const float ox = (float)(h & 0x3ffu) * (1.f / 1023.f);
+        const float oy = (float)((h >> 10) & 0x3ffu) * (1.f / 1023.f);
+        const float oz = (float)((h >> 20) & 0x3ffu) * (1.f / 1023.f);
+        const float px = (float)dx + 0.5f + (ox - 0.5f) * jitter - fx;
+        const float py = (float)dy + 0.5f + (oy - 0.5f) * jitter - fy;
+        const float pz = (float)dz + 0.5f + (oz - 0.5f) * jitter - fz;
+        float d;
+        if (metric == 1)
+          d = std::fabs(px) + std::fabs(py) + std::fabs(pz);
+        else if (metric == 2)
+          d = std::fmax(std::fabs(px), std::fmax(std::fabs(py), std::fabs(pz)));
+        else
+          d = std::sqrt(px * px + py * py + pz * pz);
+        if (d < f1) {
+          f2 = f1;
+          f1 = d;
+          id = (float)(h & 0xffffffu) * (1.f / 16777215.f);
+        } else if (d < f2) {
+          f2 = d;
+        }
+      }
+}
+
 inline float pl_fade(float t) { return t * t * (3.f - 2.f * t); }
 
 inline float pl_vnoise(float x, float y, float z, uint32_t seed) {
