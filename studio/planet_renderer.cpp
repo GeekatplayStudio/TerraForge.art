@@ -1,6 +1,7 @@
 #include "console.hpp"
 #include "planet_renderer.hpp"
 #include "scene.hpp"
+#include "gpx/field_glsl.hpp"
 #include "gpx/planet_math.hpp"
 #include <glad/gl.h>
 #include <algorithm>
@@ -76,6 +77,7 @@ float pl_mask(vec3 d, int i){
   float edge = 1.0 - cov;
   return smoothstep(edge - 0.12, edge + 0.12, m);
 }
+uniform float u_fstrength; // graph-authored displacement, 0 = layers only
 float pl_height(vec3 d, float octf){
   float total = 0.0, wsum = 0.0;
   for (int i = 0; i < 6; ++i){
@@ -87,9 +89,31 @@ float pl_height(vec3 d, float octf){
     if (m <= 0.0) continue;
     total += pl_fbm(d * u_la[i].x, uint(u_lb[i].x), octf, int(u_lb[i].y)) * amp * m;
   }
-  return wsum > 0.0 ? total / wsum : 0.0;
+  float h = wsum > 0.0 ? total / wsum : 0.0;
+  // A field graph the user authored, evaluated here so it reaches every
+  // surface that has no heightmap: planets and the endless ground plane. It
+  // gets the octave budget the camera has earned, so a graph that respects
+  // `lod` stays sharp on approach and cheap far away.
+  if (u_fstrength != 0.0)
+    h += gpx_surface_field(d, normalize(d), h, 0.0, 0.0, 0.0, octf).x
+         * u_fstrength;
+  return h;
 }
 )GLSL";
+
+// What pl_height calls when no graph is wired up. Same signature as anything
+// the transpiler emits, so the shader source never has to change shape.
+static const char *GPX_SURFACE_STUB =
+    "vec4 gpx_surface_field(vec3 P, vec3 N, float alt, float slope,\n"
+    "                       float orient, float t, float lod){\n"
+    "  return vec4(0.0);\n}\n";
+
+// The generated program, the one currently spliced in, and whether a relink
+// is owed. As in the terrain renderer, the *request* is what a change is
+// measured against: a graph that fails to compile must not relink every frame.
+static std::string g_field_want, g_field_glsl, g_field_error;
+static float g_field_strength = 0.f;
+static bool g_field_dirty = false;
 
 static const char *VS_PLANET = R"GLSL(#version 430 core
 layout(location=0) in vec3 in_dir;
@@ -306,23 +330,98 @@ static GLuint pl_compile(GLenum type, const std::string &src) {
   return sh;
 }
 
-static GLuint pl_link(const char *vs, const char *fs) {
-  auto inject = [](const char *src) {
-    std::string s(src);
-    size_t p;
-    while ((p = s.find("PL_FN_PLACEHOLDER")) != std::string::npos)
-      s.replace(p, strlen("PL_FN_PLACEHOLDER"), PL_FN);
-    return s;
-  };
+// The placeholder expands to: the transpiler's prelude, then the generated
+// function (or the stub), then the built-in layer maths - in that order,
+// because pl_height calls gpx_surface_field and GLSL has no forward
+// declarations to lean on. Each shader stage is its own translation unit, so
+// each gets its own copy; duplicates only collide within a stage.
+static std::string pl_inject(const char *src) {
+  std::string body = gpx::field_glsl_prelude();
+  body += g_field_glsl.empty() ? std::string(GPX_SURFACE_STUB)
+                               : gpx::field_glsl_strip_prelude(g_field_glsl);
+  body += PL_FN;
+  std::string s(src);
+  size_t p;
+  while ((p = s.find("PL_FN_PLACEHOLDER")) != std::string::npos)
+    s.replace(p, strlen("PL_FN_PLACEHOLDER"), body);
+  return s;
+}
+
+// Link and say so when it fails. The built-in shaders are known good; a
+// generated one is written by the user's graph and can genuinely fail, and an
+// unlinked planet program draws nothing at all - the worst way to find out.
+static GLuint pl_link_checked(const char *vs, const char *fs,
+                              std::string &err) {
   GLuint p = glCreateProgram();
-  GLuint v = pl_compile(GL_VERTEX_SHADER, inject(vs));
-  GLuint f = pl_compile(GL_FRAGMENT_SHADER, inject(fs));
+  GLuint v = pl_compile(GL_VERTEX_SHADER, pl_inject(vs));
+  GLuint f = pl_compile(GL_FRAGMENT_SHADER, pl_inject(fs));
   glAttachShader(p, v);
   glAttachShader(p, f);
   glLinkProgram(p);
   glDeleteShader(v);
   glDeleteShader(f);
+  GLint ok = 0;
+  glGetProgramiv(p, GL_LINK_STATUS, &ok);
+  if (!ok) {
+    char log[4096];
+    glGetProgramInfoLog(p, sizeof log, nullptr, log);
+    err = log;
+    glDeleteProgram(p);
+    return 0;
+  }
   return p;
+}
+
+static GLuint pl_link(const char *vs, const char *fs) {
+  std::string err;
+  GLuint p = pl_link_checked(vs, fs, err);
+  if (!p) log_error("shader", "planet program: " + err);
+  return p;
+}
+
+void planet_set_field_program(const std::string &glsl, float strength) {
+  if (glsl == g_field_want && strength == g_field_strength) return;
+  g_field_want = glsl;
+  g_field_strength = strength;
+  g_field_dirty = true;
+}
+
+const std::string &planet_field_error() { return g_field_error; }
+
+// Relink both programs against the current request. Called at the top of a
+// draw, where a GL context is certain.
+static void pl_refresh_programs() {
+  if (!g_field_dirty) return;
+  g_field_dirty = false;
+  g_field_glsl = g_field_want;
+  std::string err;
+  GLuint np = pl_link_checked(VS_PLANET, FS_PLANET, err);
+  GLuint ni = np ? pl_link_checked(VS_INF, FS_INF, err) : 0;
+  if (np && ni) {
+    if (prog_planet) glDeleteProgram(prog_planet);
+    if (prog_inf) glDeleteProgram(prog_inf);
+    prog_planet = np;
+    prog_inf = ni;
+    g_field_error.clear();
+    return;
+  }
+  // Failed: keep the programs that work, and remember the broken request so
+  // this is not retried every frame until the graph actually changes.
+  if (np) glDeleteProgram(np);
+  g_field_error = err.empty() ? "generated surface shader failed to link" : err;
+  log_error("shader", "planet surface program: " + g_field_error);
+  g_field_glsl.clear();
+  g_field_strength = 0.f;
+  GLuint fp = pl_link_checked(VS_PLANET, FS_PLANET, err);
+  GLuint fi = fp ? pl_link_checked(VS_INF, FS_INF, err) : 0;
+  if (fp && fi) {
+    if (prog_planet) glDeleteProgram(prog_planet);
+    if (prog_inf) glDeleteProgram(prog_inf);
+    prog_planet = fp;
+    prog_inf = fi;
+  } else {
+    if (fp) glDeleteProgram(fp);
+  }
 }
 
 static void build_sphere_lod(int lod, int sect, int rings) {
@@ -419,6 +518,9 @@ static int upload_layers(GLuint prog, int planet_idx, float amp_scale) {
   glUniform4fv(glGetUniformLocation(prog, "u_la"), 6, &la[0][0]);
   glUniform4fv(glGetUniformLocation(prog, "u_lb"), 6, &lb[0][0]);
   punii(prog, "u_lcount", n);
+  // the field is part of the surface definition, so it is uploaded with the
+  // layers rather than somewhere a caller could forget
+  puni1(prog, "u_fstrength", g_field_glsl.empty() ? 0.f : g_field_strength);
   return n;
 }
 
@@ -427,6 +529,7 @@ bool infinite_layers_present() {
 }
 
 void planet_draw_all(const PlanetFrame &f) {
+  pl_refresh_programs(); // a GL context is certain here, unlike in the setter
   SceneState &sc = scene();
   std::vector<int> planets = scene_planet_indices();
   if (planets.empty()) return;
@@ -506,6 +609,7 @@ void planet_draw_all(const PlanetFrame &f) {
 }
 
 void infinite_draw(const InfiniteFrame &f) {
+  pl_refresh_programs();
   if (!infinite_layers_present()) return;
   glUseProgram(prog_inf);
   glUniformMatrix4fv(glGetUniformLocation(prog_inf, "u_mvp"), 1, GL_FALSE, f.mvp);

@@ -1,15 +1,19 @@
 ﻿{
   "_comment": [
-    "Feature manifest â€” the regression lock's human-auditable checklist.",
+    "Feature manifest — the regression lock's human-auditable checklist.",
     "Every shipped user-visible capability appears here and names the test that",
     "owns it. regression_tests verifies each named test symbol still exists in",
     "its source file, so deleting a test fails the build. Add an entry whenever",
     "a phase ships something a user can see; never delete one without a written",
     "reason in the commit message.",
     "Node-level and attribute-level coverage is handled separately and",
-    "exhaustively by nodes.txt / attributes.txt â€” this file is for capabilities."
+    "exhaustively by nodes.txt / attributes.txt — this file is for capabilities."
   ],
   "features": [
+
+    { "id": "surface.node_graph", "area": "renderer", "phase": "22",
+      "description": "Planets and the infinite ground plane are shaped by a field graph, transpiled to GLSL and spliced into the planet shader",
+      "test_file": "test_nodes.cpp", "test_symbol": "test_surface_displacement_bridge" },
 
     { "id": "engine.registry", "area": "engine", "phase": "1",
       "description": "Self-registering node registry with categories and descriptions",
@@ -48,7 +52,7 @@
       "test_file": "test_engine.cpp", "test_symbol": "test_workflow_determinism" },
 
     { "id": "terrain.effects", "area": "terrain", "phase": "16",
-      "description": "Grit, Gravel, Peaks, Sharpen, Cracks, Glaciation, Dissolve, TerrainClip â€” all deterministic, Dissolve emits a flow map, TerrainClip flattens and emits a hole mask",
+      "description": "Grit, Gravel, Peaks, Sharpen, Cracks, Glaciation, Dissolve, TerrainClip — all deterministic, Dissolve emits a flow map, TerrainClip flattens and emits a hole mask",
       "test_file": "test_engine.cpp", "test_symbol": "test_terrain_effects" },
 
     { "id": "terrain.sculpt_layer", "area": "terrain", "phase": "16",

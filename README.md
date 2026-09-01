@@ -134,6 +134,13 @@ real-time OpenGL viewport.
   scale, amplitude, coverage and seed). Parented to a planet they shape its
   surface; at the root they extend the home terrain tile past its edges to
   the horizon, blending seamlessly out of the tile's own heightmap.
+- **Shaped by a node graph.** A planet's surface and the endless ground plane
+  have no heightmap - they are functions, evaluated on the GPU at whatever
+  detail the camera has earned. So they are authored as functions: wire a
+  field graph into a `SurfaceDisplacement` node and it is transpiled to GLSL
+  and added to every procedural surface in the scene, at every scale, for no
+  memory at all. The same field nodes run on the CPU for picking and baking,
+  and a test holds the two definitions together.
 - **Continuous zoom.** Pull back to see a whole planetary neighbourhood —
   the sky thins to a starfield as you leave the atmosphere — then fly to any
   world (double-click it in the Objects tree) and keep zooming until individual

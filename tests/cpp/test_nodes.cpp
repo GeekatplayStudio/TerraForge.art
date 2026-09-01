@@ -64,7 +64,8 @@ static bool is_config_node(const std::string &t) {
 // to hand a downstream node.
 static bool is_sink(const std::string &t) {
   return t == "ExportMesh" || t == "ExportTexture" ||
-         t == "TerrainDisplacement" || t == "TerrainSurface";
+         t == "TerrainDisplacement" || t == "TerrainSurface" ||
+         t == "SurfaceDisplacement";
 }
 // Containers get their ports and their behaviour from what is put inside them,
 // so an empty one having neither is correct rather than a defect. MetaNodes are
@@ -545,10 +546,54 @@ void test_all_nodes_contract() {
               (int)all.size(), skipped);
 }
 
+// ------------------------------------------------ the infinite-surface bridge
+// Planets and the endless ground plane have no heightmap: they are evaluated
+// on the GPU from parameters. The only way to author their shape is to author
+// a function, so a field graph is transpiled to GLSL and spliced into the
+// planet shader (studio/planet_renderer.cpp). If that transpile stops
+// producing a callable function the surfaces do not error - they simply stop
+// responding, which is the hardest kind of breakage to notice. So it is
+// pinned here, where a screenshot cannot be the only thing holding it up.
+static void test_surface_displacement_bridge() {
+  std::printf("surface displacement bridge...\n");
+  g_node = "SurfaceDisplacement";
+  gpx::Graph g;
+  gpx::Node *src = g.add_node("FieldNoise", 0, 0);
+  gpx::Node *sink = g.add_node("SurfaceDisplacement", 240, 0);
+  CHECK(src && sink, "both node types are registered");
+  if (!src || !sink) return;
+  CHECK(sink->category == "Export", "the sink is filed under Export");
+  CHECK(g.add_link(src->id, "out", sink->id, "field"),
+        "FieldNoise.out connects to SurfaceDisplacement.field");
+  CHECK(sink->field_connected("field"), "the sink sees the connection");
+  CHECK(sink->attrs.find("strength") != nullptr, "it has a strength");
+  CHECK(sink->attrs.find("live") != nullptr, "it can be switched off");
+
+  // an unwired sink must say so rather than silently doing nothing
+  gpx::Graph g2;
+  gpx::Node *lone = g2.add_node("SurfaceDisplacement", 0, 0);
+  g2.evaluate();
+  CHECK(lone && !lone->error.empty(), "an unconnected sink reports it");
+
+  // and the graph feeding it must compile to a GLSL function by that name
+  gpx::GlslProgram prog =
+      gpx::field_to_glsl(*src, "out", "gpx_surface_field");
+  CHECK(prog.ok, prog.ok ? "transpiles" : ("transpile failed: " + prog.error).c_str());
+  CHECK(prog.code.find("gpx_surface_field") != std::string::npos,
+        "the generated code declares the entry point the shader calls");
+  CHECK(prog.code.find("vec4") != std::string::npos,
+        "the entry point returns vec4, as the shader expects");
+  CHECK(prog.samplers.empty(),
+        "a pure field graph needs no textures - the procedural surfaces "
+        "have none to give it");
+  g_node.clear();
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - node contract suite\n\n");
   test_finiteness_checker_binds(); // before anything relies on it
   test_all_nodes_contract();
+  test_surface_displacement_bridge();
   std::printf("\n%d checks, %s (%d failures)\n", g_checks,
               g_failures ? "FAILED" : "all passed", g_failures);
   return g_failures ? 1 : 0;

@@ -3,6 +3,7 @@
 #include "console.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
+#include "planet_renderer.hpp"
 #include "scene.hpp"
 #include "gpx/field_glsl.hpp"
 #include <glad/gl.h>
@@ -363,6 +364,16 @@ void run_main() {
             sink->error = "too many sampled buffers in one graph (max 4)";
             return {};
           }
+          // The procedural surfaces are unbounded and have no heightmap, so
+          // there is nothing a Sample node could read there. Refusing is
+          // honest; binding an empty texture and shading black is not.
+          if (std::string(type) == "SurfaceDisplacement" &&
+              !prog.samplers.empty()) {
+            sink->error = "planets and the infinite ground plane cannot read\n"
+                          "buffers - they have no heightmap. Use field nodes\n"
+                          "only, or Rasterize into the terrain tile instead.";
+            return {};
+          }
           collect_samplers(prog);
           sink->error.clear();
           if (std::string(type) == "TerrainDisplacement")
@@ -378,6 +389,18 @@ void run_main() {
             compile_sink("TerrainSurface", "roughness", "gpx_terrain_rough"),
             compile_sink("TerrainSurface", "bump", "gpx_terrain_bump"),
             a.eval_serial);
+        // The same bridge, one domain out: this one shapes every surface that
+        // has no heightmap to bake into - planets and the endless ground
+        // plane. See engine/nodes/nodes_displace.cpp, SurfaceDisplacement.
+        {
+          std::string surf =
+              compile_sink("SurfaceDisplacement", "field", "gpx_surface_field");
+          float strength = 0.f;
+          for (auto &cand : a.graph.nodes)
+            if (cand->type == "SurfaceDisplacement" && cand->enabled)
+              strength = cand->attrs.get_f("strength", 1.f);
+          planet_set_field_program(surf, strength);
+        }
         for (auto &cand : a.graph.nodes)
           if (cand->type == "TerrainSurface" && cand->enabled)
             renderer_set_surface_bump(cand->attrs.get_f("bump_strength", 1.f),

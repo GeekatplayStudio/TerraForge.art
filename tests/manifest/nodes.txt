@@ -97,6 +97,7 @@ Stamp|Primitive
 Stratify|Filter
 StreamPower|Erosion
 SunLight|Atmosphere
+SurfaceDisplacement|Export
 Switch|Logic
 Terrace|Filter
 TerrainClip|Effect

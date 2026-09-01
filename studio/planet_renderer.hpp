@@ -6,6 +6,7 @@
 // the entire memory footprint, whatever the number of planets — this is the
 // "ultra smart memory" design: distant worlds cost arithmetic, not RAM.
 #pragma once
+#include <string>
 
 namespace studio {
 
@@ -23,6 +24,16 @@ struct PlanetFrame {
 };
 
 bool planet_renderer_init();
+
+// A field graph, transpiled to GLSL, that shapes every procedural surface -
+// planets and the infinite ground plane alike. `glsl` is the whole generated
+// program (prelude included); empty means "back to the built-in layers only".
+// `strength` weights it against those layers. Both shaders are relinked on the
+// next frame that draws, and a program that fails to compile falls back to the
+// stub rather than leaving the sky empty.
+void planet_set_field_program(const std::string &glsl, float strength);
+// why the last relink failed, empty if it did not
+const std::string &planet_field_error();
 
 // all visible planets, painter-sorted, as a sky layer (depth write off)
 void planet_draw_all(const PlanetFrame &f);

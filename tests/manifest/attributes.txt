@@ -451,6 +451,8 @@ SunLight.mode|choice
 SunLight.month|int
 SunLight.shadows|bool
 SunLight.utc_offset|float
+SurfaceDisplacement.live|bool
+SurfaceDisplacement.strength|float
 Switch.use_b|bool
 Terrace.band_soft|float
 Terrace.band|range

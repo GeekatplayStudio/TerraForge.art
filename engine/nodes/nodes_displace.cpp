@@ -382,6 +382,43 @@ REGISTER_NODE(
       if (!n.field_connected("field")) n.error = "input 'field' not connected";
     })
 
+// ------------------------------------------- the infinite-surface displacement
+// The same idea as TerrainDisplacement, one domain out. TerrainDisplacement
+// shapes the finite terrain tile; this shapes everything that is *not* the
+// tile - the endless ground plane that runs to the horizon, and the surface of
+// every planet.
+//
+// Those surfaces have no heightmap and never will: they are evaluated on the
+// GPU from parameters at whatever detail the camera needs, which is why a
+// planet costs no memory. So the only way to author their shape is to author a
+// function, and that is exactly what the field domain is. Wire a field here
+// and it is transpiled to GLSL and added to the built-in layer stack, at every
+// scale, everywhere, for free.
+//
+// The field is evaluated at a point on the unit sphere for a planet, and at
+// (x, 0.37, z) in tile coordinates for the ground plane - the same coordinates
+// the built-in layers use, so a field and a layer stack agree about where
+// things are. `lod` carries the octave budget the camera has earned, so a
+// graph that respects it stays sharp on approach and cheap at a distance.
+REGISTER_NODE(
+    SurfaceDisplacement, "Export",
+    "Shapes planets and the infinite ground plane from a field graph",
+    [](Node &n) {
+      n.add_field_in("field", FieldType::Number);
+      add_float(n.attrs, "strength", "Strength", 1.f, -4.f, 4.f)
+          .tooltip = "Weight of this field against the built-in layers.\n"
+                     "They span roughly -0.5..0.5 of the relief budget, so\n"
+                     "1.0 makes the field as strong as a full layer.";
+      add_bool(n.attrs, "live", "Update the viewport", true)
+          .tooltip = "Off: keep the graph but stop shaping the surfaces,\n"
+                     "without having to disconnect it.";
+    },
+    [](Node &n) {
+      // Nothing to compute here - the studio transpiles what feeds it. But an
+      // unwired sink that silently does nothing is hard to diagnose, so say so.
+      if (!n.field_connected("field")) n.error = "input 'field' not connected";
+    })
+
 // ----------------------------------------------------------- the surface
 // The colour counterpart of TerrainDisplacement, and the point of the
 // distribution nodes: wire a colour field here and the viewport shades the

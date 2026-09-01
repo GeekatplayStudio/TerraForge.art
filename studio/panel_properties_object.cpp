@@ -79,6 +79,40 @@ void labeled_scalar(const char *label, const char *id, float *v, float mn,
   scalar_float(id, v, mn, mx);
 }
 
+// ------------------------------------------------- the surface node graph
+// Planets and the endless ground plane have no heightmap: they are evaluated
+// on the GPU from parameters, at whatever detail the camera has earned. That
+// is why they cost no memory, and it is also why their shape cannot be painted
+// or baked. The way to author a function is to author a function - so this
+// finds (or builds) the SurfaceDisplacement sink and shows it in the editor,
+// with a FieldNoise already wired into it to start from.
+void open_surface_graph(App &a) {
+  uint64_t focus = 0;
+  {
+    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+    if (!lk.owns_lock()) {
+      a.status = "the graph is evaluating - try again in a moment";
+      return;
+    }
+    gpx::Node *sink = nullptr;
+    for (auto &n : a.graph.nodes)
+      if (n->type == "SurfaceDisplacement") sink = n.get();
+    if (!sink) {
+      undo_push_locked(a, "Add surface displacement");
+      float x = 0.f, y = 260.f;
+      for (auto &n : a.graph.nodes) x = std::max(x, n->pos_x);
+      gpx::Node *src = a.graph.add_node("FieldNoise", x, y);
+      sink = a.graph.add_node("SurfaceDisplacement", x + 260.f, y);
+      if (src && sink) a.graph.add_link(src->id, "out", sink->id, "field");
+      a.graph_layout_serial++;
+      a.request_eval();
+      a.status = "added a surface displacement graph";
+    }
+    focus = sink ? sink->id : 0;
+  }
+  if (focus) graph_focus_node(a, focus); // takes the lock itself
+}
+
 // ------------------------------------------------------------- transform
 // Position, rotation and size, in the same block for every object that has
 // one. Rotation is HPB (heading about Y, pitch about X, bank about Z) - the
@@ -303,6 +337,13 @@ void object_properties_ui(App &a) {
         ImGui::SetTooltip("Layers stack: a broad ridged layer for the\n"
                           "continents, a finer one for the foothills, a\n"
                           "third at low coverage for dune fields.");
+      if (ImGui::Button("Shape with a node graph", ImVec2(-1, 0)))
+        open_surface_graph(a);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("For a shape no stack of layers can make. The field\n"
+                          "graph is transpiled to GPU code and evaluated on\n"
+                          "the sphere itself, so it holds up all the way down\n"
+                          "to a walk on the surface.");
       ImGui::TextDisabled("Surface colour is the rock and water above; the\n"
                           "snow line and sea level decide where each shows.");
       ImGui::TextDisabled("It is all generated on the GPU from these numbers\n"
@@ -336,6 +377,16 @@ void object_properties_ui(App &a) {
                           "1 covers everything; lower values confine it to\n"
                           "procedurally chosen regions (continents, ranges).");
       ImGui::DragFloat("Region size", &L.mask_scale, 0.05f, 0.2f, 12.f, "%.2f");
+      ImGui::SeparatorText("Node graph");
+      if (ImGui::Button("Shape with a node graph", ImVec2(-1, 0)))
+        open_surface_graph(a);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("These layers are parameters, and there are shapes\n"
+                          "no parameter can make. A field graph can: it is\n"
+                          "transpiled to GPU code and added to every surface\n"
+                          "here and on every planet, at every scale.");
+      ImGui::TextDisabled("One SurfaceDisplacement graph shapes every\n"
+                          "procedural surface in the scene.");
       if (!on_planet) {
         ImGui::SeparatorText("Ground plane");
         ImGui::SliderFloat("Height scale", &o.surf.height_scale, 0.f, 3.f);
