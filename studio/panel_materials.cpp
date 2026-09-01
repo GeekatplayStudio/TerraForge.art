@@ -339,7 +339,13 @@ static void material_editor(App &a, SceneObject &obj) {
     spin += ImGui::GetIO().MouseDelta.x * 0.01f;
     turntable = false;
   }
-  ImGui::TextDisabled("Lit with the scene sun and sky. Drag to rotate.");
+  // Double-clicking the preview opens the material in the node editor - the
+  // shortest path from "this does not look right" to the graph that made it.
+  if (ImGui::IsItemHovered() &&
+      ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && obj.material_node)
+    graph_focus_node(a, obj.material_node);
+  ImGui::TextDisabled("Lit with the scene sun and sky. Drag to rotate;\n"
+                      "double-click to open it in the node editor.");
 
   if (!mat) {
     ImGui::TextDisabled("No material assigned — create, import or generate one.");

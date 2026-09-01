@@ -20,6 +20,22 @@ namespace ed = ax::NodeEditor;
 
 namespace studio {
 
+// Show a node in the node editor from anywhere else in the application:
+// switch to the workspace that holds its category, select it and pan to it.
+// The panning itself happens in draw_panel_graph, which is the only place
+// with a live node-editor context.
+void graph_focus_node(App &a, uint64_t node) {
+  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  if (lk.owns_lock()) {
+    gpx::Node *n = a.graph.find_node(node);
+    if (!n) return;
+    a.workspace = domain_of_category(n->category);
+  }
+  a.selected_node = node;
+  a.focus_node = node;
+  a.prop_tab = TAB_NODE;
+}
+
 static ed::EditorContext *ED = nullptr;
 
 // pin id encoding: node_id * 4096 + port index + 1
@@ -649,6 +665,13 @@ void draw_panel_graph(App &a) {
     ImGui::EndPopup();
   }
   ed::Resume();
+
+  // "open this in the node editor", asked for from another panel
+  if (a.focus_node) {
+    ed::SelectNode(a.focus_node, false);
+    ed::NavigateToSelection(false, 0.2f);
+    a.focus_node = 0;
+  }
 
   static int navigate_countdown = -1;
   if (push_positions) {

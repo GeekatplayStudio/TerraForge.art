@@ -87,6 +87,10 @@ struct App {
   bool show_console = true;
   bool request_layout_reset = false;
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
+  // Set to a node id to have the graph select it and pan to it on the next
+  // frame; the graph panel clears it. This is how "open this in the node
+  // editor" works from anywhere else in the application.
+  uint64_t focus_node = 0;
   std::string status;
 
   void request_eval() {
@@ -106,6 +110,10 @@ inline int domain_of_category(const std::string &cat) {
 }
 
 const char *view_window_name(int slot);
+
+// Show `node` in the node editor: switch to the workspace it belongs to,
+// select it, and pan the graph to it. Does nothing if the node is gone.
+void graph_focus_node(App &a, uint64_t node);
 
 // panels
 void draw_toolbar(App &a);       // row 1: the classic text menus
@@ -169,6 +177,9 @@ void renderer_settings_ui();
 
 // project io
 void project_new(App &a);
+// File > New: ask for size, relief and resolution before discarding anything
+void new_terrain_request();
+void new_terrain_dialog(App &a);
 bool project_save(App &a, const std::string &path);
 bool project_load(App &a, const std::string &path);
 void project_default_graph(App &a);

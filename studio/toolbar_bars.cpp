@@ -15,6 +15,7 @@
 // workflow tabs, the camera, the resolution and the statistics all had equal
 // weight and none of them were grouped.
 #include "app.hpp"
+#include "gizmo.hpp"
 #include "icons.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -342,20 +343,25 @@ void draw_global_tools(App &a) {
                  s.active, h))
     s.active = !s.active;
 
+  // Transform tools. These used to be duplicates of the per-view wireframe,
+  // grid and sky toggles, which now live in each viewport's own header where
+  // they belong - a global bar should carry what is global.
   ImGui::SameLine(0, 10);
-  RenderSettings &rs = render_settings();
-  RenderSettings::ViewConfig &vc = rs.views[0];
-  if (IconButton(Icon::Wireframe, "##wire", "Wireframe in the main view",
-                 vc.display == 0, h))
-    vc.display = vc.display == 0 ? 2 : 0;
-  ImGui::SameLine(0, 2);
-  if (IconButton(Icon::Grid, "##grid", "Ground grid in the main view", vc.grid, h))
-    vc.grid = !vc.grid;
-  ImGui::SameLine(0, 2);
-  if (IconButton(Icon::Sky, "##sky", "Sky and fog in the main view",
-                 vc.atmosphere, h))
-    vc.atmosphere = !vc.atmosphere;
-
+  GizmoMode &gm = gizmo_mode();
+  auto tool = [&](Icon ic, const char *id, GizmoMode m, const char *tip) {
+    if (IconButton(ic, id, tip, gm == m, h)) gm = gm == m ? GizmoMode::None : m;
+    ImGui::SameLine(0, 2);
+  };
+  tool(Icon::Move, "##gmove", GizmoMode::Move,
+       "Move tool  (W)\n\nDrag an axis in any viewport to move the\n"
+       "selected object. The same numbers are in Properties,\n"
+       "in metres.");
+  tool(Icon::Rotate, "##grot", GizmoMode::Rotate,
+       "Rotate tool  (E)\n\nDrag a ring to turn the selected object.\n"
+       "Heading, pitch and bank, in degrees.");
+  tool(Icon::Scale, "##gscl", GizmoMode::Scale,
+       "Scale tool  (R)\n\nDrag an axis box to squeeze one axis, or\n"
+       "the centre box to resize the whole object.");
   ImGui::SameLine(0, 10);
   if (IconButton(Icon::Node, "##console", "Show the console", a.show_console, h))
     a.show_console = !a.show_console;

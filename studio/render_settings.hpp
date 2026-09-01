@@ -229,6 +229,10 @@ void renderer_camera_look_at(const float target[3], float distance);
 // world-space right/up/forward of a view, for the corner orientation gizmo
 void renderer_view_basis(const RenderSettings::ViewConfig &vc, float *right,
                          float *up, float *fwd);
+// The view-projection matrix a slot last drew with (column-major, 16 floats),
+// or null if it has not drawn yet. The transform gizmo projects with this so
+// its handles land on the pixels the frame actually used.
+const float *renderer_last_mvp(int slot);
 // swing the free orbit camera to look down a world axis (0=X, 1=Y, 2=Z)
 void renderer_camera_snap_axis(int axis, bool negative);
 // photographic grading applied to every pass this frame

@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <imgui.h>
 #include <mutex>
+#include <vector>
 #include <string>
 
 namespace studio {
@@ -267,15 +268,46 @@ void object_properties_ui(App &a) {
       ImGui::SeparatorText("Atmosphere");
       ImGui::SliderFloat("Density", &P.atmo_density, 0.f, 2.f);
       ImGui::ColorEdit3("Tint", P.atmo_color);
-      ImGui::SeparatorText("Surface layers");
-      int layers = (int)scene_surface_layers(sc.selected).size();
-      ImGui::TextDisabled("%d infinite terrain layer%s shape this planet.\n"
-                          "Add more from the Outliner; each has its own\n"
-                          "type, scale, coverage and seed.",
-                          layers, layers == 1 ? "" : "s");
-      ImGui::TextDisabled("The surface is generated on the GPU from these\n"
-                          "numbers alone - a planet costs no memory, so\n"
-                          "you can add as many as you like.");
+      // The shape of a planet's surface is its stack of displacement layers,
+      // so they are edited here rather than only in the Objects tree: this is
+      // the panel you are already in when you decide the world is too smooth.
+      ImGui::SeparatorText("Surface displacement");
+      const char *STYLE[3] = {"rolling hills", "ridged mountains",
+                              "billow dunes"};
+      std::vector<int> ls = scene_surface_layers(sc.selected);
+      for (int idx : ls) {
+        SceneObject &SL = sc.objects[idx];
+        ImGui::PushID(idx);
+        if (ImGui::Selectable(SL.name.c_str())) {
+          sc.selected = idx;
+          a.scene_selection_serial++;
+        }
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("Click to edit this layer's relief and coverage.");
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s, x%.2f",
+                            STYLE[std::clamp(SL.surf.layer.type, 0, 2)],
+                            SL.surf.layer.amplitude);
+        ImGui::PopID();
+      }
+      if (ls.empty())
+        ImGui::TextDisabled("No displacement: a smooth ball.");
+      if (ImGui::Button("+ add displacement layer", ImVec2(-1, 0))) {
+        undo_push(a, "Add displacement layer");
+        int idx = scene_add_infinite_surface(sc.selected);
+        sc.selected = idx;
+        a.scene_selection_serial++;
+        return; // `o` and `P` are references into a vector that just grew
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Layers stack: a broad ridged layer for the\n"
+                          "continents, a finer one for the foothills, a\n"
+                          "third at low coverage for dune fields.");
+      ImGui::TextDisabled("Surface colour is the rock and water above; the\n"
+                          "snow line and sea level decide where each shows.");
+      ImGui::TextDisabled("It is all generated on the GPU from these numbers\n"
+                          "alone - a planet costs no memory or textures, so\n"
+                          "add as many worlds and layers as you like.");
     } break;
     case SceneObject::InfiniteSurface: {
       gpx::planet::Layer &L = o.surf.layer;

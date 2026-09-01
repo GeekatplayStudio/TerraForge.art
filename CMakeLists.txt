@@ -141,7 +141,10 @@ set(STUDIO_SOURCES
     studio/panel_nodelist.cpp
     studio/panel_viewport.cpp
     studio/toolbar.cpp
+    studio/dialog_new.cpp
+    studio/gizmo.cpp
     studio/toolbar_bars.cpp
+    studio/terrain_styles.cpp
     studio/undo.cpp
     studio/sculpt.cpp
     studio/renderer.cpp

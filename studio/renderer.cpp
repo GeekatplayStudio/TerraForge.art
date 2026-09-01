@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -1644,6 +1645,15 @@ static void ensure_fbo(int slot, int w, int h) {
   fbo_h[slot] = h;
 }
 
+// the view-projection each slot last drew with; see renderer_draw_view
+static float g_last_mvp[6][16];
+static bool g_last_mvp_valid[6] = {false, false, false, false, false, false};
+
+const float *renderer_last_mvp(int slot) {
+  slot = std::clamp(slot, 0, 5);
+  return g_last_mvp_valid[slot] ? g_last_mvp[slot] : nullptr;
+}
+
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int h,
                             float dt) {
   slot = std::clamp(slot, 0, 5);
@@ -1682,6 +1692,11 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
     camera_matrices(w, h, eye, mvp, inv_vp);
   else
     ortho_matrices(vc, w, h, render_settings().height_scale, eye, mvp, inv_vp);
+  // Kept for the transform gizmo, which has to project world points onto the
+  // same pixels this frame drew them at. Deriving it a second time in the UI
+  // would be a second definition of where things are.
+  std::memcpy(g_last_mvp[slot], mvp, sizeof mvp);
+  g_last_mvp_valid[slot] = true;
   draw_scene(slot, vc, w, h, time_acc, eye, mvp, inv_vp);
   return fbo_color[slot];
 }
