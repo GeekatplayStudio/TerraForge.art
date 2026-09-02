@@ -90,6 +90,7 @@ set(ENGINE_SOURCES
     engine/node_graph.cpp
     engine/port_catalog.cpp
     engine/hydrology.cpp
+    engine/distance.cpp
     engine/serialization.cpp
     engine/parallel.cpp
     engine/field_glsl.cpp
@@ -115,6 +116,7 @@ set(ENGINE_SOURCES
     external/miniz/miniz.c
     engine/nodes/nodes_field.cpp
     engine/nodes/nodes_field_shapes.cpp
+    engine/nodes/nodes_path.cpp
     engine/nodes/nodes_displace.cpp
     engine/nodes/nodes_analysis.cpp
     engine/nodes/nodes_field_material.cpp

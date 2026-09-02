@@ -1,5 +1,6 @@
 // Geekatplay Studio — selector/mask nodes (slope, altitude, curvature...)
 #include "gpx/node_graph.hpp"
+#include "gpx/distance.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/parallel.hpp"
 #include <algorithm>
@@ -149,62 +150,6 @@ REGISTER_NODE(
 // a beach gradient, distance to a river mask is a wetness falloff, distance
 // to a ridge mask fades scree with altitude. Anything that should happen
 // "near" something starts here.
-namespace {
-
-// d[i] = min over j of (i-j)^2 + f[j]. v/z are scratch (size n and n+1).
-void edt_line(const float *f, float *d, int *v, float *z, int n) {
-  int k = 0;
-  v[0] = 0;
-  z[0] = -1e18f;
-  z[1] = 1e18f;
-  for (int q = 1; q < n; ++q) {
-    float s = ((f[q] + (float)q * q) - (f[v[k]] + (float)v[k] * v[k])) /
-              (2.f * q - 2.f * v[k]);
-    while (s <= z[k]) {
-      --k;
-      s = ((f[q] + (float)q * q) - (f[v[k]] + (float)v[k] * v[k])) /
-          (2.f * q - 2.f * v[k]);
-    }
-    ++k;
-    v[k] = q;
-    z[k] = s;
-    z[k + 1] = 1e18f;
-  }
-  k = 0;
-  for (int q = 0; q < n; ++q) {
-    while (z[k + 1] < (float)q) ++k;
-    d[q] = (float)(q - v[k]) * (q - v[k]) + f[v[k]];
-  }
-}
-
-// squared EDT of a binary grid: 0 where inside(i), a large sentinel elsewhere.
-// Row passes are independent, then column passes are independent, so the
-// parallelism cannot change the result (AGENTS.md engine rule 1).
-void edt_2d(std::vector<float> &g, int w, int h) {
-  const float FAR = 1e12f; // far greater than any real squared distance
-  for (float &v : g) v = v > 0.5f ? 0.f : FAR;
-  parallel_rows(h, [&](int y0, int y1) {
-    std::vector<float> f(w), d(w), z(w + 1);
-    std::vector<int> vv(w);
-    for (int y = y0; y < y1; ++y) {
-      float *row = g.data() + (size_t)y * w;
-      std::copy(row, row + w, f.begin());
-      edt_line(f.data(), d.data(), vv.data(), z.data(), w);
-      std::copy(d.begin(), d.end(), row);
-    }
-  });
-  parallel_rows(w, [&](int x0, int x1) {
-    std::vector<float> f(h), d(h), z(h + 1);
-    std::vector<int> vv(h);
-    for (int x = x0; x < x1; ++x) {
-      for (int y = 0; y < h; ++y) f[y] = g[(size_t)y * w + x];
-      edt_line(f.data(), d.data(), vv.data(), z.data(), h);
-      for (int y = 0; y < h; ++y) g[(size_t)y * w + x] = d[y];
-    }
-  });
-}
-
-} // namespace
 
 REGISTER_NODE(
     DistanceField, "Mask",
@@ -257,14 +202,14 @@ REGISTER_NODE(
         // ...and, for the signed form, to its complement as well
         std::vector<float> dist_in(dist_out);
         for (float &v : dist_in) v = 1.f - v;
-        edt_2d(dist_out, in->w, in->h);
-        edt_2d(dist_in, in->w, in->h);
+        edt_squared(dist_out, in->w, in->h);
+        edt_squared(dist_in, in->w, in->h);
         for (size_t i = 0; i < out.v.size(); ++i) {
           float d = std::sqrt(dist_out[i]) - std::sqrt(dist_in[i]);
           out.v[i] = std::clamp(0.5f + 0.5f * d / reach, 0.f, 1.f);
         }
       } else {
-        edt_2d(dist_out, in->w, in->h);
+        edt_squared(dist_out, in->w, in->h);
         for (size_t i = 0; i < out.v.size(); ++i) {
           float t = std::clamp(std::sqrt(dist_out[i]) / reach, 0.f, 1.f);
           out.v[i] = mode == 1 ? t : 1.f - t;

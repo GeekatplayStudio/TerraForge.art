@@ -2761,6 +2761,92 @@ static void test_curve_and_shapes() {
   }
 }
 
+// ------------------------------------------------------------------- paths
+static void test_path_carve() {
+  std::printf("path carving...\n");
+  const int N = 64;
+  gpx::Heightmap in(N, N);
+  for (float &v : in.v) v = 0.5f; // flat, so every change is the path's doing
+
+  auto run = [&](const char *pts, float depth, int profile,
+                 float width) -> std::pair<gpx::Heightmap, gpx::Heightmap> {
+    gpx::Graph g;
+    gpx::Node *n = g.add_node("PathCarve", 0, 0);
+    n->attrs.find("points")->s = pts;
+    n->attrs.find("depth")->f = depth;
+    n->attrs.find("profile")->i = profile;
+    n->attrs.find("width")->f = width;
+    n->attrs.find("smooth")->i = 0;
+    n->attrs.find("post_remap")->b = false;
+    gpx::Port *pin = n->port("input", gpx::PortDir::In);
+    auto hm = std::make_shared<gpx::Heightmap>(in);
+    if (pin) pin->hmap = hm;
+    gpx::NodeRegistry::instance().find("PathCarve")->compute(*n);
+    const gpx::Port *op = n->port("output", gpx::PortDir::Out);
+    const gpx::Port *mp = n->port("path_mask", gpx::PortDir::Out);
+    return {op && op->hmap ? *op->hmap : gpx::Heightmap(1, 1),
+            mp && mp->hmap ? *mp->hmap : gpx::Heightmap(1, 1)};
+  };
+
+  // a straight horizontal cut through the middle
+  {
+    auto [out, mask] = run("0.1,0.5  0.9,0.5", 0.1f, 0, 0.08f);
+    CHECK(out.w == N, "output produced");
+    const size_t mid = (size_t)(N / 2) * N + N / 2;
+    CHECK(out.v[mid] < 0.41f && out.v[mid] > 0.39f,
+          "the centre of the cut reaches full depth");
+    CHECK(mask.v[mid] > 0.95f, "the path mask is 1 on the line");
+    // far from the line, untouched
+    const size_t far = (size_t)5 * N + N / 2;
+    CHECK(out.v[far] == 0.5f, "beyond the width nothing moves");
+    CHECK(mask.v[far] == 0.f, "and the mask is empty there");
+    // falloff: closer to the line is deeper
+    const size_t near1 = (size_t)(N / 2 - 2) * N + N / 2;
+    const size_t near2 = (size_t)(N / 2 - 4) * N + N / 2;
+    CHECK(out.v[near1] < out.v[near2], "the profile falls off with distance");
+  }
+
+  // a wall is the same shape upward
+  {
+    auto [out, mask] = run("0.1,0.5  0.9,0.5", -0.1f, 0, 0.08f);
+    (void)mask;
+    const size_t mid = (size_t)(N / 2) * N + N / 2;
+    CHECK(out.v[mid] > 0.59f, "negative depth raises a wall");
+  }
+
+  // a diagonal cut is continuous - no gaps where the rasterisation steps
+  {
+    auto [out, mask] = run("0.1,0.1  0.9,0.9", 0.1f, 1, 0.05f);
+    (void)mask;
+    int shallow = 0;
+    for (int i = 12; i < N - 12; ++i) {
+      // walk the diagonal; every cell on it must be carved deep
+      const size_t idx = (size_t)i * N + i;
+      if (out.v[idx] > 0.45f) ++shallow;
+    }
+    CHECK(shallow == 0, "a diagonal path carves without gaps");
+  }
+
+  // deterministic
+  {
+    auto [a1, m1] = run("0.2,0.8  0.5,0.4  0.8,0.7", 0.08f, 2, 0.06f);
+    auto [a2, m2] = run("0.2,0.8  0.5,0.4  0.8,0.7", 0.08f, 2, 0.06f);
+    CHECK(a1.v == a2.v && m1.v == m2.v, "bit-identical across runs");
+  }
+
+  // two points minimum, said plainly
+  {
+    gpx::Graph g;
+    gpx::Node *n = g.add_node("PathCarve", 0, 0);
+    n->attrs.find("points")->s = "0.5,0.5";
+    gpx::Port *pin = n->port("input", gpx::PortDir::In);
+    auto hm = std::make_shared<gpx::Heightmap>(in);
+    if (pin) pin->hmap = hm;
+    gpx::NodeRegistry::instance().find("PathCarve")->compute(*n);
+    CHECK(!n->error.empty(), "one point reports an error instead of guessing");
+  }
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2787,6 +2873,7 @@ int main() {
   test_depression_fill();
   test_distance_and_filters();
   test_curve_and_shapes();
+  test_path_carve();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

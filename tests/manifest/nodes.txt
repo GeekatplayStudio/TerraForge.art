@@ -76,6 +76,7 @@ Noise|Primitive
 NormalBlend|Material
 NormalMap|Texture
 PBRMaterial|Material
+PathCarve|Path
 Peaks|Effect
 Plateau|Filter
 PowerFractal|Filter

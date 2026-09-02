@@ -222,6 +222,7 @@ FieldVoronoi.frequency|float
 FieldVoronoi.invert|bool
 FieldVoronoi.jitter|float
 FieldVoronoi.metric|choice
+FieldVoronoi.octaves|int
 FieldVoronoi.offset|float
 FieldVoronoi.output|choice
 FieldVoronoi.seed|seed
@@ -359,6 +360,19 @@ PBRMaterial.asset|text
 PBRMaterial.mapping|choice
 PBRMaterial.resolution|choice
 PBRMaterial.tiles|float
+PathCarve.blend_invert|bool
+PathCarve.closed|bool
+PathCarve.depth|float
+PathCarve.level|float
+PathCarve.points|text
+PathCarve.post_gain|float
+PathCarve.post_invert|bool
+PathCarve.post_range|range
+PathCarve.post_remap|bool
+PathCarve.post_zero_edges|float
+PathCarve.profile|choice
+PathCarve.smooth|int
+PathCarve.width|float
 Peaks.pivot|float
 Peaks.strength|float
 Plateau.level|float
