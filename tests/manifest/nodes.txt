@@ -63,6 +63,7 @@ FillBasins|Hydrology
 FlatColor|Material
 Flood|Hydrology
 FlowAccumulation|Analysis
+FlowWarp|Transform
 Fold|Filter
 Fractal|Primitive
 GaborNoise|Primitive

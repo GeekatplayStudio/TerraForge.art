@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 172 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 173 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -28,7 +28,7 @@ Every node in Geekatplay TerraForge — 172 across 25 categories. Generated from
 | [Primitive](#primitive) | 17 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
-| [Transform](#transform) | 7 |
+| [Transform](#transform) | 8 |
 
 ## Analysis
 
@@ -2897,6 +2897,24 @@ Physically-inspired layered terrain albedo
 | Multiply hillshade | toggle, default off |  |
 
 ## Transform
+
+### FlowWarp
+
+Drag a mask downstream along the flow
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| terrain | in (optional) | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Steps | int, 1 to 200, default 24 | How many cells downstream each value is carried. |
+| Fade per step | float, 0 to 0.2, default 0.02 |  |
+| Route through pits | toggle, default on |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### MakeTileable
 

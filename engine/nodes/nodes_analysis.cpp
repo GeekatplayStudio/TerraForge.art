@@ -256,6 +256,51 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    FlowWarp, "Transform", "Drag a mask downstream along the flow",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_in("terrain", DataType::Heightmap, true);
+      n.add_out("output");
+      add_int(n.attrs, "steps", "Steps", 24, 1, 200, "Flow")
+          .tooltip = "How many cells downstream each value is carried.";
+      add_float(n.attrs, "fade", "Fade per step", 0.02f, 0.f, 0.2f, "Flow");
+      add_bool(n.attrs, "fill_pits", "Route through pits", true, "Flow");
+    },
+    [](Node &n) {
+      // The mask rides the terrain's D8 receivers - sediment streaks, scree
+      // tails, anything that should smear the way water would carry it. The
+      // terrain input provides the flow; without it the mask flows over its
+      // own heights.
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      const Heightmap *ter = n.in_hmap("terrain");
+      if (!ter || ter->empty()) ter = in;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      std::vector<int> recv;
+      flow_accumulate(*ter, &recv, n.attrs.get_b("fill_pits", true));
+      int steps = n.attrs.get_i("steps", 24);
+      float fade = n.attrs.get_f("fade", 0.02f);
+      // deposit each cell's value along its downstream chain, keeping the
+      // max so streaks lengthen rather than blur; serial per source cell but
+      // rows of sources are independent targets... they are not (chains
+      // collide), so this stays single-threaded for determinism
+      for (size_t i = 0; i < in->v.size(); ++i) {
+        float v = in->v[i];
+        if (v <= 1e-5f) continue;
+        int c = (int)i;
+        for (int s = 0; s < steps; ++s) {
+          int r = recv[c];
+          if (r < 0 || r == c) break;
+          c = r;
+          v *= 1.f - fade;
+          if (v <= 1e-4f) break;
+          out.v[c] = std::max(out.v[c], v);
+        }
+      }
+    })
+
+REGISTER_NODE(
     TerrainMetrics, "Analysis", "Surface statistics: rugosity, TRI, shape index",
     [](Node &n) {
       n.add_in("input");

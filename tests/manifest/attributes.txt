@@ -289,6 +289,10 @@ FlowAccumulation.post_range|range
 FlowAccumulation.post_remap|bool
 FlowAccumulation.post_zero_edges|float
 FlowAccumulation.threshold|float
+FlowWarp.blend_invert|bool
+FlowWarp.fade|float
+FlowWarp.fill_pits|bool
+FlowWarp.steps|int
 Fold.iterations|int
 Fractal.fault_softness|float
 Fractal.faults|int

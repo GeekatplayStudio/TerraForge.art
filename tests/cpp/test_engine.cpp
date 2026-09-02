@@ -2804,6 +2804,31 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_flow_warp() {
+  std::printf("flow warp...\n");
+  const int N = 64;
+  // a ramp draining east; a single blob high on the slope
+  gpx::Heightmap ter(N, N), blob(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) ter.at(x, y) = 1.f - x / (float)N;
+  for (int y = 30; y < 34; ++y)
+    for (int x = 8; x < 12; ++x) blob.at(x, y) = 1.f;
+  gpx::Graph g;
+  g.resolution = N;
+  gpx::Node *n = g.add_node("FlowWarp", 0, 0);
+  n->attrs.find("steps")->i = 20;
+  n->port("input", gpx::PortDir::In)->hmap =
+      std::make_shared<gpx::Heightmap>(blob);
+  n->port("terrain", gpx::PortDir::In)->hmap =
+      std::make_shared<gpx::Heightmap>(ter);
+  gpx::NodeRegistry::instance().find("FlowWarp")->compute(*n);
+  const gpx::Heightmap &out = *n->port("output", gpx::PortDir::Out)->hmap;
+  CHECK(out.at(10, 32) == 1.f, "the source blob stays");
+  CHECK(out.at(25, 32) > 0.5f, "the streak carries downstream (east)");
+  CHECK(out.at(4, 32) == 0.f, "nothing flows uphill");
+  CHECK(out.at(50, 32) == 0.f, "the streak ends after its steps");
+}
+
 static void test_terrain_metrics() {
   std::printf("terrain metrics...\n");
   const int N = 64;
@@ -3948,6 +3973,7 @@ int main() {
   test_quilt();
   test_basalt();
   test_terrain_metrics();
+  test_flow_warp();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();
