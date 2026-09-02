@@ -134,6 +134,7 @@ SetBorders|Transform
 Shape|Primitive
 Sharpen|Effect
 Shear|Transform
+SkeletonDistance|Mask
 Skeleton|Mask
 SmoothFill|Filter
 Smooth|Filter

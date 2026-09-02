@@ -3537,6 +3537,18 @@ static void test_morphology() {
   CHECK(ar.v[(size_t)15 * N + 15] == 1.f, "the big blob is kept");
   CHECK(ar.v[(size_t)40 * N + 40] == 0.f, "the lone pixel is dropped");
 
+  // SkeletonDistance: 1 on a bar's centerline, 0 at its edge
+  {
+    gpx::Heightmap bar2(N, N);
+    for (int y = 24; y < 40; ++y)
+      for (int x = 8; x < 56; ++x) bar2.at(x, y) = 1.f;
+    auto sd = run("SkeletonDistance", bar2, [](gpx::Node &) {});
+    // the discrete skeleton may sit one cell off the exact middle
+    CHECK(sd.at(32, 32) > 0.8f, "the centerline reads near 1");
+    CHECK(sd.at(32, 24) < 0.2f, "the shape's edge reads near 0");
+    CHECK(sd.at(2, 2) == 0.f, "outside the shape reads 0");
+  }
+
   // Skeleton: a thick bar thins but stays connected end to end
   gpx::Heightmap bar(N, N);
   for (int y = 28; y < 36; ++y)

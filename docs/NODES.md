@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 168 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 169 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -20,7 +20,7 @@ Every node in Geekatplay TerraForge — 168 across 25 categories. Generated from
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
-| [Mask](#mask) | 12 |
+| [Mask](#mask) | 13 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
@@ -1799,6 +1799,19 @@ Select where two surfaces trade places
 ### Skeleton
 
 Thin a mask to its centerlines
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Threshold | float, 0 to 1, default 0.5 |  |
+
+### SkeletonDistance
+
+How deep into the shape each cell sits
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |

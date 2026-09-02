@@ -3,6 +3,7 @@
 // The separable min/max passes are exact for the square element; rows and
 // columns are each independent, so parallelism cannot change the result.
 #include "gpx/node_graph.hpp"
+#include "gpx/distance.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/parallel.hpp"
 #include <algorithm>
@@ -236,6 +237,52 @@ REGISTER_NODE(
         }
       }
       for (size_t i = 0; i < m.v.size(); ++i) m.v[i] = a[i] ? 1.f : 0.f;
+    })
+
+REGISTER_NODE(
+    SkeletonDistance, "Mask", "How deep into the shape each cell sits",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("mask");
+      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Skeleton");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &m = n.out_hmap("mask");
+      m = *in;
+      float thr = n.attrs.get_f("threshold", 0.5f);
+      int w = m.w, h = m.h;
+      // the centerline, by running the Skeleton node's own thinning
+      Node tmp;
+      tmp.type = "Skeleton";
+      const NodeDef *sk = NodeRegistry::instance().find("Skeleton");
+      sk->setup(tmp);
+      tmp.attrs.find("threshold")->f = thr;
+      tmp.port("input", PortDir::In)->hmap = std::make_shared<Heightmap>(*in);
+      sk->compute(tmp);
+      const Heightmap &skel = *tmp.port("mask", PortDir::Out)->hmap;
+      // distance to the border (outside cells) and to the skeleton; their
+      // ratio is 0 at the edge and 1 on the centerline whatever the shape's
+      // width - the natural cross-profile for rivers and roads
+      std::vector<float> d_border(m.v.size()), d_skel(m.v.size());
+      for (size_t i = 0; i < m.v.size(); ++i) {
+        d_border[i] = in->v[i] >= thr ? 0.f : 1.f; // shape = outside cells
+        d_skel[i] = skel.v[i];
+      }
+      edt_squared(d_border, w, h);
+      edt_squared(d_skel, w, h);
+      parallel_index(m.v.size(), [&](size_t i0, size_t i1) {
+        for (size_t i = i0; i < i1; ++i) {
+          if (in->v[i] < thr) {
+            m.v[i] = 0.f;
+            continue;
+          }
+          float db = std::sqrt(d_border[i]);
+          float ds = std::sqrt(d_skel[i]);
+          m.v[i] = db + ds > 1e-6f ? db / (db + ds) : 1.f;
+        }
+      });
     })
 
 } // namespace gpx

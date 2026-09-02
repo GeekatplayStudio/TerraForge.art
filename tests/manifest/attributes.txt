@@ -602,6 +602,7 @@ Shear.scale|float
 Shear.seed|seed
 Shear.self_modulated|bool
 Skeleton.threshold|float
+SkeletonDistance.threshold|float
 Smooth.radius|float
 SmoothFill.amount|float
 SmoothFill.blend_invert|bool
