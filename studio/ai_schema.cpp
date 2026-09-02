@@ -55,6 +55,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
       s += R"(- {"op":"place_object","name":"Rock","position":[x,y,z],"scale":0.1,
    "rotation_deg":30}
 - {"op":"select","name":"Terrain"}
+- {"op":"add_primitive","kind":"cube"|"sphere"|"plane"|"cylinder"|"cone",
+   "name":"Box","position":[x,y,z],"scale":0.1,"color":[r,g,b]}
 - {"op":"import_object","path":"C:/models/rock.obj","name":"Rock",
    "position":[x,y,z],"scale":0.1}
 - {"op":"set_scatter","object":"Rock","node":"ScatterPoints","size":0.5,

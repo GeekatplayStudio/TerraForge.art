@@ -200,6 +200,7 @@ set(STUDIO_SOURCES
     studio/panel_render.cpp
     studio/render_scene_export.cpp
     studio/scene.cpp
+    studio/scene_primitives.cpp
     studio/scene_io.cpp
     studio/render_settings.cpp
     studio/cloud_noise.cpp
@@ -256,6 +257,7 @@ add_executable(undo_tests
     studio/project_io.cpp
     studio/node_library.cpp
     studio/scene.cpp
+    studio/scene_primitives.cpp
     studio/scene_io.cpp
     studio/render_settings.cpp
     studio/autosave.cpp

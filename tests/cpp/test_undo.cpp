@@ -725,6 +725,13 @@ static void test_scene_persistence() {
     m.scatter_seed = 9u;
   }
 
+  // a built-in primitive: no file on disk, must regenerate on load
+  {
+    int pi = scene_add_primitive("sphere", "Orb");
+    CHECK(pi >= 0 && sc.objects[pi].vert_count > 100,
+          "the primitive generates geometry");
+  }
+
   // a second camera with a changed lens and render assignment
   int ci = scene_add_camera("Hero cam");
   CHECK(ci >= 0, "camera added");
@@ -783,6 +790,11 @@ static void test_scene_persistence() {
     if (sl.objects[i].name == "Hero cam") lc = i;
     if (sl.objects[i].name == "Redworld") lp = i;
   }
+  int lo_ = -1;
+  for (int i = 0; i < (int)sl.objects.size(); ++i)
+    if (sl.objects[i].name == "Orb") lo_ = i;
+  CHECK(lo_ >= 0 && sl.objects[lo_].vert_count > 100,
+        "the primitive regenerated from its kind on load");
   CHECK(lm >= 0, "the imported mesh survived the round trip");
   if (lm >= 0) {
     const SceneObject &m = sl.objects[lm];

@@ -134,6 +134,10 @@ SceneState &scene();
 void scene_init_builtins();
 // parse an OBJ into interleaved pos+normal vertices (unit box, flat
 // normals); shared by import and by scene reload
+// built-in primitives (scene_primitives.cpp): cube, sphere, plane, cylinder,
+// cone; recorded as "primitive:<kind>" so saved scenes regenerate them
+bool scene_primitive_verts(const std::string &kind, std::vector<float> &verts);
+int scene_add_primitive(const std::string &kind, const std::string &name);
 bool scene_load_obj_verts(const std::string &path,
                           std::vector<float> &verts, std::string &err);
 // load OBJ into a new scene object; returns index or -1

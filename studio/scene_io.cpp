@@ -290,7 +290,10 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       o.scatter_sway = jo.value("scatter_sway", 0.f);
       o.scatter_value_size = jo.value("scatter_value_size", 0.f);
       std::string err;
-      if (o.path.empty() || !scene_load_obj_verts(o.path, o.verts, err)) {
+      if (o.path.rfind("primitive:", 0) == 0 &&
+          scene_primitive_verts(o.path.substr(10), o.verts)) {
+        // a built-in primitive regenerates from its kind, no file needed
+      } else if (o.path.empty() || !scene_load_obj_verts(o.path, o.verts, err)) {
         // The geometry is gone but the object is not: its place in the scene,
         // its transform and its material binding are still worth keeping, and
         // an empty mesh draws nothing rather than crashing anything.

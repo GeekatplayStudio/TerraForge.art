@@ -321,6 +321,20 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       } else {
         err = "could not open " + path;
       }
+    } else if (op == "add_primitive") {
+      std::string kind = act.value("kind", std::string("cube"));
+      int idx = scene_add_primitive(kind, act.value("name", std::string()));
+      if (idx < 0) {
+        err = "unknown primitive '" + kind +
+              "' (cube, sphere, plane, cylinder, cone)";
+      } else {
+        SceneObject &o = sc.objects[idx];
+        read_vec3(act, "position", o.pos);
+        if (act.contains("scale")) o.scale = act["scale"].get<float>();
+        read_vec3(act, "color", o.color);
+        a.scene_selection_serial++;
+        ++applied;
+      }
     } else if (op == "import_object") {
       std::string path = act.value("path", std::string());
       std::string ierr;
