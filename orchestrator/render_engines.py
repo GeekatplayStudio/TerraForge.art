@@ -210,6 +210,63 @@ def render_mitsuba(sc: dict) -> int:
                                              "value": water["deep"]}},
         }
 
+    # panorama: no spherical sensor plugin ships with pip mitsuba, so render
+    # six 90-degree cube faces at the same eye and remap them to one
+    # equirectangular frame
+    if sc.get("panorama"):
+        import numpy as np
+        eye = cam["eye"]
+        face_res = max(sc["height"], 256)
+        # forward vectors and their ups for the six faces
+        faces = [((1, 0, 0), (0, 1, 0)), ((-1, 0, 0), (0, 1, 0)),
+                 ((0, 0, 1), (0, 1, 0)), ((0, 0, -1), (0, 1, 0)),
+                 ((0, 1, 0), (0, 0, -1)), ((0, -1, 0), (0, 0, 1))]
+        imgs = []
+        for k, (fwd, up) in enumerate(faces):
+            d = dict(scene_dict)
+            d["sensor"] = {
+                "type": "perspective", "fov": 90.0, "fov_axis": "y",
+                "to_world": mi.ScalarTransform4f().look_at(
+                    origin=eye,
+                    target=[eye[0] + fwd[0], eye[1] + fwd[1], eye[2] + fwd[2]],
+                    up=list(up)),
+                "film": {"type": "hdrfilm", "width": face_res,
+                         "height": face_res,
+                         "rfilter": {"type": "gaussian"}},
+                "sampler": {"type": "independent",
+                            "sample_count": sc["spp"]},
+            }
+            imgs.append(np.array(mi.render(mi.load_dict(d)))[..., :3])
+            _progress(sc, f"panorama face {k + 1}/6")
+            print(f"panorama face {k + 1}/6", flush=True)
+        W, H = sc["width"], sc["height"]
+        ys, xs = np.mgrid[0:H, 0:W]
+        lon = (xs / W) * 2 * np.pi - np.pi
+        lat = np.pi / 2 - (ys / H) * np.pi
+        dx = np.cos(lat) * np.sin(lon)
+        dy = np.sin(lat)
+        dz = -np.cos(lat) * np.cos(lon)
+        out = np.zeros((H, W, 3), np.float32)
+        ax = np.stack([np.abs(dx), np.abs(dy), np.abs(dz)])
+        major = np.argmax(ax, axis=0)
+        # face picking mirrors the render list above
+        def put(mask, img, u, v):
+            uu = np.clip(((u + 1) * 0.5 * (face_res - 1)).astype(int),
+                         0, face_res - 1)
+            vv = np.clip(((1 - (v + 1) * 0.5) * (face_res - 1)).astype(int),
+                         0, face_res - 1)
+            out[mask] = img[vv[mask], uu[mask]]
+        m = (major == 0) & (dx > 0); put(m, imgs[0], -dz / np.abs(dx), dy / np.abs(dx))
+        m = (major == 0) & (dx < 0); put(m, imgs[1], dz / np.abs(dx), dy / np.abs(dx))
+        m = (major == 2) & (dz > 0); put(m, imgs[2], dx / np.abs(dz), dy / np.abs(dz))
+        m = (major == 2) & (dz < 0); put(m, imgs[3], -dx / np.abs(dz), dy / np.abs(dz))
+        m = (major == 1) & (dy > 0); put(m, imgs[4], -dz / np.abs(dy), -dx / np.abs(dy))
+        m = (major == 1) & (dy < 0); put(m, imgs[5], -dz / np.abs(dy), dx / np.abs(dy))
+        tonemap.save_png(out, sc["output"], sc.get("exposure", 1.0))
+        _progress(sc, "panorama done")
+        print("wrote", sc["output"])
+        return 0
+
     scene = mi.load_dict(scene_dict)
 
     # depth once up front so every progressive frame can carry the fog

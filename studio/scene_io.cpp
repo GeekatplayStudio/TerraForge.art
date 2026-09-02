@@ -224,7 +224,8 @@ json scene_to_json() {
             {"height", c.render.height},
             {"samples", c.render.samples},
             {"output", c.render.output},
-            {"passes", c.render.passes}}},
+            {"passes", c.render.passes},
+            {"panorama", c.render.panorama}}},
       };
     } else if (o.type == SceneObject::Planet) {
       const PlanetData &P = o.planet;
@@ -335,6 +336,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
         c.render.samples = jr.value("samples", c.render.samples);
         c.render.output = jr.value("output", c.render.output);
         c.render.passes = jr.value("passes", c.render.passes);
+        c.render.panorama = jr.value("panorama", c.render.panorama);
       }
     } else if (o.type == SceneObject::Planet && jo.contains("planet")) {
       const json &jp = jo["planet"];

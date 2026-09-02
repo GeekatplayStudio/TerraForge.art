@@ -26,7 +26,7 @@ void render_set_preview_paths(const std::string &preview,
 
 bool export_scene(App &a, const std::string &out_png, int width, int height,
                   int spp, const char *engine, std::string &err,
-                  int cam_index, bool passes) {
+                  int cam_index, bool passes, bool panorama) {
   RenderSettings &rs = render_settings();
   fs::path dir = render_workdir();
   gpx::Heightmap hm;
@@ -124,6 +124,7 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
   j["height"] = height;
   j["spp"] = spp;
   j["passes"] = passes;
+  j["panorama"] = panorama;
   j["output"] = out_png;
   std::string preview_path = (dir / "preview.png").string();
   std::string progress_path = (dir / "progress.txt").string();

@@ -273,6 +273,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       r.samples = act.value("samples", r.samples);
       if (act.contains("output")) r.output = act["output"].get<std::string>();
       if (act.contains("passes")) r.passes = act["passes"].get<bool>();
+      if (act.contains("panorama")) r.panorama = act["panorama"].get<bool>();
       ++applied;
     } else if (op == "render") {
       a.request_camera_render = scene_active_camera();

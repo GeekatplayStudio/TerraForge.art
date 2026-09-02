@@ -39,6 +39,7 @@ struct RenderAssign {
   int samples = 128;
   std::string output = "render.png";
   bool passes = false; // also write depth + normal AOVs beside the image
+  bool panorama = false; // render a full 360 equirectangular image
 };
 
 struct CameraData {
