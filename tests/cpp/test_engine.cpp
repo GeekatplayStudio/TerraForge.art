@@ -10,6 +10,7 @@
 #include "gpx/serialization.hpp"
 #include <cctype>
 #include <cmath>
+#include <fstream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -2933,6 +2934,35 @@ static void test_dla() {
         "the growth is bit-identical across computes");
 }
 
+static void test_hgt_import() {
+  std::printf("SRTM .hgt import...\n");
+  // a synthetic 33x33 big-endian tile: a diagonal ramp with one void cell
+  const char *file = "test_tile.hgt";
+  {
+    std::ofstream f(file, std::ios::binary);
+    for (int y = 0; y < 33; ++y)
+      for (int x = 0; x < 33; ++x) {
+        int16_t v = (x == 5 && y == 5) ? -32768 : (int16_t)((x + y) * 10);
+        unsigned char be[2] = {(unsigned char)((v >> 8) & 0xff),
+                               (unsigned char)(v & 0xff)};
+        f.write((char *)be, 2);
+      }
+  }
+  gpx::Graph g;
+  g.resolution = 33;
+  gpx::Node *n = g.add_node("HeightmapFile", 0, 0);
+  n->attrs.find("path")->s = file;
+  n->attrs.find("post_remap")->b = false;
+  gpx::NodeRegistry::instance().find("HeightmapFile")->compute(*n);
+  CHECK(n->error.empty(), "the .hgt tile loads");
+  const gpx::Heightmap &out = *n->port("output", gpx::PortDir::Out)->hmap;
+  CHECK(out.at(0, 0) < 0.02f, "the low corner reads low");
+  CHECK(out.at(32, 32) > 0.98f, "the high corner reads high");
+  CHECK(out.at(16, 16) > 0.4f && out.at(16, 16) < 0.6f,
+        "the middle of the ramp sits mid-range");
+  std::remove(file);
+}
+
 static void test_points_io() {
   std::printf("points CSV roundtrip...\n");
   const char *file = "test_points_roundtrip.csv";
@@ -3890,6 +3920,7 @@ int main() {
   test_path_nodes();
   test_landform();
   test_points_io();
+  test_hgt_import();
   test_dla();
   test_quilt();
   test_basalt();

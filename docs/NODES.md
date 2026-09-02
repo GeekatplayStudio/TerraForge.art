@@ -2643,7 +2643,7 @@ Layered rock strata from an input heightmap
 
 ### HeightmapFile
 
-Import a heightfield image (8/16-bit PNG, JPG, TGA)
+Import a heightfield: 8/16-bit PNG, JPG, TGA, or SRTM .hgt real-world DEM
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |

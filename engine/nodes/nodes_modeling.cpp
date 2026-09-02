@@ -3,12 +3,52 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "stb_image.h" // impl in nodes_materials.cpp
+#include <cmath>
+#include <cstdint>
+#include <fstream>
+#include <vector>
 
 namespace gpx {
 
 static bool load_heightfield(const std::string &path, Heightmap &out,
                              std::string &err) {
   int iw, ih, comp;
+  // SRTM .hgt: raw big-endian int16, square (3601 or 1201 a side), metres
+  // above sea level, -32768 = void. The filename is the format.
+  if (path.size() > 4 &&
+      (path.rfind(".hgt") == path.size() - 4 ||
+       path.rfind(".HGT") == path.size() - 4)) {
+    std::ifstream f(path, std::ios::binary | std::ios::ate);
+    if (!f) {
+      err = "cannot load: " + path;
+      return false;
+    }
+    size_t bytes = (size_t)f.tellg();
+    size_t samples = bytes / 2;
+    int side = (int)std::lround(std::sqrt((double)samples));
+    if ((size_t)side * side != samples || side < 2) {
+      err = "not a square .hgt file: " + path;
+      return false;
+    }
+    std::vector<unsigned char> raw(bytes);
+    f.seekg(0);
+    f.read((char *)raw.data(), (std::streamsize)bytes);
+    Heightmap src(side, side);
+    float lo = 1e30f, hi = -1e30f;
+    for (size_t i = 0; i < samples; ++i) {
+      int16_t v = (int16_t)((raw[i * 2] << 8) | raw[i * 2 + 1]);
+      float h = v == -32768 ? 0.f : (float)v; // voids read as sea level
+      src.v[i] = h;
+      lo = std::min(lo, h);
+      hi = std::max(hi, h);
+    }
+    // normalized like every import; real elevation range restorable through
+    // the height scale
+    float span = hi - lo > 1e-6f ? hi - lo : 1.f;
+    for (float &v : src.v) v = (v - lo) / span;
+    out = src.resampled(out.w, out.h);
+    return true;
+  }
   // 16-bit aware load for PNG heightmaps
   if (stbi_is_16_bit(path.c_str())) {
     unsigned short *d16 = stbi_load_16(path.c_str(), &iw, &ih, &comp, 1);
@@ -35,7 +75,8 @@ static bool load_heightfield(const std::string &path, Heightmap &out,
 }
 
 REGISTER_NODE(
-    HeightmapFile, "Primitive", "Import a heightfield image (8/16-bit PNG, JPG, TGA)",
+    HeightmapFile, "Primitive",
+    "Import a heightfield: 8/16-bit PNG, JPG, TGA, or SRTM .hgt real-world DEM",
     [](Node &n) {
       n.add_out("output");
       add_filename(n.attrs, "path", "Heightfield image", "");
