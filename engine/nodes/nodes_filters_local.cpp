@@ -219,6 +219,85 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    MeanShift, "Filter", "Mode-seeking smoothing (flattens toward plateaus)",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      add_int(n.attrs, "radius", "Radius (px)", 6, 2, 24, "MeanShift");
+      add_float(n.attrs, "tolerance", "Value tolerance", 0.08f, 0.005f, 0.5f,
+                "MeanShift");
+      add_int(n.attrs, "iterations", "Iterations", 3, 1, 8, "MeanShift");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      int r = n.attrs.get_i("radius", 6);
+      float tol = n.attrs.get_f("tolerance", 0.08f);
+      int iters = n.attrs.get_i("iterations", 3);
+      int w = in->w, h = in->h;
+      float mn, mx;
+      in->minmax(mn, mx);
+      float span = (mx - mn) > 1e-12f ? mx - mn : 1.f;
+      float bw = tol * span;
+      // each pass shifts every cell toward the mean of the neighbors whose
+      // value sits within the bandwidth - values drift to their local mode,
+      // so gentle gradients collapse into plateaus while real jumps survive
+      Heightmap cur = out;
+      for (int it = 0; it < iters; ++it) {
+        parallel_rows(h, [&](int y0, int y1) {
+          for (int y = y0; y < y1; ++y)
+            for (int x = 0; x < w; ++x) {
+              float c = cur.at(x, y);
+              float s = 0, wt = 0;
+              for (int dy = -r; dy <= r; ++dy)
+                for (int dx = -r; dx <= r; ++dx) {
+                  int xx = x + dx, yy = y + dy;
+                  if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                  float v = cur.at(xx, yy);
+                  float dv = (v - c) / bw;
+                  if (dv * dv > 1.f) continue;
+                  float k = 1.f - dv * dv;
+                  s += v * k;
+                  wt += k;
+                }
+              out.at(x, y) = wt > 1e-12f ? s / wt : c;
+            }
+        });
+        cur = out;
+      }
+    })
+
+REGISTER_NODE(
+    SetBorders, "Transform", "Pin the tile's borders to a level",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      add_float(n.attrs, "level", "Border level", 0.f, -1.f, 2.f, "Borders");
+      add_float(n.attrs, "feather", "Feather", 0.1f, 0.005f, 0.5f, "Borders");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      float level = n.attrs.get_f("level", 0.f);
+      float fe = n.attrs.get_f("feather", 0.1f);
+      int w = in->w, h = in->h;
+      parallel_rows(h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < w; ++x) {
+            float ex = std::min(x, w - 1 - x) / (float)w;
+            float ey = std::min(y, h - 1 - y) / (float)h;
+            float t = std::clamp(std::min(ex, ey) / fe, 0.f, 1.f);
+            t = t * t * (3.f - 2.f * t);
+            out.at(x, y) = level + (in->at(x, y) - level) * t;
+          }
+      });
+    })
+
+REGISTER_NODE(
     KMeans, "Mask", "Cluster the terrain into zones",
     [](Node &n) {
       n.add_in("input");

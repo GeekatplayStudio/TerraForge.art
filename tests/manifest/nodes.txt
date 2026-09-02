@@ -80,6 +80,7 @@ MaskToTexture|Material
 MaterialOutput|Material
 MathGradient|Operator
 Math|Operator
+MeanShift|Filter
 Median|Filter
 MetaNode|Group
 MixLayers|Operator
@@ -118,6 +119,7 @@ Sample|Field Bridge
 ScatterPoints|Points
 SedimentDeposit|Erosion
 SelectAltitude|Mask
+SelectBlobs|Mask
 SelectBorder|Mask
 SelectCavities|Mask
 SelectCurvature|Mask
@@ -125,6 +127,7 @@ SelectMidrange|Mask
 SelectSlope|Mask
 SelectTransitions|Mask
 Select|Logic
+SetBorders|Transform
 Shape|Primitive
 Sharpen|Effect
 Shear|Transform

@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 161 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 164 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -16,11 +16,11 @@ Every node in Geekatplay TerraForge — 161 across 25 categories. Generated from
 | [Field Material](#field-material) | 1 |
 | [Field Math](#field-math) | 6 |
 | [Field Noise](#field-noise) | 3 |
-| [Filter](#filter) | 20 |
+| [Filter](#filter) | 21 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
-| [Mask](#mask) | 11 |
+| [Mask](#mask) | 12 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
@@ -28,7 +28,7 @@ Every node in Geekatplay TerraForge — 161 across 25 categories. Generated from
 | [Primitive](#primitive) | 14 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
-| [Transform](#transform) | 5 |
+| [Transform](#transform) | 6 |
 
 ## Analysis
 
@@ -1235,6 +1235,23 @@ Edge-preserving smoothing (painterly flats)
 | Mix | float, 0 to 1, default 1 |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
+### MeanShift
+
+Mode-seeking smoothing (flattens toward plateaus)
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Radius (px) | int, 2 to 24, default 6 |  |
+| Value tolerance | float, 0.005 to 0.5, default 0.08 |  |
+| Iterations | int, 1 to 8, default 3 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
 ### Median
 
 Removes single-cell spikes and pits without softening edges
@@ -1639,6 +1656,21 @@ Select by height band
 | Edge softness | float, 0.001 to 1, default 0.1 |  |
 | Invert | toggle, default off |  |
 | Altitude band | range |  |
+
+### SelectBlobs
+
+Find blob-shaped features at a size
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Blob size | float, 0.005 to 0.3, default 0.03 |  |
+| Strength | float, 0 to 1, default 0.15 |  |
+| Hollows instead of bumps | toggle, default off |  |
 
 ### SelectBorder
 
@@ -2748,6 +2780,22 @@ Blend the tile so it wraps seamlessly
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Feather | float, 0.1 to 1, default 1 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### SetBorders
+
+Pin the tile's borders to a level
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Border level | float, -1 to 2, default 0 |  |
+| Feather | float, 0.005 to 0.5, default 0.1 |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Shear

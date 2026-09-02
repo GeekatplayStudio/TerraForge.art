@@ -378,6 +378,10 @@ MaterialOutput.transparency|float
 Math.blend_invert|bool
 Math.op|choice
 Math.value|float
+MeanShift.blend_invert|bool
+MeanShift.iterations|int
+MeanShift.radius|int
+MeanShift.tolerance|float
 Median.passes|int
 Median.post_gain|float
 Median.post_invert|bool
@@ -528,6 +532,9 @@ Select.index|int
 SelectAltitude.band|range
 SelectAltitude.invert|bool
 SelectAltitude.smoothing|float
+SelectBlobs.hollows|bool
+SelectBlobs.size|float
+SelectBlobs.threshold|float
 SelectBorder.reach|float
 SelectBorder.side|choice
 SelectBorder.threshold|float
@@ -547,6 +554,9 @@ SelectSlope.invert|bool
 SelectSlope.smoothing|float
 SelectTransitions.invert|bool
 SelectTransitions.tolerance|float
+SetBorders.blend_invert|bool
+SetBorders.feather|float
+SetBorders.level|float
 Shape.angle|float
 Shape.center|vec2
 Shape.frequency|float

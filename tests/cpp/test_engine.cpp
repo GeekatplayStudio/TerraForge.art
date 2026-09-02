@@ -3167,6 +3167,49 @@ static void test_local_filters() {
   CHECK(re.at(32, 32) > 0.9f, "the peak reads high relative to its area");
   CHECK(std::fabs(re.at(4, 4) - 0.5f) < 0.05f, "flat ground reads neutral");
 
+  // MeanShift flattens a gentle two-level blend into plateaus but keeps
+  // the levels apart
+  {
+    gpx::Heightmap soft(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x)
+        soft.at(x, y) = std::clamp((x - 28) / 8.f, 0.f, 1.f);
+    auto ms = run("MeanShift", soft, [](gpx::Node &n) {
+      n.attrs.find("iterations")->i = 5;
+    }, "output");
+    CHECK(ms.at(4, 32) < 0.05f && ms.at(60, 32) > 0.95f,
+          "the two plateaus survive mode seeking");
+  }
+
+  // SetBorders pins the rim and leaves the middle alone
+  {
+    gpx::Heightmap flat(N, N, 0.8f);
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node("SetBorders", 0, 0);
+    n->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(flat);
+    gpx::NodeRegistry::instance().find("SetBorders")->compute(*n);
+    const gpx::Heightmap &sb = *n->port("output", gpx::PortDir::Out)->hmap;
+    CHECK(sb.at(0, 32) == 0.f, "the border sits at the level");
+    CHECK(sb.at(32, 32) == 0.8f, "the interior is untouched");
+  }
+
+  // SelectBlobs lights a bump of its size and ignores broad structure
+  {
+    gpx::Heightmap b(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x) {
+        float dx = (x - 32) / 3.f, dy = (y - 32) / 3.f;
+        b.at(x, y) = std::exp(-(dx * dx + dy * dy)) + 0.3f;
+      }
+    auto bl = run("SelectBlobs", b, [](gpx::Node &n) {
+      n.attrs.find("size")->f = 0.1f;
+    }, "mask");
+    CHECK(bl.at(32, 32) > 0.5f, "the bump is found");
+    CHECK(bl.at(4, 4) < 0.1f, "flat ground is not");
+  }
+
   // KMeans with two flat levels and k=2 must recover the split exactly
   {
     gpx::Heightmap two(N, N);

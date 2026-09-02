@@ -143,6 +143,71 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    SelectBlobs, "Mask", "Find blob-shaped features at a size",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("mask");
+      add_float(n.attrs, "size", "Blob size", 0.03f, 0.005f, 0.3f, "Selection");
+      add_float(n.attrs, "threshold", "Strength", 0.15f, 0.f, 1.f, "Selection");
+      add_bool(n.attrs, "hollows", "Hollows instead of bumps", false,
+               "Selection");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &m = n.out_hmap("mask");
+      m = *in;
+      // difference of gaussians at the blob scale: a bump the size of the
+      // inner radius lights up, larger structure cancels out
+      int r1 = std::max(1, (int)(n.attrs.get_f("size", 0.03f) * in->w * 0.5f));
+      int r2 = r1 * 2;
+      auto box = [&](const Heightmap &src, Heightmap &dst, int r) {
+        Heightmap tmp(src.w, src.h);
+        parallel_rows(src.h, [&](int y0, int y1) {
+          for (int y = y0; y < y1; ++y)
+            for (int x = 0; x < src.w; ++x) {
+              float s = 0;
+              int c = 0;
+              for (int d = -r; d <= r; ++d) {
+                int xx = std::clamp(x + d, 0, src.w - 1);
+                s += src.at(xx, y);
+                ++c;
+              }
+              tmp.at(x, y) = s / c;
+            }
+        });
+        parallel_rows(src.w, [&](int x0, int x1) {
+          for (int x = x0; x < x1; ++x)
+            for (int y = 0; y < src.h; ++y) {
+              float s = 0;
+              int c = 0;
+              for (int d = -r; d <= r; ++d) {
+                int yy = std::clamp(y + d, 0, src.h - 1);
+                s += tmp.at(x, yy);
+                ++c;
+              }
+              dst.at(x, y) = s / c;
+            }
+        });
+      };
+      Heightmap g1(in->w, in->h), g2(in->w, in->h);
+      box(*in, g1, r1);
+      box(*in, g2, r2);
+      float mn, mx;
+      in->minmax(mn, mx);
+      float span = (mx - mn) > 1e-12f ? mx - mn : 1.f;
+      float thr = n.attrs.get_f("threshold", 0.15f);
+      bool hollows = n.attrs.get_b("hollows");
+      parallel_index(m.v.size(), [&](size_t i0, size_t i1) {
+        for (size_t i = i0; i < i1; ++i) {
+          float d = (g1.v[i] - g2.v[i]) / span;
+          if (hollows) d = -d;
+          m.v[i] = std::clamp(d / std::max(thr, 1e-4f), 0.f, 1.f);
+        }
+      });
+    })
+
+REGISTER_NODE(
     SelectSlope, "Mask", "Select by slope steepness",
     [](Node &n) {
       setup_selector(n);

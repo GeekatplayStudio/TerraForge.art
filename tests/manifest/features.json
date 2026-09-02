@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "filter.modeseek", "area": "engine", "phase": "23",
+      "description": "MeanShift mode-seeking smoothing, SetBorders rim pinning, SelectBlobs difference-of-gaussians blob detection",
+      "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
+
     { "id": "primitive.dla", "area": "engine", "phase": "23",
       "description": "DiffusionLimited: branching dendrites by particle aggregation, hashed walk (bit-identical), age-tapered relief, stickiness and smoothing controls",
       "test_file": "test_engine.cpp", "test_symbol": "test_dla" },
