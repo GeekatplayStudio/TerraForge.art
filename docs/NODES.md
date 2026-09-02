@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 158 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 161 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -24,7 +24,7 @@ Every node in Geekatplay TerraForge — 158 across 25 categories. Generated from
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
-| [Points](#points) | 6 |
+| [Points](#points) | 9 |
 | [Primitive](#primitive) | 14 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
@@ -2245,6 +2245,20 @@ Read points from a CSV file
 | :--- | :--- | :--- |
 | File | file path |  |
 
+### PointsMerge
+
+Combine two point clouds
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points A | in | ? |
+| points B | in (optional) | ? |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Drop B closer than | float, 0 to 0.2, default 0 | 0 keeps everything. Above 0, a B point this close to any A point is dropped - A has right of way. |
+
 ### PointsRelax
 
 Even out point spacing
@@ -2272,6 +2286,33 @@ Distance to the nearest point
 | :--- | :--- | :--- |
 | Reach | float, 0.005 to 1, default 0.2 |  |
 | Invert | toggle, default off |  |
+
+### PointsSetValues
+
+Point values from the terrain
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| source | in | heightmap |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Normalize 0..1 | toggle, default on |  |
+
+### PointsShuffle
+
+Reorder a cloud deterministically
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
 
 ### PointsToMask
 

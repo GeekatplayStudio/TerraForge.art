@@ -253,4 +253,80 @@ REGISTER_NODE(
       });
     })
 
+REGISTER_NODE(
+    PointsMerge, "Points", "Combine two point clouds",
+    [](Node &n) {
+      n.add_in("points A", DataType::Points);
+      n.add_in("points B", DataType::Points, true);
+      n.add_out("points", DataType::Points);
+      add_float(n.attrs, "min_dist", "Drop B closer than", 0.f, 0.f, 0.2f,
+                "Merge")
+          .tooltip = "0 keeps everything. Above 0, a B point this close to\n"
+                     "any A point is dropped - A has right of way.";
+    },
+    [](Node &n) {
+      const PointCloud *a = n.in_points("points A");
+      const PointCloud *b = n.in_points("points B");
+      PointCloud &out = n.out_points("points");
+      if (a) out = *a;
+      if (!b) return;
+      float md = n.attrs.get_f("min_dist", 0.f);
+      for (size_t i = 0; i < b->size(); ++i) {
+        bool keep = true;
+        if (md > 0.f && a)
+          for (size_t j = 0; j < a->size() && keep; ++j) {
+            float dx = a->x[j] - b->x[i], dy = a->y[j] - b->y[i];
+            keep = dx * dx + dy * dy >= md * md;
+          }
+        if (keep) out.add(b->x[i], b->y[i], b->v[i]);
+      }
+    })
+
+REGISTER_NODE(
+    PointsShuffle, "Points", "Reorder a cloud deterministically",
+    [](Node &n) {
+      n.add_in("points", DataType::Points);
+      n.add_out("points", DataType::Points);
+      add_seed(n.attrs, "seed", "Seed", 0, "Shuffle");
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("points");
+      PointCloud &out = n.out_points("points");
+      if (!in) return;
+      out = *in;
+      // Fisher-Yates over the hash stream: same seed, same order, always
+      uint32_t seed = n.attrs.get_seed("seed");
+      for (size_t i = out.size(); i > 1; --i) {
+        size_t j = planet::pl_hash_bits((int)i, 3, 0, seed) % (uint32_t)i;
+        std::swap(out.x[i - 1], out.x[j]);
+        std::swap(out.y[i - 1], out.y[j]);
+        std::swap(out.v[i - 1], out.v[j]);
+      }
+    })
+
+REGISTER_NODE(
+    PointsSetValues, "Points", "Point values from the terrain",
+    [](Node &n) {
+      n.add_in("points", DataType::Points);
+      n.add_in("source", DataType::Heightmap);
+      n.add_out("points", DataType::Points);
+      add_bool(n.attrs, "normalize", "Normalize 0..1", true, "Values");
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("points");
+      const Heightmap *src = n.in_hmap("source");
+      PointCloud &out = n.out_points("points");
+      if (!in) return;
+      out = *in;
+      if (!src || src->empty()) return;
+      for (size_t i = 0; i < out.size(); ++i)
+        out.v[i] = sample_hm(src, out.x[i], out.y[i]);
+      if (n.attrs.get_b("normalize", true) && out.size()) {
+        float mn = out.v[0], mx = out.v[0];
+        for (float v : out.v) { mn = std::min(mn, v); mx = std::max(mx, v); }
+        float d = (mx - mn) > 1e-12f ? mx - mn : 1.f;
+        for (float &v : out.v) v = (v - mn) / d;
+      }
+    })
+
 } // namespace gpx

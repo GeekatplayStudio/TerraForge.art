@@ -3467,6 +3467,43 @@ static void test_points_domain() {
   float mx = *std::max_element(mp->hmap->v.begin(), mp->hmap->v.end());
   CHECK(mx > 0.9f, "stamped kernels reach amplitude");
 
+  // merge, shuffle, set-values
+  {
+    auto A = std::make_shared<gpx::PointCloud>();
+    A->add(0.2f, 0.2f, 1.f);
+    A->add(0.8f, 0.8f, 1.f);
+    auto B = std::make_shared<gpx::PointCloud>();
+    B->add(0.21f, 0.2f, 2.f); // within 0.05 of an A point
+    B->add(0.5f, 0.5f, 2.f);
+    gpx::Node *mg = g.add_node("PointsMerge", 0, 0);
+    mg->port("points A", gpx::PortDir::In)->pts = A;
+    mg->port("points B", gpx::PortDir::In)->pts = B;
+    mg->attrs.find("min_dist")->f = 0.05f;
+    compute(mg);
+    const gpx::PointCloud &m2 = *mg->port("points", gpx::PortDir::Out)->pts;
+    CHECK(m2.size() == 3, "merge keeps A and drops the crowding B point");
+
+    gpx::Node *sh = g.add_node("PointsShuffle", 0, 0);
+    g.add_link(sc->id, "points", sh->id, "points");
+    compute(sh);
+    const gpx::PointCloud &shp = *sh->port("points", gpx::PortDir::Out)->pts;
+    CHECK(shp.size() == sp->pts->size() && shp.x != sp->pts->x,
+          "shuffle keeps every point but changes the order");
+
+    gpx::Node *sv = g.add_node("PointsSetValues", 0, 0);
+    auto ramp = std::make_shared<gpx::Heightmap>(64, 64);
+    for (int y = 0; y < 64; ++y)
+      for (int x = 0; x < 64; ++x) ramp->v[(size_t)y * 64 + x] = x / 63.f;
+    g.add_link(sc->id, "points", sv->id, "points");
+    sv->port("source", gpx::PortDir::In)->hmap = ramp;
+    compute(sv);
+    const gpx::PointCloud &svp = *sv->port("points", gpx::PortDir::Out)->pts;
+    bool follows = svp.size() > 0;
+    for (size_t i = 0; i < svp.size(); ++i)
+      follows = follows && std::fabs(svp.v[i] - svp.x[i]) < 0.06f;
+    CHECK(follows, "values follow the sampled ramp");
+  }
+
   // SDF: zero at a point cell, grows away from it
   g.add_link(sc->id, "points", sd->id, "points");
   compute(sd);

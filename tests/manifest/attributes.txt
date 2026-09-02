@@ -451,10 +451,13 @@ PointsFilter.band|range
 PointsFilter.keep|float
 PointsFilter.seed|seed
 PointsFromCsv.path|filename
+PointsMerge.min_dist|float
 PointsRelax.iterations|int
 PointsRelax.strength|float
 PointsSDF.invert|bool
 PointsSDF.reach|float
+PointsSetValues.normalize|bool
+PointsShuffle.seed|seed
 PointsToMask.amplitude|float
 PointsToMask.blend|choice
 PointsToMask.kernel|choice

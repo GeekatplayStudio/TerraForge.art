@@ -98,8 +98,11 @@ Peaks|Effect
 Plateau|Filter
 PointsFilter|Points
 PointsFromCsv|Points
+PointsMerge|Points
 PointsRelax|Points
 PointsSDF|Points
+PointsSetValues|Points
+PointsShuffle|Points
 PointsToMask|Points
 PointsToPath|Path
 PowerFractal|Filter
