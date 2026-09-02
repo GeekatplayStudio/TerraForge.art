@@ -402,4 +402,57 @@ REGISTER_NODE(
       apply_post(n, out);
     })
 
+
+// ------------------------------------------------------------------- curve
+// A point-based tone curve for elevations, using the gradient editor that
+// already exists: the stops' brightness is the transfer function. Photoshop's
+// Curves for terrain - crush the midlands, lift the peaks, flatten a plateau
+// band - drawn rather than parameterised.
+REGISTER_NODE(
+    Curve, "Filter",
+    "Remaps elevations through a drawn curve - the gradient's brightness is the transfer function",
+    [](Node &n) {
+      setup_masked_filter(n);
+      add_gradient(n.attrs, "curve", "Curve",
+                   {{0.f, 0.f, 0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f, 1.f}});
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 1.f);
+      setup_post(n);
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      float mn, mx;
+      in->minmax(mn, mx);
+      const float span = mx - mn;
+      if (span > 1e-12f) {
+        const Attribute *g = n.attrs.find("curve");
+        const float k = n.attrs.get_f("strength", 1.f);
+        auto lum_at = [&](float t) {
+          if (!g || g->stops.empty()) return t; // identity with no stops
+          const auto &st = g->stops;
+          if (t <= st.front().t)
+            return (st.front().r + st.front().g + st.front().b) / 3.f;
+          for (size_t i = 0; i + 1 < st.size(); ++i)
+            if (t <= st[i + 1].t) {
+              float f = (t - st[i].t) / std::max(st[i + 1].t - st[i].t, 1e-6f);
+              float a = (st[i].r + st[i].g + st[i].b) / 3.f;
+              float b = (st[i + 1].r + st[i + 1].g + st[i + 1].b) / 3.f;
+              return a + (b - a) * f;
+            }
+          return (st.back().r + st.back().g + st.back().b) / 3.f;
+        };
+        parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
+          for (size_t i = i0; i < i1; ++i) {
+            float t = (in->v[i] - mn) / span;
+            float mapped = mn + lum_at(t) * span;
+            out.v[i] = in->v[i] + (mapped - in->v[i]) * k;
+          }
+        });
+      }
+      apply_mask_blend(n.in_hmap("mask"), *in, out);
+      apply_post(n, out);
+    })
+
 } // namespace gpx

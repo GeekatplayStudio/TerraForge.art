@@ -2681,6 +2681,86 @@ static void test_distance_and_filters() {
   }
 }
 
+// ------------------------------------------------------------ curve & shapes
+static void test_curve_and_shapes() {
+  std::printf("tone curve and analytic shapes...\n");
+
+  // the Curve node: an inverting curve (white to black) must flip the
+  // terrain's shape exactly, and identity stops must change nothing
+  {
+    gpx::Graph g;
+    gpx::Node *n = g.add_node("Curve", 0, 0);
+    CHECK(n != nullptr, "Curve is registered");
+    if (n) {
+      const int N = 32;
+      gpx::Heightmap in(N, N);
+      for (size_t i = 0; i < in.v.size(); ++i)
+        in.v[i] = 0.1f + 0.8f * (float)(i % 61) / 61.f;
+      gpx::Port *pin = n->port("input", gpx::PortDir::In);
+      auto hm = std::make_shared<gpx::Heightmap>(in);
+      if (pin) pin->hmap = hm;
+      n->attrs.find("post_remap")->b = false;
+      const gpx::NodeDef *def = gpx::NodeRegistry::instance().find("Curve");
+
+      // identity first
+      def->compute(*n);
+      const gpx::Port *op = n->port("output", gpx::PortDir::Out);
+      CHECK(op && op->hmap, "output produced");
+      if (op && op->hmap) {
+        float worst = 0.f;
+        for (size_t i = 0; i < in.v.size(); ++i)
+          worst = std::max(worst, std::fabs(op->hmap->v[i] - in.v[i]));
+        CHECK(worst < 1e-6f, "the default curve is the identity");
+      }
+
+      // then invert: swap the stops' brightness
+      gpx::Attribute *cv = n->attrs.find("curve");
+      cv->stops = {{0.f, 1.f, 1.f, 1.f, 1.f}, {1.f, 0.f, 0.f, 0.f, 1.f}};
+      def->compute(*n);
+      if (op && op->hmap) {
+        float mn, mx;
+        in.minmax(mn, mx);
+        float worst = 0.f;
+        for (size_t i = 0; i < in.v.size(); ++i) {
+          float expect = mn + (mx - (in.v[i]))* 1.f; // mn + (1-t)*span
+          worst = std::max(worst, std::fabs(op->hmap->v[i] - expect));
+        }
+        CHECK(worst < 1e-5f, "an inverted curve mirrors the heights exactly");
+      }
+    }
+  }
+
+  // FieldShape: the modes' defining properties, not their pictures
+  {
+    gpx::Graph g;
+    gpx::Node *n = g.add_node("FieldShape", 0, 0);
+    CHECK(n != nullptr, "FieldShape is registered");
+    if (n) {
+      gpx::FieldContext ctx;
+      auto at = [&](float x, float z) {
+        ctx.pos[0] = x; ctx.pos[1] = 0.f; ctx.pos[2] = z;
+        return n->eval_field("out", ctx).v[0];
+      };
+      // gaussian bump: 1 at the centre, falling with distance
+      n->attrs.find("mode")->i = 4;
+      CHECK(std::fabs(at(0.5f, 0.5f) - 1.f) < 1e-6f, "bump peaks at its centre");
+      CHECK(at(0.6f, 0.5f) > at(0.8f, 0.5f), "and falls off with distance");
+      // step: direction 0 means the +X side is 1
+      n->attrs.find("mode")->i = 7;
+      CHECK(at(0.9f, 0.5f) == 1.f && at(0.1f, 0.5f) == 0.f,
+            "step splits along its line");
+      // sine at frequency 1: a full period across one unit
+      n->attrs.find("mode")->i = 0;
+      n->attrs.find("frequency")->f = 1.f;
+      n->attrs.find("phase")->f = 0.f;
+      float a = at(0.5f, 0.5f), b = at(1.0f, 0.5f), c = at(1.5f, 0.5f);
+      CHECK(std::fabs(a - c) < 1e-5f, "one unit is one full period");
+      CHECK(std::fabs((a + b) - 1.f) < 1e-5f,
+            "half a period lands on the opposite phase");
+    }
+  }
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2706,6 +2786,7 @@ int main() {
   test_cellular();
   test_depression_fill();
   test_distance_and_filters();
+  test_curve_and_shapes();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

@@ -366,6 +366,25 @@ std::string field_gpu_verify_all(App &a) {
     }
   }
 
+  // ---- analytic shapes ---------------------------------------------------
+  // Every waveform, because each mode emits its own formula and an untested
+  // mode is an unmirrored one. The frame (direction projection, centre) is
+  // shared, so one rotated case exercises it for all.
+  {
+    const char *shape_name[8] = {"sine", "square", "triangle", "sawtooth",
+                                 "gauss", "cone", "band", "step"};
+    for (int m = 0; m < 8; ++m) {
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldShape");
+      n->attrs.find("mode")->i = m;
+      n->attrs.find("direction")->f = 37.f;
+      n->attrs.find("frequency")->f = 3.5f;
+      n->attrs.find("width")->f = 0.3f;
+      n->attrs.find("phase")->f = 0.2f;
+      run((std::string("shape ") + shape_name[m]).c_str(), g, n);
+    }
+  }
+
   {   // texture coordinates with a rotation, where sin/cos signs can flip
     gpx::Graph g;
     gpx::Node *tc = g.add_node("FieldTexCoord");

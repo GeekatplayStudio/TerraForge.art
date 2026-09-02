@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "field.shapes_and_curve", "area": "engine", "phase": "22",
+      "description": "FieldShape (8 analytic waveforms with a GPU mirror) and Curve (a drawn tone curve for elevations through the gradient editor)",
+      "test_file": "test_engine.cpp", "test_symbol": "test_curve_and_shapes" },
+
     { "id": "project.autosave", "area": "studio", "phase": "22",
       "description": "Autosave every two minutes when the history has moved, three slots in rotation, and crash recovery offering the newest slot back after an unclean exit",
       "test_file": "test_undo.cpp", "test_symbol": "test_autosave" },

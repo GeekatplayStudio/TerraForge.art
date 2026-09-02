@@ -16,6 +16,7 @@ Cracks|Effect
 Craggy|Filter
 Crater|Primitive
 CurvatureFromHeight|Material
+Curve|Filter
 Dissolve|Erosion
 DistanceField|Mask
 Dunes|Primitive
@@ -42,6 +43,7 @@ FieldOrientation|Field Input
 FieldPosition|Field Input
 FieldRedirect|Field Displace
 FieldRemap|Field Math
+FieldShape|Field Noise
 FieldSlope|Field Input
 FieldTexCoord|Field Input
 FieldTime|Field Input
