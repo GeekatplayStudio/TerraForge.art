@@ -208,6 +208,17 @@ generated from the registry itself.
   HDR environment, plus the same material, sun, water, fog and tone mapping,
   so the result matches the preview.
 
+### Animation
+- **Timeline** (View menu): play/pause/stop, a loop range, a scrub bar, and
+  per-attribute keyframing on the selected node — key markers on miniature
+  track bars, constant/linear/smooth interpolation per track. Tracks save
+  with the project.
+- **PNG sequence capture**: the loop range becomes numbered frames through
+  the viewport engine, one animation frame per completed evaluation.
+- **Fly-throughs**: hand the sequence any path node and the camera rides it
+  at terrain height — a spline through scattered waypoints is a camera dolly.
+- Scattered meshes sway in the wind, each copy on its own phase.
+
 ### AI assistance
 Describe a landscape in plain language — or drop in a photograph — and a local
 [Ollama](https://ollama.com) model builds the node graph, parameters,

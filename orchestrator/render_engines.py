@@ -300,6 +300,49 @@ def render_luxcore(sc: dict) -> int:
         scene.objects.terrain.shape = terrain_mesh
     """)
     scene.Parse(obj)
+    # scene meshes, scattered copies as transformed object entries: LuxCore
+    # takes a per-object 4x4, so each copy is base-model x yaw x scale with
+    # its own translation - the same composition the viewport shader uses
+    import math as _math
+    for i, m in enumerate(sc.get("meshes", [])):
+        mesh_id = f"prop{i}_mesh"
+        scene.DefineMesh(mesh_id, *_load_obj(m["obj"]))
+        matp = pyluxcore.Properties()
+        col = m["color"]
+        matp.SetFromString(f"""
+            scene.materials.propmat{i}.type = matte
+            scene.materials.propmat{i}.kd = {col[0]} {col[1]} {col[2]}
+        """)
+        scene.Parse(matp)
+        M = m["model"]  # column-major 4x4
+
+        def compose(tx, ty, tz, s, yaw):
+            c, sn = _math.cos(yaw), _math.sin(yaw)
+            # R*S in column-major, then base model, then the translation swap
+            rs = [c * s, 0, -sn * s, 0, 0, s, 0, 0, sn * s, 0, c * s, 0,
+                  0, 0, 0, 1]
+            out = [0.0] * 16
+            for r in range(4):
+                for cc in range(4):
+                    out[cc * 4 + r] = sum(M[k * 4 + r] * rs[cc * 4 + k]
+                                          for k in range(4))
+            out[12] += tx - M[12]
+            out[13] += ty - M[13]
+            out[14] += tz - M[14]
+            return out
+
+        insts = m.get("instances") or [
+            (M[12], M[13], M[14], 1.0, 0.0)]
+        for k, (x, y, z, s, yaw) in enumerate(insts):
+            t = compose(x, y, z, s, yaw)
+            op = pyluxcore.Properties()
+            op.SetFromString(f"""
+                scene.objects.prop{i}_{k}.material = propmat{i}
+                scene.objects.prop{i}_{k}.shape = {mesh_id}
+                scene.objects.prop{i}_{k}.transformation = {' '.join(str(v) for v in t)}
+            """)
+            scene.Parse(op)
+
     cfg = pyluxcore.Properties()
     cfg.SetFromString(f"""
         renderengine.type = PATHCPU
