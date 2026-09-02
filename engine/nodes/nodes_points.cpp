@@ -38,6 +38,13 @@ REGISTER_NODE(
       add_float(n.attrs, "min_dist", "Min spacing", 0.02f, 0.001f, 0.3f,
                 "Scatter");
       add_seed(n.attrs, "seed", "Seed", 0, "Scatter");
+      add_choice(n.attrs, "value_dist", "Value distribution",
+                 {"Uniform", "Power law", "Weibull"}, 0, "Scatter")
+          .tooltip = "The per-point value stream: uniform 0..1, a power law\n"
+                     "(many small, few large - natural size mixes), or\n"
+                     "Weibull (clustered around a typical size).";
+      add_float(n.attrs, "dist_shape", "Distribution shape", 2.f, 0.5f, 8.f,
+                "Scatter");
     },
     [](Node &n) {
       PointCloud &out = n.out_points("points");
@@ -46,6 +53,16 @@ REGISTER_NODE(
       int mode = n.attrs.get_choice("mode");
       float md = n.attrs.get_f("min_dist", 0.02f);
       uint32_t seed = n.attrs.get_seed("seed");
+      int vdist = n.attrs.get_choice("value_dist");
+      float shape = n.attrs.get_f("dist_shape", 2.f);
+      auto value_of = [&](uint32_t i) {
+        float u = pt_rand(i, 4, seed);
+        if (vdist == 1) return std::pow(u, shape); // power law: many small
+        if (vdist == 2)                            // Weibull via inverse CDF
+          return std::pow(-std::log(std::max(1.f - u, 1e-7f)), 1.f / shape) *
+                 0.5f;
+        return u;
+      };
       if (mode == 1) {
         // jittered grid: one candidate per cell, cells sized for the count
         int side = std::max(1, (int)std::ceil(std::sqrt((float)count)));
@@ -56,7 +73,7 @@ REGISTER_NODE(
             float px = (gx + pt_rand(i, 1, seed)) * cell;
             float py = (gy + pt_rand(i, 2, seed)) * cell;
             if (den && pt_rand(i, 3, seed) > sample_hm(den, px, py)) continue;
-            out.add(px, py, pt_rand(i, 4, seed));
+            out.add(px, py, value_of(i));
           }
       } else {
         // random / spaced: dart throwing; "Spaced" also rejects candidates
@@ -86,7 +103,7 @@ REGISTER_NODE(
             if (near) continue;
             cells[(size_t)cy * gs + cx].push_back((int)out.size());
           }
-          out.add(px, py, pt_rand(i, 4, seed));
+          out.add(px, py, value_of(i));
         }
       }
     })

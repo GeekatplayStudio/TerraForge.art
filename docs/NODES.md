@@ -2396,6 +2396,8 @@ Scatter points over the tile
 | Mode | choice: Random / Jittered grid / Spaced |  |
 | Min spacing | float, 0.001 to 0.3, default 0.02 |  |
 | Seed | seed |  |
+| Value distribution | choice: Uniform / Power law / Weibull | The per-point value stream: uniform 0..1, a power law (many small, few large - natural size mixes), or Weibull (clustered around a typical size). |
+| Distribution shape | float, 0.5 to 8, default 2 |  |
 
 ## Primitive
 

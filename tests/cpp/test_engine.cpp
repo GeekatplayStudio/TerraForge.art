@@ -3577,6 +3577,19 @@ static void test_points_domain() {
   float mx = *std::max_element(mp->hmap->v.begin(), mp->hmap->v.end());
   CHECK(mx > 0.9f, "stamped kernels reach amplitude");
 
+  // value distributions: power law skews small, uniform does not
+  {
+    sc->attrs.find("value_dist")->i = 1;
+    sc->attrs.find("dist_shape")->f = 3.f;
+    compute(sc);
+    double mean = 0;
+    for (float v : sp->pts->v) mean += v;
+    mean /= sp->pts->size();
+    CHECK(mean < 0.35, "power-law values skew toward small");
+    sc->attrs.find("value_dist")->i = 0;
+    compute(sc);
+  }
+
   // merge, shuffle, set-values
   {
     auto A = std::make_shared<gpx::PointCloud>();

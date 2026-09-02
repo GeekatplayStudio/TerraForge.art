@@ -533,9 +533,11 @@ Sample.scale|float
 Sample.size|float
 Sample.tile|bool
 ScatterPoints.count|int
+ScatterPoints.dist_shape|float
 ScatterPoints.min_dist|float
 ScatterPoints.mode|choice
 ScatterPoints.seed|seed
+ScatterPoints.value_dist|choice
 SedimentDeposit.amount|float
 SedimentDeposit.iterations|int
 Select.by_map|bool
