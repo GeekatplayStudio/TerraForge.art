@@ -349,6 +349,8 @@ uniform mat3 u_nrm;
 // scattering: when on, each copy replaces the model's translation with its
 // own position and adds a yaw+scale of its own. 256 copies per draw call.
 uniform int u_inst_on;
+uniform float u_inst_sway;            // wind lean at the mesh's top
+uniform float u_inst_time;
 uniform vec3 u_inst_base;             // the model matrix's own translation
 uniform vec4 u_inst[256];             // x,y,z,scale per copy
 uniform vec4 u_inst_rot[256];         // cos(yaw), sin(yaw)
@@ -367,6 +369,14 @@ void main(){
     nrm = vec3(nrm.x*r.x - nrm.z*r.y, nrm.y, nrm.x*r.y + nrm.z*r.x);
     vec4 p = u_model * vec4(pos, 1.0);
     p.xyz += I.xyz - u_inst_base;
+    if (u_inst_sway > 0.0) {
+      // each copy leans on its own phase; the lean grows with height above
+      // the copy's foot so trunks stay planted and crowns ride the wind
+      float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0;
+      float lean = sin(ph) * u_inst_sway * max(p.y - I.y, 0.0);
+      p.x += lean;
+      p.z += lean * 0.35;
+    }
     v_nrm = normalize(u_nrm * nrm);
     gl_Position = u_mvp * p;
     return;

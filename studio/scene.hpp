@@ -91,6 +91,7 @@ struct SceneObject {
   unsigned long long scatter_node = 0;
   float scatter_scale = 1.f;        // instance size against the mesh's own
   float scatter_jitter = 0.4f;      // 0 identical, 1 sizes range 0.5x..1.5x
+  float scatter_sway = 0.f;         // wind: top-of-mesh lean, world units
   unsigned scatter_seed = 0;
   // transient, rebuilt after every evaluation: x,y,z,scale,cos,sin per copy
   std::vector<float> inst;

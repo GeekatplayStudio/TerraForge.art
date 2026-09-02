@@ -229,6 +229,8 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       // scattered copies: batches of 256 through the uniform arrays; the
       // shader swaps each copy's translation in for the model's own
       unii(prog_mesh, "u_inst_on", 1);
+      uni1(prog_mesh, "u_inst_sway", o.scatter_sway);
+      uni1(prog_mesh, "u_inst_time", time_acc);
       glUniform3f(glGetUniformLocation(prog_mesh, "u_inst_base"), model[12],
                   model[13], model[14]);
       const size_t per = 8, batch = 256;

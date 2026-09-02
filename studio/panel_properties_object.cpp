@@ -305,6 +305,7 @@ void object_properties_ui(App &a) {
           bool ch = false;
           ch |= ImGui::SliderFloat("Size", &o.scatter_scale, 0.05f, 4.f);
           ch |= ImGui::SliderFloat("Size jitter", &o.scatter_jitter, 0.f, 1.f);
+          ImGui::SliderFloat("Wind sway", &o.scatter_sway, 0.f, 0.3f);
           int sd = (int)o.scatter_seed;
           if (ImGui::DragInt("Seed", &sd, 1, 0, 1 << 24)) {
             o.scatter_seed = (unsigned)sd;

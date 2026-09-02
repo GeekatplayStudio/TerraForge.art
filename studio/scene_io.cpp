@@ -199,6 +199,7 @@ json scene_to_json() {
       jo["scatter_scale"] = o.scatter_scale;
       jo["scatter_jitter"] = o.scatter_jitter;
       jo["scatter_seed"] = o.scatter_seed;
+      jo["scatter_sway"] = o.scatter_sway;
     } else if (o.type == SceneObject::Camera) {
       const CameraData &c = o.cam;
       jo["camera"] = {
@@ -285,6 +286,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       o.scatter_scale = jo.value("scatter_scale", 1.f);
       o.scatter_jitter = jo.value("scatter_jitter", 0.4f);
       o.scatter_seed = jo.value("scatter_seed", 0u);
+      o.scatter_sway = jo.value("scatter_sway", 0.f);
       std::string err;
       if (o.path.empty() || !scene_load_obj_verts(o.path, o.verts, err)) {
         // The geometry is gone but the object is not: its place in the scene,
