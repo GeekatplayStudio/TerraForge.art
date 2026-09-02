@@ -942,6 +942,18 @@ static void test_autosave() {
     }
     CHECK(has_noise, "and contains the session's work");
   }
+  // THE data-loss case: while recovery is unanswered, a tick must write
+  // nothing - the first tick of a fresh session fires immediately and would
+  // otherwise overwrite the very file being offered back
+  {
+    undo_push(a, "edit while dialog is up");
+    autosave_tick(a, 9000.0, 120.0);
+    std::string path;
+    CHECK(autosave_crash_recovery_available(path),
+          "recovery still on offer after a tick");
+    CHECK(path.find("autosave_2") != std::string::npos,
+          "and still offering the crashed session, not a fresh overwrite");
+  }
   autosave_mark_recovery_answered();
   {
     std::string path;

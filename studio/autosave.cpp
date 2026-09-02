@@ -108,6 +108,13 @@ bool autosave_crash_recovery_available(std::string &path_out) {
 }
 
 void autosave_tick(App &a, double now_seconds, double interval_s) {
+  // While "Restore last session?" is still on screen, write NOTHING. The
+  // first tick of a fresh session fires immediately (the interval and the
+  // history baseline both start unset), and writing the empty new session
+  // into the rotation at that moment overwrites exactly the file being
+  // offered back - the user who clicks Restore would get their crash served
+  // as a blank scene. Found by review, not by a user, which is the cheap way.
+  if (g_prev_session_crashed && !g_recovery_answered) return;
   if (now_seconds - g_last_save_time < interval_s) return;
   int count, pos;
   history_state(count, pos);
