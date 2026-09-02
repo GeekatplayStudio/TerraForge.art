@@ -16,6 +16,10 @@
 
 namespace studio {
 
+// the last heightmap handed to the renderer, kept so the points overlay can
+// sample real elevations without re-walking the graph
+static std::shared_ptr<gpx::Heightmap> g_overlay_terrain;
+
 // studio/layout.cpp
 void build_default_layout(ImGuiID dockspace_id, int view_count);
 
@@ -392,13 +396,57 @@ void run_main() {
             if (cpt && cpt->tex && !cpt->tex->empty()) albedo = cpt->tex.get();
           }
         }
-        if (ph && ph->hmap && !ph->hmap->empty())
+        if (ph && ph->hmap && !ph->hmap->empty()) {
           renderer_set_terrain(*ph->hmap, albedo);
+          g_overlay_terrain = ph->hmap; // for the points-overlay heights
+        }
         else if (pt && pt->tex) {
           // texture-only node: keep last heightmap, update albedo
         }
       }
       a.uploaded_serial = a.eval_serial;
+    }
+
+    // points overlay: whenever the selection or the evaluation moves, hand
+    // the renderer the selected node's point cloud (if it has one) with
+    // heights sampled from the current terrain
+    {
+      static uint64_t last_sel = ~0ull, last_ser = ~0ull;
+      if (last_sel != a.selected_node || last_ser != a.eval_serial) {
+        last_sel = a.selected_node;
+        last_ser = a.eval_serial;
+        std::vector<float> xyz;
+        gpx::Node *sn = a.graph.find_node(a.selected_node);
+        const gpx::PointCloud *pc = nullptr;
+        if (sn)
+          for (const gpx::Port &p : sn->ports)
+            if (p.dir == gpx::PortDir::Out &&
+                p.type == gpx::DataType::Points && p.pts && p.pts->size()) {
+              pc = p.pts.get();
+              break;
+            }
+        if (pc) {
+          const gpx::Heightmap *hm =
+              g_overlay_terrain && !g_overlay_terrain->empty()
+                  ? g_overlay_terrain.get()
+                  : nullptr;
+          float hs = render_settings().height_scale;
+          size_t count = std::min(pc->size(), (size_t)20000);
+          xyz.reserve(count * 3);
+          for (size_t i = 0; i < count; ++i) {
+            float hx = pc->x[i], hz = pc->y[i], hy = 0.f;
+            if (hm) {
+              int ix = std::clamp((int)(hx * hm->w), 0, hm->w - 1);
+              int iy = std::clamp((int)(hz * hm->h), 0, hm->h - 1);
+              hy = hm->v[(size_t)iy * hm->w + ix] * hs;
+            }
+            xyz.push_back(hx);
+            xyz.push_back(hy);
+            xyz.push_back(hz);
+          }
+        }
+        renderer_set_points_overlay(xyz);
+      }
     }
 
     ImGui::Render();

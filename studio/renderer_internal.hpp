@@ -67,6 +67,9 @@ extern GLuint prog_terrain_tess;
 extern bool tess_ok;
 extern GLuint tex_patch_bounds;
 extern std::vector<float> cpu_patch_bounds;
+// x,y,z triplets in world space: the selected node's point cloud, drawn as
+// ticks so a scatter is visible before anything stamps it
+extern std::vector<float> g_points_overlay;
 extern int g_patches_visible;
 extern const int patch_n;
 

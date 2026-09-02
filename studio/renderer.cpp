@@ -68,6 +68,11 @@ bool tess_ok = false;
 // patches survived" without a readback.
 GLuint tex_patch_bounds = 0;
 std::vector<float> cpu_patch_bounds;
+std::vector<float> g_points_overlay;
+
+void renderer_set_points_overlay(const std::vector<float> &xyz) {
+  g_points_overlay = xyz;
+}
 int g_patches_visible = -1; // -1 = not measured this frame
 int hm_w = 0;
 bool has_albedo = false;

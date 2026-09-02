@@ -170,6 +170,8 @@ bool renderer_init();
 void renderer_shutdown();
 // uploads heightmap + optional albedo of the viewed node
 void renderer_set_terrain(const gpx::Heightmap &h, const gpx::TextureRGBA *albedo);
+// world-space x,y,z triplets ticked into every 3D view (empty clears)
+void renderer_set_points_overlay(const std::vector<float> &xyz);
 // renders to an FBO sized (w,h), returns color texture id
 unsigned renderer_draw(int w, int h, float dt);
 void renderer_handle_input(float dx, float dy, float wheel, bool rotating, bool panning);

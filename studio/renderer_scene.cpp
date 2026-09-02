@@ -246,6 +246,38 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glDrawArrays(GL_TRIANGLES, 0, sphere_verts);
   }
 
+  // points overlay: the selected node's point cloud as vertical ticks, so a
+  // scatter or a routed path is visible before anything stamps it
+  if (!g_points_overlay.empty()) {
+    glUseProgram(prog_lines);
+    glUniformMatrix4fv(glGetUniformLocation(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniform4f(glGetUniformLocation(prog_lines, "u_color"), 1.f, 0.62f, 0.25f,
+                0.9f);
+    glBindVertexArray(vao_dyn);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_dyn);
+    const float tick = 0.035f;
+    // vbo_dyn holds 256 vertices; two per tick = 128 points a batch
+    std::vector<float> seg;
+    seg.reserve(128 * 6);
+    for (size_t i = 0; i + 2 < g_points_overlay.size(); i += 3) {
+      seg.push_back(g_points_overlay[i]);
+      seg.push_back(g_points_overlay[i + 1]);
+      seg.push_back(g_points_overlay[i + 2]);
+      seg.push_back(g_points_overlay[i]);
+      seg.push_back(g_points_overlay[i + 1] + tick);
+      seg.push_back(g_points_overlay[i + 2]);
+      if (seg.size() >= 128 * 6) {
+        glBufferSubData(GL_ARRAY_BUFFER, 0, seg.size() * 4, seg.data());
+        glDrawArrays(GL_LINES, 0, (int)(seg.size() / 3));
+        seg.clear();
+      }
+    }
+    if (!seg.empty()) {
+      glBufferSubData(GL_ARRAY_BUFFER, 0, seg.size() * 4, seg.data());
+      glDrawArrays(GL_LINES, 0, (int)(seg.size() / 3));
+    }
+  }
+
   // reference grid
   if (vc.grid) {
     glUseProgram(prog_lines);
