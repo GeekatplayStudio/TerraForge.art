@@ -93,6 +93,7 @@ set(ENGINE_SOURCES
     engine/hydrology.cpp
     engine/distance.cpp
     engine/serialization.cpp
+    engine/serialization_material.cpp
     engine/parallel.cpp
     engine/field_glsl.cpp
     engine/field_glsl_emitters.cpp
@@ -124,6 +125,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_analysis.cpp
     engine/nodes/nodes_field_material.cpp
     engine/nodes/nodes_terrain_fx.cpp
+    engine/nodes/nodes_sculpt_layer.cpp
     engine/nodes/nodes_export.cpp
 )
 
@@ -141,6 +143,7 @@ endif()
 set(STUDIO_SOURCES
     studio/main.cpp
     studio/app.cpp
+    studio/layout.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
     studio/icons.cpp
@@ -149,6 +152,7 @@ set(STUDIO_SOURCES
     studio/panel_properties.cpp
     studio/panel_properties_object.cpp
     studio/panel_properties_node.cpp
+    studio/panel_attr_tips.cpp
     studio/panel_library.cpp
     studio/panel_nodelist.cpp
     studio/panel_viewport.cpp
@@ -173,6 +177,7 @@ set(STUDIO_SOURCES
     studio/blue_noise.cpp
     studio/shaders_scene.cpp
     studio/planet_renderer.cpp
+    studio/planet_shaders.cpp
     studio/field_gpu_check.cpp
     studio/preview.cpp
     studio/project_io.cpp
@@ -192,6 +197,7 @@ set(STUDIO_SOURCES
     studio/node_library.cpp
     studio/panel_camera.cpp
     studio/ai_assist.cpp
+    studio/ai_schema.cpp
     studio/ai_ops_graph.cpp
     studio/ai_ops_view.cpp
     studio/studio_api.cpp
