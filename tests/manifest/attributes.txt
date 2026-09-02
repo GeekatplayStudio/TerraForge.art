@@ -472,6 +472,7 @@ SelectSlope.invert|bool
 SelectSlope.smoothing|float
 Shape.angle|float
 Shape.center|vec2
+Shape.frequency|float
 Shape.hardness|float
 Shape.post_gain|float
 Shape.post_invert|bool

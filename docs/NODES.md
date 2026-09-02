@@ -2216,11 +2216,12 @@ Geometric base shapes: slope, bump, crater, cone, ridge line
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Type | choice: Slope plane / Bump / Crater / Cone / Ridge line / Border falloff |  |
+| Type | choice: Slope plane / Bump / Crater / Cone / Ridge line / Border falloff / Wave sine / Wave square / Wave triangle / Step / Band / Paraboloid |  |
 | Center | x/y pair |  |
 | Radius | float, 0.01 to 1.5, default 0.35 |  |
 | Hardness | float, 0.2 to 8, default 1 |  |
 | Direction ° | float, -180 to 180, default 0 |  |
+| Frequency | float, 0.25 to 64, default 4 |  |
 | Remap to range | toggle, default on |  |
 | Output range | range |  |
 | Invert | toggle, default off |  |

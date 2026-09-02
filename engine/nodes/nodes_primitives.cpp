@@ -164,12 +164,15 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_out("output");
       add_choice(n.attrs, "type", "Type",
-                 {"Slope plane", "Bump", "Crater", "Cone", "Ridge line", "Border falloff"},
+                 {"Slope plane", "Bump", "Crater", "Cone", "Ridge line",
+                  "Border falloff", "Wave sine", "Wave square", "Wave triangle",
+                  "Step", "Band", "Paraboloid"},
                  1);
       add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -0.5f, 1.5f);
       add_float(n.attrs, "radius", "Radius", 0.35f, 0.01f, 1.5f);
       add_float(n.attrs, "hardness", "Hardness", 1.f, 0.2f, 8.f);
       add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f);
+      add_float(n.attrs, "frequency", "Frequency", 4.f, 0.25f, 64.f);
       setup_post(n);
     },
     [](Node &n) {
@@ -181,6 +184,7 @@ REGISTER_NODE(
       float hard = n.attrs.get_f("hardness", 1.f);
       float a = n.attrs.get_f("angle") * 0.017453293f;
       float ca = std::cos(a), sa = std::sin(a);
+      float freq = n.attrs.get_f("frequency", 4.f);
       parallel_rows(out.h, [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
           for (int x = 0; x < out.w; ++x) {
@@ -209,6 +213,30 @@ REGISTER_NODE(
                                      0.f, 1.f);
                 v = b * b * (3.f - 2.f * b);
               } break;
+              case 6: // waves ride the rotated axis through the center
+              case 7:
+              case 8: {
+                float t = (dx * ca + dy * sa) * freq;
+                float ph = t - std::floor(t); // 0..1 phase
+                if (type == 6) v = 0.5f + 0.5f * std::sin(ph * 6.2831853f);
+                else if (type == 7) v = ph < 0.5f ? 1.f : 0.f;
+                else v = ph < 0.5f ? ph * 2.f : 2.f - ph * 2.f;
+              } break;
+              case 9: { // step: a smooth jump across the center line; radius
+                        // is the transition width, hardness sharpens it
+                float sd = (dx * ca + dy * sa) / std::max(r, 1e-4f);
+                float s = std::clamp(sd * 0.5f + 0.5f, 0.f, 1.f);
+                s = s * s * (3.f - 2.f * s);
+                v = std::pow(s, 1.f / hard);
+              } break;
+              case 10: { // band: 1 within radius of the center line, soft edge
+                float sd = std::fabs(dx * ca + dy * sa) / std::max(r, 1e-4f);
+                float s = std::clamp(1.f - sd, 0.f, 1.f);
+                v = std::pow(s * s * (3.f - 2.f * s), 1.f / hard);
+              } break;
+              case 11: // paraboloid dome
+                v = std::max(1.f - d * d, 0.f);
+                break;
             }
             out.at(x, y) = v;
           }

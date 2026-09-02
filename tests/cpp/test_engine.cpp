@@ -2685,6 +2685,47 @@ static void test_distance_and_filters() {
 static void test_curve_and_shapes() {
   std::printf("tone curve and analytic shapes...\n");
 
+  // the raster Shape node's analytic modes (waves, step, band, paraboloid)
+  {
+    auto shape = [&](int type, float freq) {
+      gpx::Graph g;
+      g.resolution = 64;
+      gpx::Node *n = g.add_node("Shape", 0, 0);
+      n->attrs.find("type")->i = type;
+      n->attrs.find("frequency")->f = freq;
+      n->attrs.find("post_remap")->b = false;
+      gpx::NodeRegistry::instance().find("Shape")->compute(*n);
+      return *n->port("output", gpx::PortDir::Out)->hmap;
+    };
+    // wave sine: peaks 4 times across the tile at frequency 4
+    auto ws = shape(6, 4.f);
+    // crossings land exactly on samples (value 0.5), so track the last
+    // strictly-signed sample rather than multiplying neighbors
+    int crossings = 0, last = 0;
+    for (int x = 0; x < 64; ++x) {
+      float d = ws.at(x, 32) - 0.5f;
+      int s = d > 1e-6f ? 1 : (d < -1e-6f ? -1 : 0);
+      if (s != 0) {
+        if (last != 0 && s != last) ++crossings;
+        last = s;
+      }
+    }
+    CHECK(crossings >= 7 && crossings <= 9,
+          "sine wave crosses its midline twice per period");
+    // step: monotonic along the axis, 0 one side and 1 the other
+    auto st = shape(9, 4.f);
+    CHECK(st.at(2, 32) < 0.05f && st.at(61, 32) > 0.95f,
+          "step is 0 before the line and 1 after");
+    // band: peaks at the center line, falls off both sides
+    auto bd = shape(10, 4.f);
+    CHECK(bd.at(32, 32) > 0.95f && bd.at(2, 32) < 0.05f,
+          "band is 1 on the line and 0 far away");
+    // paraboloid: dome with the apex at the center
+    auto pb = shape(11, 4.f);
+    CHECK(pb.at(32, 32) > 0.95f && pb.at(0, 0) == 0.f,
+          "paraboloid peaks at the center and clamps at the rim");
+  }
+
   // the Curve node: an inverting curve (white to black) must flip the
   // terrain's shape exactly, and identity stops must change nothing
   {
