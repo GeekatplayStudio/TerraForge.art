@@ -134,6 +134,12 @@ real-time OpenGL viewport.
   scale, amplitude, coverage and seed). Parented to a planet they shape its
   surface; at the root they extend the home terrain tile past its edges to
   the horizon, blending seamlessly out of the tile's own heightmap.
+- **Lakes, and flow that reaches the sea.** `FillBasins` floods every closed
+  basin to the height of its outlet (Priority-Flood). Read one way it is the
+  water standing in the hollow - depth and mask outputs, ready to drive a
+  material or a blend. Read the other way it is the surface flow routing needs:
+  without it D8 routing dead-ends at every pit, and on plain fractal terrain
+  81 such cells were swallowing the drainage of 41% of the map.
 - **Two noise bases, not one.** fBm for ridges and rolling ground, and
   cellular (Worley) noise for everything fBm cannot make: cracked mud, basalt
   columns, scree, crater fields and tectonic plates. `FieldVoronoi` gives the

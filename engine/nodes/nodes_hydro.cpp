@@ -1,11 +1,69 @@
 // Geekatplay TerraForge — hydrology nodes: Rivers (flow-traced carving)
 // and Coast (beach/bluff shoreline shaping), Gaea/World Machine style.
 #include "gpx/node_graph.hpp"
+#include "gpx/hydrology.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
+#include <algorithm>
+#include <cstdint>
 #include <queue>
+#include <vector>
 
 namespace gpx {
+
+// Floods every closed basin to the height of its outlet. The filled surface is
+// what flow routing needs; filled minus original is the lake standing in the
+// hollow. Same answer, read the other way round.
+REGISTER_NODE(
+    FillBasins, "Hydrology",
+    "Floods closed basins to their outlet - filled terrain for flow routing, plus lake depth and mask",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      n.add_out("depth");
+      n.add_out("mask");
+      add_float(n.attrs, "epsilon", "Drainage slope", 0.f, 0.f, 0.01f, "Fill")
+          .tooltip = "A hair of tilt across each filled flat so water still\n"
+                     "crosses it toward the outlet. Leave at 0 for true level\n"
+                     "lakes; raise it slightly when the filled surface feeds\n"
+                     "flow accumulation or erosion.";
+      add_float(n.attrs, "min_depth", "Ignore puddles below", 0.f, 0.f, 0.2f,
+                "Lakes")
+          .tooltip = "Depth and mask ignore anything shallower than this, so\n"
+                     "a thousand pinprick hollows do not read as lakes. The\n"
+                     "filled terrain is unaffected.";
+      add_bool(n.attrs, "normalize_depth", "Normalise depth", true, "Lakes")
+          .tooltip = "Scales depth to 0..1 so it can drive a mask or a blend\n"
+                     "directly. Off leaves it in terrain units.";
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      std::vector<float> filled =
+          fill_depressions(*in, n.attrs.get_f("epsilon", 0.f));
+
+      // Size the outputs from the input rather than from the graph's
+      // resolution: a Resample or an imported heightmap upstream makes those
+      // two different, and this loop walks them in lockstep.
+      Heightmap &out = n.out_hmap("output");
+      Heightmap &depth = n.out_hmap("depth");
+      Heightmap &mask = n.out_hmap("mask");
+      out = *in;
+      depth = *in;
+      mask = *in;
+      const float min_d = n.attrs.get_f("min_depth", 0.f);
+      float deepest = 0.f;
+      for (size_t i = 0; i < out.v.size(); ++i) {
+        out.v[i] = filled[i];
+        float d = filled[i] - in->v[i];
+        if (d < min_d) d = 0.f;
+        depth.v[i] = d;
+        mask.v[i] = d > 0.f ? 1.f : 0.f;
+        if (d > deepest) deepest = d;
+      }
+      if (n.attrs.get_b("normalize_depth", true) && deepest > 1e-9f)
+        for (float &d : depth.v) d /= deepest;
+    })
 
 REGISTER_NODE(
     Rivers, "Erosion", "Trace rivers from headwaters and carve channels; outputs river + depth masks",

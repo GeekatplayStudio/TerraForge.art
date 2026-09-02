@@ -1,5 +1,6 @@
 ﻿// Geekatplay Studio â€” engine test suite (graph, nodes, serialization)
 #include "gpx/camera_math.hpp"
+#include "gpx/hydrology.hpp"
 #include "gpx/planet_math.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/metanode.hpp"
@@ -2402,6 +2403,163 @@ static void test_cellular() {
   }
 }
 
+// ------------------------------------------------------------ depression fill
+// Priority-Flood has three properties that pin it completely, and a wrong
+// implementation breaks at least one while still producing a picture that
+// looks like a filled terrain.
+static void test_depression_fill() {
+  std::printf("depression filling and flow routing...\n");
+  const int N = 64;
+
+  // a bowl carved into a tilted plane: one closed basin, one outlet
+  gpx::Heightmap dem(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) {
+      float base = 0.6f - 0.004f * (float)y; // gentle slope toward +y
+      float dx = (float)x - 32.f, dy = (float)y - 32.f;
+      float r = std::sqrt(dx * dx + dy * dy);
+      if (r < 12.f) base -= 0.25f * (1.f - r / 12.f); // the bowl
+      dem.v[(size_t)y * N + x] = base;
+    }
+
+  std::vector<float> filled = gpx::fill_depressions(dem, 0.f);
+  CHECK(filled.size() == dem.v.size(), "one filled height per cell");
+
+  // 1. it never digs. Filling is filling.
+  {
+    bool ok = true;
+    for (size_t i = 0; i < filled.size(); ++i)
+      if (filled[i] < dem.v[i] - 1e-6f) ok = false;
+    CHECK(ok, "the filled surface is never below the original");
+  }
+
+  // 2. the border is untouched: water leaves there, so nothing pools against it
+  {
+    bool ok = true;
+    for (int x = 0; x < N; ++x) {
+      if (std::fabs(filled[x] - dem.v[x]) > 1e-6f) ok = false;
+      size_t b = (size_t)(N - 1) * N + x;
+      if (std::fabs(filled[b] - dem.v[b]) > 1e-6f) ok = false;
+    }
+    CHECK(ok, "border cells keep their own height");
+  }
+
+  // 3. the basin really did fill, and to one level - that is what a lake is
+  {
+    float centre = filled[(size_t)32 * N + 32];
+    CHECK(centre > dem.v[(size_t)32 * N + 32] + 0.05f, "the bowl filled");
+    bool level = true;
+    int flooded = 0;
+    for (int y = 26; y <= 38; ++y)
+      for (int x = 26; x <= 38; ++x) {
+        size_t i = (size_t)y * N + x;
+        if (filled[i] > dem.v[i] + 1e-6f) {
+          ++flooded;
+          if (std::fabs(filled[i] - centre) > 1e-4f) level = false;
+        }
+      }
+    CHECK(flooded > 50, "a real lake, not a few cells");
+    CHECK(level, "one water level across the whole lake");
+  }
+
+  // 4. no pits left: every non-border cell has a neighbour no higher than it.
+  //    This is the property flow routing depends on, and the reason for the
+  //    whole exercise.
+  {
+    const int DX[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
+    const int DY[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
+    int pits_before = 0, pits_after = 0;
+    for (int y = 1; y < N - 1; ++y)
+      for (int x = 1; x < N - 1; ++x) {
+        bool low_b = true, low_a = true;
+        for (int k = 0; k < 8; ++k) {
+          size_t ni = (size_t)(y + DY[k]) * N + (x + DX[k]);
+          if (dem.v[ni] <= dem.v[(size_t)y * N + x]) low_b = false;
+          if (filled[ni] <= filled[(size_t)y * N + x]) low_a = false;
+        }
+        if (low_b) ++pits_before;
+        if (low_a) ++pits_after;
+      }
+    CHECK(pits_before > 0, "the test terrain really has a pit to fill");
+    CHECK(pits_after == 0, "no cell is left with nowhere to drain");
+  }
+
+  // 5. deterministic, including with the epsilon tilt whose result depends on
+  //    the traversal order
+  {
+    std::vector<float> a = gpx::fill_depressions(dem, 1e-5f);
+    std::vector<float> b = gpx::fill_depressions(dem, 1e-5f);
+    CHECK(a == b, "bit-identical across runs, epsilon and all");
+  }
+
+  // 6. and the node reports the lake the fill implies
+  {
+    gpx::Graph g;
+    gpx::Node *src = g.add_node("Constant", 0, 0);
+    gpx::Node *fb = g.add_node("FillBasins", 200, 0);
+    CHECK(fb != nullptr, "FillBasins is registered");
+    (void)src;
+    if (fb) {
+      fb->attrs.find("normalize_depth")->b = false;
+      gpx::Port *pin = fb->port("input", gpx::PortDir::In);
+      CHECK(pin != nullptr, "it takes a heightmap");
+      // drive it directly: the node reads its input port's buffer
+      if (pin) {
+        auto hm = std::make_shared<gpx::Heightmap>(dem);
+        pin->hmap = hm;
+        const gpx::NodeDef *def = gpx::NodeRegistry::instance().find("FillBasins");
+        if (def && def->compute) {
+          def->compute(*fb);
+          // read through the port, not out_hmap(): that one is the writer's
+          // accessor and clears the buffer it hands back
+          const gpx::Port *dp = fb->port("depth", gpx::PortDir::Out);
+          const gpx::Port *mp = fb->port("mask", gpx::PortDir::Out);
+          CHECK(dp && dp->hmap && mp && mp->hmap, "depth and mask are produced");
+          if (dp && dp->hmap && mp && mp->hmap) {
+            const gpx::Heightmap &d = *dp->hmap;
+            const gpx::Heightmap &m = *mp->hmap;
+            size_t c = (size_t)32 * N + 32;
+            CHECK(d.v.size() == dem.v.size(), "sized from the input, not the graph");
+            CHECK(d.v[c] > 0.05f, "depth at the lake centre matches the fill");
+            CHECK(m.v[c] == 1.f, "the mask marks the lake");
+            CHECK(m.v[0] == 0.f, "and not the dry border");
+          }
+        }
+      }
+    }
+  }
+
+  // 7. the routing fix binds: with pits filled, water reaching the basin
+  //    carries on past it, so cells downslope of the lake see more of it
+  {
+    gpx::Graph g;
+    gpx::Node *fa = g.add_node("FlowAccumulation", 0, 0);
+    CHECK(fa != nullptr, "FlowAccumulation is registered");
+    if (fa) {
+      gpx::Port *pin = fa->port("input", gpx::PortDir::In);
+      auto hm = std::make_shared<gpx::Heightmap>(dem);
+      if (pin) pin->hmap = hm;
+      const gpx::NodeDef *def =
+          gpx::NodeRegistry::instance().find("FlowAccumulation");
+      auto total_below = [&](bool fill) {
+        fa->attrs.find("fill_pits")->b = fill;
+        fa->attrs.find("log_scale")->b = false;
+        def->compute(*fa);
+        const gpx::Port *op = fa->port("output", gpx::PortDir::Out);
+        double sum = 0;
+        if (op && op->hmap && op->hmap->w == N)
+          for (int y = 48; y < N - 1; ++y)
+            for (int x = 20; x < 44; ++x) sum += op->hmap->v[(size_t)y * N + x];
+        return sum;
+      };
+      double unfilled = total_below(false);
+      double refilled = total_below(true);
+      CHECK(refilled > unfilled * 1.05,
+            "filling pits carries water past the basin instead of losing it");
+    }
+  }
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2425,6 +2583,7 @@ int main() {
   test_sculpt_layer();
   test_planet_math();
   test_cellular();
+  test_depression_fill();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

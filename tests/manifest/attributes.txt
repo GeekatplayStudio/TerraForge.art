@@ -201,10 +201,15 @@ FieldZone.fade|float
 FieldZone.flat|bool
 FieldZone.shape|choice
 FieldZone.size|float
+FillBasins.blend_invert|bool
+FillBasins.epsilon|float
+FillBasins.min_depth|float
+FillBasins.normalize_depth|bool
 FlatColor.b|float
 FlatColor.g|float
 FlatColor.r|float
 FlowAccumulation.blend_invert|bool
+FlowAccumulation.fill_pits|bool
 FlowAccumulation.log_scale|bool
 FlowAccumulation.post_gain|float
 FlowAccumulation.post_invert|bool
@@ -551,6 +556,7 @@ WaterLayer.wave_scale|float
 WaterLayer.wave_speed|float
 WetnessIndex.blend_invert|bool
 WetnessIndex.contrast|float
+WetnessIndex.fill_pits|bool
 WetnessIndex.min_slope|float
 WetnessIndex.post_gain|float
 WetnessIndex.post_invert|bool

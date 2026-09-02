@@ -15,6 +15,7 @@
 // otherwise be broken by whatever the sort happened to do. Ties are broken by
 // index so the order is total and the result is bit-identical every run.
 #include "gpx/node_graph.hpp"
+#include "gpx/hydrology.hpp"
 #include "gpx/node_helpers.hpp"
 #include <algorithm>
 #include <cmath>
@@ -33,15 +34,32 @@ const int DY8[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
 // Upslope contributing area per cell, in cell counts. Every cell starts owning
 // itself and pushes its total to its receiver, processed from high to low so a
 // cell is always complete before it drains.
-std::vector<float> flow_accumulate(const Heightmap &in, std::vector<int> *recv_out) {
+std::vector<float> flow_accumulate(const Heightmap &in, std::vector<int> *recv_out,
+                                   bool fill_pits) {
   const int w = in.w, h = in.h;
   const size_t n = (size_t)w * h;
+
+  // D8 on a raw heightfield dead-ends in every hollow: a pit cell has no
+  // downhill neighbour, so its receiver is -1 and everything that drained into
+  // it stops there. On real terrain - and on anything that has been eroded -
+  // that is most of the surface, and it is why an unfilled accumulation map
+  // shows streams that stop halfway down a valley for no visible reason.
+  //
+  // So route over the depression-filled surface instead (Priority-Flood, see
+  // nodes_hydro.cpp). The heights used for routing change; the terrain does
+  // not. A hair of epsilon tilts the filled flats so water crosses them toward
+  // the outlet rather than pooling on a perfectly level lake with nowhere to
+  // go.
+  std::vector<float> routed;
+  if (fill_pits) routed = fill_depressions(in, 1e-6f);
+  const float *z = fill_pits ? routed.data() : in.v.data();
+
   std::vector<int> order(n);
   std::iota(order.begin(), order.end(), 0);
   // descending height, ties by index: a total order, so the walk is
   // reproducible rather than merely usually-the-same
   std::sort(order.begin(), order.end(), [&](int a, int b) {
-    if (in.v[a] != in.v[b]) return in.v[a] > in.v[b];
+    if (z[a] != z[b]) return z[a] > z[b];
     return a < b;
   });
 
@@ -49,14 +67,14 @@ std::vector<float> flow_accumulate(const Heightmap &in, std::vector<int> *recv_o
   std::vector<float> area(n, 1.f);
   for (int idx : order) {
     const int x = idx % w, y = idx / w;
-    const float hgt = in.v[idx];
+    const float hgt = z[idx];
     float best = 0.f;
     for (int k = 0; k < 8; ++k) {
       const int nx = x + DX8[k], ny = y + DY8[k];
       if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
       // normalise by distance so diagonals do not win on length alone
       const float drop =
-          (hgt - in.at(nx, ny)) / ((DX8[k] && DY8[k]) ? 1.4142136f : 1.f);
+          (hgt - z[ny * w + nx]) / ((DX8[k] && DY8[k]) ? 1.4142136f : 1.f);
       if (drop > best) {
         best = drop;
         receiver[idx] = ny * w + nx;
@@ -92,13 +110,22 @@ REGISTER_NODE(
       add_float(n.attrs, "threshold", "Channel threshold", 0.f, 0.f, 1.f)
           .tooltip = "Discards everything below this fraction, leaving only\n"
                      "the established channels.";
+      add_bool(n.attrs, "fill_pits", "Route through basins", true)
+          .tooltip = "Water that reaches a hollow fills it and flows on.\n"
+                     "Off follows the raw surface, where every stream stops\n"
+                     "at the first pit it meets.";
       setup_post(n);
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
       if (!in) return;
       Heightmap &out = n.out_hmap("output");
-      std::vector<float> area = flow_accumulate(*in, nullptr);
+      // Sized from the input, not from the graph resolution: `area` has one
+      // entry per input cell, and Resample or an imported heightmap upstream
+      // makes those two counts differ.
+      out = *in;
+      std::vector<float> area =
+          flow_accumulate(*in, nullptr, n.attrs.get_b("fill_pits", true));
       const bool logs = n.attrs.get_b("log_scale", true);
       parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
         for (size_t i = i0; i < i1; ++i)
@@ -133,13 +160,19 @@ REGISTER_NODE(
                      "infinitely wet pixel. This is the flattest slope the\n"
                      "index will consider.";
       add_float(n.attrs, "contrast", "Contrast", 1.f, 0.1f, 4.f);
+      add_bool(n.attrs, "fill_pits", "Route through basins", true)
+          .tooltip = "Water that reaches a hollow fills it and flows on.\n"
+                     "Off follows the raw surface, where every stream stops\n"
+                     "at the first pit it meets.";
       setup_post(n);
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
       if (!in) return;
       Heightmap &out = n.out_hmap("output");
-      std::vector<float> area = flow_accumulate(*in, nullptr);
+      out = *in; // see the note in FlowAccumulation
+      std::vector<float> area =
+          flow_accumulate(*in, nullptr, n.attrs.get_b("fill_pits", true));
 
       float mn, mx;
       in->minmax(mn, mx);

@@ -47,6 +47,7 @@ FieldTrig|Field Math
 FieldVectorOp|Field Math
 FieldVoronoi|Field Noise
 FieldZone|Field Displace
+FillBasins|Hydrology
 FlatColor|Material
 FlowAccumulation|Analysis
 Fold|Filter

@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "hydro.depression_fill", "area": "engine", "phase": "22",
+      "description": "Priority-Flood depression filling: lakes as filled-minus-original, and flow routing that no longer dead-ends in every hollow",
+      "test_file": "test_engine.cpp", "test_symbol": "test_depression_fill" },
+
     { "id": "field.cellular", "area": "engine", "phase": "22",
       "description": "Cellular (Worley) noise in the field domain: F1, F2, seam distance and flat cell value, three metrics, mirrored exactly in GLSL",
       "test_file": "test_engine.cpp", "test_symbol": "test_cellular" },
