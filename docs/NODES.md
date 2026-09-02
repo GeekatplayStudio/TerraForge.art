@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 170 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 171 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -16,7 +16,7 @@ Every node in Geekatplay TerraForge — 170 across 25 categories. Generated from
 | [Field Material](#field-material) | 1 |
 | [Field Math](#field-math) | 6 |
 | [Field Noise](#field-noise) | 3 |
-| [Filter](#filter) | 22 |
+| [Filter](#filter) | 23 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
@@ -1156,6 +1156,24 @@ Remaps elevations through a drawn curve - the gradient's brightness is the trans
 | Invert | toggle, default off |  |
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
+### DetailEqualizer
+
+Per-band detail gains, like an audio EQ
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Fine (1-4 px) | float, 0 to 3, default 1 |  |
+| Medium (4-16 px) | float, 0 to 3, default 1 |  |
+| Coarse (16-64 px) | float, 0 to 3, default 1 |  |
+| Base (blur 64 px+) | float, 0 to 3, default 1 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Detrend
 

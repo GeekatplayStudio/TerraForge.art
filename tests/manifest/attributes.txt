@@ -116,6 +116,11 @@ Curve.post_range|range
 Curve.post_remap|bool
 Curve.post_zero_edges|float
 Curve.strength|float
+DetailEqualizer.base|float
+DetailEqualizer.blend_invert|bool
+DetailEqualizer.coarse|float
+DetailEqualizer.fine|float
+DetailEqualizer.medium|float
 Detrend.amount|float
 Detrend.blend_invert|bool
 DiffusionLimited.particles|int

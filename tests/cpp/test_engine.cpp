@@ -3352,6 +3352,30 @@ static void test_local_filters() {
     CHECK(bl.at(4, 4) < 0.1f, "flat ground is not");
   }
 
+  // DetailEqualizer at unit gains must reconstruct the input exactly
+  {
+    gpx::Heightmap noisy(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x)
+        noisy.at(x, y) = ((x * 13 + y * 7) % 11) * 0.09f + x / (float)N;
+    auto eq = run("DetailEqualizer", noisy, [](gpx::Node &) {}, "output");
+    float worst = 0;
+    for (size_t i = 0; i < eq.v.size(); ++i)
+      worst = std::max(worst, std::fabs(eq.v[i] - noisy.v[i]));
+    CHECK(worst < 1e-4f, "unit gains reconstruct the input exactly");
+    // killing the fine band leaves a smoother surface
+    auto smooth2 = run("DetailEqualizer", noisy, [](gpx::Node &n) {
+      n.attrs.find("fine")->f = 0.f;
+    }, "output");
+    double var_in = 0, var_out = 0;
+    for (int y = 1; y < N; ++y)
+      for (int x = 1; x < N; ++x) {
+        var_in += std::fabs(noisy.at(x, y) - noisy.at(x - 1, y));
+        var_out += std::fabs(smooth2.at(x, y) - smooth2.at(x - 1, y));
+      }
+    CHECK(var_out < var_in * 0.6, "zeroing the fine band calms the surface");
+  }
+
   // Convolve: sharpen preserves a flat field, sobel X reads a ramp's slope
   {
     gpx::Heightmap flat(N, N, 0.6f);

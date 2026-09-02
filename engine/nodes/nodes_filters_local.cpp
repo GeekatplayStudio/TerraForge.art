@@ -248,6 +248,39 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    DetailEqualizer, "Filter", "Per-band detail gains, like an audio EQ",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      add_float(n.attrs, "fine", "Fine (1-4 px)", 1.f, 0.f, 3.f, "Bands");
+      add_float(n.attrs, "medium", "Medium (4-16 px)", 1.f, 0.f, 3.f, "Bands");
+      add_float(n.attrs, "coarse", "Coarse (16-64 px)", 1.f, 0.f, 3.f, "Bands");
+      add_float(n.attrs, "base", "Base (blur 64 px+)", 1.f, 0.f, 3.f, "Bands");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      // a blur pyramid: each band is the difference between two blur radii,
+      // scaled by its gain, and the deepest blur is the base. Gains of 1
+      // reconstruct the input exactly, which is the property that makes this
+      // an equalizer rather than a filter.
+      float g[4] = {n.attrs.get_f("fine", 1.f), n.attrs.get_f("medium", 1.f),
+                    n.attrs.get_f("coarse", 1.f), n.attrs.get_f("base", 1.f)};
+      const int radii[3] = {4, 16, 64};
+      Heightmap b_prev = *in, b_cur(in->w, in->h);
+      for (size_t i = 0; i < out.v.size(); ++i) out.v[i] = 0.f;
+      for (int band = 0; band < 3; ++band) {
+        lf_blur(*in, b_cur, radii[band]);
+        for (size_t i = 0; i < out.v.size(); ++i)
+          out.v[i] += (b_prev.v[i] - b_cur.v[i]) * g[band];
+        std::swap(b_prev, b_cur);
+      }
+      for (size_t i = 0; i < out.v.size(); ++i) out.v[i] += b_prev.v[i] * g[3];
+    })
+
+REGISTER_NODE(
     Convolve, "Filter", "Convolution by a preset or typed kernel",
     [](Node &n) {
       n.add_in("input");
