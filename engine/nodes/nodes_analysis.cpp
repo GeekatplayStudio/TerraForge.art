@@ -255,4 +255,86 @@ REGISTER_NODE(
       apply_post(n, out);
     })
 
+REGISTER_NODE(
+    TerrainMetrics, "Analysis", "Surface statistics: rugosity, TRI, shape index",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("mask");
+      add_choice(n.attrs, "metric", "Metric",
+                 {"Rugosity (local std dev)", "Ruggedness (TRI)",
+                  "Shape index", "Unsphericity", "Valley depth"},
+                 0, "Metric");
+      add_int(n.attrs, "radius", "Radius (px)", 4, 1, 64, "Metric");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &m = n.out_hmap("mask");
+      m = *in;
+      int metric = n.attrs.get_choice("metric");
+      int r = n.attrs.get_i("radius", 4);
+      int w = in->w, h = in->h;
+      parallel_rows(h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < w; ++x) {
+            float v = 0;
+            switch (metric) {
+            case 0: { // rugosity: how rough the window is
+              float s = 0, s2 = 0;
+              int c = 0;
+              for (int dy = -r; dy <= r; ++dy)
+                for (int dx = -r; dx <= r; ++dx) {
+                  float z = in->atc(x + dx, y + dy);
+                  s += z;
+                  s2 += z * z;
+                  ++c;
+                }
+              float mean = s / c;
+              v = std::sqrt(std::max(s2 / c - mean * mean, 0.f));
+            } break;
+            case 1: { // TRI: mean absolute step to the 8 neighbors, at reach r
+              float s = 0;
+              const int nb[8][2] = {{r, 0},  {-r, 0}, {0, r},  {0, -r},
+                                    {r, r},  {r, -r}, {-r, r}, {-r, -r}};
+              for (auto &d : nb)
+                s += std::fabs(in->atc(x + d[0], y + d[1]) - in->at(x, y));
+              v = s / 8.f;
+            } break;
+            default: { // curvature family, from the local quadratic fit
+              float e = (float)r;
+              float zc = in->at(x, y);
+              float zx = (in->atc(x + r, y) - in->atc(x - r, y)) / (2 * e);
+              float zy = (in->atc(x, y + r) - in->atc(x, y - r)) / (2 * e);
+              float zxx = (in->atc(x + r, y) - 2 * zc + in->atc(x - r, y)) /
+                          (e * e);
+              float zyy = (in->atc(x, y + r) - 2 * zc + in->atc(x, y - r)) /
+                          (e * e);
+              float zxy = (in->atc(x + r, y + r) - in->atc(x + r, y - r) -
+                           in->atc(x - r, y + r) + in->atc(x - r, y - r)) /
+                          (4 * e * e);
+              // principal curvatures of the fitted surface
+              float H = 0.5f * (zxx + zyy);
+              float D = std::sqrt(std::max(
+                  0.25f * (zxx - zyy) * (zxx - zyy) + zxy * zxy, 0.f));
+              float k1 = H + D, k2 = H - D;
+              if (metric == 2) {
+                // shape index: -1 cup .. 0 saddle .. +1 dome (Koenderink)
+                float denom = k1 - k2;
+                v = denom > 1e-12f
+                        ? 0.5f - std::atan((k1 + k2) / denom) * 0.31831f
+                        : 0.5f;
+              } else if (metric == 3) {
+                v = D; // unsphericity: how far from a perfect dome/cup
+              } else {
+                // valley depth proxy: negative mean curvature, clamped
+                v = std::max(-H, 0.f) * (1.f + zx * zx + zy * zy);
+              }
+            } break;
+            }
+            m.at(x, y) = v;
+          }
+      });
+      m.remap(0.f, 1.f);
+    })
+
 } // namespace gpx

@@ -673,6 +673,8 @@ TerrainClip.low_mode|choice
 TerrainClip.softness|float
 TerrainDisplacement.live|bool
 TerrainDisplacement.strength|float
+TerrainMetrics.metric|choice
+TerrainMetrics.radius|int
 TerrainOutput.combine|choice
 TerrainOutput.edge_curve|choice
 TerrainOutput.height_range|range

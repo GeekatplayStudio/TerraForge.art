@@ -149,6 +149,7 @@ Switch|Logic
 Terrace|Filter
 TerrainClip|Effect
 TerrainDisplacement|Export
+TerrainMetrics|Analysis
 TerrainOutput|Export
 TerrainSculpt|Effect
 TerrainSurface|Export

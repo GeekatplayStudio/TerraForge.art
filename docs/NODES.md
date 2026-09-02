@@ -1,10 +1,10 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 167 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 168 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
-| [Analysis](#analysis) | 4 |
+| [Analysis](#analysis) | 5 |
 | [Atmosphere](#atmosphere) | 4 |
 | [Effect](#effect) | 7 |
 | [Erosion](#erosion) | 9 |
@@ -88,6 +88,20 @@ Rebuilds the terrain at a coarser or finer sampling — detail control, not size
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### TerrainMetrics
+
+Surface statistics: rugosity, TRI, shape index
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Metric | choice: Rugosity (local std dev) / Ruggedness (TRI) / Shape index / Unsphericity / Valley depth |  |
+| Radius (px) | int, 1 to 64, default 4 |  |
 
 ### WetnessIndex
 

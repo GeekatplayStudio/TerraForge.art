@@ -2803,6 +2803,50 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_terrain_metrics() {
+  std::printf("terrain metrics...\n");
+  const int N = 64;
+  // rough left half, mirror-smooth right half
+  gpx::Heightmap t(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x)
+      t.at(x, y) = x < 32 ? ((x * 7 + y * 13) % 5) * 0.1f : 0.2f;
+  auto run = [&](int metric) {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node("TerrainMetrics", 0, 0);
+    n->attrs.find("metric")->i = metric;
+    n->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(t);
+    gpx::NodeRegistry::instance().find("TerrainMetrics")->compute(*n);
+    return *n->port("mask", gpx::PortDir::Out)->hmap;
+  };
+  auto rug = run(0);
+  CHECK(rug.at(10, 32) > rug.at(54, 32) + 0.2f,
+        "rugosity reads high on rough ground, low on smooth");
+  auto tri = run(1);
+  CHECK(tri.at(10, 32) > tri.at(54, 32) + 0.2f, "TRI agrees");
+  // shape index: a dome scores high, a cup low
+  gpx::Heightmap bowl(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) {
+      float dx = (x - 32) / 16.f, dy = (y - 32) / 16.f;
+      bowl.at(x, y) = dx * dx + dy * dy;
+    }
+  {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node("TerrainMetrics", 0, 0);
+    n->attrs.find("metric")->i = 2;
+    n->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(bowl);
+    gpx::NodeRegistry::instance().find("TerrainMetrics")->compute(*n);
+    const gpx::Heightmap &si = *n->port("mask", gpx::PortDir::Out)->hmap;
+    // remapped 0..1 over the tile; the cup's centre must sit at the low end
+    CHECK(si.at(32, 32) < 0.3f, "a cup reads at the low end of shape index");
+  }
+}
+
 static void test_basalt() {
   std::printf("basalt columns...\n");
   gpx::Graph g;
@@ -3786,6 +3830,7 @@ int main() {
   test_dla();
   test_quilt();
   test_basalt();
+  test_terrain_metrics();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();
