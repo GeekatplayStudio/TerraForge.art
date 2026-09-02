@@ -147,6 +147,10 @@ ExportMesh.auto_export|bool
 ExportMesh.height_scale|float
 ExportMesh.max_verts_side|int
 ExportMesh.path|filename
+ExportPoints.auto_export|bool
+ExportPoints.format|choice
+ExportPoints.height_scale|float
+ExportPoints.path|filename
 ExportTexture.auto_export|bool
 ExportTexture.path|filename
 FakeStones.blend_invert|bool
@@ -431,6 +435,7 @@ Plateau.softness|float
 PointsFilter.band|range
 PointsFilter.keep|float
 PointsFilter.seed|seed
+PointsFromCsv.path|filename
 PointsRelax.iterations|int
 PointsRelax.strength|float
 PointsSDF.invert|bool

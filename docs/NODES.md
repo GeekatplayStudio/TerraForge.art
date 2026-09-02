@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 154 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 156 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -8,7 +8,7 @@ Every node in Geekatplay TerraForge — 154 across 25 categories. Generated from
 | [Atmosphere](#atmosphere) | 4 |
 | [Effect](#effect) | 7 |
 | [Erosion](#erosion) | 9 |
-| [Export](#export) | 7 |
+| [Export](#export) | 8 |
 | [Field Bridge](#field-bridge) | 2 |
 | [Field Color](#field-color) | 2 |
 | [Field Displace](#field-displace) | 4 |
@@ -24,7 +24,7 @@ Every node in Geekatplay TerraForge — 154 across 25 categories. Generated from
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
-| [Points](#points) | 5 |
+| [Points](#points) | 6 |
 | [Primitive](#primitive) | 12 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
@@ -554,6 +554,23 @@ Write OBJ mesh
 | File | file path |  |
 | Mesh resolution | int, 32 to 1024, default 256 |  |
 | Height scale | float, 0.01 to 2, default 0.25 |  |
+| Export on every compute | toggle, default off |  |
+
+### ExportPoints
+
+Write a point cloud or path to CSV / PLY
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| terrain | in (optional) | heightmap |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| File | file path |  |
+| Format | choice: CSV (x,y,z,value) / PLY |  |
+| Height scale | float, 0.01 to 100, default 1 |  |
 | Export on every compute | toggle, default off |  |
 
 ### ExportTexture
@@ -2215,6 +2232,18 @@ Keep points by mask and chance
 | Mask band | range |  |
 | Keep fraction | float, 0 to 1, default 1 |  |
 | Seed | seed |  |
+
+### PointsFromCsv
+
+Read points from a CSV file
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| File | file path |  |
 
 ### PointsRelax
 

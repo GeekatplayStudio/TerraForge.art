@@ -27,6 +27,7 @@ Equalize|Filter
 ExpandShrink|Filter
 ExportHeightmap|Export
 ExportMesh|Export
+ExportPoints|Export
 ExportTexture|Export
 FakeStones|Primitive
 FieldAltitude|Field Input
@@ -94,6 +95,7 @@ PathSpline|Path
 Peaks|Effect
 Plateau|Filter
 PointsFilter|Points
+PointsFromCsv|Points
 PointsRelax|Points
 PointsSDF|Points
 PointsToMask|Points

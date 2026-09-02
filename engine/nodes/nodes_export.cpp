@@ -81,6 +81,94 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    ExportPoints, "Export", "Write a point cloud or path to CSV / PLY",
+    [](Node &n) {
+      n.add_in("points", DataType::Points);
+      n.add_in("terrain", DataType::Heightmap, true);
+      n.add_out("points", DataType::Points); // pass-through
+      add_filename(n.attrs, "path", "File", "points.csv");
+      add_choice(n.attrs, "format", "Format", {"CSV (x,y,z,value)", "PLY"}, 0);
+      add_float(n.attrs, "height_scale", "Height scale", 1.f, 0.01f, 100.f);
+      add_bool(n.attrs, "auto_export", "Export on every compute", false);
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("points");
+      if (!in) return;
+      PointCloud &out = n.out_points("points");
+      out = *in;
+      if (!n.attrs.get_b("auto_export")) return;
+      std::string path = n.attrs.get_s("path");
+      if (path.empty()) return;
+      const Heightmap *ter = n.in_hmap("terrain");
+      float hs = n.attrs.get_f("height_scale", 1.f);
+      auto height_at = [&](float x, float y) {
+        if (!ter || ter->empty()) return 0.f;
+        int ix = std::clamp((int)(x * ter->w), 0, ter->w - 1);
+        int iy = std::clamp((int)(y * ter->h), 0, ter->h - 1);
+        return ter->v[(size_t)iy * ter->w + ix] * hs;
+      };
+      std::ofstream f(path);
+      if (!f) {
+        n.error = "cannot write " + path;
+        return;
+      }
+      if (n.attrs.get_choice("format") == 0) {
+        f << "x,y,z,value\n";
+        for (size_t i = 0; i < in->size(); ++i)
+          f << in->x[i] << ',' << height_at(in->x[i], in->y[i]) << ','
+            << in->y[i] << ',' << in->v[i] << '\n';
+      } else {
+        f << "ply\nformat ascii 1.0\nelement vertex " << in->size()
+          << "\nproperty float x\nproperty float y\nproperty float z\n"
+             "end_header\n";
+        for (size_t i = 0; i < in->size(); ++i)
+          f << in->x[i] << ' ' << height_at(in->x[i], in->y[i]) << ' '
+            << in->y[i] << '\n';
+      }
+    })
+
+REGISTER_NODE(
+    PointsFromCsv, "Points", "Read points from a CSV file",
+    [](Node &n) {
+      n.add_out("points", DataType::Points);
+      add_filename(n.attrs, "path", "File", "");
+    },
+    [](Node &n) {
+      PointCloud &out = n.out_points("points");
+      std::string path = n.attrs.get_s("path");
+      if (path.empty()) return;
+      std::ifstream f(path);
+      if (!f) {
+        n.error = "cannot read " + path;
+        return;
+      }
+      // x,y[,z][,value] per line; a header row (or any unparseable line) is
+      // skipped rather than guessed at. Two columns are tile coordinates;
+      // four follow our own CSV export (x, height, y, value).
+      std::string line;
+      while (std::getline(f, line)) {
+        const char *c = line.c_str();
+        char *end = nullptr;
+        float a = std::strtof(c, &end);
+        if (end == c) continue;
+        c = end;
+        while (*c == ',' || *c == ' ') ++c;
+        float b = std::strtof(c, &end);
+        if (end == c) continue;
+        c = end;
+        while (*c == ',' || *c == ' ') ++c;
+        float d3 = std::strtof(c, &end);
+        bool has3 = end != c;
+        c = has3 ? end : c;
+        while (*c == ',' || *c == ' ') ++c;
+        float d4 = std::strtof(c, &end);
+        bool has4 = end != c;
+        float px = a, py = has3 ? d3 : b, pv = has4 ? d4 : 0.f;
+        out.add(std::clamp(px, 0.f, 1.f), std::clamp(py, 0.f, 1.f), pv);
+      }
+    })
+
+REGISTER_NODE(
     ExportHeightmap, "Export", "Write 16-bit PNG / RAW heightmap",
     [](Node &n) {
       n.add_in("input");

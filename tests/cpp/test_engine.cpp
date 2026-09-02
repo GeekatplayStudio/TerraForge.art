@@ -2803,6 +2803,34 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_points_io() {
+  std::printf("points CSV roundtrip...\n");
+  const char *file = "test_points_roundtrip.csv";
+  gpx::Graph g;
+  g.resolution = 32;
+  gpx::Node *ex = g.add_node("ExportPoints", 0, 0);
+  gpx::Node *im = g.add_node("PointsFromCsv", 0, 0);
+  auto pts = std::make_shared<gpx::PointCloud>();
+  pts->add(0.25f, 0.75f, 1.5f);
+  pts->add(0.5f, 0.5f, 0.25f);
+  pts->add(0.875f, 0.125f, 3.f);
+  ex->port("points", gpx::PortDir::In)->pts = pts;
+  ex->attrs.find("path")->s = file;
+  ex->attrs.find("auto_export")->b = true;
+  gpx::NodeRegistry::instance().find("ExportPoints")->compute(*ex);
+  im->attrs.find("path")->s = file;
+  gpx::NodeRegistry::instance().find("PointsFromCsv")->compute(*im);
+  const gpx::PointCloud &back = *im->port("points", gpx::PortDir::Out)->pts;
+  CHECK(back.size() == 3, "all points come back");
+  bool same = back.size() == 3;
+  for (size_t i = 0; i < back.size() && same; ++i)
+    same = std::fabs(back.x[i] - pts->x[i]) < 1e-4f &&
+           std::fabs(back.y[i] - pts->y[i]) < 1e-4f &&
+           std::fabs(back.v[i] - pts->v[i]) < 1e-4f;
+  CHECK(same, "coordinates and values survive the roundtrip");
+  std::remove(file);
+}
+
 static void test_landform() {
   std::printf("landforms...\n");
   const int N = 64;
@@ -3514,6 +3542,7 @@ int main() {
   test_selectors();
   test_path_nodes();
   test_landform();
+  test_points_io();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

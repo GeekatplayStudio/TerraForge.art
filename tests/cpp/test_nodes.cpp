@@ -45,7 +45,7 @@ static const int RES = 48; // small: this runs for every node
 // rather than a bug.
 static bool needs_file(const std::string &t) {
   return t == "HeightmapFile" || t == "TextureFile" || t == "Stamp" ||
-         t == "PBRMaterial";
+         t == "PBRMaterial" || t == "PointsFromCsv";
 }
 // Nodes that write to disk when evaluated â€” skipped so the suite has no side
 // effects on the working tree.
