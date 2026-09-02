@@ -228,9 +228,15 @@ materials and lighting for you. Everything runs on your machine.
 
 ## Examples
 
-`examples/eroded_island.gpxt` — an island landform through hydraulic
-erosion, with a midslope mask feeding a point scatter. Open it with
-File > Open (or the `open_project` scripting op) and press around.
+- `examples/eroded_island.gpxt` — an island landform through hydraulic
+  erosion, with a midslope mask feeding a point scatter.
+- `examples/routed_river.gpxt` — PathFind routes a least-cost line across
+  the noise and PathCarve cuts the riverbed along it.
+- `examples/basalt_steps.gpxt` — columnar basalt softened by thermal
+  weathering.
+
+Open them with File > Open (or the `open_project` scripting op) and press
+around.
 
 ## Requirements
 
