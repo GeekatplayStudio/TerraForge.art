@@ -84,6 +84,7 @@ NormalBlend|Material
 NormalMap|Texture
 PBRMaterial|Material
 PathCarve|Path
+PathFind|Path
 PathFractalize|Path
 PathResample|Path
 PathSDF|Path

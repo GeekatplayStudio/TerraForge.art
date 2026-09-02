@@ -395,6 +395,10 @@ PathCarve.post_zero_edges|float
 PathCarve.profile|choice
 PathCarve.smooth|int
 PathCarve.width|float
+PathFind.end|vec2
+PathFind.simplify|int
+PathFind.slope_penalty|float
+PathFind.start|vec2
 PathFractalize.amplitude|float
 PathFractalize.iterations|int
 PathFractalize.seed|seed

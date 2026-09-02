@@ -17,6 +17,7 @@
 #include "gpx/node_helpers.hpp"
 #include "gpx/parallel.hpp"
 #include "gpx/planet_math.hpp"
+#include <queue>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -382,6 +383,91 @@ REGISTER_NODE(
       }
       for (const P2 &p : pts)
         out.add(std::clamp(p.x, 0.f, 1.f), std::clamp(p.z, 0.f, 1.f), 0.f);
+    })
+
+REGISTER_NODE(
+    PathFind, "Path", "Route a path across the terrain",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_in("cost", DataType::Heightmap, true);
+      n.add_out("path", DataType::Points);
+      n.add_out("path_mask");
+      add_vec2(n.attrs, "start", "Start", 0.05f, 0.5f, 0.f, 1.f, "Route");
+      add_vec2(n.attrs, "end", "End", 0.95f, 0.5f, 0.f, 1.f, "Route");
+      add_float(n.attrs, "slope_penalty", "Slope penalty", 40.f, 0.f, 400.f,
+                "Route")
+          .tooltip = "How much climbing costs against walking flat. High\n"
+                     "values contour around hills the way real roads do.";
+      add_int(n.attrs, "simplify", "Keep every Nth point", 4, 1, 32, "Route");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      PointCloud &out = n.out_points("path");
+      Heightmap &pmask = n.out_hmap("path_mask");
+      pmask = *in;
+      std::fill(pmask.v.begin(), pmask.v.end(), 0.f);
+      const Heightmap *cost_map = n.in_hmap("cost");
+      int w = in->w, h = in->h;
+      float sx, sy, ex, ey;
+      n.attrs.get_vec2("start", sx, sy);
+      n.attrs.get_vec2("end", ex, ey);
+      size_t start = (size_t)std::clamp((int)(sy * h), 0, h - 1) * w +
+                     std::clamp((int)(sx * w), 0, w - 1);
+      size_t goal = (size_t)std::clamp((int)(ey * h), 0, h - 1) * w +
+                    std::clamp((int)(ex * w), 0, w - 1);
+      float k = n.attrs.get_f("slope_penalty", 40.f);
+
+      // Dijkstra over the 8-connected grid; cost of a step is its length
+      // plus the slope penalty (and any extra painted cost). The heap is
+      // ordered by (distance, index), a total order, so the route cannot
+      // depend on evaluation order.
+      std::vector<float> dist_v((size_t)w * h, 1e30f);
+      std::vector<int> prev((size_t)w * h, -1);
+      using QE = std::pair<float, size_t>;
+      std::priority_queue<QE, std::vector<QE>, std::greater<QE>> heap;
+      dist_v[start] = 0;
+      heap.push({0, start});
+      const int nb[8][2] = {{1, 0},  {-1, 0}, {0, 1},  {0, -1},
+                            {1, 1},  {1, -1}, {-1, 1}, {-1, -1}};
+      while (!heap.empty()) {
+        auto [d, c] = heap.top();
+        heap.pop();
+        if (d > dist_v[c]) continue;
+        if (c == goal) break;
+        int cx = (int)(c % w), cy = (int)(c / w);
+        for (auto &dxy : nb) {
+          int nx = cx + dxy[0], ny = cy + dxy[1];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          size_t q = (size_t)ny * w + nx;
+          float step = (dxy[0] && dxy[1]) ? 1.41421356f : 1.f;
+          float dz = std::fabs(in->v[q] - in->v[c]) * w; // slope in cells
+          float extra = cost_map ? std::max(cost_map->v[q], 0.f) * 10.f : 0.f;
+          float nd = d + step * (1.f + k * dz / step + extra);
+          if (nd < dist_v[q]) {
+            dist_v[q] = nd;
+            prev[q] = (int)c;
+            heap.push({nd, q});
+          }
+        }
+      }
+      if (prev[goal] < 0 && goal != start) {
+        n.error = "no route found";
+        return;
+      }
+      std::vector<size_t> chain;
+      for (size_t c = goal;; c = (size_t)prev[c]) {
+        chain.push_back(c);
+        if (c == start) break;
+      }
+      int keep = std::max(1, n.attrs.get_i("simplify", 4));
+      for (size_t i = chain.size(); i-- > 0;) {
+        size_t c = chain[i];
+        pmask.v[c] = 1.f;
+        bool endpoint = (i == 0) || (i == chain.size() - 1);
+        if (endpoint || ((chain.size() - 1 - i) % (size_t)keep) == 0)
+          out.add((c % w + 0.5f) / w, (c / w + 0.5f) / h, 0.f);
+      }
     })
 
 REGISTER_NODE(

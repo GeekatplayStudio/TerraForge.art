@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 150 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 151 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -23,7 +23,7 @@ Every node in Geekatplay TerraForge — 150 across 25 categories. Generated from
 | [Mask](#mask) | 10 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
-| [Path](#path) | 5 |
+| [Path](#path) | 6 |
 | [Points](#points) | 5 |
 | [Primitive](#primitive) | 11 |
 | [Render](#render) | 2 |
@@ -2091,6 +2091,24 @@ Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### PathFind
+
+Route a path across the terrain
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| cost | in (optional) | heightmap |
+| path | out | ? |
+| path_mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Start | x/y pair |  |
+| End | x/y pair |  |
+| Slope penalty | float, 0 to 400, default 40 | How much climbing costs against walking flat. High values contour around hills the way real roads do. |
+| Keep every Nth point | int, 1 to 32, default 4 |  |
 
 ### PathFractalize
 

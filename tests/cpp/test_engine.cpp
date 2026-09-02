@@ -2853,6 +2853,33 @@ static void test_path_nodes() {
   CHECK(fr->port("path", gpx::PortDir::Out)->pts->x == keep.x,
         "fractalize is bit-identical across computes");
 
+  // PathFind: with a wall across the middle and a gap in it, the route
+  // must pass through the gap rather than climb the wall
+  {
+    gpx::Heightmap ter(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 30; x < 34; ++x) ter.at(x, y) = 1.f; // a tall wall
+    for (int y = 8; y < 12; ++y)
+      for (int x = 30; x < 34; ++x) ter.at(x, y) = 0.f; // the gap
+    gpx::Graph g2;
+    g2.resolution = N;
+    gpx::Node *pf = g2.add_node("PathFind", 0, 0);
+    pf->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(ter);
+    gpx::NodeRegistry::instance().find("PathFind")->compute(*pf);
+    const gpx::Heightmap &pm = *pf->port("path_mask", gpx::PortDir::Out)->hmap;
+    const gpx::PointCloud &route = *pf->port("path", gpx::PortDir::Out)->pts;
+    CHECK(route.size() > 10, "a route was found");
+    bool through_gap = false, over_wall = false;
+    for (int y = 0; y < N; ++y)
+      if (pm.at(32, y) > 0.5f) {
+        if (y >= 8 && y < 12) through_gap = true;
+        else over_wall = true;
+      }
+    CHECK(through_gap && !over_wall, "the route detours through the gap");
+    CHECK(pf->error.empty(), "no routing error");
+  }
+
   // SDF: zero on the line, grows away, mask is the inverse band
   g.add_link(src->id, "path", sd->id, "path");
   gpx::NodeRegistry::instance().find("PathSDF")->compute(*sd);
