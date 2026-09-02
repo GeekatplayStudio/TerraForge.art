@@ -307,6 +307,50 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         ++applied;
         break;
       }
+    } else if (op == "export_instances") {
+      // the scattered copies of a mesh as CSV transforms, for any DCC that
+      // instances its own assets: x, y, z, scale, yaw_radians per line
+      std::string want = act.value("object", std::string());
+      std::string path = act.value("path", std::string());
+      if (path.empty()) {
+        err = "export_instances needs a path";
+        continue;
+      }
+      scene_rebuild_scatter_instances(a);
+      // a scripted batch may export before the async evaluation has run the
+      // scatter node; evaluate synchronously once and rebuild if so
+      bool any = false;
+      for (auto &o : sc.objects)
+        any = any || (o.type == SceneObject::Mesh && !o.inst.empty());
+      if (!any) {
+        {
+          std::lock_guard<std::mutex> lk(a.graph_mtx);
+          a.graph.evaluate();
+        }
+        scene_rebuild_scatter_instances(a);
+      }
+      for (auto &o : sc.objects) {
+        if (o.type != SceneObject::Mesh) continue;
+        if (!want.empty() && o.name != want) continue;
+        if (o.inst.empty()) continue;
+        std::ofstream f(path);
+        if (!f) {
+          err = "cannot write " + path;
+          break;
+        }
+        f << "x,y,z,scale,yaw\n";
+        const size_t per = 8;
+        for (size_t i = 0; i + per <= o.inst.size(); i += per) {
+          const float *s = o.inst.data() + i;
+          f << s[0] << ',' << s[1] << ',' << s[2] << ',' << s[3] << ','
+            << std::atan2(s[5], s[4]) << '\n';
+        }
+        ++applied;
+        if (!want.empty()) break;
+      }
+      if (!applied && err.empty())
+        err = "no scattered mesh " +
+              (want.empty() ? std::string("found") : "named '" + want + "'");
     } else if (op == "run_macro") {
       // a macro is simply a saved action document; running one applies its
       // actions through this same dispatcher (one level deep - a macro that
