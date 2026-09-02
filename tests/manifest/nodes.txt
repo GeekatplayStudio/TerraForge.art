@@ -70,6 +70,7 @@ HeightmapFile|Primitive
 Hydraulic|Erosion
 Kuwahara|Filter
 Levels|Material
+MakeTileable|Transform
 MaskToTexture|Material
 MaterialOutput|Material
 MathGradient|Operator

@@ -217,4 +217,46 @@ REGISTER_NODE(
       }
     })
 
+REGISTER_NODE(
+    MakeTileable, "Transform", "Blend the tile so it wraps seamlessly",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      add_float(n.attrs, "feather", "Feather", 1.f, 0.1f, 1.f, "Tiling");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      int w = in->w, h = in->h;
+      float k = std::max(n.attrs.get_f("feather", 1.f), 0.05f);
+      // separable periodic blend: along each axis, crossfade with the
+      // half-offset copy under a cosine weight that is itself periodic, so
+      // the wrap is continuous by construction (each copy's own seam lands
+      // where the other copy holds all the weight). Feather sharpens the
+      // crossfade toward the seams.
+      auto uw = [&](int i, int nn) {
+        float u = 0.5f - 0.5f * std::cos(6.2831853f * i / nn);
+        return std::pow(u, 1.f / k);
+      };
+      Heightmap tmp(w, h);
+      parallel_rows(h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < w; ++x) {
+            float u = uw(x, w);
+            tmp.at(x, y) =
+                in->at(x, y) * u + in->at((x + w / 2) % w, y) * (1.f - u);
+          }
+      });
+      parallel_rows(h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < w; ++x) {
+            float u = uw(y, h);
+            out.at(x, y) =
+                tmp.at(x, y) * u + tmp.at(x, (y + h / 2) % h) * (1.f - u);
+          }
+      });
+    })
+
 } // namespace gpx

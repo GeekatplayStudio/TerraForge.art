@@ -328,6 +328,8 @@ Levels.in_white|float
 Levels.out_black|float
 Levels.out_white|float
 Levels.per_channel|bool
+MakeTileable.blend_invert|bool
+MakeTileable.feather|float
 MaskToTexture.normalize|bool
 MaskToTexture.offset|float
 MaskToTexture.scale|float

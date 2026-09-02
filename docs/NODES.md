@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 145 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 146 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -28,7 +28,7 @@ Every node in Geekatplay TerraForge — 145 across 25 categories. Generated from
 | [Primitive](#primitive) | 11 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
-| [Transform](#transform) | 4 |
+| [Transform](#transform) | 5 |
 
 ## Analysis
 
@@ -2497,6 +2497,21 @@ Physically-inspired layered terrain albedo
 | Multiply hillshade | toggle, default off |  |
 
 ## Transform
+
+### MakeTileable
+
+Blend the tile so it wraps seamlessly
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Feather | float, 0.1 to 1, default 1 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Shear
 

@@ -2942,6 +2942,38 @@ static void test_local_filters() {
   CHECK(re.at(32, 32) > 0.9f, "the peak reads high relative to its area");
   CHECK(std::fabs(re.at(4, 4) - 0.5f) < 0.05f, "flat ground reads neutral");
 
+  // MakeTileable: opposite edges must meet (wrap continuity)
+  {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node("Noise", 0, 0);
+    gpx::Node *t = g.add_node("MakeTileable", 0, 0);
+    g.add_link(n->id, "output", t->id, "input");
+    g.evaluate();
+    const gpx::Heightmap &a = *t->port("output", gpx::PortDir::Out)->hmap;
+    float worst = 0;
+    for (int y = 0; y < a.h; ++y)
+      worst = std::max(worst, std::fabs(a.at(0, y) - a.at(a.w - 1, y)));
+    for (int x = 0; x < a.w; ++x)
+      worst = std::max(worst, std::fabs(a.at(x, 0) - a.at(x, a.h - 1)));
+    // one texel apart on a wrapped surface: the seam can be no worse than a
+    // step the signal takes anywhere in the interior (ridge creases included)
+    float gmax = 0;
+    for (int y = 1; y < a.h - 2; ++y)
+      for (int x = 1; x < a.w - 2; ++x) {
+        gmax = std::max(gmax, std::fabs(a.at(x + 1, y) - a.at(x, y)));
+        gmax = std::max(gmax, std::fabs(a.at(x, y + 1) - a.at(x, y)));
+      }
+    CHECK(worst <= gmax + 1e-6f, "the wrap seam is no rougher than the interior");
+    // and the raw input's seam must have been genuinely worse than a texel step
+    const gpx::Heightmap &raw = *n->port("output", gpx::PortDir::Out)->hmap;
+    float raw_seam = 0;
+    for (int y = 0; y < raw.h; ++y)
+      raw_seam = std::max(raw_seam,
+                          std::fabs(raw.at(0, y) - raw.at(raw.w - 1, y)));
+    CHECK(worst < raw_seam, "tiling reduced the seam");
+  }
+
   // DirectionalBlur along x smears a dot into a horizontal streak
   gpx::Heightmap dot(N, N);
   dot.at(32, 32) = 1.f;
