@@ -181,6 +181,31 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
         "description": "Open a project (.gpxt) from `path`.",
         "params": {"path": "str"},
     },
+    "studio_set_camera_key": {
+        "description": "Key (or remove) the named camera's whole pose - eye "
+                       "and target - at the playhead or a given time. Move "
+                       "the camera between keys and render_sequence plays "
+                       "the move.",
+        "params": {"camera": "str", "time": "float", "remove": "bool"},
+    },
+    "studio_run_macro": {
+        "description": "Apply a saved JSON action document (any ops, one "
+                       "batch). Field: path.",
+        "params": {"path": "str"},
+    },
+    "studio_add_light": {
+        "description": "Add a point light. Fields: name, position ([x,y,z]), "
+                       "color ([r,g,b]), intensity, reach. set_light edits "
+                       "by name with the same fields.",
+        "params": {"name": "str", "position": "list", "color": "list",
+                   "intensity": "float", "reach": "float"},
+    },
+    "studio_add_primitive": {
+        "description": "Add a built-in mesh: cube, sphere, plane, cylinder "
+                       "or cone. Fields: kind, name, position, scale, color.",
+        "params": {"kind": "str", "name": "str", "position": "list",
+                   "scale": "float", "color": "list"},
+    },
 }
 
 # tool name -> the action op it sends; None means it is handled specially
@@ -208,6 +233,10 @@ _SIMPLE = {
     "studio_import_object": "import_object",
     "studio_save_project": "save_project",
     "studio_open_project": "open_project",
+    "studio_set_camera_key": "set_camera_key",
+    "studio_run_macro": "run_macro",
+    "studio_add_light": "add_light",
+    "studio_add_primitive": "add_primitive",
 }
 
 
