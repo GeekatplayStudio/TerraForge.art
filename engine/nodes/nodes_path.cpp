@@ -305,22 +305,31 @@ REGISTER_NODE(
                     std::clamp((int)(ex * w), 0, w - 1);
       float k = n.attrs.get_f("slope_penalty", 40.f);
 
-      // Dijkstra over the 8-connected grid; cost of a step is its length
-      // plus the slope penalty (and any extra painted cost). The heap is
-      // ordered by (distance, index), a total order, so the route cannot
-      // depend on evaluation order.
+      // A* over the 8-connected grid; cost of a step is its length plus the
+      // slope penalty (and any extra painted cost). Straight-line distance
+      // is admissible because every step costs at least its length, so the
+      // route is exactly Dijkstra's - just reached with far fewer pops. The
+      // heap is ordered by (estimate, index), a total order, so the result
+      // cannot depend on evaluation order.
       std::vector<float> dist_v((size_t)w * h, 1e30f);
       std::vector<int> prev((size_t)w * h, -1);
+      int gx_ = (int)(goal % w), gy_ = (int)(goal / w);
+      auto heur = [&](size_t c) {
+        float dx0 = (float)((int)(c % w) - gx_);
+        float dy0 = (float)((int)(c / w) - gy_);
+        return std::sqrt(dx0 * dx0 + dy0 * dy0);
+      };
       using QE = std::pair<float, size_t>;
       std::priority_queue<QE, std::vector<QE>, std::greater<QE>> heap;
       dist_v[start] = 0;
-      heap.push({0, start});
+      heap.push({heur(start), start});
       const int nb[8][2] = {{1, 0},  {-1, 0}, {0, 1},  {0, -1},
                             {1, 1},  {1, -1}, {-1, 1}, {-1, -1}};
       while (!heap.empty()) {
-        auto [d, c] = heap.top();
+        auto [f, c] = heap.top();
         heap.pop();
-        if (d > dist_v[c]) continue;
+        if (f - heur(c) > dist_v[c] + 1e-4f) continue;
+        float d = dist_v[c];
         if (c == goal) break;
         int cx = (int)(c % w), cy = (int)(c / w);
         for (auto &dxy : nb) {
@@ -334,7 +343,7 @@ REGISTER_NODE(
           if (nd < dist_v[q]) {
             dist_v[q] = nd;
             prev[q] = (int)c;
-            heap.push({nd, q});
+            heap.push({nd + heur(q), q});
           }
         }
       }
