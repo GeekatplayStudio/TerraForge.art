@@ -33,6 +33,7 @@ imgui.ini
 *.gpxt
 # ...except the golden corpus, which is the regression lock's evidence
 !tests/projects/*.gpxt
+!examples/*.gpxt
 terraforge_render*.png
 
 # python
