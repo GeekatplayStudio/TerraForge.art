@@ -5,6 +5,7 @@
 #include "app.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "gpx/camera_math.hpp"
 #include "gpx/heightmap.hpp"
 #include <imgui.h>
 #include <json.hpp>
@@ -123,7 +124,8 @@ static fs::path render_workdir() {
 }
 
 static bool export_scene(App &a, const std::string &out_png, int width, int height,
-                         int spp, const char *engine, std::string &err) {
+                         int spp, const char *engine, std::string &err,
+                         int cam_index = -1) {
   RenderSettings &rs = render_settings();
   fs::path dir = render_workdir();
   gpx::Heightmap hm;
@@ -198,8 +200,21 @@ static bool export_scene(App &a, const std::string &out_png, int width, int heig
   std::string sky_path = (dir / "sky.hdr").string();
   bool sky_ok = renderer_export_sky_hdr(sky_path, 2048, 1024);
 
+  // a camera-requested render frames from THAT camera's own optics; only a
+  // bare panel render falls back to whatever the viewport is doing
   float eye[3], target[3], fov;
-  renderer_get_camera(eye, target, &fov);
+  SceneState &scn = scene();
+  if (cam_index >= 0 && cam_index < (int)scn.objects.size() &&
+      scn.objects[cam_index].type == SceneObject::Camera) {
+    const CameraData &cd = scn.objects[cam_index].cam;
+    for (int k = 0; k < 3; ++k) { eye[k] = cd.eye[k]; target[k] = cd.target[k]; }
+    int nfmt = 0;
+    const gpx::cam::SensorFormat *F = gpx::cam::sensor_formats(&nfmt);
+    int fi = std::clamp(cd.format, 0, nfmt - 1);
+    fov = gpx::cam::fov_y_deg(cd.focal_mm, F[fi].height_mm);
+  } else {
+    renderer_get_camera(eye, target, &fov);
+  }
   float sun[3];
   compute_sun_dir(rs, sun);
   json j;
@@ -429,7 +444,7 @@ void render_service_requests(App &a) {
   int engine = std::clamp(r.engine, 0, ENGINE_COUNT - 1);
   std::string err;
   if (export_scene(a, r.output, r.width, r.height, r.samples,
-                   ENGINES[engine].key, err)) {
+                   ENGINES[engine].key, err, c)) {
     render_window_open = true;
     progress_line.clear();
     render_running.store(true);
