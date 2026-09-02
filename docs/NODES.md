@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 171 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 172 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -25,7 +25,7 @@ Every node in Geekatplay TerraForge — 171 across 25 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
-| [Primitive](#primitive) | 16 |
+| [Primitive](#primitive) | 17 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 7 |
@@ -2674,6 +2674,29 @@ Geological set pieces: island, mountain, caldera, rift, mesa
 | Relief | float, 0 to 1, default 0.5 |  |
 | Direction ° | float, -180 to 180, default 0 |  |
 | Seed | seed |  |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
+### LineNoise
+
+Cellular noise seeded by line segments
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| output | out | heightmap |
+| cracks | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Line count | int, 4 to 400, default 40 |  |
+| Segment length | float, 0.02 to 0.6, default 0.18 |  |
+| Reach | float, 0.01 to 0.5, default 0.08 |  |
+| Direction ° | float, -180 to 180, default 0 |  |
+| Direction jitter | float, 0 to 1, default 1 | 0 aligns every segment to the direction - bedding planes. 1 scatters them freely - shattered rock. |
 | Remap to range | toggle, default on |  |
 | Output range | range |  |
 | Invert | toggle, default off |  |

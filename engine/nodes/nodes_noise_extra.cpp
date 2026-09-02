@@ -101,4 +101,70 @@ REGISTER_NODE(
       apply_post(n, out);
     })
 
+REGISTER_NODE(
+    LineNoise, "Primitive", "Cellular noise seeded by line segments",
+    [](Node &n) {
+      n.add_out("output");
+      n.add_out("cracks");
+      add_seed(n.attrs);
+      add_int(n.attrs, "lines", "Line count", 40, 4, 400, "Lines");
+      add_float(n.attrs, "length", "Segment length", 0.18f, 0.02f, 0.6f,
+                "Lines");
+      add_float(n.attrs, "reach", "Reach", 0.08f, 0.01f, 0.5f, "Lines");
+      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f, "Lines");
+      add_float(n.attrs, "angle_jitter", "Direction jitter", 1.f, 0.f, 1.f,
+                "Lines")
+          .tooltip = "0 aligns every segment to the direction - bedding\n"
+                     "planes. 1 scatters them freely - shattered rock.";
+      setup_post(n);
+    },
+    [](Node &n) {
+      Heightmap &out = n.out_hmap("output");
+      Heightmap &cracks = n.out_hmap("cracks");
+      uint32_t seed = n.attrs.get_seed("seed");
+      int count = n.attrs.get_i("lines", 40);
+      float seg_len = n.attrs.get_f("length", 0.18f);
+      float reach = std::max(n.attrs.get_f("reach", 0.08f), 1e-3f);
+      float base_ang = n.attrs.get_f("angle") * 0.017453293f;
+      float jitter = n.attrs.get_f("angle_jitter", 1.f);
+      int w = out.w, h = out.h;
+      // hashed segments: midpoint, direction, length
+      struct Seg { float ax, ay, bx, by; };
+      std::vector<Seg> segs((size_t)count);
+      for (int i = 0; i < count; ++i) {
+        auto rnd = [&](int k) {
+          return (planet::pl_hash_bits(i, k, 0, seed) & 0xffffffu) /
+                 16777215.f;
+        };
+        float mx = rnd(1), my = rnd(2);
+        float ang = base_ang + (rnd(3) - 0.5f) * 6.2831853f * jitter;
+        float hl = seg_len * (0.5f + rnd(4)) * 0.5f;
+        segs[i] = {mx - std::cos(ang) * hl, my - std::sin(ang) * hl,
+                   mx + std::cos(ang) * hl, my + std::sin(ang) * hl};
+      }
+      parallel_rows(h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < w; ++x) {
+            float px = (x + 0.5f) / w, py = (y + 0.5f) / h;
+            float d1 = 1e30f, d2 = 1e30f;
+            for (const Seg &s : segs) {
+              float vx = s.bx - s.ax, vy = s.by - s.ay;
+              float t = ((px - s.ax) * vx + (py - s.ay) * vy) /
+                        std::max(vx * vx + vy * vy, 1e-12f);
+              t = std::clamp(t, 0.f, 1.f);
+              float dx = px - (s.ax + vx * t), dy = py - (s.ay + vy * t);
+              float d = dx * dx + dy * dy;
+              if (d < d1) { d2 = d1; d1 = d; }
+              else if (d < d2) { d2 = d; }
+            }
+            float f1 = std::sqrt(d1), f2 = std::sqrt(d2);
+            out.at(x, y) = std::min(f1 / reach, 1.f);
+            // ridge between territories: F2-F1 is zero on the boundary
+            float seam = std::clamp((f2 - f1) / (reach * 0.5f), 0.f, 1.f);
+            cracks.at(x, y) = 1.f - seam * seam * (3.f - 2.f * seam);
+          }
+      });
+      apply_post(n, out);
+    })
+
 } // namespace gpx

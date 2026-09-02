@@ -382,6 +382,17 @@ Levels.in_white|float
 Levels.out_black|float
 Levels.out_white|float
 Levels.per_channel|bool
+LineNoise.angle_jitter|float
+LineNoise.angle|float
+LineNoise.length|float
+LineNoise.lines|int
+LineNoise.post_gain|float
+LineNoise.post_invert|bool
+LineNoise.post_range|range
+LineNoise.post_remap|bool
+LineNoise.post_zero_edges|float
+LineNoise.reach|float
+LineNoise.seed|seed
 MakeTileable.blend_invert|bool
 MakeTileable.feather|float
 MaskToTexture.normalize|bool

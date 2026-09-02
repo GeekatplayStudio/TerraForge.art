@@ -3159,6 +3159,29 @@ static void test_path_nodes() {
           "wavelet noise is bit-identical across computes");
   }
 
+  // line-cellular noise: finite, spans its range, deterministic, and the
+  // cracks output marks boundaries rather than the lines themselves
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *n = g.add_node("LineNoise", 0, 0);
+    n->attrs.find("post_remap")->b = false;
+    gpx::NodeRegistry::instance().find("LineNoise")->compute(*n);
+    const gpx::Heightmap &a = *n->port("output", gpx::PortDir::Out)->hmap;
+    const gpx::Heightmap &cr = *n->port("cracks", gpx::PortDir::Out)->hmap;
+    float lo = 1e9f, hi = -1e9f;
+    bool fin = true;
+    for (float v : a.v) { fin = fin && std::isfinite(v); lo = std::min(lo, v); hi = std::max(hi, v); }
+    CHECK(fin && lo < 0.05f && hi > 0.9f,
+          "line noise touches its segments and saturates far away");
+    float cmx = *std::max_element(cr.v.begin(), cr.v.end());
+    CHECK(cmx > 0.9f, "territory boundaries reach full crack strength");
+    gpx::Heightmap keep = a;
+    gpx::NodeRegistry::instance().find("LineNoise")->compute(*n);
+    CHECK(n->port("output", gpx::PortDir::Out)->hmap->v == keep.v,
+          "line noise is bit-identical across computes");
+  }
+
   // Gabor: with anisotropy 1 and orientation 0 the streaks run along x, so
   // the surface varies less along x than across it
   {

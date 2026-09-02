@@ -78,6 +78,7 @@ KMeans|Mask
 Kuwahara|Filter
 Landform|Primitive
 Levels|Material
+LineNoise|Primitive
 MakeTileable|Transform
 MaskToTexture|Material
 MaterialOutput|Material

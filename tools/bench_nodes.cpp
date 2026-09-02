@@ -32,6 +32,7 @@ static const Entry ENTRIES[] = {
     {"PathSDF", 80},          {"WhiteNoise", 40},
     {"Landform", 450},        {"Quilt", 400},
     {"WaveletNoise", 400},    {"DetailEqualizer", 250},
+    {"LineNoise", 600},
 };
 
 int main(int argc, char **argv) {
