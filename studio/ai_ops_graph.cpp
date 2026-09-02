@@ -16,6 +16,7 @@
 #include "gpx/metanode.hpp"
 #include "gpx/node_graph.hpp"
 #include <json.hpp>
+#include <filesystem>
 #include <string>
 
 using nlohmann::json;
@@ -309,6 +310,25 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
 
   if (op == "set_time") {
     a.graph.time = act.value("time", 0.f);
+    a.request_eval();
+    return 1;
+  }
+
+  if (op == "render_sequence") {
+    a.seq_dir = act.value("dir", std::string("sequence"));
+    std::error_code ec;
+    std::filesystem::create_directories(a.seq_dir, ec);
+    a.seq_fps = act.value("fps", 30.f);
+    a.seq_w = act.value("width", 1280);
+    a.seq_h = act.value("height", 720);
+    if (act.contains("start")) a.anim_start = act["start"].get<float>();
+    if (act.contains("end")) a.anim_end = act["end"].get<float>();
+    a.seq_total = std::max(
+        (int)((a.anim_end - a.anim_start) * a.seq_fps + 0.5f), 1);
+    a.seq_frame = 0;
+    a.anim_playing = false;
+    a.graph.time = a.anim_start;
+    a.seq_active = true;
     a.request_eval();
     return 1;
   }

@@ -90,6 +90,11 @@ struct App {
   // animation transport
   float anim_start = 0.f, anim_end = 10.f;
   bool anim_playing = false, anim_loop = true;
+  // PNG-sequence capture: one animation frame per completed evaluation
+  bool seq_active = false;
+  float seq_fps = 30.f;
+  int seq_frame = 0, seq_total = 0, seq_w = 1280, seq_h = 720;
+  std::string seq_dir;
   bool request_layout_reset = false;
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
   // Set to a node id to have the graph select it and pan to it on the next

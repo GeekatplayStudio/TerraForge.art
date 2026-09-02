@@ -21,6 +21,8 @@ namespace studio {
 // sample real elevations without re-walking the graph
 static std::shared_ptr<gpx::Heightmap> g_overlay_terrain;
 
+bool renderer_render_to_file(const std::string &path, int w, int h);
+
 // Rebuild every scattered object's copy list from its bound Points node.
 // Called when the evaluation moves, and again by the render exporter so a
 // scripted set_scatter -> render in one batch never ships an empty forest.
@@ -292,6 +294,30 @@ void run_main() {
     }
     draw_panel_ai(a);
     draw_panel_scene(a); // Outliner
+    // PNG-sequence capture: whenever the evaluation for the current frame's
+    // time has landed and been uploaded, save the frame and step the clock.
+    // Riding the async pipeline this way means a heavy graph just takes
+    // longer per frame - nothing blocks and nothing tears.
+    if (a.seq_active && !a.eval.running.load() &&
+        a.uploaded_serial == a.eval_serial) {
+      char name[64];
+      snprintf(name, sizeof name, "frame_%04d.png", a.seq_frame);
+      std::string path = a.seq_dir + "/" + name;
+      renderer_render_to_file(path, a.seq_w, a.seq_h);
+      ++a.seq_frame;
+      if (a.seq_frame >= a.seq_total) {
+        a.seq_active = false;
+        a.status = "sequence done: " + std::to_string(a.seq_total) +
+                   " frames in " + a.seq_dir;
+      } else {
+        a.graph.time =
+            a.anim_start + (float)a.seq_frame / std::max(a.seq_fps, 1.f);
+        a.request_eval();
+        a.status = "sequence frame " + std::to_string(a.seq_frame) + "/" +
+                   std::to_string(a.seq_total);
+      }
+    }
+
     render_service_requests(a);
     draw_render_window(a);
     autosave_recovery_dialog(a); // offers the last session back after a crash

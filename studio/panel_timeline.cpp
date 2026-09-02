@@ -10,6 +10,7 @@
 #include <imgui.h>
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 
 namespace studio {
 
@@ -58,6 +59,26 @@ void draw_panel_timeline(App &a) {
     }
     a.request_eval();
   }
+
+  ImGui::SameLine();
+  if (a.seq_active) {
+    ImGui::TextDisabled("capturing %d/%d", a.seq_frame, a.seq_total);
+  } else if (ImGui::SmallButton("Render PNG sequence")) {
+    a.seq_dir = "sequence";
+    std::error_code ec;
+    std::filesystem::create_directories(a.seq_dir, ec);
+    a.seq_fps = 30.f;
+    a.seq_total =
+        (int)std::max((a.anim_end - a.anim_start) * a.seq_fps + 0.5f, 1.f);
+    a.seq_frame = 0;
+    a.anim_playing = false;
+    a.graph.time = a.anim_start;
+    a.seq_active = true;
+    a.request_eval();
+  }
+  if (ImGui::IsItemHovered() && !a.seq_active)
+    ImGui::SetTooltip("Viewport-engine capture of the loop range at 30 fps,\n"
+                      "one PNG per frame, into ./sequence next to the app.");
 
   // ---- the scrub bar -------------------------------------------------------
   float t = a.graph.time;
