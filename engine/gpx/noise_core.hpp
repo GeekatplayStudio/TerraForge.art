@@ -148,6 +148,68 @@ inline float fbm_swiss(float x, float y, uint32_t seed, const FbmParams &p,
   return norm > 0 ? sum / norm * 2.f - 1.f : 0;
 }
 
+// IQ-style fBm (Inigo Quilez): accumulated slope damps the amplitude, so
+// steep areas go quiet and valley floors stay busy - reads as eroded ground
+inline float fbm_iq(float x, float y, uint32_t seed, const FbmParams &p) {
+  float sum = 0, amp = 1, norm = 0, freq = 1.f;
+  float dx_sum = 0, dy_sum = 0;
+  const float e = 0.01f;
+  for (int o = 0; o < p.octaves; ++o) {
+    uint32_t s = seed + (uint32_t)o * 1013u;
+    float n = perlin(x * freq, y * freq, s);
+    float gx = (perlin(x * freq + e, y * freq, s) - n) / e;
+    float gy = (perlin(x * freq, y * freq + e, s) - n) / e;
+    dx_sum += gx;
+    dy_sum += gy;
+    sum += amp * n / (1.f + dx_sum * dx_sum + dy_sum * dy_sum);
+    norm += amp;
+    amp *= p.gain;
+    freq *= p.lacunarity;
+  }
+  return norm > 0 ? sum / norm : 0;
+}
+
+// Jordan-style fBm (de Carpentier): each octave is the squared signal, and
+// the running gradient warps later octaves - crumpled, terraced ridges
+inline float fbm_jordan(float x, float y, uint32_t seed, const FbmParams &p,
+                        float warp = 0.4f) {
+  float sum = 0, amp = 1, norm = 0, freq = 1.f;
+  float wx = 0, wy = 0;
+  const float e = 0.01f;
+  for (int o = 0; o < p.octaves; ++o) {
+    uint32_t s = seed + (uint32_t)o * 1013u;
+    float px = x * freq + wx, py = y * freq + wy;
+    float n = perlin(px, py, s);
+    float n2 = n * n;
+    sum += amp * n2;
+    norm += amp;
+    float gx = (perlin(px + e, py, s) - n) / e;
+    float gy = (perlin(px, py + e, s) - n) / e;
+    wx += warp * n * gx * amp;
+    wy += warp * n * gy * amp;
+    amp *= p.gain;
+    freq *= p.lacunarity;
+  }
+  return norm > 0 ? sum / norm * 2.f - 1.f : 0;
+}
+
+// Pingpong fBm (FastNoiseLite's fold): each octave folds back on itself,
+// giving banded, dune-like repetition without a hard terrace step
+inline float fbm_pingpong(float x, float y, uint32_t seed, const FbmParams &p,
+                          float strength = 2.f) {
+  float sum = 0, amp = 0.5f, freq = 1.f;
+  for (int o = 0; o < p.octaves; ++o) {
+    uint32_t s = seed + (uint32_t)o * 1013u;
+    float t = (perlin(x * freq, y * freq, s) + 1.f) * strength;
+    t -= (float)((int)(t * 0.5f)) * 2.f;
+    float fold = t < 1.f ? t : 2.f - t;
+    sum += (fold - 0.5f) * 2.f * amp;
+    amp *= p.gain;
+    freq *= p.lacunarity;
+  }
+  return sum;
+}
+
 // Worley cellular: returns F1, F2 distances (cell coords scaled by freq)
 inline void worley(float x, float y, uint32_t seed, float &f1, float &f2,
                    float jitter = 1.f) {

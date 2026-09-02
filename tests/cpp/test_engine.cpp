@@ -2803,6 +2803,32 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_noise_variants() {
+  std::printf("fBm variants...\n");
+  for (int type : {9, 10, 11}) { // IQ, Jordan, Pingpong
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *n = g.add_node("Noise", 0, 0);
+    n->attrs.find("type")->i = type;
+    n->attrs.find("post_remap")->b = false;
+    gpx::NodeRegistry::instance().find("Noise")->compute(*n);
+    const gpx::Heightmap &a = *n->port("output", gpx::PortDir::Out)->hmap;
+    float lo = 1e9f, hi = -1e9f;
+    bool finite = true;
+    for (float v : a.v) {
+      finite = finite && std::isfinite(v);
+      lo = std::min(lo, v);
+      hi = std::max(hi, v);
+    }
+    CHECK(finite, "variant output is finite");
+    CHECK(hi - lo > 0.05f, "variant output actually varies");
+    gpx::Heightmap keep = a;
+    gpx::NodeRegistry::instance().find("Noise")->compute(*n);
+    CHECK(n->port("output", gpx::PortDir::Out)->hmap->v == keep.v,
+          "variant is bit-identical across computes");
+  }
+}
+
 static void test_local_filters() {
   std::printf("locality filters...\n");
   const int N = 64;
@@ -3231,6 +3257,7 @@ int main() {
   test_morphology();
   test_flood();
   test_local_filters();
+  test_noise_variants();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "noise.fbm_variants", "area": "engine", "phase": "23",
+      "description": "IQ (slope-damped), Jordan (gradient-warped squared) and Pingpong (folded) fBm variants on the Noise node",
+      "test_file": "test_engine.cpp", "test_symbol": "test_noise_variants" },
+
     { "id": "filter.locality", "area": "engine", "phase": "23",
       "description": "Kuwahara edge-preserving smoothing, DirectionalBlur, Detrend (best-fit plane removal), RelativeElevation and SmoothFill",
       "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
