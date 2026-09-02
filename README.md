@@ -194,6 +194,16 @@ generated from the registry itself.
 - **Multilayer compositing:** splat maps from terrain masks, layer blending,
   color grading, and albedo-to-PBR derivation.
 
+### Scene and lighting
+- **Built-in primitives** — cube, sphere, plane, cylinder, cone — plus OBJ
+  import; every mesh transforms, takes materials, and scatters.
+- **Point lights** (up to eight) with color, intensity and reach, agreed on
+  by the viewport and every offline engine.
+- **Night**: let the sun set and stars come out over a sky, haze and
+  surround that darken together — a campfire in the dark is one AI prompt.
+- **Real-world terrain**: SRTM `.hgt` DEM tiles import directly, alongside
+  8/16-bit PNG heightmaps.
+
 ### Environment and rendering
 - **Volumetric clouds** raymarched with Perlin-Worley noise, cloud types
   (stratus / cumulus / cumulonimbus), coverage, wind and self-shadowing.
@@ -206,7 +216,11 @@ generated from the registry itself.
 - **Offline rendering:** path-traced output through Mitsuba 3, Blender Cycles
   or LuxCoreRender. The render reuses the viewport's own sky and clouds as an
   HDR environment, plus the same material, sun, water, fog and tone mapping,
-  so the result matches the preview.
+  so the result matches the preview — scattered meshes and point lights
+  included.
+- **Render passes**: depth and world-normal EXRs beside the beauty image.
+- **360° panoramas**: one equirectangular frame from any camera position,
+  for skyboxes and VR stills.
 
 ### Animation
 - **Timeline** (View menu): play/pause/stop, a loop range, a scrub bar, and
