@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 165 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 166 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -28,7 +28,7 @@ Every node in Geekatplay TerraForge — 165 across 25 categories. Generated from
 | [Primitive](#primitive) | 14 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
-| [Transform](#transform) | 6 |
+| [Transform](#transform) | 7 |
 
 ## Analysis
 
@@ -2798,6 +2798,24 @@ Blend the tile so it wraps seamlessly
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Feather | float, 0.1 to 1, default 1 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### Quilt
+
+Resynthesize the surface from its own patches
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Patch size | float, 0.03 to 0.4, default 0.12 |  |
+| Overlap | float, 0.1 to 0.5, default 0.25 | As a fraction of the patch. Wider overlaps hide seams better and repeat more. |
+| Candidates | int, 4 to 128, default 24 | Patches auditioned per cell; the best-matching overlap wins. More candidates, better joins, slower quilt. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### SetBorders

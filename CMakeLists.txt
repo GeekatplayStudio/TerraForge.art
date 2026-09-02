@@ -109,6 +109,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_morphology.cpp
     engine/nodes/nodes_filters_local.cpp
     engine/nodes/nodes_segment.cpp
+    engine/nodes/nodes_quilt.cpp
     engine/nodes/nodes_warp.cpp
     engine/nodes/nodes_texture.cpp
     engine/nodes/nodes_materials.cpp

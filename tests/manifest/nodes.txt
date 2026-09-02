@@ -108,6 +108,7 @@ PointsShuffle|Points
 PointsToMask|Points
 PointsToPath|Path
 PowerFractal|Filter
+Quilt|Transform
 Rasterize|Field Bridge
 RelativeElevation|Analysis
 Remap|Filter

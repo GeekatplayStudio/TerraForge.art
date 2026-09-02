@@ -2803,6 +2803,37 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_quilt() {
+  std::printf("quilting...\n");
+  gpx::Graph g;
+  g.resolution = 128;
+  gpx::Node *src = g.add_node("Noise", 0, 0);
+  gpx::Node *q = g.add_node("Quilt", 0, 0);
+  g.add_link(src->id, "output", q->id, "input");
+  g.evaluate();
+  const gpx::Heightmap &in = *src->port("output", gpx::PortDir::Out)->hmap;
+  const gpx::Heightmap &out = *q->port("output", gpx::PortDir::Out)->hmap;
+  CHECK(out.w == 128, "quilt fills the tile");
+  // same statistics family: the quilt's range must sit inside the input's
+  float imn, imx, omn, omx;
+  in.minmax(imn, imx);
+  out.minmax(omn, omx);
+  CHECK(omn >= imn - 1e-4f && omx <= imx + 1e-4f,
+        "every quilted value comes from the exemplar's range");
+  // but a different arrangement, not a copy
+  size_t diff = 0;
+  for (size_t i = 0; i < out.v.size(); ++i) diff += out.v[i] != in.v[i];
+  CHECK(diff > out.v.size() / 2, "the quilt rearranges the surface");
+  bool finite = true;
+  for (float v : out.v) finite = finite && std::isfinite(v);
+  CHECK(finite, "the quilt is finite");
+  gpx::Heightmap keep = out;
+  q->dirty = true;
+  g.evaluate();
+  CHECK(q->port("output", gpx::PortDir::Out)->hmap->v == keep.v,
+        "quilting is bit-identical across computes");
+}
+
 static void test_dla() {
   std::printf("diffusion-limited aggregation...\n");
   gpx::Graph g;
@@ -3700,6 +3731,7 @@ int main() {
   test_landform();
   test_points_io();
   test_dla();
+  test_quilt();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

@@ -484,6 +484,11 @@ PowerFractal.slope_band|range
 PowerFractal.slope_soft|float
 PowerFractal.smallest|float
 PowerFractal.spike_limit|float
+Quilt.blend_invert|bool
+Quilt.candidates|int
+Quilt.overlap|float
+Quilt.patch|float
+Quilt.seed|seed
 Rasterize.center|vec2
 Rasterize.height|float
 Rasterize.post_gain|float

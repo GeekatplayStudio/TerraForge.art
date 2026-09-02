@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "transform.quilt", "area": "engine", "phase": "23",
+      "description": "Quilt: Efros-Freeman patch resynthesis - hashed candidate patches auditioned against the laid overlap, feathered joins, bit-identical per seed",
+      "test_file": "test_engine.cpp", "test_symbol": "test_quilt" },
+
     { "id": "filter.modeseek", "area": "engine", "phase": "23",
       "description": "MeanShift mode-seeking smoothing, SetBorders rim pinning, SelectBlobs difference-of-gaussians blob detection",
       "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
