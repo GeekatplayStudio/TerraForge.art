@@ -220,7 +220,8 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
     } else if (op == "set_sun") {
       rs.sun_mode = 0;
       if (act.contains("azimuth_deg")) rs.sun_azimuth = act["azimuth_deg"].get<float>();
-      if (act.contains("altitude_deg")) rs.sun_altitude = std::clamp(act["altitude_deg"].get<float>(), 1.f, 89.f);
+      // below the horizon is allowed: that is what night is
+      if (act.contains("altitude_deg")) rs.sun_altitude = std::clamp(act["altitude_deg"].get<float>(), -35.f, 89.f);
       if (act.contains("intensity")) rs.sun_intensity = act["intensity"].get<float>();
       read_vec3(act, "color", rs.sun_color);
       ++applied;

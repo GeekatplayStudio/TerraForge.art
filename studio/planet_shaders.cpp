@@ -266,9 +266,12 @@ void main(){
   }
 
   float NdL = max(dot(N, u_sun), 0.0);
+  // the ambient half is skylight, so it fades with the same nightfall
+  // factor the sky uses - otherwise the surround glows all night
+  float day_f = clamp(u_sun.y * 4.0 + 0.35, 0.035, 1.0);
   vec3 col = alb * (u_sun_color * u_sun_i * NdL * 0.8 / 3.14159
                     + mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient
-                          * (0.45 + 0.55*N.y));
+                          * (0.45 + 0.55*N.y) * day_f);
   if (u_fog_type > 0){
     float f = 1.0 - exp(-cam_d * u_fogd * 0.35);
     col = mix(col, u_fog_color, clamp(f, 0.0, 1.0));

@@ -228,6 +228,11 @@ vec3 sky_color(vec3 dir, vec3 zenith_c, vec3 horizon_c, vec3 sun, vec3 sun_col,
   col = mix(col, col * vec3(1.15,0.85,0.65), low*0.5*atmo);
   float s = max(dot(dir, sun), 0.0);
   col += sun_col * pow(s, 12.0) * 0.18 * atmo;
+  // the sky darkens as the sun sets: full brightness above the horizon,
+  // deep blue-black once it is well below. Shared by sky, terrain ambient
+  // and water reflections, so the whole scene agrees about nightfall.
+  float day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
+  col *= day;
   return col;
 }
 )GLSL";

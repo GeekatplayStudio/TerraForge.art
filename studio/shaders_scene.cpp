@@ -304,11 +304,28 @@ void main(){
     float s = max(dot(dir, u_sun), 0.0);
     col += u_sun_color * pow(s, 700.0) * 8.0;   // sun disc
   }
+  // night: the same stable star field fades in as the sun sinks below the
+  // horizon - added before the cloud march so clouds occlude the stars
+  float night = smoothstep(0.03, -0.12, u_sun.y);
+  if (night > 0.0 && dir.y > 0.0) {
+    vec3 sd2 = dir * 380.0;
+    vec3 si2 = floor(sd2);
+    float hs2 = fract(sin(dot(si2, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+    if (hs2 > 0.9965) {
+      float tw2 = 0.55 + 0.45 * fract(hs2 * 91.7);
+      col += vec3(tw2) * smoothstep(0.9965, 1.0, hs2) * night *
+             clamp(dir.y * 4.0, 0.0, 1.0);
+    }
+  }
   vec4 cl = march_clouds(u_cam, dir, col);
   col = cl.rgb;
   if (u_fog_type != 0) {
     float horizon_fog = pow(1.0 - clamp(dir.y, 0.0, 1.0), 8.0);
-    col = mix(col, u_fog_color, clamp(horizon_fog * u_fog_density * 0.6, 0.0, 1.0));
+    // haze is lit air: it darkens with the same daylight factor as the sky,
+    // or night would end at the horizon line
+    float fog_day = clamp(u_sun.y * 4.0 + 0.35, 0.035, 1.0);
+    col = mix(col, u_fog_color * fog_day,
+              clamp(horizon_fog * u_fog_density * 0.6, 0.0, 1.0));
   }
   // Leaving the atmosphere: the sky thins to space so that pulling the camera
   // back actually reveals the planets instead of drowning them in daylight
