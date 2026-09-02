@@ -303,6 +303,24 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         ++applied;
         break;
       }
+    } else if (op == "save_project") {
+      std::string path = act.value("path", std::string());
+      if (path.empty()) {
+        err = "save_project needs a path";
+      } else if (project_save(a, path)) {
+        ++applied;
+      } else {
+        err = "could not write " + path;
+      }
+    } else if (op == "open_project") {
+      std::string path = act.value("path", std::string());
+      if (path.empty()) {
+        err = "open_project needs a path";
+      } else if (project_load(a, path)) {
+        ++applied;
+      } else {
+        err = "could not open " + path;
+      }
     } else if (op == "import_object") {
       std::string path = act.value("path", std::string());
       std::string ierr;

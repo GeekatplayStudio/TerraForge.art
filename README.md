@@ -226,6 +226,12 @@ materials and lighting for you. Everything runs on your machine.
 
 ---
 
+## Examples
+
+`examples/eroded_island.gpxt` — an island landform through hydraulic
+erosion, with a midslope mask feeding a point scatter. Open it with
+File > Open (or the `open_project` scripting op) and press around.
+
 ## Requirements
 
 - Windows 10/11 (the codebase is portable; Windows is what ships today)
