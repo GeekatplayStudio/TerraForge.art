@@ -17,7 +17,9 @@ Craggy|Filter
 Crater|Primitive
 CurvatureFromHeight|Material
 Dissolve|Erosion
+DistanceField|Mask
 Dunes|Primitive
+Equalize|Filter
 ExpandShrink|Filter
 ExportHeightmap|Export
 ExportMesh|Export
@@ -65,6 +67,7 @@ MaskToTexture|Material
 MaterialOutput|Material
 MathGradient|Operator
 Math|Operator
+Median|Filter
 MetaNode|Group
 MixLayers|Operator
 Noise|Primitive

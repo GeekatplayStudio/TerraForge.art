@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "mask.distance_field", "area": "engine", "phase": "22",
+      "description": "Exact Euclidean distance transform (Felzenszwalb-Huttenlocher), plus Median and Equalize filters",
+      "test_file": "test_engine.cpp", "test_symbol": "test_distance_and_filters" },
+
     { "id": "project.scene_persistence", "area": "studio", "phase": "22",
       "description": "A project file carries the whole scene - meshes with transforms and material bindings, cameras with lenses and render assignments, layers, selection - and the whole environment, with node-id bindings remapped through the graph loader's id map",
       "test_file": "test_undo.cpp", "test_symbol": "test_scene_persistence" },

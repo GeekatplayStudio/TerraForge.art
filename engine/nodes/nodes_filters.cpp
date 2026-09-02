@@ -2,6 +2,7 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
+#include <cstdint>
 
 namespace gpx {
 
@@ -295,6 +296,110 @@ REGISTER_NODE(
         });
       }
       apply_mask_blend(n.in_hmap("mask"), *in, out);
+    })
+
+
+// ------------------------------------------------------------------ median
+// The rank filter erosion output has been missing: it removes salt-and-pepper
+// spikes - the single-cell pits and needles a particle simulation leaves -
+// without softening the edges around them, which is exactly what a Gaussian
+// blur cannot do. Deterministic and embarrassingly parallel: every output
+// pixel depends only on its own neighbourhood of the input.
+REGISTER_NODE(
+    Median, "Filter",
+    "Removes single-cell spikes and pits without softening edges",
+    [](Node &n) {
+      setup_masked_filter(n);
+      add_int(n.attrs, "radius", "Radius", 1, 1, 3)
+          .tooltip = "1 looks at 3x3 cells, 2 at 5x5, 3 at 7x7. Larger wipes\n"
+                     "bigger artifacts and more real detail with them.";
+      add_int(n.attrs, "passes", "Passes", 1, 1, 4)
+          .tooltip = "Applying it again flattens what one pass left; a few\n"
+                     "passes approach a stable, blocky simplification.";
+      setup_post(n);
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      const int r = std::clamp(n.attrs.get_i("radius", 1), 1, 3);
+      const int passes = std::clamp(n.attrs.get_i("passes", 1), 1, 4);
+      const int w = in->w, h = in->h;
+      Heightmap src = out;
+      for (int pass = 0; pass < passes; ++pass) {
+        std::swap(src.v, out.v);
+        parallel_rows(h, [&](int y0, int y1) {
+          std::vector<float> win((2 * r + 1) * (2 * r + 1));
+          for (int y = y0; y < y1; ++y)
+            for (int x = 0; x < w; ++x) {
+              int k = 0;
+              for (int dy = -r; dy <= r; ++dy)
+                for (int dx = -r; dx <= r; ++dx) {
+                  int nx = std::clamp(x + dx, 0, w - 1);
+                  int ny = std::clamp(y + dy, 0, h - 1);
+                  win[k++] = src.v[(size_t)ny * w + nx];
+                }
+              std::nth_element(win.begin(), win.begin() + k / 2,
+                               win.begin() + k);
+              out.v[(size_t)y * w + x] = win[k / 2];
+            }
+        });
+      }
+      apply_mask_blend(n.in_hmap("mask"), *in, out);
+      apply_post(n, out);
+    })
+
+// ---------------------------------------------------------------- equalize
+// Histogram equalisation: spreads the elevations so every band of the range
+// gets used. A terrain that has drifted into using a third of its range -
+// which is what a long chain of blends and erosions tends to leave - comes
+// back with its full contrast, without anyone hand-tuning levels.
+REGISTER_NODE(
+    Equalize, "Filter",
+    "Spreads elevations across the full range - contrast back after a long chain",
+    [](Node &n) {
+      setup_masked_filter(n);
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 1.f)
+          .tooltip = "1 is full equalisation; lower blends back toward the\n"
+                     "original distribution.";
+      setup_post(n);
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      float mn, mx;
+      in->minmax(mn, mx);
+      const float span = mx - mn;
+      if (span > 1e-12f) {
+        // histogram -> cumulative distribution -> remap through it
+        const int BINS = 2048;
+        std::vector<uint32_t> hist(BINS, 0);
+        for (float v : in->v) {
+          int b = (int)((v - mn) / span * (BINS - 1));
+          hist[std::clamp(b, 0, BINS - 1)]++;
+        }
+        std::vector<float> cdf(BINS);
+        uint64_t acc = 0;
+        const float inv_n = 1.f / (float)in->v.size();
+        for (int b = 0; b < BINS; ++b) {
+          acc += hist[b];
+          cdf[b] = (float)acc * inv_n;
+        }
+        const float k = n.attrs.get_f("strength", 1.f);
+        parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
+          for (size_t i = i0; i < i1; ++i) {
+            float t = (in->v[i] - mn) / span;
+            int b = std::clamp((int)(t * (BINS - 1)), 0, BINS - 1);
+            float eq = mn + cdf[b] * span;
+            out.v[i] = in->v[i] + (eq - in->v[i]) * k;
+          }
+        });
+      }
+      apply_mask_blend(n.in_hmap("mask"), *in, out);
+      apply_post(n, out);
     })
 
 } // namespace gpx

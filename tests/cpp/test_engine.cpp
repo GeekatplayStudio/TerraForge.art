@@ -2560,6 +2560,127 @@ static void test_depression_fill() {
   }
 }
 
+// -------------------------------------------------- distance field & filters
+// The distance transform claims to be EXACT Euclidean distance in linear
+// time, which is a strong claim with a cheap test: brute force on a small
+// grid must agree to float precision, at every cell, for arbitrary shapes.
+// An approximate transform (chamfer, two-pass city block) fails this on the
+// diagonals, which is precisely where terrain falloffs show the artefact as
+// square-ish halos around round lakes.
+static void test_distance_and_filters() {
+  std::printf("distance field, median, equalize...\n");
+
+  auto run_node = [](const char *type, const gpx::Heightmap &input,
+                     auto setup) -> gpx::Heightmap {
+    gpx::Graph g;
+    gpx::Node *n = g.add_node(type, 0, 0);
+    CHECK(n != nullptr, "node registered");
+    if (!n) return gpx::Heightmap(1, 1);
+    setup(*n);
+    gpx::Port *pin = n->port("input", gpx::PortDir::In);
+    auto hm = std::make_shared<gpx::Heightmap>(input);
+    if (pin) pin->hmap = hm;
+    const gpx::NodeDef *def = gpx::NodeRegistry::instance().find(type);
+    def->compute(*n);
+    for (const gpx::Port &po : n->ports)
+      if (po.dir == gpx::PortDir::Out && po.hmap) return *po.hmap;
+    return gpx::Heightmap(1, 1);
+  };
+
+  // --- exactness against brute force -------------------------------------
+  {
+    const int N = 28;
+    gpx::Heightmap mask(N, N);
+    // an arbitrary scatter of shape cells, deterministic
+    std::vector<std::pair<int, int>> pts;
+    for (int i = 0; i < 9; ++i) {
+      int x = (i * 37 + 11) % N, y = (i * 53 + 5) % N;
+      pts.push_back({x, y});
+      mask.v[(size_t)y * N + x] = 1.f;
+    }
+    gpx::Heightmap d = run_node("DistanceField", mask, [](gpx::Node &n) {
+      n.attrs.find("mode")->i = 1;          // raw distance
+      n.attrs.find("reach")->f = 1.f;       // reach = the whole tile width
+      n.attrs.find("post_remap")->b = false;     // and no post-processing
+    });
+    CHECK(d.w == N && d.h == N, "output sized from the input");
+    float worst = 0.f;
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x) {
+        float best = 1e9f;
+        for (auto &pt : pts) {
+          float dx = (float)(x - pt.first), dy = (float)(y - pt.second);
+          best = std::min(best, std::sqrt(dx * dx + dy * dy));
+        }
+        // the node divides by reach = 1.0 * width
+        float got = d.v[(size_t)y * N + x] * (float)N;
+        worst = std::max(worst, std::fabs(got - best));
+      }
+    CHECK(worst < 1e-3f, "exact Euclidean distance, every cell, any shape");
+  }
+
+  // --- the fade mode is a ready-made falloff ------------------------------
+  {
+    const int N = 32;
+    gpx::Heightmap mask(N, N);
+    mask.v[(size_t)16 * N + 16] = 1.f;
+    gpx::Heightmap d = run_node("DistanceField", mask, [](gpx::Node &n) {
+      n.attrs.find("mode")->i = 0;
+      n.attrs.find("reach")->f = 0.25f;
+      n.attrs.find("post_remap")->b = false;
+    });
+    CHECK(d.v[(size_t)16 * N + 16] == 1.f, "1 exactly on the shape");
+    CHECK(d.v[0] == 0.f, "0 beyond the reach");
+    float near = d.v[(size_t)16 * N + 18], far = d.v[(size_t)16 * N + 22];
+    CHECK(near > far && far > 0.f, "and falling off monotonically between");
+  }
+
+  // --- median: kills a spike, leaves a cliff ------------------------------
+  {
+    const int N = 24;
+    gpx::Heightmap in(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x)
+        in.v[(size_t)y * N + x] = x < N / 2 ? 0.2f : 0.8f; // a hard cliff
+    in.v[(size_t)5 * N + 5] = 9.f; // and one absurd needle
+    gpx::Heightmap out = run_node("Median", in, [](gpx::Node &n) {
+      n.attrs.find("post_remap")->b = false;
+    });
+    CHECK(out.v[(size_t)5 * N + 5] == 0.2f, "the needle is gone");
+    CHECK(out.v[(size_t)10 * N + (N / 2 - 1)] == 0.2f &&
+              out.v[(size_t)10 * N + (N / 2)] == 0.8f,
+          "the cliff edge did not move or soften");
+  }
+
+  // --- equalize: uses the whole range, and full strength means uniform ----
+  {
+    const int N = 64;
+    gpx::Heightmap in(N, N);
+    // squashed distribution: everything crammed into 0.4..0.5, plus anchors
+    for (size_t i = 0; i < in.v.size(); ++i)
+      in.v[i] = 0.4f + 0.1f * (float)(i % 97) / 97.f;
+    in.v[0] = 0.f;
+    in.v[1] = 1.f;
+    gpx::Heightmap out = run_node("Equalize", in, [](gpx::Node &n) {
+      n.attrs.find("post_remap")->b = false;
+    });
+    // after equalisation the values should spread: the middle of the sorted
+    // data should sit near the middle of the range instead of near 0.45
+    std::vector<float> sorted(out.v);
+    std::sort(sorted.begin(), sorted.end());
+    float median_v = sorted[sorted.size() / 2];
+    CHECK(median_v > 0.35f && median_v < 0.65f,
+          "the crammed distribution spread back across the range");
+    // a flat input must pass through unchanged (span is zero)
+    gpx::Heightmap flat(16, 16);
+    for (float &v : flat.v) v = 0.31f;
+    gpx::Heightmap fo = run_node("Equalize", flat, [](gpx::Node &n) {
+      n.attrs.find("post_remap")->b = false;
+    });
+    CHECK(fo.v[10] == 0.31f, "a flat input passes through untouched");
+  }
+}
+
 int main() {
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2584,6 +2705,7 @@ int main() {
   test_planet_math();
   test_cellular();
   test_depression_fill();
+  test_distance_and_filters();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();
