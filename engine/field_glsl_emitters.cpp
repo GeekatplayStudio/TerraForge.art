@@ -172,20 +172,37 @@ void install_emitters() {
 
   reg("FieldVoronoi", [](const Node &n, const InputFn &in, EmitCtx &ctx) {
     std::string p = in("#position", ctx.pos.c_str());
-    float f = n.attrs.get_f("frequency", 6.f);
-    std::string c = ctx.declare(
-        "vec3", "cell",
-        "gpxf_cell(" + p + " * " + f2s(f) + ", " +
-            std::to_string(n.attrs.get_seed("seed")) + "u, " +
-            f2s(n.attrs.get_f("jitter", 1.f)) + ", " +
-            std::to_string(n.attrs.get_choice("metric")) + ")");
-    std::string e;
-    switch (n.attrs.get_choice("output")) {
-      case 1: e = c + ".y"; break;                    // F2
-      case 2: e = "(" + c + ".y - " + c + ".x)"; break; // F2 - F1: cell walls
-      case 3: e = c + ".z"; break;                    // cell value
-      default: e = c + ".x"; break;                   // F1
+    const float base_f = n.attrs.get_f("frequency", 6.f);
+    const uint32_t seed = n.attrs.get_seed("seed");
+    const std::string jit = f2s(n.attrs.get_f("jitter", 1.f));
+    const std::string metric = std::to_string(n.attrs.get_choice("metric"));
+    const int mode = n.attrs.get_choice("output");
+    const int oct = std::clamp(n.attrs.get_i("octaves", 1), 1, 6);
+    // the same octave sum the CPU runs, unrolled: octave count is a node
+    // attribute, so it is a compile-time constant of this generated shader
+    std::string acc = ctx.fresh("voro");
+    ctx.body << "  float " << acc << " = 0.0;\n";
+    float amp = 1.f, norm = 0.f, freq = base_f;
+    for (int o = 0; o < oct; ++o) {
+      std::string c = ctx.declare(
+          "vec3", "cell",
+          "gpxf_cell(" + p + " * " + f2s(freq) + ", " +
+              std::to_string(seed + (uint32_t)o * 101u) + "u, " + jit + ", " +
+              metric + ")");
+      std::string term;
+      switch (mode) {
+        case 1: term = c + ".y"; break;
+        case 2: term = "(" + c + ".y - " + c + ".x)"; break;
+        case 3: term = c + ".z"; break;
+        default: term = c + ".x"; break;
+      }
+      ctx.body << "  " << acc << " += " << term << " * " << f2s(amp)
+               << ";\n";
+      norm += amp;
+      amp *= 0.5f;
+      freq *= 2.03f;
     }
+    std::string e = "(" + acc + " / " + f2s(norm) + ")";
     e = "(" + e + " * " + f2s(n.attrs.get_f("amplitude", 1.f)) + " + " +
         f2s(n.attrs.get_f("offset", 0.f)) + ")";
     if (n.attrs.get_b("invert", false)) e = "(1.0 - " + e + ")";

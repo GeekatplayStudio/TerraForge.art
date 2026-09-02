@@ -353,6 +353,13 @@ std::string field_gpu_verify_all(App &a) {
       n->attrs.find("jitter")->f = 0.f;
       run("voronoi (no jitter)", g, n);
     }
+    {   // the fractal stack, at full depth
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldVoronoi");
+      n->attrs.find("octaves")->i = 5;
+      n->attrs.find("output")->i = 2;
+      run("voronoi fbm x5", g, n);
+    }
     {   // cells warped by noise, which is how it is actually used
       gpx::Graph g;
       gpx::Node *w = g.add_node("FieldNoise");

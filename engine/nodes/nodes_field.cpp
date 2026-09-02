@@ -340,6 +340,11 @@ REGISTER_NODE(
       add_float(n.attrs, "jitter", "Jitter", 1.f, 0.f, 1.f, "Cells")
           .tooltip = "How far each cell's point may wander from its centre.\n"
                      "0 is a perfect grid; 1 is fully irregular.";
+      add_int(n.attrs, "octaves", "Octaves", 1, 1, 6, "Cells")
+          .tooltip = "Stacks the cells at rising frequency and falling\n"
+                     "weight, the way fBm stacks noise: continents of\n"
+                     "plates with gravel in the cracks. 1 is the plain\n"
+                     "pattern.";
       add_choice(n.attrs, "metric", "Cell shape",
                  {"Round (Euclidean)", "Diamond (Manhattan)",
                   "Square (Chebyshev)"},
@@ -370,19 +375,34 @@ REGISTER_NODE(
         self.in_field("position", ctx,
                       FieldValue::vector(ctx.pos[0], ctx.pos[1], ctx.pos[2]))
             .as_vector(p);
-        const float f = self.attrs.get_f("frequency", 6.f);
-        float f1, f2, id;
-        planet::pl_cell(p[0] * f, p[1] * f, p[2] * f,
-                        self.attrs.get_seed("seed"),
-                        self.attrs.get_f("jitter", 1.f),
-                        self.attrs.get_choice("metric"), f1, f2, id);
-        float v;
-        switch (self.attrs.get_choice("output")) {
-          case 1: v = f2; break;
-          case 2: v = f2 - f1; break;
-          case 3: v = id; break;
-          default: v = f1; break;
+        const float base_f = self.attrs.get_f("frequency", 6.f);
+        const uint32_t seed = self.attrs.get_seed("seed");
+        const float jitter = self.attrs.get_f("jitter", 1.f);
+        const int metric = self.attrs.get_choice("metric");
+        const int mode = self.attrs.get_choice("output");
+        const int oct = std::clamp(self.attrs.get_i("octaves", 1), 1, 6);
+        // fBm of cells: each octave doubles the frequency and halves the
+        // weight, with its own seed so the layers do not line up. Mirrored
+        // in the GLSL emitter, which unrolls the same sum.
+        float v = 0.f, amp = 1.f, norm = 0.f, freq = base_f;
+        for (int o = 0; o < oct; ++o) {
+          float f1, f2, id;
+          planet::pl_cell(p[0] * freq, p[1] * freq, p[2] * freq,
+                          seed + (uint32_t)o * 101u, jitter, metric, f1, f2,
+                          id);
+          float term;
+          switch (mode) {
+            case 1: term = f2; break;
+            case 2: term = f2 - f1; break;
+            case 3: term = id; break;
+            default: term = f1; break;
+          }
+          v += term * amp;
+          norm += amp;
+          amp *= 0.5f;
+          freq *= 2.03f;
         }
+        v = norm > 0.f ? v / norm : 0.f;
         v = v * self.attrs.get_f("amplitude", 1.f) +
             self.attrs.get_f("offset", 0.f);
         if (self.attrs.get_b("invert", false)) v = 1.f - v;
