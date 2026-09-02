@@ -248,6 +248,8 @@ materials and lighting for you. Everything runs on your machine.
   the noise and PathCarve cuts the riverbed along it.
 - `examples/basalt_steps.gpxt` — columnar basalt softened by thermal
   weathering.
+- `examples/showcase_valley.gpxt` — a forested island: eroded mountain,
+  midrange scatter mask, 900 instanced pines with wind sway, hero camera.
 
 Open them with File > Open (or the `open_project` scripting op) and press
 around.
