@@ -2971,6 +2971,31 @@ static void test_path_nodes() {
   CHECK(dist.at(32, 32) == 0.f, "distance is zero on the path");
   CHECK(dist.at(32, 8) > 0.5f, "distance grows away from the path");
   CHECK(m.at(32, 32) == 1.f && m.at(32, 8) < 0.5f, "the mask is the band");
+
+  // Gabor: with anisotropy 1 and orientation 0 the streaks run along x, so
+  // the surface varies less along x than across it
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *n = g.add_node("GaborNoise", 0, 0);
+    n->attrs.find("orientation")->f = 0.f;
+    n->attrs.find("anisotropy")->f = 1.f;
+    n->attrs.find("post_remap")->b = false;
+    gpx::NodeRegistry::instance().find("GaborNoise")->compute(*n);
+    const gpx::Heightmap &a = *n->port("output", gpx::PortDir::Out)->hmap;
+    double along = 0, across = 0;
+    for (int y = 1; y < 63; ++y)
+      for (int x = 1; x < 63; ++x) {
+        along += std::fabs(a.at(x + 1, y) - a.at(x, y));
+        across += std::fabs(a.at(x, y + 1) - a.at(x, y));
+      }
+    // the cosine oscillates ALONG its orientation, so the ridges (iso-lines)
+    // run perpendicular: variation along x is high, along y low
+    CHECK(across < along * 0.7, "anisotropic gabor streaks across its axis");
+    bool finite = true;
+    for (float v : a.v) finite = finite && std::isfinite(v);
+    CHECK(finite, "gabor is finite");
+  }
 }
 
 static void test_selectors() {

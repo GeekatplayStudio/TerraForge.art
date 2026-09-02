@@ -61,6 +61,7 @@ Flood|Hydrology
 FlowAccumulation|Analysis
 Fold|Filter
 Fractal|Primitive
+GaborNoise|Primitive
 GammaCorrection|Filter
 GeologicalStrata|Primitive
 Glaciation|Erosion

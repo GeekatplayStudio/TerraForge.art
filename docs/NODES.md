@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 156 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 157 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -25,7 +25,7 @@ Every node in Geekatplay TerraForge — 156 across 25 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 6 |
-| [Primitive](#primitive) | 12 |
+| [Primitive](#primitive) | 13 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 5 |
@@ -2413,6 +2413,28 @@ Non-noise fractals: diamond-square, fault lines
 | Roughness | float, 0.3 to 1.6, default 0.9 |  |
 | Fault count | int, 10 to 2000, default 200 |  |
 | Fault softness | float, 0 to 0.2, default 0.02 |  |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
+### GaborNoise
+
+Oriented sparse-kernel noise (streaked rock)
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| output | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Octaves | int, 1 to 6, default 3 |  |
+| Kernel frequency | float, 0.5 to 16, default 3 |  |
+| Orientation ° | float, -180 to 180, default 30 |  |
+| Anisotropy | float, 0 to 1, default 0.85 | 1 locks every kernel to the orientation - streaks. 0 draws orientations at random - isotropic grain. |
+| Scale | float, 1 to 32, default 6 |  |
 | Remap to range | toggle, default on |  |
 | Output range | range |  |
 | Invert | toggle, default off |  |

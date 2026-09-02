@@ -276,6 +276,17 @@ Fractal.post_zero_edges|float
 Fractal.roughness|float
 Fractal.seed|seed
 Fractal.type|choice
+GaborNoise.anisotropy|float
+GaborNoise.cell_scale|float
+GaborNoise.frequency|float
+GaborNoise.octaves|int
+GaborNoise.orientation|float
+GaborNoise.post_gain|float
+GaborNoise.post_invert|bool
+GaborNoise.post_range|range
+GaborNoise.post_remap|bool
+GaborNoise.post_zero_edges|float
+GaborNoise.seed|seed
 GammaCorrection.gamma|float
 GeologicalStrata.blend_invert|bool
 GeologicalStrata.hardness|float

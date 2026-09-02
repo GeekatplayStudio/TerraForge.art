@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "noise.gabor", "area": "engine", "phase": "23",
+      "description": "GaborNoise: sparse convolution of oriented cosine kernels under a gaussian envelope, anisotropy from locked streaks to isotropic grain, octave stacking",
+      "test_file": "test_engine.cpp", "test_symbol": "test_noise_variants" },
+
     { "id": "points.io", "area": "engine", "phase": "23",
       "description": "ExportPoints (CSV or PLY, with terrain height baked in) and PointsFromCsv import; the CSV roundtrip is exact",
       "test_file": "test_engine.cpp", "test_symbol": "test_points_io" },
