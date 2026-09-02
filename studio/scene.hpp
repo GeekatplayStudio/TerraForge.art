@@ -55,7 +55,7 @@ struct CameraData {
 
 struct SceneObject {
   enum Type { Terrain, Water, Sun, Atmosphere, Mesh, Group, Camera, Planet,
-              InfiniteSurface };
+              InfiniteSurface, Light };
   Type type = Mesh;
   PlanetData planet;          // valid when type == Planet
   InfiniteSurfaceData surf;   // valid when type == InfiniteSurface
@@ -66,6 +66,10 @@ struct SceneObject {
   bool visible = true;
   bool builtin = false;
   CameraData cam;        // valid when type == Camera
+  // valid when type == Light: a point light; color is the shared color[3],
+  // pos the shared transform, these are the light's own knobs
+  float light_intensity = 1.f;
+  float light_radius = 0.35f; // world units of reach
   // imported mesh data
   std::string path;
   unsigned long long material_node = 0; // MaterialOutput node driving this object
@@ -138,6 +142,7 @@ void scene_init_builtins();
 // cone; recorded as "primitive:<kind>" so saved scenes regenerate them
 bool scene_primitive_verts(const std::string &kind, std::vector<float> &verts);
 int scene_add_primitive(const std::string &kind, const std::string &name);
+int scene_add_light(const std::string &name);
 bool scene_load_obj_verts(const std::string &path,
                           std::vector<float> &verts, std::string &err);
 // load OBJ into a new scene object; returns index or -1

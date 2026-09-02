@@ -181,6 +181,22 @@ def render_mitsuba(sc: dict) -> int:
                 "shapegroup": {"type": "ref", "id": f"group{i}"},
                 "to_world": t}
 
+    # scene point lights
+    for i, L in enumerate(sc.get("lights", [])):
+        # a small emissive sphere reads as a physical light in a path tracer;
+        # radiance scaled so intensity roughly matches the viewport's falloff
+        scene_dict[f"light{i}"] = {
+            "type": "sphere",
+            "center": L["position"],
+            "radius": 0.01,
+            "emitter": {
+                "type": "area",
+                "radiance": {"type": "rgb",
+                             "value": [c * L["intensity"] * 40.0
+                                       for c in L["color"]]},
+            },
+        }
+
     water = sc.get("water", {})
     if water.get("enabled"):
         scene_dict["water"] = {

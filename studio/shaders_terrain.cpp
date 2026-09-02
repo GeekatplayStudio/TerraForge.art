@@ -247,6 +247,10 @@ uniform int u_has_albedo, u_has_normal, u_has_rough, u_shadows, u_quality;
 uniform float u_shadow_soft, u_hscale, u_texel, u_exposure;
 uniform vec3 u_sun, u_sun_color, u_cam, u_sky_zenith, u_sky_horizon;
 uniform float u_sun_intensity, u_ambient, u_atmo;
+// scene point lights: xyz + radius, color premultiplied by intensity
+uniform int u_light_count;
+uniform vec4 u_lights[8];
+uniform vec3 u_light_col[8];
 // material
 uniform float u_roughness, u_metallic, u_specular, u_reflection;
 uniform float u_translucency, u_transparency, u_normal_strength;
@@ -491,6 +495,19 @@ void main(){
   // translucency (light bleeding through thin material toward the viewer)
   float trans_term = pow(max(dot(V, -L), 0.0), 3.0);
   vec3 translucent = albedo * u_translucency * trans_term * sun_c * 0.6;
+
+  // scene point lights: diffuse with a smooth radius falloff; cheap and
+  // enough for lanterns, windows and fill lights
+  for (int li = 0; li < u_light_count; ++li) {
+    vec3 lp = u_lights[li].xyz;
+    float lr = max(u_lights[li].w, 1e-3);
+    vec3 ld = lp - v_world;
+    float dist = length(ld);
+    float att = clamp(1.0 - dist / lr, 0.0, 1.0);
+    att *= att;
+    float nl = max(dot(N, ld / max(dist, 1e-5)), 0.0);
+    direct += kd * albedo / PI * u_light_col[li] * nl * att;
+  }
 
   vec3 col = direct + ambient + reflection + translucent;
   float d = length(v_world - u_cam);

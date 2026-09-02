@@ -144,11 +144,13 @@ const char *kind_name(SceneObject::Type t) {
     case SceneObject::Camera: return "camera";
     case SceneObject::Planet: return "planet";
     case SceneObject::InfiniteSurface: return "surface";
+    case SceneObject::Light: return "light";
   }
   return "mesh";
 }
 
 bool kind_from_name(const std::string &s, SceneObject::Type &t) {
+  if (s == "light") { t = SceneObject::Light; return true; }
   if (s == "terrain") t = SceneObject::Terrain;
   else if (s == "water") t = SceneObject::Water;
   else if (s == "sun") t = SceneObject::Sun;
@@ -192,6 +194,10 @@ json scene_to_json() {
         {"roll", o.roll},
         {"color", vec3_to_json(o.color)},
     };
+    if (o.type == SceneObject::Light) {
+      jo["light_intensity"] = o.light_intensity;
+      jo["light_radius"] = o.light_radius;
+    }
     if (o.type == SceneObject::Mesh) {
       jo["path"] = o.path;
       jo["material_node"] = o.material_node;
@@ -280,6 +286,10 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     o.roll = jo.value("roll", 0.f);
     if (jo.contains("color")) vec3_from_json(jo["color"], o.color);
 
+    if (o.type == SceneObject::Light) {
+      o.light_intensity = jo.value("light_intensity", 1.f);
+      o.light_radius = jo.value("light_radius", 0.35f);
+    }
     if (o.type == SceneObject::Mesh) {
       o.path = jo.value("path", std::string());
       o.material_node = remap_id(jo.value("material_node", 0ull), idmap);

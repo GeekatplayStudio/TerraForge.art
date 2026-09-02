@@ -175,6 +175,8 @@ struct FrameCtx {
   float light_mvp[16];
   float wind[2];
 };
+// gathers the scene's visible point lights into `prog`'s u_light uniforms
+void upload_scene_lights(unsigned prog, float hscale);
 void pass_shadow(const FrameCtx &F);
 void pass_sky(const FrameCtx &F);
 void pass_terrain(const FrameCtx &F);

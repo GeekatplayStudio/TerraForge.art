@@ -120,4 +120,23 @@ int scene_add_primitive(const std::string &kind, const std::string &name) {
   return s.selected;
 }
 
+int scene_add_light(const std::string &name) {
+  SceneState &s = scene();
+  SceneObject o;
+  o.type = SceneObject::Light;
+  int n = 1;
+  for (const auto &e : s.objects)
+    if (e.type == SceneObject::Light) ++n;
+  o.name = name.empty() ? "Light " + std::to_string(n) : name;
+  o.pos[0] = 0.5f;
+  o.pos[1] = 0.3f;
+  o.pos[2] = 0.5f;
+  o.color[0] = 1.f;
+  o.color[1] = 0.9f;
+  o.color[2] = 0.75f;
+  s.objects.push_back(std::move(o));
+  s.selected = (int)s.objects.size() - 1;
+  return s.selected;
+}
+
 } // namespace studio

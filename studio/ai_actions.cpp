@@ -321,6 +321,29 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       } else {
         err = "could not open " + path;
       }
+    } else if (op == "add_light" || op == "set_light") {
+      int idx = -1;
+      if (op == "set_light") {
+        std::string want = act.value("name", std::string());
+        for (int i = 0; i < (int)sc.objects.size(); ++i)
+          if (sc.objects[i].type == SceneObject::Light &&
+              (want.empty() || sc.objects[i].name == want))
+            idx = i;
+        if (idx < 0) {
+          err = "no light named '" + want + "'";
+          continue;
+        }
+      } else {
+        idx = scene_add_light(act.value("name", std::string()));
+      }
+      SceneObject &o = sc.objects[idx];
+      read_vec3(act, "position", o.pos);
+      read_vec3(act, "color", o.color);
+      if (act.contains("intensity"))
+        o.light_intensity = act["intensity"].get<float>();
+      if (act.contains("reach")) o.light_radius = act["reach"].get<float>();
+      a.scene_selection_serial++;
+      ++applied;
     } else if (op == "add_primitive") {
       std::string kind = act.value("kind", std::string("cube"));
       int idx = scene_add_primitive(kind, act.value("name", std::string()));

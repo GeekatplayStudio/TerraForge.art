@@ -259,6 +259,16 @@ void object_properties_ui(App &a) {
       labeled_scalar("Coverage", "cc", &rs.cloud_coverage, 0.f, 1.f);
       ImGui::TextDisabled("Full atmosphere controls: Environment tab.");
       break;
+    case SceneObject::Light:
+      ImGui::SeparatorText("Point light");
+      drag_length("X", &o.pos[0]);
+      drag_length("Y", &o.pos[1]);
+      drag_length("Z", &o.pos[2]);
+      ImGui::ColorEdit3("Color", o.color);
+      ImGui::SliderFloat("Intensity", &o.light_intensity, 0.f, 10.f);
+      ImGui::SliderFloat("Reach", &o.light_radius, 0.01f, 2.f);
+      ImGui::TextDisabled("Lights the terrain and every mesh within reach.");
+      break;
     case SceneObject::Mesh:
       transform_ui(a, o);
       if (prop_filter_match("Color")) {

@@ -210,6 +210,19 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
     }
     j["meshes"] = std::move(meshes);
   }
+  // scene point lights, for engine parity with the viewport
+  {
+    json lights = json::array();
+    for (const SceneObject &o : scene().objects) {
+      if (o.type != SceneObject::Light || !scene().object_visible(o)) continue;
+      lights.push_back(
+          {{"position", {o.pos[0], o.pos[1] * rs.height_scale, o.pos[2]}},
+           {"color", {o.color[0], o.color[1], o.color[2]}},
+           {"intensity", o.light_intensity},
+           {"reach", o.light_radius}});
+    }
+    j["lights"] = std::move(lights);
+  }
   std::ofstream sj(dir / "scene.json");
   sj << j.dump(2);
   return true;

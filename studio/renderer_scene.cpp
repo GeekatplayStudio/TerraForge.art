@@ -75,6 +75,28 @@ void draw_box_outline(const float *mvp, float x0, float y0, float z0,
 }
 
 
+void upload_scene_lights(unsigned prog, float hscale) {
+  float pos4[8 * 4], col3[8 * 3];
+  int count = 0;
+  SceneState &sc = scene();
+  for (const SceneObject &o : sc.objects) {
+    if (o.type != SceneObject::Light || !sc.object_visible(o)) continue;
+    if (count == 8) break;
+    pos4[count * 4 + 0] = o.pos[0];
+    pos4[count * 4 + 1] = o.pos[1] * hscale;
+    pos4[count * 4 + 2] = o.pos[2];
+    pos4[count * 4 + 3] = o.light_radius;
+    for (int k = 0; k < 3; ++k)
+      col3[count * 3 + k] = o.color[k] * o.light_intensity;
+    ++count;
+  }
+  unii(prog, "u_light_count", count);
+  if (count) {
+    glUniform4fv(glGetUniformLocation(prog, "u_lights"), count, pos4);
+    glUniform3fv(glGetUniformLocation(prog, "u_light_col"), count, col3);
+  }
+}
+
 void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
                        int h, float time_acc, const float *view_eye,
                        const float *mvp, const float *inv_vp) {
@@ -210,6 +232,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     }
     bool is_sel = (&o - sc.objects.data()) == sc.selected;
     glUseProgram(prog_mesh);
+    upload_scene_lights(prog_mesh, RS.height_scale);
     glUniformMatrix4fv(glGetUniformLocation(prog_mesh, "u_mvp"), 1, GL_FALSE, mvp);
     float model[16], nrm[9];
     scene_object_matrix(o, RS.height_scale, model, nrm);
@@ -310,6 +333,21 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       glBufferSubData(GL_ARRAY_BUFFER, 0, seg.size() * 4, seg.data());
       glDrawArrays(GL_LINES, 0, (int)(seg.size() / 3));
     }
+  }
+
+  // light gizmos: a small glowing ball where each point light sits
+  for (size_t li = 0; li < sc.objects.size(); ++li) {
+    const SceneObject &o = sc.objects[li];
+    if (o.type != SceneObject::Light || !sc.object_visible(o)) continue;
+    glUseProgram(prog_gizmo);
+    glUniformMatrix4fv(glGetUniformLocation(prog_gizmo, "u_mvp"), 1, GL_FALSE,
+                       mvp);
+    glUniform4f(glGetUniformLocation(prog_gizmo, "u_xform"), o.pos[0],
+                o.pos[1] * RS.height_scale, o.pos[2], 0.012f);
+    uni3(prog_gizmo, "u_color", o.color);
+    unii(prog_gizmo, "u_selected", (int)li == sc.selected ? 1 : 0);
+    glBindVertexArray(vao_sphere);
+    glDrawArrays(GL_TRIANGLES, 0, sphere_verts);
   }
 
   // reference grid

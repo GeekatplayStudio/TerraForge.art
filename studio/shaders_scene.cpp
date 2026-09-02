@@ -356,6 +356,7 @@ uniform vec4 u_inst[256];             // x,y,z,scale per copy
 uniform vec4 u_inst_rot[256];         // cos(yaw), sin(yaw)
 out vec3 v_nrm;
 out float v_tint;
+out vec3 v_world;
 void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
@@ -378,20 +379,26 @@ void main(){
       p.z += lean * 0.35;
     }
     v_nrm = normalize(u_nrm * nrm);
+    v_world = p.xyz;
     gl_Position = u_mvp * p;
     return;
   }
   vec4 p = u_model * vec4(pos, 1.0);
   v_nrm = normalize(u_nrm * nrm);
+  v_world = p.xyz;
   gl_Position = u_mvp * p;
 })GLSL";
 
 const char *const FS_MESH = R"GLSL(#version 430 core
 in vec3 v_nrm;
 in float v_tint;
+in vec3 v_world;
 out vec4 frag;
 uniform vec3 u_color, u_sun, u_sun_color;
 uniform float u_exposure;
+uniform int u_light_count;
+uniform vec4 u_lights[8];
+uniform vec3 u_light_col[8];
 uniform int u_selected;
 uniform vec3 u_grade;
 uniform float u_sat;
@@ -403,7 +410,15 @@ vec3 aces(vec3 x){
 }
 void main(){
   float ndl = max(dot(normalize(v_nrm), u_sun), 0.0);
-  vec3 col = u_color * v_tint * (u_sun_color * 1.8 * ndl + vec3(0.35,0.38,0.45));
+  vec3 lit = u_sun_color * 1.8 * ndl + vec3(0.35,0.38,0.45);
+  for (int li = 0; li < u_light_count; ++li) {
+    vec3 ld = u_lights[li].xyz - v_world;
+    float dist = length(ld);
+    float att = clamp(1.0 - dist / max(u_lights[li].w, 1e-3), 0.0, 1.0);
+    att *= att;
+    lit += u_light_col[li] * max(dot(normalize(v_nrm), ld / max(dist, 1e-5)), 0.0) * att;
+  }
+  vec3 col = u_color * v_tint * lit;
   if (u_selected == 1) col = mix(col, vec3(1.0,0.55,0.18), 0.25);
   col = aces(col * u_exposure); col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, 1.0);

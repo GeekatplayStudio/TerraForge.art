@@ -150,6 +150,7 @@ void pass_terrain(const FrameCtx &F) {
     const bool use_tess = tess_ok && RS.tessellation && prog_terrain_tess;
     const GLuint PT = use_tess ? prog_terrain_tess : prog_terrain;
     glUseProgram(PT);
+    upload_scene_lights(PT, RS.height_scale);
     glUniformMatrix4fv(glGetUniformLocation(PT, "u_mvp"), 1, GL_FALSE, mvp);
     glUniformMatrix4fv(glGetUniformLocation(PT, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);

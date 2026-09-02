@@ -128,6 +128,16 @@ def main() -> None:
             ob.scale = (k * scl[0], k * scl[2], k * scl[1])
             ob.rotation_euler = (0.0, 0.0, -iyaw)
 
+    # scene point lights (axes: our x,y,z -> Blender x, z, y)
+    for L in sc.get("lights", []):
+        pl = bpy.data.lights.new("Point", type="POINT")
+        pl.energy = float(L["intensity"]) * 50.0
+        pl.color = tuple(L["color"])
+        ob = bpy.data.objects.new("Point", pl)
+        scene.collection.objects.link(ob)
+        px, py, pz = L["position"]
+        ob.location = (px, pz, py)
+
     # water
     water = sc.get("water", {})
     if water.get("enabled"):
