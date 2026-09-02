@@ -289,7 +289,12 @@ add_executable(node_docs_gen tools/gen_node_docs.cpp)
 target_link_libraries(node_docs_gen PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+add_executable(node_bench tools/bench_nodes.cpp)
+target_link_libraries(node_bench PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 enable_testing()
+add_test(NAME PerfGuard COMMAND node_bench)
 add_test(NAME RegressionLock COMMAND regression_tests)
 add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
