@@ -193,6 +193,7 @@ set(STUDIO_SOURCES
     studio/panel_materials.cpp
     studio/panel_scene.cpp
     studio/panel_console.cpp
+    studio/panel_timeline.cpp
     studio/console.cpp
     studio/panel_render.cpp
     studio/scene.cpp

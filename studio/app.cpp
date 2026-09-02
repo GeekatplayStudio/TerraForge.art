@@ -257,6 +257,7 @@ void run_main() {
     if (a.show_viewport) draw_panel_viewport(a);
     draw_panel_graph(a);
     draw_console(a);
+    draw_panel_timeline(a);
     if (a.show_properties) draw_panel_properties(a);
     // apply material maps from the graph to the renderer
     {

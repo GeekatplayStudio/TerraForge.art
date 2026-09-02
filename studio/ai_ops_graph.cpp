@@ -307,6 +307,41 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  if (op == "set_time") {
+    a.graph.time = act.value("time", 0.f);
+    a.request_eval();
+    return 1;
+  }
+
+  if (op == "set_key") {
+    gpx::Node *n = find_node(a, act, "node");
+    if (!n) {
+      err = "set_key: no such node";
+      return 0;
+    }
+    std::string key = act.value("attr", "");
+    gpx::Attribute *at = n->attrs.find(key);
+    if (!at) {
+      err = "set_key: no attribute '" + key + "' on " + n->type;
+      return 0;
+    }
+    float t = act.value("time", a.graph.time);
+    float v = act.contains("value")
+                  ? act["value"].get<float>()
+                  : (at->type == gpx::AttrType::Float ? at->f : (float)at->i);
+    if (act.value("remove", false)) at->anim.remove_key(t);
+    else at->anim.set_key(t, v);
+    if (act.contains("interp") && act["interp"].is_string()) {
+      std::string s = act["interp"].get<std::string>();
+      at->anim.interp = s == "constant" ? gpx::Interp::Constant
+                        : s == "linear" ? gpx::Interp::Linear
+                                        : gpx::Interp::Smooth;
+    }
+    n->dirty = true;
+    a.request_eval();
+    return 1;
+  }
+
   if (op == "select_node") {
     gpx::Node *n = find_node(a, act, "node");
     if (!n) {

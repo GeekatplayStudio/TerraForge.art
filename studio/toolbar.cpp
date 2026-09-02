@@ -326,6 +326,7 @@ static void menu_view(App &a) {
   ImGui::MenuItem("Node List", nullptr, &a.show_nodelist);
   ImGui::MenuItem("Properties", nullptr, &a.show_properties);
   ImGui::MenuItem("Viewport", nullptr, &a.show_viewport);
+  ImGui::MenuItem("Timeline", nullptr, &a.show_timeline);
   ImGui::Separator();
   if (ImGui::BeginMenu("Viewport windows")) {
     for (int n = 1; n <= 6; ++n) {

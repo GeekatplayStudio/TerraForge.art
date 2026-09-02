@@ -86,6 +86,10 @@ struct App {
   bool show_viewport = true;
   bool show_toolbar = true;
   bool show_console = true;
+  bool show_timeline = false;
+  // animation transport
+  float anim_start = 0.f, anim_end = 10.f;
+  bool anim_playing = false, anim_loop = true;
   bool request_layout_reset = false;
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
   // Set to a node id to have the graph select it and pan to it on the next
@@ -143,6 +147,7 @@ void material_properties_ui(App &a);
 void render_properties_ui(App &a);
 void draw_render_window(App &a); // live progressive render view
 void render_service_requests(App &a); // camera/AI render requests, per frame
+void draw_panel_timeline(App &a);
 void scene_rebuild_scatter_instances(App &a);
 struct SceneObject;
 void camera_properties_ui(App &a, SceneObject &obj);

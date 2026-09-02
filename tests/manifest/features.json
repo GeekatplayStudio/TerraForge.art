@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "anim.timeline", "area": "studio", "phase": "23",
+      "description": "Timeline panel: transport, loop range, scrub bar, per-attribute keyframing with key markers and interpolation choice; set_time and set_key AI ops; tracks were already serialized with their attributes",
+      "test_file": "test_engine.cpp", "test_symbol": "test_animation_hooks" },
+
     { "id": "scene.scatter", "area": "studio", "phase": "23",
       "description": "EcoSystem-style mesh scattering: a mesh object bound to any Points node draws instanced copies standing on the terrain, seeded yaw and size jitter, Properties picker, set_scatter and import_object AI ops, binding persists with node-id remap",
       "test_file": "test_undo.cpp", "test_symbol": "test_scene_persistence" },
