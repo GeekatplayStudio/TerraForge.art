@@ -287,6 +287,7 @@ Fractal.seed|seed
 Fractal.type|choice
 GaborNoise.anisotropy|float
 GaborNoise.cell_scale|float
+GaborNoise.flavor|choice
 GaborNoise.frequency|float
 GaborNoise.octaves|int
 GaborNoise.orientation|float

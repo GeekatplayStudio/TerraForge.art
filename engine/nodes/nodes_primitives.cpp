@@ -275,6 +275,13 @@ REGISTER_NODE(
           .tooltip = "1 locks every kernel to the orientation - streaks.\n"
                      "0 draws orientations at random - isotropic grain.";
       add_float(n.attrs, "cell_scale", "Scale", 6.f, 1.f, 32.f, "Gabor");
+      add_choice(n.attrs, "flavor", "Flavor",
+                 {"Gabor (amplitude)", "Phasor sawtooth", "Phasor sine",
+                  "Phasor square"},
+                 0, "Gabor")
+          .tooltip = "Phasor keeps only the phase of the kernel field, so\n"
+                     "the wave profile stays crisp everywhere - sawtooth\n"
+                     "reads as bedding planes, square as strata steps.";
       setup_post(n);
     },
     [](Node &n) {
@@ -285,14 +292,24 @@ REGISTER_NODE(
       float orient = n.attrs.get_f("orientation", 30.f) * 0.017453293f;
       float aniso = n.attrs.get_f("anisotropy", 0.85f);
       float scale = n.attrs.get_f("cell_scale", 6.f);
+      int flavor = n.attrs.get_choice("flavor");
       parallel_rows(out.h, [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
           for (int x = 0; x < out.w; ++x) {
             float u = x / float(out.w) * scale, v = y / float(out.h) * scale;
             float sum = 0, amp = 1, norm = 0, f = 1;
             for (int o = 0; o < oct; ++o) {
-              sum += amp * noise::gabor(u * f, v * f, seed + (uint32_t)o * 131u,
-                                        freq, orient, aniso);
+              uint32_t s = seed + (uint32_t)o * 131u;
+              float b;
+              if (flavor == 0) {
+                b = noise::gabor(u * f, v * f, s, freq, orient, aniso);
+              } else {
+                float ph = noise::phasor(u * f, v * f, s, freq, orient, aniso);
+                if (flavor == 1) b = ph;                          // sawtooth
+                else if (flavor == 2) b = std::sin(ph * 3.14159265f);
+                else b = ph >= 0.f ? 1.f : -1.f;                  // square
+              }
+              sum += amp * b;
               norm += amp;
               amp *= 0.5f;
               f *= 2.f;

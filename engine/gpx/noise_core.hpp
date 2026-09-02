@@ -264,6 +264,35 @@ inline float gabor(float x, float y, uint32_t seed, float freq, float orient,
   return std::clamp(sum * 0.7f, -1.f, 1.f);
 }
 
+// Phasor noise (Tricard et al.): the same sparse Gabor field, but keeping
+// the complex sum and returning its PHASE - amplitude drops out, so the
+// oscillation profile stays crisp everywhere and can be reshaped freely.
+inline float phasor(float x, float y, uint32_t seed, float freq, float orient,
+                    float aniso, float bandwidth = 1.f) {
+  int cx = (int)std::floor(x), cy = (int)std::floor(y);
+  float re = 0, im = 0;
+  for (int dy = -1; dy <= 1; ++dy)
+    for (int dx = -1; dx <= 1; ++dx) {
+      int gx = cx + dx, gy = cy + dy;
+      uint32_t h = hash2(gx, gy, seed);
+      for (int i = 0; i < 3; ++i) {
+        uint32_t hi = hash_u32(h + (uint32_t)i * 0x9e3779b9u);
+        float px = gx + ((hi & 0x3ffu) / 1023.f);
+        float py = gy + (((hi >> 10) & 0x3ffu) / 1023.f);
+        float rot = ((hash_u32(hi) & 0xffffu) / 65535.f) * 6.2831853f;
+        float om = orient + (rot - 3.14159265f) * (1.f - aniso);
+        float rx = x - px, ry = y - py;
+        float r2 = rx * rx + ry * ry;
+        if (r2 > 1.f) continue;
+        float env = std::exp(-3.14159265f * bandwidth * bandwidth * r2);
+        float ph = 6.2831853f * freq * (rx * std::cos(om) + ry * std::sin(om));
+        re += env * std::cos(ph);
+        im += env * std::sin(ph);
+      }
+    }
+  return std::atan2(im, re) * 0.31830989f; // phase, -1..1
+}
+
 // Worley cellular: returns F1, F2 distances (cell coords scaled by freq)
 inline void worley(float x, float y, uint32_t seed, float &f1, float &f2,
                    float jitter = 1.f) {

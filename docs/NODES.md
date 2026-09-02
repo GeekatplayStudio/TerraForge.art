@@ -2542,6 +2542,7 @@ Oriented sparse-kernel noise (streaked rock)
 | Orientation ° | float, -180 to 180, default 30 |  |
 | Anisotropy | float, 0 to 1, default 0.85 | 1 locks every kernel to the orientation - streaks. 0 draws orientations at random - isotropic grain. |
 | Scale | float, 1 to 32, default 6 |  |
+| Flavor | choice: Gabor (amplitude) / Phasor sawtooth / Phasor sine / Phasor square | Phasor keeps only the phase of the kernel field, so the wave profile stays crisp everywhere - sawtooth reads as bedding planes, square as strata steps. |
 | Remap to range | toggle, default on |  |
 | Output range | range |  |
 | Invert | toggle, default off |  |

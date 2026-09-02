@@ -3056,6 +3056,21 @@ static void test_path_nodes() {
     bool finite = true;
     for (float v : a.v) finite = finite && std::isfinite(v);
     CHECK(finite, "gabor is finite");
+
+    // phasor flavors: finite, varying, and deterministic
+    for (int flavor : {1, 2, 3}) {
+      n->attrs.find("flavor")->i = flavor;
+      gpx::NodeRegistry::instance().find("GaborNoise")->compute(*n);
+      const gpx::Heightmap &ph = *n->port("output", gpx::PortDir::Out)->hmap;
+      float lo = 1e9f, hi = -1e9f;
+      bool fin = true;
+      for (float v : ph.v) {
+        fin = fin && std::isfinite(v);
+        lo = std::min(lo, v);
+        hi = std::max(hi, v);
+      }
+      CHECK(fin && hi - lo > 0.3f, "phasor flavor is finite and varies");
+    }
   }
 }
 
