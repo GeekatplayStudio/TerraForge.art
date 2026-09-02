@@ -84,12 +84,16 @@ NormalBlend|Material
 NormalMap|Texture
 PBRMaterial|Material
 PathCarve|Path
+PathFractalize|Path
+PathResample|Path
+PathSDF|Path
 Peaks|Effect
 Plateau|Filter
 PointsFilter|Points
 PointsRelax|Points
 PointsSDF|Points
 PointsToMask|Points
+PointsToPath|Path
 PowerFractal|Filter
 Rasterize|Field Bridge
 RelativeElevation|Analysis

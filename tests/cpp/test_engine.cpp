@@ -2803,6 +2803,66 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_path_nodes() {
+  std::printf("path family...\n");
+  const int N = 64;
+  gpx::Graph g;
+  g.resolution = N;
+  gpx::Node *src = g.add_node("PointsToPath", 0, 0);
+  gpx::Node *rs = g.add_node("PathResample", 0, 0);
+  gpx::Node *fr = g.add_node("PathFractalize", 0, 0);
+  gpx::Node *sd = g.add_node("PathSDF", 0, 0);
+  CHECK(src && rs && fr && sd, "path nodes all register");
+
+  // an unordered zigzag cloud: the tour must visit near neighbors in order
+  auto cloud = std::make_shared<gpx::PointCloud>();
+  cloud->add(0.9f, 0.5f, 0.f);
+  cloud->add(0.1f, 0.5f, 0.f);
+  cloud->add(0.5f, 0.5f, 0.f);
+  cloud->add(0.3f, 0.5f, 0.f);
+  cloud->add(0.7f, 0.5f, 0.f);
+  src->port("points", gpx::PortDir::In)->pts = cloud;
+  gpx::NodeRegistry::instance().find("PointsToPath")->compute(*src);
+  const gpx::PointCloud &tour = *src->port("path", gpx::PortDir::Out)->pts;
+  CHECK(tour.size() == 5, "the tour visits every point");
+  bool ordered = true;
+  for (size_t i = 1; i < tour.size(); ++i)
+    ordered = ordered && tour.x[i] > tour.x[i - 1];
+  CHECK(ordered, "collinear points come out in line order");
+
+  // resample: even spacing along the straight line
+  g.add_link(src->id, "path", rs->id, "path");
+  rs->attrs.find("spacing")->f = 0.1f;
+  gpx::NodeRegistry::instance().find("PathResample")->compute(*rs);
+  const gpx::PointCloud &ev = *rs->port("path", gpx::PortDir::Out)->pts;
+  CHECK(ev.size() >= 8, "resampling a 0.8-long line at 0.1 yields the steps");
+  bool even = true;
+  for (size_t i = 1; i < ev.size(); ++i) {
+    float dx = ev.x[i] - ev.x[i - 1], dy = ev.y[i] - ev.y[i - 1];
+    even = even && std::fabs(std::sqrt(dx * dx + dy * dy) - 0.1f) < 0.01f;
+  }
+  CHECK(even, "the spacing is uniform");
+
+  // fractalize adds points and stays deterministic
+  g.add_link(src->id, "path", fr->id, "path");
+  gpx::NodeRegistry::instance().find("PathFractalize")->compute(*fr);
+  const gpx::PointCloud &fz = *fr->port("path", gpx::PortDir::Out)->pts;
+  CHECK(fz.size() > tour.size() * 8, "four subdivisions multiply the points");
+  gpx::PointCloud keep = fz;
+  gpx::NodeRegistry::instance().find("PathFractalize")->compute(*fr);
+  CHECK(fr->port("path", gpx::PortDir::Out)->pts->x == keep.x,
+        "fractalize is bit-identical across computes");
+
+  // SDF: zero on the line, grows away, mask is the inverse band
+  g.add_link(src->id, "path", sd->id, "path");
+  gpx::NodeRegistry::instance().find("PathSDF")->compute(*sd);
+  const gpx::Heightmap &dist = *sd->port("distance", gpx::PortDir::Out)->hmap;
+  const gpx::Heightmap &m = *sd->port("mask", gpx::PortDir::Out)->hmap;
+  CHECK(dist.at(32, 32) == 0.f, "distance is zero on the path");
+  CHECK(dist.at(32, 8) > 0.5f, "distance grows away from the path");
+  CHECK(m.at(32, 32) == 1.f && m.at(32, 8) < 0.5f, "the mask is the band");
+}
+
 static void test_selectors() {
   std::printf("selectors...\n");
   const int N = 64;
@@ -3348,6 +3408,7 @@ int main() {
   test_local_filters();
   test_noise_variants();
   test_selectors();
+  test_path_nodes();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

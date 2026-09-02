@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "path.family", "area": "engine", "phase": "23",
+      "description": "Paths as ordered point clouds: PointsToPath (nearest-neighbor tour), PathResample, PathFractalize (midpoint wander), PathSDF, and PathCarve accepts a connected path input",
+      "test_file": "test_engine.cpp", "test_symbol": "test_path_nodes" },
+
     { "id": "transform.make_tileable", "area": "engine", "phase": "23",
       "description": "MakeTileable: separable periodic cosine crossfade with the half-offset copy, so the tile wraps seamlessly; feather sharpens the crossfade",
       "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },

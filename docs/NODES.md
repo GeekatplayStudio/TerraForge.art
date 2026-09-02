@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 146 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 150 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -23,7 +23,7 @@ Every node in Geekatplay TerraForge — 146 across 25 categories. Generated from
 | [Mask](#mask) | 10 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
-| [Path](#path) | 1 |
+| [Path](#path) | 5 |
 | [Points](#points) | 5 |
 | [Primitive](#primitive) | 11 |
 | [Render](#render) | 2 |
@@ -2071,6 +2071,7 @@ Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds
 | Port | Direction | Type |
 | :--- | :--- | :--- |
 | input | in | heightmap |
+| path | in (optional) | ? |
 | output | out | heightmap |
 | path_mask | out | heightmap |
 | blend | in (optional) | heightmap |
@@ -2090,6 +2091,61 @@ Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### PathFractalize
+
+Midpoint-displace a path into a wander
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| path | in | ? |
+| path | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Iterations | int, 1 to 8, default 4 |  |
+| Amplitude | float, 0 to 1, default 0.4 |  |
+| Seed | seed |  |
+
+### PathResample
+
+Even spacing along a path
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| path | in | ? |
+| path | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Spacing | float, 0.002 to 0.5, default 0.02 |  |
+| Smoothing | int, 0 to 6, default 0 |  |
+
+### PathSDF
+
+Distance to a path
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| path | in | ? |
+| distance | out | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Reach | float, 0.005 to 1, default 0.1 |  |
+| Invert | toggle, default off |  |
+| Closed loop | toggle, default off |  |
+| Smoothing | int, 0 to 6, default 0 |  |
+
+### PointsToPath
+
+Order a point cloud into a path
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| path | out | ? |
 
 ## Points
 

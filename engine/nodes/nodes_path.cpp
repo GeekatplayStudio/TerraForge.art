@@ -16,6 +16,7 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/parallel.hpp"
+#include "gpx/planet_math.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -107,6 +108,7 @@ REGISTER_NODE(
     "Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds walls",
     [](Node &n) {
       n.add_in("input");
+      n.add_in("path", DataType::Points, true);
       n.add_out("output");
       n.add_out("path_mask");
       add_text(n.attrs, "points", "Points",
@@ -145,8 +147,15 @@ REGISTER_NODE(
       pmask = *in;
       std::fill(pmask.v.begin(), pmask.v.end(), 0.f);
 
-      const Attribute *pa = n.attrs.find("points");
-      std::vector<P2> pts = parse_points(pa ? pa->s : std::string());
+      std::vector<P2> pts;
+      if (const PointCloud *pc = n.in_points("path")) {
+        // a connected path (ordered points) overrides the typed-in list
+        for (size_t i = 0; i < pc->size(); ++i)
+          pts.push_back({pc->x[i], pc->y[i]});
+      } else {
+        const Attribute *pa = n.attrs.find("points");
+        pts = parse_points(pa ? pa->s : std::string());
+      }
       if (pts.size() < 2) {
         n.error = "the path needs at least two points";
         apply_post(n, out);
@@ -260,6 +269,157 @@ REGISTER_NODE(
           }
       });
       apply_post(n, out);
+    })
+
+REGISTER_NODE(
+    PointsToPath, "Path", "Order a point cloud into a path",
+    [](Node &n) {
+      n.add_in("points", DataType::Points);
+      n.add_out("path", DataType::Points);
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("points");
+      PointCloud &out = n.out_points("path");
+      if (!in || in->size() == 0) return;
+      // greedy nearest-neighbor tour from the point nearest the origin -
+      // fixed start and tie-breaking by index keep it deterministic
+      size_t nn = in->size();
+      std::vector<char> used(nn, 0);
+      size_t cur = 0;
+      float best = 1e30f;
+      for (size_t i = 0; i < nn; ++i) {
+        float d = in->x[i] * in->x[i] + in->y[i] * in->y[i];
+        if (d < best) { best = d; cur = i; }
+      }
+      for (size_t step = 0; step < nn; ++step) {
+        used[cur] = 1;
+        out.add(in->x[cur], in->y[cur], in->v[cur]);
+        size_t nxt = cur;
+        float bd = 1e30f;
+        for (size_t i = 0; i < nn; ++i) {
+          if (used[i]) continue;
+          float dx = in->x[i] - in->x[cur], dy = in->y[i] - in->y[cur];
+          float d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; nxt = i; }
+        }
+        if (nxt == cur) break;
+        cur = nxt;
+      }
+    })
+
+REGISTER_NODE(
+    PathResample, "Path", "Even spacing along a path",
+    [](Node &n) {
+      n.add_in("path", DataType::Points);
+      n.add_out("path", DataType::Points);
+      add_float(n.attrs, "spacing", "Spacing", 0.02f, 0.002f, 0.5f, "Path");
+      add_int(n.attrs, "smooth", "Smoothing", 0, 0, 6, "Path");
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("path");
+      PointCloud &out = n.out_points("path");
+      if (!in || in->size() < 2) return;
+      std::vector<P2> pts;
+      for (size_t i = 0; i < in->size(); ++i)
+        pts.push_back({in->x[i], in->y[i]});
+      pts = chaikin(std::move(pts), n.attrs.get_i("smooth", 0), false);
+      float spacing = n.attrs.get_f("spacing", 0.02f);
+      out.add(pts[0].x, pts[0].z, in->v[0]);
+      float carry = 0;
+      for (size_t i = 0; i + 1 < pts.size(); ++i) {
+        float dx = pts[i + 1].x - pts[i].x, dz = pts[i + 1].z - pts[i].z;
+        float len = std::sqrt(dx * dx + dz * dz);
+        if (len < 1e-12f) continue;
+        float t = spacing - carry;
+        while (t <= len) {
+          out.add(pts[i].x + dx * (t / len), pts[i].z + dz * (t / len), 0.f);
+          t += spacing;
+        }
+        carry = len - (t - spacing);
+      }
+      if (out.size() < 2) out.add(pts.back().x, pts.back().z, 0.f);
+    })
+
+REGISTER_NODE(
+    PathFractalize, "Path", "Midpoint-displace a path into a wander",
+    [](Node &n) {
+      n.add_in("path", DataType::Points);
+      n.add_out("path", DataType::Points);
+      add_int(n.attrs, "iterations", "Iterations", 4, 1, 8, "Fractal");
+      add_float(n.attrs, "amplitude", "Amplitude", 0.4f, 0.f, 1.f, "Fractal");
+      add_seed(n.attrs, "seed", "Seed", 0, "Fractal");
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("path");
+      PointCloud &out = n.out_points("path");
+      if (!in || in->size() < 2) return;
+      std::vector<P2> pts;
+      for (size_t i = 0; i < in->size(); ++i)
+        pts.push_back({in->x[i], in->y[i]});
+      int iters = n.attrs.get_i("iterations", 4);
+      float amp = n.attrs.get_f("amplitude", 0.4f);
+      uint32_t seed = n.attrs.get_seed("seed");
+      uint32_t idx = 0;
+      for (int it = 0; it < iters; ++it) {
+        std::vector<P2> next;
+        next.reserve(pts.size() * 2);
+        for (size_t i = 0; i + 1 < pts.size(); ++i) {
+          const P2 &a = pts[i], &b = pts[i + 1];
+          next.push_back(a);
+          float dx = b.x - a.x, dz = b.z - a.z;
+          float len = std::sqrt(dx * dx + dz * dz);
+          // perpendicular offset scaled by the segment length, so detail
+          // shrinks with each subdivision the way coastlines do
+          float r = (planet::pl_hash_bits((int)idx++, it, 0, seed) & 0xffffu) /
+                        65535.f -
+                    0.5f;
+          float off = r * amp * len;
+          next.push_back({(a.x + b.x) * 0.5f - dz / std::max(len, 1e-9f) * off,
+                          (a.z + b.z) * 0.5f + dx / std::max(len, 1e-9f) * off});
+        }
+        next.push_back(pts.back());
+        pts = std::move(next);
+      }
+      for (const P2 &p : pts)
+        out.add(std::clamp(p.x, 0.f, 1.f), std::clamp(p.z, 0.f, 1.f), 0.f);
+    })
+
+REGISTER_NODE(
+    PathSDF, "Path", "Distance to a path",
+    [](Node &n) {
+      n.add_in("path", DataType::Points);
+      n.add_out("distance");
+      n.add_out("mask");
+      add_float(n.attrs, "reach", "Reach", 0.1f, 0.005f, 1.f, "Distance");
+      add_bool(n.attrs, "invert", "Invert", false, "Distance");
+      add_bool(n.attrs, "closed", "Closed loop", false, "Distance");
+      add_int(n.attrs, "smooth", "Smoothing", 0, 0, 6, "Distance");
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("path");
+      Heightmap &dist = n.out_hmap("distance");
+      Heightmap &m = n.out_hmap("mask");
+      if (!in || in->size() < 2) return;
+      std::vector<P2> pts;
+      for (size_t i = 0; i < in->size(); ++i)
+        pts.push_back({in->x[i], in->y[i]});
+      bool closed = n.attrs.get_b("closed", false);
+      pts = chaikin(std::move(pts), n.attrs.get_i("smooth", 0), closed);
+      int w = dist.w, h = dist.h;
+      Heightmap flat(w, h);
+      std::vector<float> stamped, unused;
+      stamp_path(pts, closed, flat, stamped, unused, w, h);
+      edt_squared(stamped, w, h);
+      float reach = std::max(n.attrs.get_f("reach", 0.1f), 1e-4f) * w;
+      bool invert = n.attrs.get_b("invert");
+      parallel_index(dist.v.size(), [&](size_t i0, size_t i1) {
+        for (size_t i = i0; i < i1; ++i) {
+          float t = std::min(std::sqrt(stamped[i]) / reach, 1.f);
+          dist.v[i] = invert ? 1.f - t : t;
+          float s = 1.f - t;
+          m.v[i] = s * s * (3.f - 2.f * s);
+        }
+      });
     })
 
 } // namespace gpx

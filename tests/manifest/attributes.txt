@@ -395,6 +395,15 @@ PathCarve.post_zero_edges|float
 PathCarve.profile|choice
 PathCarve.smooth|int
 PathCarve.width|float
+PathFractalize.amplitude|float
+PathFractalize.iterations|int
+PathFractalize.seed|seed
+PathResample.smooth|int
+PathResample.spacing|float
+PathSDF.closed|bool
+PathSDF.invert|bool
+PathSDF.reach|float
+PathSDF.smooth|int
 Peaks.pivot|float
 Peaks.strength|float
 Plateau.level|float
