@@ -154,6 +154,11 @@ set(STUDIO_SOURCES
     studio/undo.cpp
     studio/sculpt.cpp
     studio/renderer.cpp
+    studio/renderer_camera.cpp
+    studio/renderer_scene.cpp
+    studio/renderer_programs.cpp
+    studio/renderer_init.cpp
+    studio/renderer_export.cpp
     studio/shaders_terrain.cpp
     studio/terrain_cull.cpp
     studio/gpu_timer.cpp
