@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "mask.kmeans", "area": "engine", "phase": "23",
+      "description": "KMeans terrain zoning over height+slope (or a second feature map), seeded init, fixed Lloyd iterations, clusters relabeled by mean height so mask A is always the lowest zone",
+      "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
+
     { "id": "path.family", "area": "engine", "phase": "23",
       "description": "Paths as ordered point clouds: PointsToPath (nearest-neighbor tour), PathResample, PathFractalize (midpoint wander), PathSDF, and PathCarve accepts a connected path input",
       "test_file": "test_engine.cpp", "test_symbol": "test_path_nodes" },

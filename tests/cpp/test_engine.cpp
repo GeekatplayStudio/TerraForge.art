@@ -3029,6 +3029,28 @@ static void test_local_filters() {
   CHECK(re.at(32, 32) > 0.9f, "the peak reads high relative to its area");
   CHECK(std::fabs(re.at(4, 4) - 0.5f) < 0.05f, "flat ground reads neutral");
 
+  // KMeans with two flat levels and k=2 must recover the split exactly
+  {
+    gpx::Heightmap two(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 32; x < N; ++x) two.at(x, y) = 1.f;
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node("KMeans", 0, 0);
+    n->attrs.find("k")->i = 2;
+    n->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(two);
+    gpx::NodeRegistry::instance().find("KMeans")->compute(*n);
+    const gpx::Heightmap &mlow = *n->port("mask A", gpx::PortDir::Out)->hmap;
+    // interior cells (the boundary column carries slope, its own feature)
+    CHECK(mlow.at(4, 32) == 1.f && mlow.at(60, 32) == 0.f,
+          "mask A is the low zone");
+    gpx::Heightmap keep = *n->port("clusters", gpx::PortDir::Out)->hmap;
+    gpx::NodeRegistry::instance().find("KMeans")->compute(*n);
+    CHECK(n->port("clusters", gpx::PortDir::Out)->hmap->v == keep.v,
+          "clustering is bit-identical across computes");
+  }
+
   // MakeTileable: opposite edges must meet (wrap continuity)
   {
     gpx::Graph g;

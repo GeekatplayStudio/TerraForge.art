@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 151 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 152 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -20,7 +20,7 @@ Every node in Geekatplay TerraForge — 151 across 25 categories. Generated from
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
-| [Mask](#mask) | 10 |
+| [Mask](#mask) | 11 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 6 |
@@ -1588,6 +1588,25 @@ Distance to a shape - shoreline gradients, wetness falloffs, anything that happe
 | Invert | toggle, default off |  |
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
+### KMeans
+
+Cluster the terrain into zones
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| feature B | in (optional) | heightmap |
+| clusters | out | heightmap |
+| mask A | out | heightmap |
+| mask B | out | heightmap |
+| mask C | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Clusters | int, 2 to 8, default 4 |  |
+| Slope weight | float, 0 to 4, default 1 |  |
+| Seed | seed |  |
 
 ### SelectAltitude
 

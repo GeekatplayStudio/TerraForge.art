@@ -68,6 +68,7 @@ Gravel|Effect
 Grit|Effect
 HeightmapFile|Primitive
 Hydraulic|Erosion
+KMeans|Mask
 Kuwahara|Filter
 Levels|Material
 MakeTileable|Transform

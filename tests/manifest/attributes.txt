@@ -319,6 +319,9 @@ Hydraulic.particles|int
 Hydraulic.rain|float
 Hydraulic.seed|seed
 Hydraulic.sw_evap|float
+KMeans.k|int
+KMeans.seed|seed
+KMeans.slope_weight|float
 Kuwahara.blend_invert|bool
 Kuwahara.mix|float
 Kuwahara.radius|int
