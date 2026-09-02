@@ -55,6 +55,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
       s += R"(- {"op":"place_object","name":"Rock","position":[x,y,z],"scale":0.1,
    "rotation_deg":30}
 - {"op":"select","name":"Terrain"}
+- {"op":"run_macro","path":"C:/macros/dusk_forest.json"}
+   (applies a saved action document - any of these ops, batched)
 - {"op":"add_light","name":"Lantern","position":[x,y,z],"color":[r,g,b],
    "intensity":2.0,"reach":0.4}   (a point light; set_light edits by name)
 - {"op":"add_primitive","kind":"cube"|"sphere"|"plane"|"cylinder"|"cone",

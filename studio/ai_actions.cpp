@@ -18,6 +18,7 @@
 #include <imgui.h>
 #include <json.hpp>
 #include <atomic>
+#include <fstream>
 #include <cstring>
 #include <mutex>
 #include <string>
@@ -303,6 +304,25 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         ++applied;
         break;
       }
+    } else if (op == "run_macro") {
+      // a macro is simply a saved action document; running one applies its
+      // actions through this same dispatcher (one level deep - a macro that
+      // calls run_macro is refused rather than allowed to recurse)
+      std::string path = act.value("path", std::string());
+      std::ifstream mf(path);
+      if (!mf) {
+        err = "cannot read macro " + path;
+        continue;
+      }
+      std::string text((std::istreambuf_iterator<char>(mf)),
+                       std::istreambuf_iterator<char>());
+      if (text.find("run_macro") != std::string::npos) {
+        err = "macros cannot call run_macro";
+        continue;
+      }
+      std::string merr;
+      if (ai_apply_actions(a, text, merr)) ++applied;
+      else err = "macro: " + merr;
     } else if (op == "save_project") {
       std::string path = act.value("path", std::string());
       if (path.empty()) {
