@@ -6,6 +6,7 @@
 #include "gpx/attribute.hpp"
 #include "gpx/field.hpp"
 #include "gpx/heightmap.hpp"
+#include "gpx/points.hpp"
 #include <atomic>
 #include <functional>
 #include <map>
@@ -18,7 +19,7 @@ namespace gpx {
 // Heightmap/Texture are the raster domain (buffers at the graph resolution).
 // Field is the second domain: a function evaluated per point, with its own
 // value type carried alongside. See gpx/field.hpp for why both exist.
-enum class DataType { Heightmap, Texture, Field };
+enum class DataType { Heightmap, Texture, Field, Points };
 enum class PortDir { In, Out };
 
 class Node;
@@ -36,6 +37,7 @@ struct Port {
   // output storage (raster domain)
   std::shared_ptr<Heightmap> hmap;
   std::shared_ptr<TextureRGBA> tex;
+  std::shared_ptr<PointCloud> pts;
   // field domain: what kind of value this port carries, and (on outputs) how
   // to produce it
   FieldType field_type = FieldType::Number;
@@ -97,10 +99,12 @@ public:
   // resolved input (follows link to upstream out-port); null if unconnected
   const Heightmap *in_hmap(const std::string &name) const;
   const TextureRGBA *in_tex(const std::string &name) const;
+  const PointCloud *in_points(const std::string &name) const;
 
   // output accessors, allocate on demand at graph resolution
   Heightmap &out_hmap(const std::string &name);
   TextureRGBA &out_tex(const std::string &name);
+  PointCloud &out_points(const std::string &name);
 };
 
 struct Link {

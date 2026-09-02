@@ -118,7 +118,8 @@ void draw_node(App &a, const App::NodeView &n) {
       ed::BeginPin(pin_id(n.id, i), ed::PinKind::Input);
       ImVec2 dot(head_pos.x + nodemetric::PAD_X + nodemetric::PORT_R,
                  y + nodemetric::ROW_H * 0.5f);
-      port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type),
+      port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type,
+                                 p.is_points),
                !p.optional);
       ImGui::Dummy(ImVec2(dot_col, nodemetric::ROW_H));
       ImGui::SameLine(0, 0);
@@ -139,7 +140,8 @@ void draw_node(App &a, const App::NodeView &n) {
       ImGui::PopStyleColor();
       ImVec2 dot(head_pos.x + body_w - nodemetric::PAD_X - nodemetric::PORT_R,
                  y + nodemetric::ROW_H * 0.5f);
-      port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type),
+      port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type,
+                                 p.is_points),
                true);
       ImGui::SameLine(0, 0);
       ImGui::Dummy(ImVec2(dot_col, nodemetric::ROW_H));
@@ -280,7 +282,9 @@ void add_node_popup(App &a) {
                            ? "heightmap"
                            : g_drag_create.type == gpx::DataType::Texture
                                  ? "texture"
-                                 : "field";
+                                 : g_drag_create.type == gpx::DataType::Points
+                                       ? "points"
+                                       : "field";
     if (filtering)
       ImGui::TextDisabled("nodes that accept a %s", what);
     else

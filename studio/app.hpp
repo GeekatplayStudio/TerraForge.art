@@ -44,6 +44,7 @@ struct App {
     bool is_input = false;
     bool is_texture = false;
     bool is_field = false;   // the field domain rather than a buffer
+    bool is_points = false;  // the point-cloud domain
     unsigned field_type = 0; // gpx::FieldType, meaningful when is_field
     bool optional = false;
   };

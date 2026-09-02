@@ -50,6 +50,7 @@ void App::refresh_snapshot() {
       pv.is_input = p.dir == gpx::PortDir::In;
       pv.is_texture = p.type == gpx::DataType::Texture;
       pv.is_field = p.type == gpx::DataType::Field;
+      pv.is_points = p.type == gpx::DataType::Points;
       pv.field_type = (unsigned)p.field_type;
       pv.optional = p.optional;
       v.ports.push_back(std::move(pv));

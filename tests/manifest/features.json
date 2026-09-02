@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "points.domain", "area": "engine", "phase": "23",
+      "description": "Point-cloud domain: ScatterPoints (random, jittered grid, spaced), PointsRelax, PointsFilter (mask band + keep chance), PointsToMask stamps and PointsSDF distance, all deterministic",
+      "test_file": "test_engine.cpp", "test_symbol": "test_points_domain" },
+
     { "id": "path.carve", "area": "engine", "phase": "22",
       "description": "PathCarve: a drawn polyline, Chaikin-smoothed, stamped and distance-fielded, carving riverbeds, roads and canyons (negative depth builds walls), graded along the line",
       "test_file": "test_engine.cpp", "test_symbol": "test_path_carve" },

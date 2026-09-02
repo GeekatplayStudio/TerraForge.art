@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 127 across 24 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 132 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -24,6 +24,7 @@ Every node in Geekatplay TerraForge — 127 across 24 categories. Generated from
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 1 |
+| [Points](#points) | 5 |
 | [Primitive](#primitive) | 10 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
@@ -1899,6 +1900,85 @@ Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+## Points
+
+### PointsFilter
+
+Keep points by mask and chance
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| mask | in (optional) | heightmap |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Mask band | range |  |
+| Keep fraction | float, 0 to 1, default 1 |  |
+| Seed | seed |  |
+
+### PointsRelax
+
+Even out point spacing
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Iterations | int, 1 to 50, default 8 |  |
+| Strength | float, 0.01 to 1, default 0.5 |  |
+
+### PointsSDF
+
+Distance to the nearest point
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| distance | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Reach | float, 0.005 to 1, default 0.2 |  |
+| Invert | toggle, default off |  |
+
+### PointsToMask
+
+Stamp points into a raster
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Kernel | choice: Gaussian / Cone / Disc |  |
+| Radius | float, 0.001 to 0.5, default 0.03 |  |
+| Amplitude | float, 0 to 4, default 1 |  |
+| Scale by point value | toggle, default off |  |
+| Blend | choice: Max / Add |  |
+
+### ScatterPoints
+
+Scatter points over the tile
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| density | in (optional) | heightmap |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Point count | int, 1 to 50000, default 500 |  |
+| Mode | choice: Random / Jittered grid / Spaced |  |
+| Min spacing | float, 0.001 to 0.3, default 0.02 |  |
+| Seed | seed |  |
 
 ## Primitive
 

@@ -79,6 +79,10 @@ PBRMaterial|Material
 PathCarve|Path
 Peaks|Effect
 Plateau|Filter
+PointsFilter|Points
+PointsRelax|Points
+PointsSDF|Points
+PointsToMask|Points
 PowerFractal|Filter
 Rasterize|Field Bridge
 Remap|Filter
@@ -88,6 +92,7 @@ Repeat|Logic
 Resample|Analysis
 Rivers|Erosion
 Sample|Field Bridge
+ScatterPoints|Points
 SedimentDeposit|Erosion
 SelectAltitude|Mask
 SelectCavities|Mask

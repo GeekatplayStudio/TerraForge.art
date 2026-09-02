@@ -142,6 +142,11 @@ static gpx::Node *build(gpx::Graph &g, const std::string &type,
       g.add_link(src->id, "output", cv->id, "input");
       g.add_link(cv->id, "texture", n->id, p.name);
       feeders.push_back(src);
+    } else if (p.type == gpx::DataType::Points) {
+      gpx::Node *src = g.add_node("ScatterPoints", 0, (float)fy);
+      if (!src) continue;
+      g.add_link(src->id, "points", n->id, p.name);
+      feeders.push_back(src);
     } else if (p.type == gpx::DataType::Field) {
       const char *src_type = "FieldNoise";
       if (p.field_type == gpx::FieldType::Vector) src_type = "FieldPosition";
@@ -169,6 +174,15 @@ static int check_outputs_finite(gpx::Node *n) {
     if (p.tex && !p.tex->empty()) {
       ++produced;
       CHECK(finite_tex(*p.tex), "texture '" + p.name + "' has NaN/Inf");
+    }
+    if (p.pts && p.pts->size() > 0) {
+      ++produced;
+      bool ok = true;
+      for (size_t i = 0; i < p.pts->size(); ++i)
+        ok = ok && std::isfinite(p.pts->x[i]) && std::isfinite(p.pts->y[i]) &&
+             std::isfinite(p.pts->v[i]) && p.pts->x[i] >= 0.f &&
+             p.pts->x[i] <= 1.f && p.pts->y[i] >= 0.f && p.pts->y[i] <= 1.f;
+      CHECK(ok, "points '" + p.name + "' are finite and on the tile");
     }
   }
   return produced;

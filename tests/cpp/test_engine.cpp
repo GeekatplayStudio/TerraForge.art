@@ -2762,6 +2762,105 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_points_domain() {
+  std::printf("point-cloud domain...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+  gpx::Node *sc = g.add_node("ScatterPoints", 0, 0);
+  gpx::Node *rx = g.add_node("PointsRelax", 0, 0);
+  gpx::Node *fl = g.add_node("PointsFilter", 0, 0);
+  gpx::Node *st = g.add_node("PointsToMask", 0, 0);
+  gpx::Node *sd = g.add_node("PointsSDF", 0, 0);
+  CHECK(sc && rx && fl && st && sd, "points nodes all register");
+  sc->attrs.find("count")->i = 200;
+  auto compute = [](gpx::Node *n) {
+    gpx::NodeRegistry::instance().find(n->type)->compute(*n);
+  };
+
+  // scatter: deterministic, in range, correct count
+  compute(sc);
+  const gpx::Port *sp = sc->port("points", gpx::PortDir::Out);
+  CHECK(sp && sp->pts && sp->pts->size() == 200, "scatter makes 200 points");
+  for (size_t i = 0; i < sp->pts->size(); ++i)
+    CHECK(sp->pts->x[i] >= 0.f && sp->pts->x[i] <= 1.f &&
+              sp->pts->y[i] >= 0.f && sp->pts->y[i] <= 1.f,
+          "points stay on the tile");
+  gpx::PointCloud first = *sp->pts;
+  compute(sc);
+  CHECK(sp->pts->x == first.x && sp->pts->y == first.y &&
+            sp->pts->v == first.v,
+        "scatter is bit-identical across computes");
+
+  // spaced mode honours min distance
+  sc->attrs.find("mode")->i = 2;
+  sc->attrs.find("min_dist")->f = 0.05f;
+  compute(sc);
+  {
+    const gpx::PointCloud &p = *sp->pts;
+    float worst = 1e9f;
+    for (size_t a = 0; a < p.size(); ++a)
+      for (size_t b = a + 1; b < p.size(); ++b) {
+        float dx = p.x[a] - p.x[b], dy = p.y[a] - p.y[b];
+        worst = std::min(worst, dx * dx + dy * dy);
+      }
+    CHECK(p.size() > 20, "spaced mode still yields points");
+    CHECK(worst >= 0.05f * 0.05f - 1e-6f, "spaced points keep min distance");
+  }
+  sc->attrs.find("mode")->i = 0;
+  compute(sc);
+
+  // relax spreads points: worst pair distance should not shrink
+  g.add_link(sc->id, "points", rx->id, "points");
+  auto min_d2 = [](const gpx::PointCloud &p) {
+    float worst = 1e9f;
+    for (size_t a = 0; a < p.size(); ++a)
+      for (size_t b = a + 1; b < p.size(); ++b) {
+        float dx = p.x[a] - p.x[b], dy = p.y[a] - p.y[b];
+        worst = std::min(worst, dx * dx + dy * dy);
+      }
+    return worst;
+  };
+  float before = min_d2(*sp->pts);
+  compute(rx);
+  const gpx::Port *rp = rx->port("points", gpx::PortDir::Out);
+  CHECK(rp && rp->pts && rp->pts->size() == sp->pts->size(),
+        "relax keeps every point");
+  CHECK(min_d2(*rp->pts) >= before, "relaxation never worsens the tightest pair");
+
+  // filter: a half mask keeps roughly half
+  auto mask = std::make_shared<gpx::Heightmap>(64, 64);
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) mask->v[(size_t)y * 64 + x] = x < 32 ? 0.f : 1.f;
+  g.add_link(sc->id, "points", fl->id, "points");
+  fl->port("mask", gpx::PortDir::In)->hmap = mask;
+  fl->attrs.find("band")->v2[0] = 0.75f;
+  fl->attrs.find("band")->v2[1] = 1.f;
+  compute(fl);
+  const gpx::Port *fp = fl->port("points", gpx::PortDir::Out);
+  CHECK(fp && fp->pts && fp->pts->size() > 0 &&
+            fp->pts->size() < sp->pts->size(),
+        "mask filter removes some points");
+  for (size_t i = 0; i < fp->pts->size(); ++i)
+    CHECK(fp->pts->x[i] >= 0.5f - 1.f / 64, "filtered points obey the mask");
+
+  // stamp: mask peaks at a point, zero far away
+  g.add_link(sc->id, "points", st->id, "points");
+  compute(st);
+  const gpx::Port *mp = st->port("mask", gpx::PortDir::Out);
+  CHECK(mp && mp->hmap && mp->hmap->w == 64, "stamp rasterizes at graph res");
+  float mx = *std::max_element(mp->hmap->v.begin(), mp->hmap->v.end());
+  CHECK(mx > 0.9f, "stamped kernels reach amplitude");
+
+  // SDF: zero at a point cell, grows away from it
+  g.add_link(sc->id, "points", sd->id, "points");
+  compute(sd);
+  const gpx::Port *dp = sd->port("distance", gpx::PortDir::Out);
+  CHECK(dp && dp->hmap, "sdf output exists");
+  float dmn = *std::min_element(dp->hmap->v.begin(), dp->hmap->v.end());
+  float dmx = *std::max_element(dp->hmap->v.begin(), dp->hmap->v.end());
+  CHECK(dmn == 0.f && dmx > 0.2f, "distance is 0 at seeds and grows outward");
+}
+
 static void test_path_carve() {
   std::printf("path carving...\n");
   const int N = 64;
@@ -2874,6 +2973,7 @@ int main() {
   test_distance_and_filters();
   test_curve_and_shapes();
   test_path_carve();
+  test_points_domain();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

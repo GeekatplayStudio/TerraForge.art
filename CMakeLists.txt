@@ -105,6 +105,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_erosion_wind.cpp
     engine/nodes/nodes_operators.cpp
     engine/nodes/nodes_masks.cpp
+    engine/nodes/nodes_points.cpp
     engine/nodes/nodes_warp.cpp
     engine/nodes/nodes_texture.cpp
     engine/nodes/nodes_materials.cpp

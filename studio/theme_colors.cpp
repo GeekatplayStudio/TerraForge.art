@@ -53,8 +53,10 @@ ImU32 category_color(const std::string &c) {
 // links keep the older pair — bone for heightmaps, orange for textures — so
 // the two domains stay distinguishable at a glance, which is the whole point
 // of having two.
-ImU32 port_color(bool is_texture, bool is_field, unsigned field_type) {
+ImU32 port_color(bool is_texture, bool is_field, unsigned field_type,
+                 bool is_points) {
   if (is_field) return gpx::field_type_color((gpx::FieldType)field_type);
+  if (is_points) return IM_COL32(0x86, 0xb8, 0x5c, 0xff); // scatter green
   return is_texture ? IM_COL32(0xc8, 0x78, 0x30, 0xff)
                     : IM_COL32(0xcf, 0xcb, 0xc2, 0xff);
 }

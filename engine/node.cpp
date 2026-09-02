@@ -115,6 +115,13 @@ const TextureRGBA *Node::in_tex(const std::string &name) const {
   return up && up->tex ? up->tex.get() : nullptr;
 }
 
+const PointCloud *Node::in_points(const std::string &name) const {
+  if (const Port *local = const_cast<Node *>(this)->port(name, PortDir::In))
+    if (local->pts) return local->pts.get();
+  const Port *up = graph ? graph->upstream(*this, name) : nullptr;
+  return up && up->pts ? up->pts.get() : nullptr;
+}
+
 Heightmap &Node::out_hmap(const std::string &name) {
   Port *p = port(name, PortDir::Out);
   int res = graph ? graph->resolution : 512;
@@ -130,6 +137,13 @@ TextureRGBA &Node::out_tex(const std::string &name) {
   int res = graph ? graph->resolution : 512;
   if (!p->tex || p->tex->w != res) p->tex = std::make_shared<TextureRGBA>(res, res);
   return *p->tex;
+}
+
+PointCloud &Node::out_points(const std::string &name) {
+  Port *p = port(name, PortDir::Out);
+  if (!p->pts) p->pts = std::make_shared<PointCloud>();
+  p->pts->clear();
+  return *p->pts;
 }
 
 // --------------------------------------------------------------- Registry
