@@ -300,6 +300,48 @@ void run_main() {
     // longer per frame - nothing blocks and nothing tears.
     if (a.seq_active && !a.eval.running.load() &&
         a.uploaded_serial == a.eval_serial) {
+      // fly-through: put the active camera on its path for this frame
+      if (a.seq_cam_path) {
+        gpx::Node *pn = a.graph.find_node(a.seq_cam_path);
+        const gpx::PointCloud *pc = nullptr;
+        if (pn)
+          for (const gpx::Port &p : pn->ports)
+            if (p.dir == gpx::PortDir::Out &&
+                p.type == gpx::DataType::Points && p.pts && p.pts->size() > 1) {
+              pc = p.pts.get();
+              break;
+            }
+        int cam = scene_active_camera();
+        if (pc && cam >= 0 && cam < (int)scene().objects.size() &&
+            scene().objects[cam].type == SceneObject::Camera) {
+          auto sample_path = [&](float s, float *out3) {
+            s = std::clamp(s, 0.f, 1.f);
+            float fi = s * (float)(pc->size() - 1);
+            size_t i0 = (size_t)fi;
+            size_t i1 = std::min(i0 + 1, pc->size() - 1);
+            float u = fi - (float)i0;
+            float px = pc->x[i0] + (pc->x[i1] - pc->x[i0]) * u;
+            float pz = pc->y[i0] + (pc->y[i1] - pc->y[i0]) * u;
+            float py = a.seq_cam_height;
+            if (g_overlay_terrain && !g_overlay_terrain->empty()) {
+              const gpx::Heightmap *hm = g_overlay_terrain.get();
+              int ix = std::clamp((int)(px * hm->w), 0, hm->w - 1);
+              int iy = std::clamp((int)(pz * hm->h), 0, hm->h - 1);
+              py += hm->v[(size_t)iy * hm->w + ix] *
+                    render_settings().height_scale;
+            }
+            out3[0] = px;
+            out3[1] = py;
+            out3[2] = pz;
+          };
+          float s = a.seq_total > 1
+                        ? (float)a.seq_frame / (float)(a.seq_total - 1)
+                        : 0.f;
+          CameraData &cd = scene().objects[cam].cam;
+          sample_path(s, cd.eye);
+          sample_path(std::min(s + 0.04f, 1.f), cd.target);
+        }
+      }
       char name[64];
       snprintf(name, sizeof name, "frame_%04d.png", a.seq_frame);
       std::string path = a.seq_dir + "/" + name;

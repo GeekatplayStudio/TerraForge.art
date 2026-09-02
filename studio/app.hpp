@@ -95,6 +95,10 @@ struct App {
   float seq_fps = 30.f;
   int seq_frame = 0, seq_total = 0, seq_w = 1280, seq_h = 720;
   std::string seq_dir;
+  // optional fly-through: a Points node whose ordered cloud is the camera
+  // path; the active camera rides it for the length of the sequence
+  unsigned long long seq_cam_path = 0;
+  float seq_cam_height = 0.08f;
   bool request_layout_reset = false;
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
   // Set to a node id to have the graph select it and pan to it on the next

@@ -323,6 +323,14 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     a.seq_h = act.value("height", 720);
     if (act.contains("start")) a.anim_start = act["start"].get<float>();
     if (act.contains("end")) a.anim_end = act["end"].get<float>();
+    a.seq_cam_path = 0;
+    if (act.contains("camera_path")) {
+      std::string t = act["camera_path"].get<std::string>();
+      for (auto &cand : a.graph.nodes)
+        if (cand->type == t || std::to_string(cand->id) == t)
+          a.seq_cam_path = cand->id;
+    }
+    a.seq_cam_height = act.value("camera_height", 0.08f);
     a.seq_total = std::max(
         (int)((a.anim_end - a.anim_start) * a.seq_fps + 0.5f), 1);
     a.seq_frame = 0;
