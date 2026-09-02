@@ -101,6 +101,12 @@ Curve.post_range|range
 Curve.post_remap|bool
 Curve.post_zero_edges|float
 Curve.strength|float
+Detrend.amount|float
+Detrend.blend_invert|bool
+DirectionalBlur.angle|float
+DirectionalBlur.blend_invert|bool
+DirectionalBlur.both_ways|bool
+DirectionalBlur.length|float
 Dissolve.altitude_bias|float
 Dissolve.amount|float
 Dissolve.hardness|float
@@ -313,6 +319,9 @@ Hydraulic.particles|int
 Hydraulic.rain|float
 Hydraulic.seed|seed
 Hydraulic.sw_evap|float
+Kuwahara.blend_invert|bool
+Kuwahara.mix|float
+Kuwahara.radius|int
 Levels.gamma|float
 Levels.in_black|float
 Levels.in_white|float
@@ -420,6 +429,7 @@ Rasterize.post_range|range
 Rasterize.post_remap|bool
 Rasterize.post_zero_edges|float
 Rasterize.size|float
+RelativeElevation.radius|int
 Remap.blend_invert|bool
 Remap.range|range
 RenderCamera.exposure|float
@@ -497,6 +507,10 @@ Shear.seed|seed
 Shear.self_modulated|bool
 Skeleton.threshold|float
 Smooth.radius|float
+SmoothFill.amount|float
+SmoothFill.blend_invert|bool
+SmoothFill.direction|choice
+SmoothFill.radius|int
 Snow.amount|float
 Snow.blend_invert|bool
 Snow.falloff|float

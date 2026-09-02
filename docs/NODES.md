@@ -1,10 +1,10 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 137 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 142 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
-| [Analysis](#analysis) | 3 |
+| [Analysis](#analysis) | 4 |
 | [Atmosphere](#atmosphere) | 4 |
 | [Effect](#effect) | 7 |
 | [Erosion](#erosion) | 9 |
@@ -16,7 +16,7 @@ Every node in Geekatplay TerraForge — 137 across 25 categories. Generated from
 | [Field Material](#field-material) | 1 |
 | [Field Math](#field-math) | 6 |
 | [Field Noise](#field-noise) | 3 |
-| [Filter](#filter) | 16 |
+| [Filter](#filter) | 20 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
@@ -53,6 +53,19 @@ How much water passes through each point — the basis of streams and erosion pa
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### RelativeElevation
+
+Height relative to the neighborhood
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Radius (px) | int, 2 to 128, default 24 |  |
 
 ### Resample
 
@@ -1095,6 +1108,38 @@ Remaps elevations through a drawn curve - the gradient's brightness is the trans
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
+### Detrend
+
+Subtract the best-fit plane
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Amount | float, 0 to 1, default 1 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### DirectionalBlur
+
+Streak the surface along a direction
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Direction ° | float, -180 to 180, default 0 |  |
+| Length | float, 0.002 to 0.5, default 0.05 |  |
+| Both directions | toggle, default on |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
 ### Equalize
 
 Spreads elevations across the full range - contrast back after a long chain
@@ -1156,6 +1201,22 @@ Power-curve contrast
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Gamma | float, 0.05 to 6, default 1 |  |
+
+### Kuwahara
+
+Edge-preserving smoothing (painterly flats)
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Radius (px) | int, 1 to 16, default 4 |  |
+| Mix | float, 0 to 1, default 1 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Median
 
@@ -1263,6 +1324,24 @@ Gaussian-like smoothing
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Radius | float, 0 to 0.2, default 0.01 |  |
+
+### SmoothFill
+
+Fill hollows up to the smoothed surface
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| fill_depth | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Radius (px) | int, 1 to 128, default 16 |  |
+| Direction | choice: Fill up / Shave down |  |
+| Amount | float, 0 to 1, default 1 |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Snow
 

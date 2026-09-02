@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "filter.locality", "area": "engine", "phase": "23",
+      "description": "Kuwahara edge-preserving smoothing, DirectionalBlur, Detrend (best-fit plane removal), RelativeElevation and SmoothFill",
+      "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
+
     { "id": "hydro.flood", "area": "engine", "phase": "23",
       "description": "Flood: standing water at a set level, everywhere-below or edge-connected (walled basins stay dry); outputs surface, depth and mask",
       "test_file": "test_engine.cpp", "test_symbol": "test_flood" },

@@ -18,6 +18,8 @@ Craggy|Filter
 Crater|Primitive
 CurvatureFromHeight|Material
 Curve|Filter
+Detrend|Filter
+DirectionalBlur|Filter
 Dissolve|Erosion
 DistanceField|Mask
 Dunes|Primitive
@@ -66,6 +68,7 @@ Gravel|Effect
 Grit|Effect
 HeightmapFile|Primitive
 Hydraulic|Erosion
+Kuwahara|Filter
 Levels|Material
 MaskToTexture|Material
 MaterialOutput|Material
@@ -88,6 +91,7 @@ PointsSDF|Points
 PointsToMask|Points
 PowerFractal|Filter
 Rasterize|Field Bridge
+RelativeElevation|Analysis
 Remap|Filter
 RenderCamera|Render
 RenderQuality|Render
@@ -106,6 +110,7 @@ Shape|Primitive
 Sharpen|Effect
 Shear|Transform
 Skeleton|Mask
+SmoothFill|Filter
 Smooth|Filter
 Snow|Filter
 SplatMaterial|Material

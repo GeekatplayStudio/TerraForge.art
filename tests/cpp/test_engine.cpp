@@ -2803,6 +2803,72 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_local_filters() {
+  std::printf("locality filters...\n");
+  const int N = 64;
+  auto run = [&](const char *type, const gpx::Heightmap &in,
+                 std::function<void(gpx::Node &)> tune, const char *outp) {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node(type, 0, 0);
+    tune(*n);
+    n->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(in);
+    gpx::NodeRegistry::instance().find(type)->compute(*n);
+    return *n->port(outp, gpx::PortDir::Out)->hmap;
+  };
+
+  // Detrend flattens a pure ramp to (nearly) its mean everywhere
+  gpx::Heightmap ramp(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) ramp.at(x, y) = x / (float)N;
+  auto dt = run("Detrend", ramp, [](gpx::Node &) {}, "output");
+  float lo = 1e9f, hi = -1e9f;
+  for (float v : dt.v) { lo = std::min(lo, v); hi = std::max(hi, v); }
+  CHECK(hi - lo < 0.02f, "detrending a ramp leaves a flat surface");
+
+  // Kuwahara preserves a hard step better than a box blur would
+  gpx::Heightmap step(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 32; x < N; ++x) step.at(x, y) = 1.f;
+  auto kw = run("Kuwahara", step, [](gpx::Node &n) {
+    n.attrs.find("radius")->i = 4;
+  }, "output");
+  CHECK(kw.at(30, 32) < 0.05f && kw.at(34, 32) > 0.95f,
+        "kuwahara keeps the step edge sharp");
+
+  // SmoothFill up only raises, never lowers
+  auto sf = run("SmoothFill", step, [](gpx::Node &n) {
+    n.attrs.find("radius")->i = 8;
+  }, "output");
+  bool never_lower = true;
+  for (size_t i = 0; i < sf.v.size(); ++i)
+    never_lower = never_lower && sf.v[i] >= step.v[i] - 1e-6f;
+  CHECK(never_lower, "fill-up never cuts into the terrain");
+
+  // RelativeElevation of a bump: high at the top, low in the moat, 0.5 far out
+  gpx::Heightmap bump(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) {
+      float dx = (x - 32) / 8.f, dy = (y - 32) / 8.f;
+      bump.at(x, y) = std::exp(-(dx * dx + dy * dy));
+    }
+  auto re = run("RelativeElevation", bump, [](gpx::Node &n) {
+    n.attrs.find("radius")->i = 12;
+  }, "mask");
+  CHECK(re.at(32, 32) > 0.9f, "the peak reads high relative to its area");
+  CHECK(std::fabs(re.at(4, 4) - 0.5f) < 0.05f, "flat ground reads neutral");
+
+  // DirectionalBlur along x smears a dot into a horizontal streak
+  gpx::Heightmap dot(N, N);
+  dot.at(32, 32) = 1.f;
+  auto db = run("DirectionalBlur", dot, [](gpx::Node &n) {
+    n.attrs.find("length")->f = 0.1f;
+  }, "output");
+  CHECK(db.at(36, 32) > 0.f && db.at(32, 36) == 0.f,
+        "the streak follows the direction and not the perpendicular");
+}
+
 static void test_flood() {
   std::printf("standing water...\n");
   const int N = 64;
@@ -3164,6 +3230,7 @@ int main() {
   test_points_domain();
   test_morphology();
   test_flood();
+  test_local_filters();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();
