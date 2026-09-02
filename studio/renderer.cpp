@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -262,9 +263,16 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
       rebuild_terrain_program(err);
     }
   }
-  if (slot == 0) cloud_time += dt;
+  // GPX_FREEZE_TIME pins the animated inputs (clouds, water) so two frames
+  // of the same scene are bit-identical - which is what lets a renderer
+  // refactor be proven against a pixel diff instead of a squint.
+  static const bool freeze = [] {
+    const char *e = std::getenv("GPX_FREEZE_TIME");
+    return e && *e && *e != '0';
+  }();
+  if (slot == 0 && !freeze) cloud_time += dt;
   static float time_acc = 0;
-  if (slot == 0) time_acc += dt;
+  if (slot == 0 && !freeze) time_acc += dt;
   if (w < 8 || h < 8) return fbo_color[slot];
   ensure_fbo(slot, w, h);
   float eye[3], mvp[16], inv_vp[16];

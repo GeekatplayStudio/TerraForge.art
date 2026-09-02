@@ -153,4 +153,29 @@ bool ray_sphere(const float *ro, const float *rd, const float *c, float r,
 // framebuffers (renderer.cpp)
 void ensure_fbo(int slot, int w, int h);
 
+
+// One frame's shared inputs, built once in draw_scene and handed to each
+// pass (renderer_passes.cpp).
+struct FrameCtx {
+  int slot, w, h;
+  float time_acc;
+  const RenderSettings::ViewConfig &vc;
+  const float *view_eye, *mvp, *inv_vp;
+  RenderSettings &RS;
+  float sun[3];
+  float sun_intensity;
+  bool atmosphere, textured, wireframe, cinematic;
+  bool show_terrain_obj, show_water_obj, sun_on;
+  int sel_type;
+  bool clouds_ok, shadows_ok, heavy_maps;
+  float space_t;
+  float light_mvp[16];
+  float wind[2];
+};
+void pass_shadow(const FrameCtx &F);
+void pass_sky(const FrameCtx &F);
+void pass_terrain(const FrameCtx &F);
+void pass_water(const FrameCtx &F);
+void pass_outlines(const FrameCtx &F);
+
 } // namespace studio

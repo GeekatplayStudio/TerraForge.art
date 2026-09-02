@@ -168,6 +168,7 @@ set(STUDIO_SOURCES
     studio/renderer.cpp
     studio/renderer_camera.cpp
     studio/renderer_scene.cpp
+    studio/renderer_passes.cpp
     studio/renderer_programs.cpp
     studio/renderer_init.cpp
     studio/renderer_export.cpp
