@@ -25,6 +25,16 @@ AtmosphereSettings.horizon_r|float
 AtmosphereSettings.zenith_b|float
 AtmosphereSettings.zenith_g|float
 AtmosphereSettings.zenith_r|float
+BasaltField.crack_depth|float
+BasaltField.crack_width|float
+BasaltField.post_gain|float
+BasaltField.post_invert|bool
+BasaltField.post_range|range
+BasaltField.post_remap|bool
+BasaltField.post_zero_edges|float
+BasaltField.scale|float
+BasaltField.seed|seed
+BasaltField.steps|int
 Blend.factor|float
 Blend.mode|choice
 Blend.smooth_k|float

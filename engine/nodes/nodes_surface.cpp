@@ -5,6 +5,7 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
+#include "gpx/planet_math.hpp"
 
 namespace gpx {
 
@@ -310,6 +311,48 @@ REGISTER_NODE(
           }
       });
       apply_mask_blend(n.in_hmap("mask"), *in, out);
+    })
+
+REGISTER_NODE(
+    BasaltField, "Primitive", "Columnar basalt: hexagonal steps and cracks",
+    [](Node &n) {
+      n.add_out("output");
+      n.add_out("cracks");
+      add_seed(n.attrs);
+      add_float(n.attrs, "scale", "Column scale", 12.f, 2.f, 64.f, "Basalt");
+      add_int(n.attrs, "steps", "Height steps", 6, 2, 24, "Basalt")
+          .tooltip = "Each column's flat top snaps to one of this many\n"
+                     "levels, the way cooling lava fractures in tiers.";
+      add_float(n.attrs, "crack_width", "Crack width", 0.06f, 0.01f, 0.4f,
+                "Basalt");
+      add_float(n.attrs, "crack_depth", "Crack depth", 0.25f, 0.f, 1.f,
+                "Basalt");
+      setup_post(n);
+    },
+    [](Node &n) {
+      Heightmap &out = n.out_hmap("output");
+      Heightmap &cracks = n.out_hmap("cracks");
+      uint32_t seed = n.attrs.get_seed("seed");
+      float scale = n.attrs.get_f("scale", 12.f);
+      int steps = n.attrs.get_i("steps", 6);
+      float cw = n.attrs.get_f("crack_width", 0.06f);
+      float cd = n.attrs.get_f("crack_depth", 0.25f);
+      parallel_rows(out.h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < out.w; ++x) {
+            float u = x / float(out.w) * scale, v = y / float(out.h) * scale;
+            float f1, f2, id;
+            planet::pl_cell(u, v, 0.f, seed, 1.f, 0, f1, f2, id);
+            // the column's top: its cell id hashed to a level, quantized
+            float lvl = std::floor(id * steps) / (float)(steps - 1);
+            // the seam between columns: F2-F1 is zero exactly on the crack
+            float seam = std::clamp((f2 - f1) / cw, 0.f, 1.f);
+            seam = seam * seam * (3.f - 2.f * seam);
+            out.at(x, y) = lvl - (1.f - seam) * cd * (0.3f + lvl);
+            cracks.at(x, y) = 1.f - seam;
+          }
+      });
+      apply_post(n, out);
     })
 
 } // namespace gpx

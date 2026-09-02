@@ -4,6 +4,7 @@ AOFromHeight|Material
 AlbedoToPBR|Material
 AreaRemove|Mask
 AtmosphereSettings|Atmosphere
+BasaltField|Primitive
 Blend|Operator
 ChannelMix|Material
 Clamp|Filter

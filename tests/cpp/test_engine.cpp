@@ -2803,6 +2803,31 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_basalt() {
+  std::printf("basalt columns...\n");
+  gpx::Graph g;
+  g.resolution = 128;
+  gpx::Node *n = g.add_node("BasaltField", 0, 0);
+  n->attrs.find("post_remap")->b = false;
+  gpx::NodeRegistry::instance().find("BasaltField")->compute(*n);
+  const gpx::Heightmap &out = *n->port("output", gpx::PortDir::Out)->hmap;
+  const gpx::Heightmap &cr = *n->port("cracks", gpx::PortDir::Out)->hmap;
+  // tiered flats: many cells share exactly the same level away from cracks
+  std::map<float, int> levels;
+  for (int y = 0; y < 128; ++y)
+    for (int x = 0; x < 128; ++x)
+      if (cr.at(x, y) < 0.01f) levels[out.at(x, y)]++;
+  int big = 0;
+  for (auto &kv : levels)
+    if (kv.second > 100) ++big;
+  CHECK(big >= 3 && big <= 30, "the field is a handful of flat tiers");
+  float cmx = *std::max_element(cr.v.begin(), cr.v.end());
+  CHECK(cmx == 1.f, "crack lines reach full strength on the seams");
+  bool finite = true;
+  for (float v : out.v) finite = finite && std::isfinite(v);
+  CHECK(finite, "basalt is finite");
+}
+
 static void test_quilt() {
   std::printf("quilting...\n");
   gpx::Graph g;
@@ -3760,6 +3785,7 @@ int main() {
   test_points_io();
   test_dla();
   test_quilt();
+  test_basalt();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

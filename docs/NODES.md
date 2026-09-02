@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 166 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 167 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -25,7 +25,7 @@ Every node in Geekatplay TerraForge — 166 across 25 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
-| [Primitive](#primitive) | 14 |
+| [Primitive](#primitive) | 15 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 7 |
@@ -2400,6 +2400,28 @@ Scatter points over the tile
 | Distribution shape | float, 0.5 to 8, default 2 |  |
 
 ## Primitive
+
+### BasaltField
+
+Columnar basalt: hexagonal steps and cracks
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| output | out | heightmap |
+| cracks | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Column scale | float, 2 to 64, default 12 |  |
+| Height steps | int, 2 to 24, default 6 | Each column's flat top snaps to one of this many levels, the way cooling lava fractures in tiers. |
+| Crack width | float, 0.01 to 0.4, default 0.06 |  |
+| Crack depth | float, 0 to 1, default 0.25 |  |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Constant
 
