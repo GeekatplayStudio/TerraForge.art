@@ -122,6 +122,10 @@ struct SceneState {
 
 SceneState &scene();
 void scene_init_builtins();
+// parse an OBJ into interleaved pos+normal vertices (unit box, flat
+// normals); shared by import and by scene reload
+bool scene_load_obj_verts(const std::string &path,
+                          std::vector<float> &verts, std::string &err);
 // load OBJ into a new scene object; returns index or -1
 int scene_import_obj(const std::string &path, std::string &err);
 

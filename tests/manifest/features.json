@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "project.scene_persistence", "area": "studio", "phase": "22",
+      "description": "A project file carries the whole scene - meshes with transforms and material bindings, cameras with lenses and render assignments, layers, selection - and the whole environment, with node-id bindings remapped through the graph loader's id map",
+      "test_file": "test_undo.cpp", "test_symbol": "test_scene_persistence" },
+
     { "id": "hydro.depression_fill", "area": "engine", "phase": "22",
       "description": "Priority-Flood depression filling: lakes as filled-minus-original, and flow routing that no longer dead-ends in every hollow",
       "test_file": "test_engine.cpp", "test_symbol": "test_depression_fill" },

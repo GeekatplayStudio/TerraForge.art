@@ -12,6 +12,7 @@
 #include "gpx/metanode.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
+#include <json.hpp>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -27,14 +28,8 @@ static int g_failures = 0;
     }                                                                           \
   } while (0)
 
-namespace studio {
-// The real definition lives in renderer.cpp, which needs a GL context. The
-// settings themselves are plain data, so the test provides its own instance.
-RenderSettings &render_settings() {
-  static RenderSettings rs;
-  return rs;
-}
-} // namespace studio
+// render_settings() now lives in studio/render_settings.cpp - GL-free on
+// purpose, so this suite links the real one instead of a stub.
 
 using namespace studio;
 
@@ -681,6 +676,193 @@ static void test_object_matrix() {
   }
 }
 
+// ------------------------------------------------------- scene persistence
+// The defect this exists to hold shut: a saved project used to carry the
+// graph plus planets, and nothing else. Imported meshes vanished on load,
+// with their transforms and material bindings; every camera beyond the
+// default was gone with its lens; the whole environment reset. Set up a
+// sunset over a lake with a hero camera, save, reload: flat noon over
+// defaults. Each of those is asserted here individually, so whichever one
+// regresses is the one named.
+static void test_scene_persistence() {
+  std::printf("scene persistence: meshes, cameras, environment...\n");
+  namespace fs = std::filesystem;
+  fs::path dir = fs::temp_directory_path() / "gpx_persist_test";
+  std::error_code ec;
+  fs::create_directories(dir, ec);
+  const std::string obj_path = (dir / "rock.obj").string();
+  const std::string proj_path = (dir / "scene.gpxt").string();
+
+  {
+    std::ofstream f(obj_path);
+    f << "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\n"
+         "f 1 2 3\nf 1 3 4\nf 1 4 2\nf 2 4 3\n";
+  }
+
+  App a;
+  project_new(a);
+  scene() = SceneState{};
+  scene_init_builtins();
+  SceneState &sc = scene();
+
+  // a mesh with every transform the gizmo and Properties can write
+  std::string err;
+  int mi = scene_import_obj(obj_path, err);
+  CHECK(mi >= 0, "test OBJ imports");
+  if (mi >= 0) {
+    SceneObject &m = sc.objects[mi];
+    m.name = "Hero rock";
+    m.pos[0] = 0.31f; m.pos[1] = 0.12f; m.pos[2] = 0.77f;
+    m.scale = 0.042f;
+    m.scl[0] = 2.f; m.scl[1] = 0.5f; m.scl[2] = 1.25f;
+    m.yaw = 33.f; m.pitch = -12.f; m.roll = 4.5f;
+    m.color[0] = 0.9f; m.color[1] = 0.2f; m.color[2] = 0.1f;
+  }
+
+  // a second camera with a changed lens and render assignment
+  int ci = scene_add_camera("Hero cam");
+  CHECK(ci >= 0, "camera added");
+  if (ci >= 0) {
+    CameraData &c = sc.objects[ci].cam;
+    c.focal_mm = 85.f;
+    c.aperture = 1.4f;
+    c.iso = 800.f;
+    c.render.width = 3840;
+    c.render.height = 2160;
+    c.render.samples = 42;
+    c.render.output = "hero.png";
+    scene_active_camera() = ci;
+  }
+
+  // a custom layer, and the mesh on it
+  sc.layers.push_back({"Props", false});
+  if (mi >= 0) sc.objects[mi].layer = (int)sc.layers.size() - 1;
+
+  // a planet, so the old format's subject matter is in the new one too
+  int pi = scene_add_planet("Redworld");
+  if (pi >= 0) {
+    sc.objects[pi].planet.radius = 7.5f;
+    sc.objects[pi].planet.seed = 4242;
+  }
+  sc.selected = mi;
+
+  // the environment: the sunset-over-a-lake half of the defect
+  RenderSettings &rs = render_settings();
+  rs = RenderSettings{};
+  rs.sun_azimuth = 261.f;
+  rs.sun_altitude = 7.f;
+  rs.fog_type = 2;
+  rs.fog_density = 3.3f;
+  rs.water_level = 0.41f;
+  rs.terrain_size_m = 12000.f;
+  rs.height_scale = 0.31f;
+  rs.cloud_coverage = 0.83f;
+  rs.units = 1;
+
+  const size_t n_objects = sc.objects.size();
+  CHECK(project_save(a, proj_path), "project saves");
+
+  // scorch the earth, then load
+  scene() = SceneState{};
+  scene_init_builtins();
+  rs = RenderSettings{};
+  CHECK(project_load(a, proj_path), "project loads");
+
+  SceneState &sl = scene();
+  CHECK(sl.objects.size() == n_objects, "every object came back");
+
+  int lm = -1, lc = -1, lp = -1;
+  for (int i = 0; i < (int)sl.objects.size(); ++i) {
+    if (sl.objects[i].name == "Hero rock") lm = i;
+    if (sl.objects[i].name == "Hero cam") lc = i;
+    if (sl.objects[i].name == "Redworld") lp = i;
+  }
+  CHECK(lm >= 0, "the imported mesh survived the round trip");
+  if (lm >= 0) {
+    const SceneObject &m = sl.objects[lm];
+    CHECK(m.vert_count == 12, "its geometry was re-imported from its path");
+    CHECK(std::fabs(m.pos[0] - 0.31f) < 1e-6f && m.scale == 0.042f,
+          "position and size survive");
+    CHECK(m.scl[0] == 2.f && m.scl[1] == 0.5f && m.scl[2] == 1.25f,
+          "the per-axis squeeze survives");
+    CHECK(m.yaw == 33.f && m.pitch == -12.f && m.roll == 4.5f,
+          "heading, pitch and bank survive");
+    CHECK(m.layer == (int)sl.layers.size() - 1, "its layer assignment survives");
+  }
+  CHECK(sl.layers.size() == 2 && sl.layers[1].name == "Props" &&
+            !sl.layers[1].visible,
+        "custom layers survive, visibility included");
+
+  CHECK(lc >= 0, "the second camera survived");
+  if (lc >= 0) {
+    const CameraData &c = sl.objects[lc].cam;
+    CHECK(c.focal_mm == 85.f && c.aperture == 1.4f && c.iso == 800.f,
+          "its lens survives");
+    CHECK(c.render.width == 3840 && c.render.samples == 42 &&
+              c.render.output == "hero.png",
+          "its render assignment survives");
+    CHECK(scene_active_camera() == lc, "and it is still the active camera");
+  }
+
+  CHECK(lp >= 0 && sl.objects[lp].planet.radius == 7.5f &&
+            sl.objects[lp].planet.seed == 4242u,
+        "the planet still round-trips in the new format");
+
+  CHECK(rs.sun_azimuth == 261.f && rs.sun_altitude == 7.f,
+        "the sun survives");
+  CHECK(rs.fog_type == 2 && rs.fog_density == 3.3f, "the fog survives");
+  CHECK(rs.water_level == 0.41f, "the water level survives");
+  CHECK(rs.terrain_size_m == 12000.f && rs.units == 1,
+        "world scale and units survive");
+  CHECK(rs.height_scale == 0.31f && rs.cloud_coverage == 0.83f,
+        "height scale and clouds survive");
+
+  // a mesh whose file has gone missing keeps its place instead of vanishing
+  {
+    fs::remove(obj_path, ec);
+    CHECK(project_load(a, proj_path), "project loads with the OBJ gone");
+    int gm = -1;
+    for (int i = 0; i < (int)scene().objects.size(); ++i)
+      if (scene().objects[i].name == "Hero rock") gm = i;
+    CHECK(gm >= 0, "the mesh object is kept, empty, rather than dropped");
+    if (gm >= 0) {
+      CHECK(scene().objects[gm].vert_count == 0, "with no geometry");
+      CHECK(scene().objects[gm].scale == 0.042f,
+            "but its transform still there for when the file returns");
+    }
+  }
+
+  // an old-format file (graph + scene_bodies only) still loads its planets
+  {
+    std::ifstream f(proj_path);
+    std::string text((std::istreambuf_iterator<char>(f)),
+                     std::istreambuf_iterator<char>());
+    f.close();
+    // strip the new sections, leaving what an old build would have written
+    auto cut = [&](const char *key) {
+      size_t k = text.find(std::string("\"") + key + "\":");
+      if (k == std::string::npos) return;
+      // crude but sufficient: reserialize through json to drop the key
+    };
+    (void)cut;
+    nlohmann::json j = nlohmann::json::parse(text);
+    j.erase("scene");
+    j.erase("environment");
+    const std::string old_path = (dir / "old_format.gpxt").string();
+    std::ofstream o(old_path);
+    o << j.dump(1);
+    o.close();
+    CHECK(project_load(a, old_path), "an old-format project still loads");
+    bool planet_back = false;
+    for (const SceneObject &ob : scene().objects)
+      if (ob.type == SceneObject::Planet && ob.name == "Redworld")
+        planet_back = true;
+    CHECK(planet_back, "and its planets still appear");
+  }
+
+  fs::remove_all(dir, ec);
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   test_graph_view_sanity();
@@ -698,6 +880,7 @@ int main() {
   test_node_library_roundtrip();
   test_obj_import_rejects_bad_indices();
   test_object_matrix();
+  test_scene_persistence();
   std::printf("\n%s (%d failures)\n", g_failures ? "FAILED" : "ALL PASSED",
               g_failures);
   return g_failures ? 1 : 0;

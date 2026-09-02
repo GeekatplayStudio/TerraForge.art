@@ -5,6 +5,7 @@
 // know, so older files load unchanged).
 #include "app.hpp"
 #include "scene.hpp"
+#include "scene_io.hpp"
 #include "undo.hpp"
 #include "gpx/serialization.hpp"
 #include <cmath>
@@ -128,7 +129,10 @@ bool project_save(App &a, const std::string &path) {
   bool ok = false;
   try {
     json j = json::parse(gpx::graph_to_json(a.graph));
+    // kept for anything older that still reads it; the full scene follows
     j["scene_bodies"] = bodies_to_json();
+    j["scene"] = scene_to_json();
+    j["environment"] = environment_to_json();
     std::ofstream f(path, std::ios::binary);
     if (f) {
       f << j.dump(1);
@@ -152,14 +156,26 @@ bool project_load(App &a, const std::string &path) {
   std::string text((std::istreambuf_iterator<char>(f)),
                    std::istreambuf_iterator<char>());
   std::string err;
-  bool ok = gpx::graph_from_json(a.graph, text, err);
+  GraphIdMap idmap;
+  bool ok = gpx::graph_from_json(a.graph, text, err, &idmap);
   a.status = ok ? ("loaded " + path) : ("LOAD FAILED: " + err);
   if (ok) {
     try {
       json j = json::parse(text);
-      bodies_from_json(j.value("scene_bodies", json::array()));
+      if (j.contains("scene")) {
+        // the full scene: objects, cameras, meshes, layers, selection
+        std::string warnings;
+        scene_from_json(j["scene"], idmap, warnings);
+        if (!warnings.empty())
+          a.status = "loaded " + path + " (with warnings: " + warnings + ")";
+      } else {
+        // an older file: only planets and infinite surfaces were recorded
+        bodies_from_json(j.value("scene_bodies", json::array()));
+      }
+      if (j.contains("environment"))
+        environment_from_json(j["environment"], idmap);
     } catch (const std::exception &) {
-      // graph loaded fine; a mangled bodies section should not kill the load
+      // graph loaded fine; a mangled scene section should not kill the load
     }
     undo_clear(); // a loaded project starts a fresh history
     a.project_path = path;

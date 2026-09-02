@@ -167,6 +167,8 @@ set(STUDIO_SOURCES
     studio/console.cpp
     studio/panel_render.cpp
     studio/scene.cpp
+    studio/scene_io.cpp
+    studio/render_settings.cpp
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
     studio/material_library.cpp
@@ -218,7 +220,9 @@ add_executable(undo_tests
     studio/undo.cpp
     studio/project_io.cpp
     studio/node_library.cpp
-    studio/scene.cpp)
+    studio/scene.cpp
+    studio/scene_io.cpp
+    studio/render_settings.cpp)
 target_include_directories(undo_tests PRIVATE studio)
 target_link_libraries(undo_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)

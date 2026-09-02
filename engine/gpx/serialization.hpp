@@ -1,12 +1,19 @@
 // Geekatplay Studio — graph <-> JSON project files
 #pragma once
 #include "gpx/node_graph.hpp"
+#include <cstdint>
+#include <map>
 #include <string>
 
 namespace gpx {
 
 std::string graph_to_json(const Graph &g);
-bool graph_from_json(Graph &g, const std::string &json_text, std::string &err);
+// `idmap_out`, when given, receives the file-id -> live-id translation the
+// loader built for its own links. Node ids are reassigned on load, so anything
+// outside the graph that stored a node id (a mesh's material binding, the
+// terrain material override) is meaningless without this map.
+bool graph_from_json(Graph &g, const std::string &json_text, std::string &err,
+                     std::map<uint64_t, uint64_t> *idmap_out = nullptr);
 bool save_project(const Graph &g, const std::string &path);
 bool load_project(Graph &g, const std::string &path, std::string &err);
 

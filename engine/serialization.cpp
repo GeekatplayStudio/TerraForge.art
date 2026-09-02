@@ -185,7 +185,8 @@ std::string graph_to_json(const Graph &g) {
   return j.dump(2);
 }
 
-bool graph_from_json(Graph &g, const std::string &text, std::string &err) {
+bool graph_from_json(Graph &g, const std::string &text, std::string &err,
+                     std::map<uint64_t, uint64_t> *idmap_out) {
   json j;
   try {
     j = json::parse(text);
@@ -214,6 +215,7 @@ bool graph_from_json(Graph &g, const std::string &text, std::string &err) {
                jl["to_port"].get<std::string>());
   }
   g.mark_all_dirty();
+  if (idmap_out) *idmap_out = std::move(idmap);
   return true;
 }
 

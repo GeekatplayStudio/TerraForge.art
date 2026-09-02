@@ -169,11 +169,16 @@ int scene_add_camera(const std::string &name) {
   return idx;
 }
 
-int scene_import_obj(const std::string &path, std::string &err) {
+// The OBJ loader itself, separated from object creation so a saved scene can
+// refill a reconstructed mesh from its recorded path. Fills `verts` with
+// interleaved position(3) + flat normal(3), normalised into a unit box.
+bool scene_load_obj_verts(const std::string &path, std::vector<float> &verts,
+                          std::string &err) {
+  verts.clear();
   std::ifstream f(path);
   if (!f) {
     err = "cannot open " + path;
-    return -1;
+    return false;
   }
   std::vector<float> pos;
   std::vector<unsigned> idx;
@@ -214,7 +219,7 @@ int scene_import_obj(const std::string &path, std::string &err) {
       if (bad_face) {
         err = "OBJ face references a vertex that does not exist (line: " +
               line.substr(0, 64) + ")";
-        return -1;
+        return false;
       }
       for (size_t k = 2; k < face.size(); ++k) { // fan-triangulate
         idx.push_back(face[0]);
@@ -225,7 +230,7 @@ int scene_import_obj(const std::string &path, std::string &err) {
   }
   if (pos.empty() || idx.empty()) {
     err = "no geometry found in OBJ";
-    return -1;
+    return false;
   }
   // normalize into unit box centered at origin (placed via object transform)
   float mn[3] = {1e9f, 1e9f, 1e9f}, mx[3] = {-1e9f, -1e9f, -1e9f};
@@ -242,28 +247,39 @@ int scene_import_obj(const std::string &path, std::string &err) {
     pos[i + 2] = (pos[i + 2] - (mn[2] + mx[2]) * 0.5f) / ext;
   }
 
+  // flat-shaded triangles: expand the index fan into interleaved
+  // position(3) + normal(3), one normal per face
+  verts.reserve(idx.size() * 6);
+  for (size_t t = 0; t + 2 < idx.size(); t += 3) {
+    const float *a = &pos[idx[t] * 3];
+    const float *b = &pos[idx[t + 1] * 3];
+    const float *c = &pos[idx[t + 2] * 3];
+    float ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    float vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    float nx = uy * vz - uz * vy, ny = uz * vx - ux * vz,
+          nz = ux * vy - uy * vx;
+    float len = std::sqrt(nx * nx + ny * ny + nz * nz);
+    if (len < 1e-12f) len = 1;
+    nx /= len;
+    ny /= len;
+    nz /= len;
+    for (const float *q : {a, b, c})
+      verts.insert(verts.end(), {q[0], q[1], q[2], nx, ny, nz});
+  }
+
+  return true;
+}
+
+int scene_import_obj(const std::string &path, std::string &err) {
+  std::vector<float> verts;
+  if (!scene_load_obj_verts(path, verts, err)) return -1;
   SceneObject o;
   o.type = SceneObject::Mesh;
   o.path = path;
   size_t slash = path.find_last_of("/\\");
   o.name = slash == std::string::npos ? path : path.substr(slash + 1);
-  o.verts.reserve(idx.size() * 6);
-  for (size_t t = 0; t + 2 < idx.size(); t += 3) {
-    const float *a = &pos[idx[t] * 3];
-    const float *b = &pos[idx[t + 1] * 3];
-    const float *c = &pos[idx[t + 2] * 3];
-    // flat normal
-    float ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
-    float vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
-    float nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    float len = std::sqrt(nx * nx + ny * ny + nz * nz);
-    if (len < 1e-12f) len = 1;
-    nx /= len; ny /= len; nz /= len;
-    for (const float *p : {a, b, c}) {
-      o.verts.insert(o.verts.end(), {p[0], p[1], p[2], nx, ny, nz});
-    }
-  }
-  o.vert_count = (int)(o.verts.size() / 6);
+  o.vert_count = (int)(verts.size() / 6);
+  o.verts = std::move(verts);
   o.gpu_dirty = true;
   scene().objects.push_back(std::move(o));
   return (int)scene().objects.size() - 1;
