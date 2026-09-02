@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "filter.morphology", "area": "engine", "phase": "23",
+      "description": "Morphology (dilate/erode/open/close/gradient/top hat/black hat, square or octagon element), AreaRemove blob pruning, and Zhang-Suen Skeleton",
+      "test_file": "test_engine.cpp", "test_symbol": "test_morphology" },
+
     { "id": "points.domain", "area": "engine", "phase": "23",
       "description": "Point-cloud domain: ScatterPoints (random, jittered grid, spaced), PointsRelax, PointsFilter (mask band + keep chance), PointsToMask stamps and PointsSDF distance, all deterministic",
       "test_file": "test_engine.cpp", "test_symbol": "test_points_domain" },

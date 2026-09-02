@@ -2,6 +2,7 @@
 # Regenerate with: regression_tests --update  (review the diff!)
 AOFromHeight|Material
 AlbedoToPBR|Material
+AreaRemove|Mask
 AtmosphereSettings|Atmosphere
 Blend|Operator
 ChannelMix|Material
@@ -72,6 +73,7 @@ Math|Operator
 Median|Filter
 MetaNode|Group
 MixLayers|Operator
+Morphology|Filter
 Noise|Primitive
 NormalBlend|Material
 NormalMap|Texture
@@ -102,6 +104,7 @@ Select|Logic
 Shape|Primitive
 Sharpen|Effect
 Shear|Transform
+Skeleton|Mask
 Smooth|Filter
 Snow|Filter
 SplatMaterial|Material

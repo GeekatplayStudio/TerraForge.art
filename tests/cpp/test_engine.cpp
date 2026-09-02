@@ -2762,6 +2762,80 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_morphology() {
+  std::printf("morphology...\n");
+  const int N = 64;
+  auto run = [&](const char *type, const gpx::Heightmap &in,
+                 std::function<void(gpx::Node &)> tune) {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node(type, 0, 0);
+    tune(*n);
+    n->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(in);
+    gpx::NodeRegistry::instance().find(type)->compute(*n);
+    const gpx::Port *op = n->ports[1].dir == gpx::PortDir::Out
+                              ? &n->ports[1]
+                              : n->port(n->ports.back().name, gpx::PortDir::Out);
+    for (const gpx::Port &p : n->ports)
+      if (p.dir == gpx::PortDir::Out && p.hmap) return *p.hmap;
+    (void)op;
+    return gpx::Heightmap(1, 1);
+  };
+
+  // a single lit pixel dilated with a square element becomes a square
+  gpx::Heightmap dot(N, N);
+  dot.v[(size_t)(N / 2) * N + N / 2] = 1.f;
+  auto d = run("Morphology", dot, [](gpx::Node &n) {
+    n.attrs.find("op")->i = 0;
+    n.attrs.find("radius")->i = 3;
+    n.attrs.find("shape")->i = 0;
+  });
+  float sum = 0;
+  for (float v : d.v) sum += v;
+  CHECK(sum == 49.f, "square dilation of a point covers (2r+1)^2 cells");
+
+  // closing fills a small hole in a solid block
+  gpx::Heightmap block(N, N, 1.f);
+  block.v[(size_t)(N / 2) * N + N / 2] = 0.f;
+  auto c = run("Morphology", block, [](gpx::Node &n) {
+    n.attrs.find("op")->i = 3;
+    n.attrs.find("radius")->i = 2;
+    n.attrs.find("shape")->i = 0;
+  });
+  CHECK(c.v[(size_t)(N / 2) * N + N / 2] == 1.f, "closing fills the hole");
+
+  // AreaRemove: a big blob survives, a lone pixel does not
+  gpx::Heightmap blobs(N, N);
+  for (int y = 10; y < 20; ++y)
+    for (int x = 10; x < 20; ++x) blobs.v[(size_t)y * N + x] = 1.f;
+  blobs.v[(size_t)40 * N + 40] = 1.f;
+  auto ar = run("AreaRemove", blobs, [](gpx::Node &n) {
+    n.attrs.find("min_area")->f = 0.005f; // 20 cells at 64x64
+  });
+  CHECK(ar.v[(size_t)15 * N + 15] == 1.f, "the big blob is kept");
+  CHECK(ar.v[(size_t)40 * N + 40] == 0.f, "the lone pixel is dropped");
+
+  // Skeleton: a thick bar thins but stays connected end to end
+  gpx::Heightmap bar(N, N);
+  for (int y = 28; y < 36; ++y)
+    for (int x = 8; x < 56; ++x) bar.v[(size_t)y * N + x] = 1.f;
+  auto sk = run("Skeleton", bar, [](gpx::Node &) {});
+  float total = 0;
+  for (float v : sk.v) total += v;
+  CHECK(total > 30.f && total < 8.f * 48.f * 0.5f,
+        "the skeleton is much thinner than the bar but not empty");
+  // every column the bar spans still has skeleton in it (connectivity proxy)
+  bool covered = true;
+  // ends erode by about the half-thickness, so test the interior span
+  for (int x = 16; x < 48; ++x) {
+    bool any = false;
+    for (int y = 0; y < N; ++y) any = any || sk.v[(size_t)y * N + x] > 0.5f;
+    covered = covered && any;
+  }
+  CHECK(covered, "the skeleton spans the bar's full length");
+}
+
 static void test_points_domain() {
   std::printf("point-cloud domain...\n");
   gpx::Graph g;
@@ -2974,6 +3048,7 @@ int main() {
   test_curve_and_shapes();
   test_path_carve();
   test_points_domain();
+  test_morphology();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

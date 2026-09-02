@@ -6,6 +6,9 @@ AlbedoToPBR.invert_rough|bool
 AlbedoToPBR.normal_strength|float
 AlbedoToPBR.rough_base|float
 AlbedoToPBR.rough_variation|float
+AreaRemove.invert|bool
+AreaRemove.min_area|float
+AreaRemove.threshold|float
 AtmosphereSettings.ambient|float
 AtmosphereSettings.density|float
 AtmosphereSettings.fog_b|float
@@ -338,6 +341,10 @@ MetaNode.inner_graph|text
 MetaNode.note|text
 MetaNode.published|text
 MixLayers.smooth_k|float
+Morphology.blend_invert|bool
+Morphology.op|choice
+Morphology.radius|int
+Morphology.shape|choice
 Noise.angle|float
 Noise.gain|float
 Noise.jitter|float
@@ -483,6 +490,7 @@ Shear.folding|float
 Shear.scale|float
 Shear.seed|seed
 Shear.self_modulated|bool
+Skeleton.threshold|float
 Smooth.radius|float
 Snow.amount|float
 Snow.blend_invert|bool

@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 132 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 135 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -16,11 +16,11 @@ Every node in Geekatplay TerraForge — 132 across 25 categories. Generated from
 | [Field Material](#field-material) | 1 |
 | [Field Math](#field-math) | 6 |
 | [Field Noise](#field-noise) | 3 |
-| [Filter](#filter) | 15 |
+| [Filter](#filter) | 16 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 1 |
 | [Logic](#logic) | 6 |
-| [Mask](#mask) | 5 |
+| [Mask](#mask) | 7 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 1 |
@@ -1177,6 +1177,23 @@ Removes single-cell spikes and pits without softening edges
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
+### Morphology
+
+Dilate, erode and their compositions
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Operation | choice: Dilate / Erode / Open / Close / Gradient / Top hat / Black hat |  |
+| Radius (px) | int, 1 to 64, default 3 |  |
+| Element | choice: Square / Octagon |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
 ### Plateau
 
 Flatten tops above a level
@@ -1437,6 +1454,21 @@ Pass-through / organization pin
 
 ## Mask
 
+### AreaRemove
+
+Drop small connected blobs
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Threshold | float, 0 to 1, default 0.5 |  |
+| Min area (fraction) | float, 0 to 0.5, default 0.001 |  |
+| Invert | toggle, default off |  |
+
 ### DistanceField
 
 Distance to a shape - shoreline gradients, wetness falloffs, anything that happens near something
@@ -1518,6 +1550,19 @@ Select by slope steepness
 | Edge softness | float, 0.001 to 1, default 0.1 |  |
 | Invert | toggle, default off |  |
 | Slope band | range |  |
+
+### Skeleton
+
+Thin a mask to its centerlines
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Threshold | float, 0 to 1, default 0.5 |  |
 
 ## Material
 
