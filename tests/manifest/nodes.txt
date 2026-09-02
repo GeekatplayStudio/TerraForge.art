@@ -166,6 +166,7 @@ Transform|Transform
 WarpDirectional|Transform
 WarpNoise|Transform
 WaterLayer|Atmosphere
+WaveletNoise|Primitive
 WetnessIndex|Analysis
 WhiteNoise|Primitive
 Wind|Erosion

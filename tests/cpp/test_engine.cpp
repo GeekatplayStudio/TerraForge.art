@@ -3102,6 +3102,33 @@ static void test_path_nodes() {
   CHECK(dist.at(32, 8) > 0.5f, "distance grows away from the path");
   CHECK(m.at(32, 32) == 1.f && m.at(32, 8) < 0.5f, "the mask is the band");
 
+  // wavelet noise: finite, varying, deterministic, and genuinely band
+  // limited - the tile's mean is near zero because the low band is removed
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *n = g.add_node("WaveletNoise", 0, 0);
+    n->attrs.find("post_remap")->b = false;
+    gpx::NodeRegistry::instance().find("WaveletNoise")->compute(*n);
+    const gpx::Heightmap &a = *n->port("output", gpx::PortDir::Out)->hmap;
+    double mean = 0;
+    float lo = 1e9f, hi = -1e9f;
+    bool fin = true;
+    for (float v : a.v) {
+      fin = fin && std::isfinite(v);
+      mean += v;
+      lo = std::min(lo, v);
+      hi = std::max(hi, v);
+    }
+    mean /= a.v.size();
+    CHECK(fin && hi - lo > 0.1f, "wavelet noise is finite and varies");
+    CHECK(std::fabs(mean - 0.5) < 0.05, "the low band is gone: mean sits at the midline");
+    gpx::Heightmap keep = a;
+    gpx::NodeRegistry::instance().find("WaveletNoise")->compute(*n);
+    CHECK(n->port("output", gpx::PortDir::Out)->hmap->v == keep.v,
+          "wavelet noise is bit-identical across computes");
+  }
+
   // Gabor: with anisotropy 1 and orientation 0 the streaks run along x, so
   // the surface varies less along x than across it
   {

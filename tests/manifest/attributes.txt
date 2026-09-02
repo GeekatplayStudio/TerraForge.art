@@ -747,6 +747,15 @@ WaterLayer.shallow_r|float
 WaterLayer.wave_amp|float
 WaterLayer.wave_scale|float
 WaterLayer.wave_speed|float
+WaveletNoise.gain|float
+WaveletNoise.octaves|int
+WaveletNoise.post_gain|float
+WaveletNoise.post_invert|bool
+WaveletNoise.post_range|range
+WaveletNoise.post_remap|bool
+WaveletNoise.post_zero_edges|float
+WaveletNoise.scale|float
+WaveletNoise.seed|seed
 WetnessIndex.blend_invert|bool
 WetnessIndex.contrast|float
 WetnessIndex.fill_pits|bool
