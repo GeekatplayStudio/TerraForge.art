@@ -103,6 +103,10 @@ Curve.post_zero_edges|float
 Curve.strength|float
 Detrend.amount|float
 Detrend.blend_invert|bool
+DiffusionLimited.particles|int
+DiffusionLimited.seed|seed
+DiffusionLimited.smooth_radius|float
+DiffusionLimited.stickiness|float
 DirectionalBlur.angle|float
 DirectionalBlur.blend_invert|bool
 DirectionalBlur.both_ways|bool

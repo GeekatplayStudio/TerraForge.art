@@ -2803,6 +2803,36 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_dla() {
+  std::printf("diffusion-limited aggregation...\n");
+  gpx::Graph g;
+  g.resolution = 128;
+  gpx::Node *n = g.add_node("DiffusionLimited", 0, 0);
+  n->attrs.find("particles")->i = 600;
+  n->attrs.find("smooth_radius")->f = 0.f;
+  gpx::NodeRegistry::instance().find("DiffusionLimited")->compute(*n);
+  const gpx::Heightmap &m = *n->port("mask", gpx::PortDir::Out)->hmap;
+  size_t stuck = 0;
+  for (float v : m.v) stuck += v > 0.5f;
+  CHECK(stuck > 300, "most particles aggregate");
+  CHECK(m.at(64, 64) == 1.f, "the seed cell is part of the cluster");
+  // sparse and branching, not a blob: the cluster's bounding box is much
+  // larger than a solid disc of the same cell count would need
+  int xmin = 128, xmax = 0, ymin = 128, ymax = 0;
+  for (int y = 0; y < 128; ++y)
+    for (int x = 0; x < 128; ++x)
+      if (m.at(x, y) > 0.5f) {
+        xmin = std::min(xmin, x); xmax = std::max(xmax, x);
+        ymin = std::min(ymin, y); ymax = std::max(ymax, y);
+      }
+  float bbox_area = (float)(xmax - xmin) * (ymax - ymin);
+  CHECK(bbox_area > (float)stuck * 2.f, "the aggregate is sparse, not solid");
+  gpx::Heightmap keep = m;
+  gpx::NodeRegistry::instance().find("DiffusionLimited")->compute(*n);
+  CHECK(n->port("mask", gpx::PortDir::Out)->hmap->v == keep.v,
+        "the growth is bit-identical across computes");
+}
+
 static void test_points_io() {
   std::printf("points CSV roundtrip...\n");
   const char *file = "test_points_roundtrip.csv";
@@ -3568,6 +3598,7 @@ int main() {
   test_path_nodes();
   test_landform();
   test_points_io();
+  test_dla();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

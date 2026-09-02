@@ -323,6 +323,105 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    DiffusionLimited, "Primitive", "Branching dendrites by particle aggregation",
+    [](Node &n) {
+      n.add_out("output");
+      n.add_out("mask");
+      add_seed(n.attrs);
+      add_int(n.attrs, "particles", "Particles", 1500, 100, 8000, "Growth");
+      add_float(n.attrs, "stickiness", "Stickiness", 1.f, 0.1f, 1.f, "Growth")
+          .tooltip = "1 sticks on first contact - wispy branches. Lower\n"
+                     "values let particles slide deeper before settling,\n"
+                     "thickening the arms.";
+      add_float(n.attrs, "smooth_radius", "Smoothing", 0.008f, 0.f, 0.05f,
+                "Growth");
+    },
+    [](Node &n) {
+      Heightmap &out = n.out_hmap("output");
+      Heightmap &mask = n.out_hmap("mask");
+      const int w = out.w, h = out.h;
+      uint32_t seed = n.attrs.get_seed("seed");
+      int particles = n.attrs.get_i("particles", 1500);
+      float stick = n.attrs.get_f("stickiness", 1.f);
+      // the aggregate grid; age recorded per cell so branches can fade
+      // toward their tips
+      std::vector<int> age((size_t)w * h, -1);
+      int cx0 = w / 2, cy0 = h / 2;
+      age[(size_t)cy0 * w + cx0] = 0;
+      float cluster_r = 2.f;
+      auto occupied = [&](int x, int y) {
+        return x >= 0 && y >= 0 && x < w && y < h &&
+               age[(size_t)y * w + x] >= 0;
+      };
+      uint32_t ctr = 0;
+      auto rnd = [&]() {
+        return (planet::pl_hash_bits((int)(ctr++), 0, 0, seed) & 0xffffffu) /
+               16777215.f;
+      };
+      // single-threaded by construction: each particle's walk depends on the
+      // aggregate the previous ones built, and the hash stream is one line
+      for (int p = 0; p < particles; ++p) {
+        float ang = rnd() * 6.2831853f;
+        float r = cluster_r + 4.f;
+        float px = cx0 + std::cos(ang) * r, py = cy0 + std::sin(ang) * r;
+        for (int step = 0; step < 4000; ++step) {
+          float dxc = px - cx0, dyc = py - cy0;
+          float dc = std::sqrt(dxc * dxc + dyc * dyc);
+          if (dc > cluster_r + 24.f) {
+            // far out: leap most of the way back toward the action
+            float t = (dc - cluster_r - 8.f) / dc;
+            px -= dxc * t;
+            py -= dyc * t;
+            continue;
+          }
+          float wang = rnd() * 6.2831853f;
+          px += std::cos(wang);
+          py += std::sin(wang);
+          int ix = (int)std::lround(px), iy = (int)std::lround(py);
+          if (ix < 1 || iy < 1 || ix >= w - 1 || iy >= h - 1) break;
+          bool touch = occupied(ix + 1, iy) || occupied(ix - 1, iy) ||
+                       occupied(ix, iy + 1) || occupied(ix, iy - 1);
+          if (touch && (stick >= 1.f || rnd() < stick)) {
+            age[(size_t)iy * w + ix] = p;
+            float dr = std::sqrt((float)((ix - cx0) * (ix - cx0) +
+                                         (iy - cy0) * (iy - cy0)));
+            cluster_r = std::max(cluster_r, dr);
+            break;
+          }
+        }
+        if (cluster_r > std::min(w, h) * 0.48f) break; // reached the frame
+      }
+      // older cells (trunk) high, younger tips low - reads as tapering relief
+      for (size_t i = 0; i < age.size(); ++i) {
+        mask.v[i] = age[i] >= 0 ? 1.f : 0.f;
+        out.v[i] =
+            age[i] >= 0 ? 1.f - 0.7f * (float)age[i] / (float)particles : 0.f;
+      }
+      int sr = (int)(n.attrs.get_f("smooth_radius", 0.008f) * w);
+      if (sr > 0) {
+        // a light separable box pass turns the one-cell skeleton into relief
+        for (int pass = 0; pass < 2; ++pass) {
+          Heightmap tmp = out;
+          parallel_rows(h, [&](int y0, int y1) {
+            for (int y = y0; y < y1; ++y)
+              for (int x = 0; x < w; ++x) {
+                float s = 0;
+                int c = 0;
+                for (int d = -sr; d <= sr; ++d) {
+                  int xx = pass == 0 ? x + d : x;
+                  int yy = pass == 0 ? y : y + d;
+                  if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                  s += tmp.v[(size_t)yy * w + xx];
+                  ++c;
+                }
+                out.at(x, y) = s / c;
+              }
+          });
+        }
+      }
+    })
+
+REGISTER_NODE(
     Constant, "Primitive", "Constant level",
     [](Node &n) {
       n.add_out("output");

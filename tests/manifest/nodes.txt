@@ -19,6 +19,7 @@ Crater|Primitive
 CurvatureFromHeight|Material
 Curve|Filter
 Detrend|Filter
+DiffusionLimited|Primitive
 DirectionalBlur|Filter
 Dissolve|Erosion
 DistanceField|Mask

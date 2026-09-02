@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "primitive.dla", "area": "engine", "phase": "23",
+      "description": "DiffusionLimited: branching dendrites by particle aggregation, hashed walk (bit-identical), age-tapered relief, stickiness and smoothing controls",
+      "test_file": "test_engine.cpp", "test_symbol": "test_dla" },
+
     { "id": "noise.gabor", "area": "engine", "phase": "23",
       "description": "GaborNoise: sparse convolution of oriented cosine kernels under a gaussian envelope, anisotropy from locked streaks to isotropic grain, octave stacking",
       "test_file": "test_engine.cpp", "test_symbol": "test_noise_variants" },
