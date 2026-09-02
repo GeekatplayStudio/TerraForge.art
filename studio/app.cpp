@@ -59,6 +59,13 @@ void scene_rebuild_scatter_instances(App &a) {
       float sj =
           1.f + (((hb >> 16) & 0xffu) / 255.f - 0.5f) * o.scatter_jitter;
       float sc = o.scatter_scale * sj;
+      // point values scale the copies when asked: a power-law cloud then
+      // reads as many saplings and a few grown trees
+      if (o.scatter_value_size > 0.f) {
+        float vv = std::clamp(pc->v[i], 0.f, 2.f);
+        sc *= 1.f + (vv - 1.f) * o.scatter_value_size;
+        sc = std::max(sc, 0.02f * o.scatter_scale);
+      }
       o.inst.push_back(px);
       o.inst.push_back(py);
       o.inst.push_back(pz);

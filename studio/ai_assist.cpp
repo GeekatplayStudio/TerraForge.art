@@ -337,6 +337,8 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         if (act.contains("size")) o.scatter_scale = act["size"].get<float>();
         if (act.contains("jitter")) o.scatter_jitter = act["jitter"].get<float>();
         if (act.contains("sway")) o.scatter_sway = act["sway"].get<float>();
+        if (act.contains("size_from_value"))
+          o.scatter_value_size = act["size_from_value"].get<float>();
         if (act.contains("seed")) o.scatter_seed = act["seed"].get<uint32_t>();
         if (!node_id) o.inst.clear();
         ++applied;
