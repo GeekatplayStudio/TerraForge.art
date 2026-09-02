@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "mask.selectors23", "area": "engine", "phase": "23",
+      "description": "SelectMidrange (gaussian band over the height range), SelectTransitions (where two surfaces trade places), SelectBorder (EDT band along a mask boundary, inward/outward/both)",
+      "test_file": "test_engine.cpp", "test_symbol": "test_selectors" },
+
     { "id": "noise.fbm_variants", "area": "engine", "phase": "23",
       "description": "IQ (slope-damped), Jordan (gradient-warped squared) and Pingpong (folded) fBm variants on the Noise node",
       "test_file": "test_engine.cpp", "test_symbol": "test_noise_variants" },

@@ -50,6 +50,99 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    SelectMidrange, "Mask", "Select the middle elevations",
+    [](Node &n) {
+      setup_selector(n);
+      add_float(n.attrs, "center", "Center", 0.5f, 0.f, 1.f, "Selection");
+      add_float(n.attrs, "width", "Width", 0.25f, 0.02f, 1.f, "Selection");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &m = n.out_hmap("mask");
+      m = *in;
+      float c = n.attrs.get_f("center", 0.5f);
+      float wdt = n.attrs.get_f("width", 0.25f);
+      float mn, mx;
+      in->minmax(mn, mx);
+      float d = (mx - mn) > 1e-12f ? mx - mn : 1.f;
+      parallel_index(m.v.size(), [&](size_t i0, size_t i1) {
+        for (size_t i = i0; i < i1; ++i) {
+          float t = ((in->v[i] - mn) / d - c) / wdt;
+          m.v[i] = std::exp(-t * t * 4.f); // gaussian bell over the band
+        }
+      });
+      finish_mask(n, m);
+    })
+
+REGISTER_NODE(
+    SelectTransitions, "Mask", "Select where two surfaces trade places",
+    [](Node &n) {
+      n.add_in("input A");
+      n.add_in("input B");
+      n.add_out("mask");
+      add_float(n.attrs, "tolerance", "Tolerance", 0.05f, 0.001f, 0.5f,
+                "Selection");
+      add_bool(n.attrs, "invert", "Invert", false, "Selection");
+    },
+    [](Node &n) {
+      const Heightmap *a = require_in(n, "input A");
+      const Heightmap *b = n.in_hmap("input B");
+      if (!a || !b) return;
+      Heightmap &m = n.out_hmap("mask");
+      m = *a;
+      float tol = n.attrs.get_f("tolerance", 0.05f);
+      bool inv = n.attrs.get_b("invert");
+      size_t nn = std::min(a->v.size(), b->v.size());
+      parallel_index(nn, [&](size_t i0, size_t i1) {
+        for (size_t i = i0; i < i1; ++i) {
+          float t = std::clamp(1.f - std::fabs(a->v[i] - b->v[i]) / tol, 0.f, 1.f);
+          t = t * t * (3.f - 2.f * t);
+          m.v[i] = inv ? 1.f - t : t;
+        }
+      });
+    })
+
+REGISTER_NODE(
+    SelectBorder, "Mask", "A band along a mask's boundary",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("mask");
+      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Selection");
+      add_float(n.attrs, "reach", "Reach", 0.05f, 0.002f, 0.5f, "Selection");
+      add_choice(n.attrs, "side", "Side", {"Both", "Inward", "Outward"}, 0,
+                 "Selection");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &m = n.out_hmap("mask");
+      m = *in;
+      float thr = n.attrs.get_f("threshold", 0.5f);
+      float reach = std::max(n.attrs.get_f("reach", 0.05f), 1e-4f) * in->w;
+      int side = n.attrs.get_choice("side");
+      // distance to the inside and to the outside; the boundary is where
+      // either is small on the wrong side of the threshold
+      std::vector<float> din(in->v.size()), dout(in->v.size());
+      for (size_t i = 0; i < in->v.size(); ++i) {
+        din[i] = in->v[i] >= thr ? 1.f : 0.f;  // -> distance to the shape
+        dout[i] = in->v[i] >= thr ? 0.f : 1.f; // -> distance to the outside
+      }
+      edt_squared(din, in->w, in->h);
+      edt_squared(dout, in->w, in->h);
+      parallel_index(m.v.size(), [&](size_t i0, size_t i1) {
+        for (size_t i = i0; i < i1; ++i) {
+          bool inside = in->v[i] >= thr;
+          float d = std::sqrt(inside ? dout[i] : din[i]);
+          float t = std::clamp(1.f - d / reach, 0.f, 1.f);
+          if (side == 1 && !inside) t = 0.f;
+          if (side == 2 && inside) t = 0.f;
+          m.v[i] = t * t * (3.f - 2.f * t);
+        }
+      });
+    })
+
+REGISTER_NODE(
     SelectSlope, "Mask", "Select by slope steepness",
     [](Node &n) {
       setup_selector(n);

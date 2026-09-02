@@ -102,9 +102,12 @@ Sample|Field Bridge
 ScatterPoints|Points
 SedimentDeposit|Erosion
 SelectAltitude|Mask
+SelectBorder|Mask
 SelectCavities|Mask
 SelectCurvature|Mask
+SelectMidrange|Mask
 SelectSlope|Mask
+SelectTransitions|Mask
 Select|Logic
 Shape|Primitive
 Sharpen|Effect

@@ -2803,6 +2803,63 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_selectors() {
+  std::printf("selectors...\n");
+  const int N = 64;
+  gpx::Heightmap ramp(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) ramp.at(x, y) = x / (float)(N - 1);
+
+  auto run = [&](const char *type, std::function<void(gpx::Node &)> wire) {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node(type, 0, 0);
+    wire(*n);
+    gpx::NodeRegistry::instance().find(type)->compute(*n);
+    return *n->port("mask", gpx::PortDir::Out)->hmap;
+  };
+
+  // midrange peaks at the center height and falls off both ways
+  auto mid = run("SelectMidrange", [&](gpx::Node &n) {
+    n.attrs.find("invert")->b = false;
+    n.port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(ramp);
+  });
+  CHECK(mid.at(32, 32) > mid.at(4, 32) && mid.at(32, 32) > mid.at(60, 32),
+        "midrange peaks in the middle of the range");
+
+  // transitions: two ramps crossing select the crossing band
+  gpx::Heightmap ramp2(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) ramp2.at(x, y) = 1.f - x / (float)(N - 1);
+  auto tr = run("SelectTransitions", [&](gpx::Node &n) {
+    n.port("input A", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(ramp);
+    n.port("input B", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(ramp2);
+  });
+  // the exact crossing falls between samples, so the nearest cell reads the
+  // smoothstep of a one-cell offset rather than a full 1
+  CHECK(tr.at(32, 32) > 0.6f, "the crossing line is selected");
+  CHECK(tr.at(4, 32) == 0.f && tr.at(60, 32) == 0.f,
+        "away from the crossing nothing is selected");
+
+  // border band around a disc mask
+  gpx::Heightmap disc(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x)
+      disc.at(x, y) =
+          ((x - 32) * (x - 32) + (y - 32) * (y - 32) < 144) ? 1.f : 0.f;
+  auto bd = run("SelectBorder", [&](gpx::Node &n) {
+    n.attrs.find("reach")->f = 0.08f;
+    n.port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(disc);
+  });
+  CHECK(bd.at(32 + 12, 32) > 0.5f, "the rim is selected");
+  CHECK(bd.at(32, 32) == 0.f, "the disc's center is not");
+  CHECK(bd.at(2, 2) == 0.f, "far outside is not");
+}
+
 static void test_noise_variants() {
   std::printf("fBm variants...\n");
   for (int type : {9, 10, 11}) { // IQ, Jordan, Pingpong
@@ -3258,6 +3315,7 @@ int main() {
   test_flood();
   test_local_filters();
   test_noise_variants();
+  test_selectors();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

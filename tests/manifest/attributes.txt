@@ -474,6 +474,9 @@ Select.index|int
 SelectAltitude.band|range
 SelectAltitude.invert|bool
 SelectAltitude.smoothing|float
+SelectBorder.reach|float
+SelectBorder.side|choice
+SelectBorder.threshold|float
 SelectCavities.invert|bool
 SelectCavities.radius|float
 SelectCavities.smoothing|float
@@ -481,9 +484,15 @@ SelectCurvature.invert|bool
 SelectCurvature.mode|choice
 SelectCurvature.scale|float
 SelectCurvature.smoothing|float
+SelectMidrange.center|float
+SelectMidrange.invert|bool
+SelectMidrange.smoothing|float
+SelectMidrange.width|float
 SelectSlope.band|range
 SelectSlope.invert|bool
 SelectSlope.smoothing|float
+SelectTransitions.invert|bool
+SelectTransitions.tolerance|float
 Shape.angle|float
 Shape.center|vec2
 Shape.frequency|float

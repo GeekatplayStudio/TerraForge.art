@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 142 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 145 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -20,7 +20,7 @@ Every node in Geekatplay TerraForge — 142 across 25 categories. Generated from
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
-| [Mask](#mask) | 7 |
+| [Mask](#mask) | 10 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 1 |
@@ -1604,6 +1604,21 @@ Select by height band
 | Invert | toggle, default off |  |
 | Altitude band | range |  |
 
+### SelectBorder
+
+A band along a mask's boundary
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Threshold | float, 0 to 1, default 0.5 |  |
+| Reach | float, 0.002 to 0.5, default 0.05 |  |
+| Side | choice: Both / Inward / Outward |  |
+
 ### SelectCavities
 
 Ambient-occlusion-like cavity map
@@ -1635,6 +1650,22 @@ Select concave (valleys) or convex (ridges)
 | Mode | choice: Convex (ridges) / Concave (valleys) |  |
 | Feature scale | float, 0.002 to 0.1, default 0.01 |  |
 
+### SelectMidrange
+
+Select the middle elevations
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Edge softness | float, 0.001 to 1, default 0.1 |  |
+| Invert | toggle, default off |  |
+| Center | float, 0 to 1, default 0.5 |  |
+| Width | float, 0.02 to 1, default 0.25 |  |
+
 ### SelectSlope
 
 Select by slope steepness
@@ -1649,6 +1680,21 @@ Select by slope steepness
 | Edge softness | float, 0.001 to 1, default 0.1 |  |
 | Invert | toggle, default off |  |
 | Slope band | range |  |
+
+### SelectTransitions
+
+Select where two surfaces trade places
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input A | in | heightmap |
+| input B | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Tolerance | float, 0.001 to 0.5, default 0.05 |  |
+| Invert | toggle, default off |  |
 
 ### Skeleton
 
