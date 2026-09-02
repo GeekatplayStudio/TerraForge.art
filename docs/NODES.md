@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 136 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 137 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -25,7 +25,7 @@ Every node in Geekatplay TerraForge — 136 across 25 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 1 |
 | [Points](#points) | 5 |
-| [Primitive](#primitive) | 10 |
+| [Primitive](#primitive) | 11 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 4 |
@@ -1370,6 +1370,7 @@ Standing water at a set level
 | Port | Direction | Type |
 | :--- | :--- | :--- |
 | input | in | heightmap |
+| sources | in (optional) | ? |
 | output | out | heightmap |
 | depth | out | heightmap |
 | water_mask | out | heightmap |
@@ -1378,7 +1379,7 @@ Standing water at a set level
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Water level | float, 0 to 1, default 0.3 |  |
-| Fill | choice: Everywhere below / Connected to the edge |  |
+| Fill | choice: Everywhere below / Connected to the edge / From source points |  |
 | Normalize depth | toggle, default on |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -2268,6 +2269,23 @@ Terrain modeling: stamp a heightfield shape onto the terrain
 | Blend | choice: Add / Max (merge) / Min (carve) / Replace by mask |  |
 | Edge falloff | float, 0 to 0.5, default 0.15 |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### WhiteNoise
+
+Raw per-cell white noise
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| output | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ## Render
 

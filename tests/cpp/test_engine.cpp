@@ -2836,6 +2836,44 @@ static void test_flood() {
   auto [any_mask, any_out] = run(0);
   (void)any_out;
   CHECK(any_mask.at(52, 32) == 1.f, "everywhere-below mode floods the pit too");
+
+  // point-seeded: a spring inside the walled pit floods only the pit
+  {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *sc = g.add_node("ScatterPoints", 0, 0);
+    gpx::Node *fd = g.add_node("Flood", 0, 0);
+    fd->attrs.find("level")->f = 0.3f;
+    fd->attrs.find("mode")->i = 2;
+    fd->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(in);
+    auto pts = std::make_shared<gpx::PointCloud>();
+    pts->add(52.f / N, 32.f / N, 1.f);
+    sc->port("points", gpx::PortDir::Out)->pts = pts;
+    g.add_link(sc->id, "points", fd->id, "sources");
+    gpx::NodeRegistry::instance().find("Flood")->compute(*fd);
+    const gpx::Heightmap &m = *fd->port("water_mask", gpx::PortDir::Out)->hmap;
+    CHECK(m.at(52, 32) == 1.f, "the spring floods its own basin");
+    CHECK(m.at(2, 32) == 0.f, "unconnected low ground stays dry");
+  }
+
+  // white noise: deterministic, spans 0..1, mean near a half
+  {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *wn = g.add_node("WhiteNoise", 0, 0);
+    wn->attrs.find("post_remap")->b = false;
+    gpx::NodeRegistry::instance().find("WhiteNoise")->compute(*wn);
+    const gpx::Heightmap &a = *wn->port("output", gpx::PortDir::Out)->hmap;
+    double mean = 0;
+    for (float v : a.v) mean += v;
+    mean /= a.v.size();
+    CHECK(mean > 0.45 && mean < 0.55, "white noise is centered");
+    gpx::Heightmap keep = a;
+    gpx::NodeRegistry::instance().find("WhiteNoise")->compute(*wn);
+    CHECK(wn->port("output", gpx::PortDir::Out)->hmap->v == keep.v,
+          "white noise is bit-identical across computes");
+  }
 }
 
 static void test_morphology() {

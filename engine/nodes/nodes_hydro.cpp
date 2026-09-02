@@ -69,12 +69,15 @@ REGISTER_NODE(
     Flood, "Hydrology", "Standing water at a set level",
     [](Node &n) {
       n.add_in("input");
+      n.add_in("sources", DataType::Points, true);
       n.add_out("output");
       n.add_out("depth");
       n.add_out("water_mask");
       add_float(n.attrs, "level", "Water level", 0.3f, 0.f, 1.f, "Flood");
       add_choice(n.attrs, "mode", "Fill",
-                 {"Everywhere below", "Connected to the edge"}, 1, "Flood");
+                 {"Everywhere below", "Connected to the edge",
+                  "From source points"},
+                 1, "Flood");
       add_bool(n.attrs, "normalize_depth", "Normalize depth", true, "Flood");
     },
     [](Node &n) {
@@ -92,11 +95,13 @@ REGISTER_NODE(
       float level = mn + n.attrs.get_f("level", 0.3f) * span;
       int w = in->w, h = in->h;
       std::vector<unsigned char> wet((size_t)w * h, 0);
-      if (n.attrs.get_choice("mode") == 0) {
+      int mode = n.attrs.get_choice("mode");
+      if (mode == 0) {
         for (size_t i = 0; i < wet.size(); ++i) wet[i] = in->v[i] < level;
       } else {
-        // BFS from every boundary cell below the level: only water that can
-        // reach the tile edge floods, so basins above the sea stay dry lakes
+        // BFS from the seeds: boundary cells below the level (mode 1), or the
+        // source points (mode 2). Only water that can reach a seed floods, so
+        // basins walled off from every seed stay dry hollows.
         std::vector<size_t> queue;
         auto seed = [&](int x, int y) {
           size_t i = (size_t)y * w + x;
@@ -105,8 +110,16 @@ REGISTER_NODE(
             queue.push_back(i);
           }
         };
-        for (int x = 0; x < w; ++x) { seed(x, 0); seed(x, h - 1); }
-        for (int y = 0; y < h; ++y) { seed(0, y); seed(w - 1, y); }
+        if (mode == 2) {
+          const PointCloud *pts = n.in_points("sources");
+          if (pts)
+            for (size_t p = 0; p < pts->size(); ++p)
+              seed(std::clamp((int)(pts->x[p] * w), 0, w - 1),
+                   std::clamp((int)(pts->y[p] * h), 0, h - 1));
+        } else {
+          for (int x = 0; x < w; ++x) { seed(x, 0); seed(x, h - 1); }
+          for (int y = 0; y < h; ++y) { seed(0, y); seed(w - 1, y); }
+        }
         for (size_t q = 0; q < queue.size(); ++q) {
           size_t c = queue[q];
           int cx = (int)(c % w), cy = (int)(c / w);

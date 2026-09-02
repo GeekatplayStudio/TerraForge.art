@@ -643,6 +643,12 @@ WetnessIndex.post_invert|bool
 WetnessIndex.post_range|range
 WetnessIndex.post_remap|bool
 WetnessIndex.post_zero_edges|float
+WhiteNoise.post_gain|float
+WhiteNoise.post_invert|bool
+WhiteNoise.post_range|range
+WhiteNoise.post_remap|bool
+WhiteNoise.post_zero_edges|float
+WhiteNoise.seed|seed
 Wind.angle|float
 Wind.carry_dist|float
 Wind.iterations|int

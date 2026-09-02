@@ -4,6 +4,8 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
+#include "gpx/parallel.hpp"
+#include "gpx/planet_math.hpp"
 #include <random>
 
 namespace gpx {
@@ -240,6 +242,25 @@ REGISTER_NODE(
             }
             out.at(x, y) = v;
           }
+      });
+      apply_post(n, out);
+    })
+
+REGISTER_NODE(
+    WhiteNoise, "Primitive", "Raw per-cell white noise",
+    [](Node &n) {
+      n.add_out("output");
+      add_seed(n.attrs);
+      setup_post(n);
+    },
+    [](Node &n) {
+      Heightmap &out = n.out_hmap("output");
+      uint32_t seed = n.attrs.get_seed("seed");
+      parallel_rows(out.h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < out.w; ++x)
+            out.at(x, y) =
+                (planet::pl_hash_bits(x, y, 0, seed) & 0xffffffu) / 16777215.f;
       });
       apply_post(n, out);
     })
