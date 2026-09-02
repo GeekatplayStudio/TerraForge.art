@@ -134,6 +134,53 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "state. Writes a report beside the API state file.",
         "params": {},
     },
+    "studio_set_time": {
+        "description": "Move the animation clock; keyed attributes re-sample "
+                       "and the graph re-evaluates. Field: time (seconds).",
+        "params": {"time": "float"},
+    },
+    "studio_set_key": {
+        "description": "Key an attribute on its animation track. Fields: node "
+                       "(type or id), attr, value (defaults to the current), "
+                       "time (defaults to the clock), interp "
+                       "(constant/linear/smooth), remove (bool).",
+        "params": {"node": "str", "attr": "str", "value": "float",
+                   "time": "float", "interp": "str", "remove": "bool"},
+    },
+    "studio_render_sequence": {
+        "description": "Capture the animation range as numbered PNGs through "
+                       "the viewport engine. Fields: dir, fps, start, end, "
+                       "width, height; optional camera_path (a Points node "
+                       "the camera rides), camera_height, sun_from/sun_to "
+                       "([azimuth, altitude] pairs for a day cycle).",
+        "params": {"dir": "str", "fps": "float", "start": "float",
+                   "end": "float", "width": "int", "height": "int",
+                   "camera_path": "str", "camera_height": "float",
+                   "sun_from": "list", "sun_to": "list"},
+    },
+    "studio_set_scatter": {
+        "description": "Bind a mesh object to a Points node: instanced copies "
+                       "stand on the terrain at every point. Fields: object, "
+                       "node (empty unbinds), size, jitter, seed, sway, "
+                       "size_from_value.",
+        "params": {"object": "str", "node": "str", "size": "float",
+                   "jitter": "float", "seed": "int", "sway": "float",
+                   "size_from_value": "float"},
+    },
+    "studio_import_object": {
+        "description": "Import an OBJ as a scene mesh. Fields: path, name, "
+                       "position ([x,y,z]), scale.",
+        "params": {"path": "str", "name": "str", "position": "list",
+                   "scale": "float"},
+    },
+    "studio_save_project": {
+        "description": "Save the project (.gpxt) to `path`.",
+        "params": {"path": "str"},
+    },
+    "studio_open_project": {
+        "description": "Open a project (.gpxt) from `path`.",
+        "params": {"path": "str"},
+    },
 }
 
 # tool name -> the action op it sends; None means it is handled specially
@@ -154,6 +201,13 @@ _SIMPLE = {
     "studio_capture": "capture",
     "studio_evaluate": "evaluate",
     "studio_verify_field_gpu": "verify_field_gpu",
+    "studio_set_time": "set_time",
+    "studio_set_key": "set_key",
+    "studio_render_sequence": "render_sequence",
+    "studio_set_scatter": "set_scatter",
+    "studio_import_object": "import_object",
+    "studio_save_project": "save_project",
+    "studio_open_project": "open_project",
 }
 
 
