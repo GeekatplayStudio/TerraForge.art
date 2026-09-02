@@ -93,10 +93,13 @@ set(ENGINE_SOURCES
     engine/serialization.cpp
     engine/parallel.cpp
     engine/field_glsl.cpp
+    engine/field_glsl_emitters.cpp
     engine/metanode.cpp
     engine/nodes/nodes_primitives.cpp
     engine/nodes/nodes_filters.cpp
     engine/nodes/nodes_erosion.cpp
+    engine/nodes/nodes_erosion_slope.cpp
+    engine/nodes/nodes_erosion_wind.cpp
     engine/nodes/nodes_operators.cpp
     engine/nodes/nodes_masks.cpp
     engine/nodes/nodes_warp.cpp
@@ -136,6 +139,7 @@ set(STUDIO_SOURCES
     studio/theme_colors.cpp
     studio/icons.cpp
     studio/panel_graph.cpp
+    studio/panel_graph_draw.cpp
     studio/panel_properties.cpp
     studio/panel_properties_object.cpp
     studio/panel_properties_node.cpp
