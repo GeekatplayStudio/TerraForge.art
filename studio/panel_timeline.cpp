@@ -71,6 +71,8 @@ void draw_panel_timeline(App &a) {
     a.seq_total =
         (int)std::max((a.anim_end - a.anim_start) * a.seq_fps + 0.5f, 1.f);
     a.seq_frame = 0;
+    a.seq_cam_path = 0;      // panel captures are plain: no stale fly-through
+    a.seq_sun_sweep = false; // ...and no stale day cycle
     a.anim_playing = false;
     a.graph.time = a.anim_start;
     a.seq_active = true;

@@ -99,6 +99,10 @@ struct App {
   // path; the active camera rides it for the length of the sequence
   unsigned long long seq_cam_path = 0;
   float seq_cam_height = 0.08f;
+  // optional sun sweep across the sequence: azimuth/altitude interpolated
+  // from [0]/[1] to [2]/[3] when enabled - a day cycle in one op
+  bool seq_sun_sweep = false;
+  float seq_sun[4] = {90.f, 10.f, 270.f, 10.f};
   bool request_layout_reset = false;
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
   // Set to a node id to have the graph select it and pan to it on the next

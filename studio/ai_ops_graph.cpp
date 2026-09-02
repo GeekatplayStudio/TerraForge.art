@@ -331,6 +331,17 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
           a.seq_cam_path = cand->id;
     }
     a.seq_cam_height = act.value("camera_height", 0.08f);
+    a.seq_sun_sweep = act.contains("sun_from") || act.contains("sun_to");
+    if (act.contains("sun_from") && act["sun_from"].is_array() &&
+        act["sun_from"].size() >= 2) {
+      a.seq_sun[0] = act["sun_from"][0].get<float>();
+      a.seq_sun[1] = act["sun_from"][1].get<float>();
+    }
+    if (act.contains("sun_to") && act["sun_to"].is_array() &&
+        act["sun_to"].size() >= 2) {
+      a.seq_sun[2] = act["sun_to"][0].get<float>();
+      a.seq_sun[3] = act["sun_to"][1].get<float>();
+    }
     a.seq_total = std::max(
         (int)((a.anim_end - a.anim_start) * a.seq_fps + 0.5f), 1);
     a.seq_frame = 0;

@@ -131,6 +131,17 @@ void app_service_sequence(App &a) {
     // longer per frame - nothing blocks and nothing tears.
     if (a.seq_active && !a.eval.running.load() &&
         a.uploaded_serial == a.eval_serial) {
+      // day cycle: sweep the sun across the sequence
+      if (a.seq_sun_sweep) {
+        float s = a.seq_total > 1
+                      ? (float)a.seq_frame / (float)(a.seq_total - 1)
+                      : 0.f;
+        RenderSettings &rs = render_settings();
+        rs.sun_mode = 0;
+        rs.sun_azimuth = a.seq_sun[0] + (a.seq_sun[2] - a.seq_sun[0]) * s;
+        rs.sun_altitude = a.seq_sun[1] + (a.seq_sun[3] - a.seq_sun[1]) * s;
+      }
+
       // fly-through: put the active camera on its path for this frame
       if (a.seq_cam_path) {
         gpx::Node *pn = a.graph.find_node(a.seq_cam_path);
