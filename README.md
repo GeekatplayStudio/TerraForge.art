@@ -89,6 +89,19 @@ generated from the registry itself.
   goes can say that the grass is rougher than the rock and has a finer grain.
   An unconnected channel leaves that part of the shading alone.
 
+### Points, paths and scattering
+- **A third domain: point clouds.** ScatterPoints (random, jittered grid, or
+  spaced), relaxation, mask filtering, merging, shuffling, values sampled
+  from any heightmap; stamp clouds into rasters or exact distance fields.
+- **Paths are ordered clouds.** Thread a scatter into a tour, resample it
+  evenly, spline through it (Catmull-Rom), fractalize it into a coastline
+  wander, or route it across the terrain with a slope-penalty least-cost
+  search — then hand it to PathCarve for the riverbed.
+- **EcoSystem-style scattering.** Bind any imported mesh to a Points node and
+  instanced copies stand on the terrain — hashed yaw, size and brightness
+  jitter per copy, live in the viewport and identical in every offline
+  render engine. CSV/PLY export and CSV import round-trip the clouds.
+
 ### Terrain analysis
 - **Flow accumulation** (D8): how much water passes through each point.
 - **Wetness index** — `ln(a/tan b)`, the standard measure of where water
