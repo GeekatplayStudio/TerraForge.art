@@ -158,6 +158,10 @@ void draw_render_window(App &a); // live progressive render view
 void render_service_requests(App &a); // camera/AI render requests, per frame
 void draw_panel_timeline(App &a);
 void scene_rebuild_scatter_instances(App &a);
+// per-frame services (app_services.cpp)
+void app_service_sequence(App &a);
+void app_service_points_overlay(App &a);
+void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm);
 struct SceneObject;
 void camera_properties_ui(App &a, SceneObject &obj);
 void camera_apply_film();

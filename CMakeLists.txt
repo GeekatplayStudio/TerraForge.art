@@ -149,6 +149,7 @@ endif()
 set(STUDIO_SOURCES
     studio/main.cpp
     studio/app.cpp
+    studio/app_services.cpp
     studio/layout.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
@@ -196,6 +197,7 @@ set(STUDIO_SOURCES
     studio/panel_timeline.cpp
     studio/console.cpp
     studio/panel_render.cpp
+    studio/render_scene_export.cpp
     studio/scene.cpp
     studio/scene_io.cpp
     studio/render_settings.cpp
@@ -205,6 +207,7 @@ set(STUDIO_SOURCES
     studio/node_library.cpp
     studio/panel_camera.cpp
     studio/ai_assist.cpp
+    studio/ai_actions.cpp
     studio/ai_schema.cpp
     studio/ai_ops_graph.cpp
     studio/ai_ops_view.cpp
