@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 164 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 165 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -16,7 +16,7 @@ Every node in Geekatplay TerraForge — 164 across 25 categories. Generated from
 | [Field Material](#field-material) | 1 |
 | [Field Math](#field-math) | 6 |
 | [Field Noise](#field-noise) | 3 |
-| [Filter](#filter) | 21 |
+| [Filter](#filter) | 22 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
@@ -1085,6 +1085,24 @@ Clamp with optional smooth shoulders
 | :--- | :--- | :--- |
 | Clamp range | range |  |
 | Shoulder softness | float, 0 to 0.5, default 0 |  |
+
+### Convolve
+
+Convolution by a preset or typed kernel
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Kernel | choice: Sharpen / Edge (laplacian) / Emboss NW / Sobel X / Sobel Y / Custom |  |
+| Custom (row-major) | text | 9 or 25 numbers, row-major 3x3 or 5x5, any whitespace. |
+| Strength | float, 0 to 4, default 1 |  |
+| Add to input | toggle, default off |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Craggy
 

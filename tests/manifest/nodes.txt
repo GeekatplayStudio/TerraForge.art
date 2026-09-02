@@ -13,6 +13,7 @@ ColorAdjust|Material
 ColorizeGradient|Texture
 Compare|Logic
 Constant|Primitive
+Convolve|Filter
 Cracks|Effect
 Craggy|Filter
 Crater|Primitive

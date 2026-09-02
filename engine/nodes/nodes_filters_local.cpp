@@ -8,6 +8,7 @@
 #include "gpx/planet_math.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <vector>
 
 namespace gpx {
@@ -398,6 +399,73 @@ REGISTER_NODE(
         mb.v[i] = r == 1 ? 1.f : 0.f;
         mc.v[i] = r == 2 ? 1.f : 0.f;
       }
+    })
+
+REGISTER_NODE(
+    Convolve, "Filter", "Convolution by a preset or typed kernel",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      add_choice(n.attrs, "kernel", "Kernel",
+                 {"Sharpen", "Edge (laplacian)", "Emboss NW", "Sobel X",
+                  "Sobel Y", "Custom"},
+                 0, "Convolve");
+      add_text(n.attrs, "custom", "Custom (row-major)",
+               "0 -1 0  -1 5 -1  0 -1 0")
+          .tooltip = "9 or 25 numbers, row-major 3x3 or 5x5, any whitespace.";
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 4.f, "Convolve");
+      add_bool(n.attrs, "add_to_input", "Add to input", false, "Convolve");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      static const float K[5][9] = {
+          {0, -1, 0, -1, 5, -1, 0, -1, 0},   // sharpen
+          {0, 1, 0, 1, -4, 1, 0, 1, 0},      // laplacian
+          {-2, -1, 0, -1, 1, 1, 0, 1, 2},    // emboss
+          {-1, 0, 1, -2, 0, 2, -1, 0, 1},    // sobel x
+          {-1, -2, -1, 0, 0, 0, 1, 2, 1},    // sobel y
+      };
+      int which = n.attrs.get_choice("kernel");
+      std::vector<float> k;
+      int kr = 1;
+      if (which < 5) {
+        k.assign(K[which], K[which] + 9);
+      } else {
+        const Attribute *ca = n.attrs.find("custom");
+        const char *c = ca ? ca->s.c_str() : "";
+        while (*c) {
+          char *end = nullptr;
+          float v = std::strtof(c, &end);
+          if (end == c) { ++c; continue; }
+          c = end;
+          k.push_back(v);
+        }
+        if (k.size() >= 25) { k.resize(25); kr = 2; }
+        else if (k.size() >= 9) { k.resize(9); kr = 1; }
+        else {
+          n.error = "custom kernel needs 9 or 25 numbers";
+          return;
+        }
+      }
+      float strength = n.attrs.get_f("strength", 1.f);
+      bool add_in = n.attrs.get_b("add_to_input");
+      int kw = 2 * kr + 1;
+      int w = in->w, h = in->h;
+      parallel_rows(h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < w; ++x) {
+            float s = 0;
+            for (int dy = -kr; dy <= kr; ++dy)
+              for (int dx = -kr; dx <= kr; ++dx)
+                s += in->atc(x + dx, y + dy) *
+                     k[(size_t)(dy + kr) * kw + (dx + kr)];
+            s *= strength;
+            out.at(x, y) = add_in ? in->at(x, y) + s : s;
+          }
+      });
     })
 
 REGISTER_NODE(

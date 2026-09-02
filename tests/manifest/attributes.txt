@@ -65,6 +65,11 @@ Compare.op|choice
 Compare.softness|float
 Compare.tolerance|float
 Constant.value|float
+Convolve.add_to_input|bool
+Convolve.blend_invert|bool
+Convolve.custom|text
+Convolve.kernel|choice
+Convolve.strength|float
 Cracks.depth|float
 Cracks.scale|float
 Cracks.seed|seed

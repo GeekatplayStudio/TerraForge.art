@@ -3210,6 +3210,27 @@ static void test_local_filters() {
     CHECK(bl.at(4, 4) < 0.1f, "flat ground is not");
   }
 
+  // Convolve: sharpen preserves a flat field, sobel X reads a ramp's slope
+  {
+    gpx::Heightmap flat(N, N, 0.6f);
+    auto sh2 = run("Convolve", flat, [](gpx::Node &) {}, "output");
+    CHECK(std::fabs(sh2.at(32, 32) - 0.6f) < 1e-5f,
+          "sharpen leaves a flat field flat");
+    gpx::Heightmap rmp(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x) rmp.at(x, y) = x / (float)N;
+    auto sx = run("Convolve", rmp, [](gpx::Node &n) {
+      n.attrs.find("kernel")->i = 3;
+    }, "output");
+    CHECK(std::fabs(sx.at(32, 32) - 8.f / N) < 1e-4f,
+          "sobel X reads the ramp's slope");
+    auto cu = run("Convolve", rmp, [](gpx::Node &n) {
+      n.attrs.find("kernel")->i = 5; // custom, default text = sharpen
+    }, "output");
+    CHECK(std::fabs(cu.at(32, 32) - rmp.at(32, 32)) < 1e-5f,
+          "the typed kernel parses and applies");
+  }
+
   // KMeans with two flat levels and k=2 must recover the split exactly
   {
     gpx::Heightmap two(N, N);
