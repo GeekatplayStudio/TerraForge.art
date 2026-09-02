@@ -1,6 +1,7 @@
 ﻿// Geekatplay Studio — main loop, docking layout, background evaluation
 #include "app.hpp"
 #include "console.hpp"
+#include "autosave.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "planet_renderer.hpp"
@@ -195,6 +196,7 @@ void run_main() {
   // without this those messages go nowhere at all.
   log_capture_stderr();
   log_info("app", "TerraForge starting");
+  autosave_session_begin(); // detects whether the last one ended cleanly
   App &a = app();
   renderer_init();
   scene_init_builtins();
@@ -302,6 +304,8 @@ void run_main() {
     draw_panel_ai(a);
     draw_panel_scene(a); // Outliner
     draw_render_window(a);
+    autosave_recovery_dialog(a); // offers the last session back after a crash
+    autosave_tick(a, glfwGetTime());
     studio_api_tick(a); // apply queued script/MCP actions, publish state
 
     // upload fresh eval results to GPU (main thread only)
@@ -494,6 +498,7 @@ void run_main() {
   if (a.eval.worker.joinable()) a.eval.worker.join();
   previews_clear();
   renderer_shutdown();
+  autosave_session_end(); // an orderly exit leaves no lock behind
 }
 
 } // namespace studio

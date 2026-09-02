@@ -134,6 +134,10 @@ real-time OpenGL viewport.
   scale, amplitude, coverage and seed). Parented to a planet they shape its
   surface; at the root they extend the home terrain tile past its edges to
   the horizon, blending seamlessly out of the tile's own heightmap.
+- **Your work survives a crash.** The application autosaves every couple of
+  minutes whenever the undo history has moved - three files in rotation, the
+  user's own project path never touched - and a session that ends without
+  closing properly is offered back on the next start, newest autosave first.
 - **Lakes, and flow that reaches the sea.** `FillBasins` floods every closed
   basin to the height of its outlet (Priority-Flood). Read one way it is the
   water standing in the hollow - depth and mask outputs, ready to drive a

@@ -8,6 +8,7 @@
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "node_library.hpp"
+#include "autosave.hpp"
 #include "undo.hpp"
 #include "gpx/metanode.hpp"
 #include "gpx/node_graph.hpp"
@@ -863,6 +864,96 @@ static void test_scene_persistence() {
   fs::remove_all(dir, ec);
 }
 
+// ------------------------------------------------------------------ autosave
+// The rules that make autosave trustworthy, asserted one by one: it saves
+// only when the history has moved, it rotates three slots instead of
+// overwriting one, it never touches the user's own status line or project
+// path, and a lock file left behind is what makes the next start offer the
+// newest slot back.
+static void test_autosave() {
+  std::printf("autosave and crash recovery...\n");
+  namespace fs = std::filesystem;
+  fs::path dir = fs::temp_directory_path() / "gpx_autosave_test";
+  std::error_code ec;
+  fs::remove_all(dir, ec);
+  autosave_set_dir(dir.string());
+
+  App a;
+  reset_all(a);
+  {
+    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    a.graph.add_node("Noise", 0, 0);
+  }
+  a.status = "user status";
+  a.project_path = "user_project.gpxt";
+
+  // nothing in the history yet moved since the baseline: first tick saves
+  // (history state is unknown), second tick with no edits does not
+  undo_push(a, "edit 1");
+  autosave_tick(a, 1000.0, 120.0);
+  CHECK(fs::exists(dir / "autosave_1.gpxt", ec), "first autosave written");
+  CHECK(a.status == "user status", "the user's status line is untouched");
+  CHECK(a.project_path == "user_project.gpxt",
+        "and so is the project path - Save still goes to the user's file");
+
+  autosave_tick(a, 2000.0, 120.0);
+  CHECK(!fs::exists(dir / "autosave_2.gpxt", ec),
+        "no edit since the last autosave means no new file");
+
+  // an edit moves the history; the next interval writes the NEXT slot
+  undo_push(a, "edit 2");
+  autosave_tick(a, 3000.0, 120.0);
+  CHECK(fs::exists(dir / "autosave_2.gpxt", ec), "rotates to the second slot");
+
+  // inside the interval nothing happens even with edits pending
+  undo_push(a, "edit 3");
+  autosave_tick(a, 3001.0, 120.0);
+  CHECK(!fs::exists(dir / "autosave_3.gpxt", ec),
+        "the interval is respected");
+
+  // slot arithmetic wraps
+  CHECK(autosave_next_slot(0) == 1 && autosave_next_slot(2) == 0,
+        "three slots, in rotation");
+
+  // crash detection: begin twice without an end = the first never exited
+  autosave_session_begin();
+  CHECK(!fs::exists(dir / "nothing", ec), "sanity");
+  {
+    std::string path;
+    CHECK(!autosave_crash_recovery_available(path),
+          "a clean history offers nothing");
+  }
+  autosave_session_begin(); // the lock from the line above is still there
+  {
+    std::string path;
+    CHECK(autosave_crash_recovery_available(path),
+          "a leftover lock plus an autosave offers recovery");
+    CHECK(path.find("autosave_2") != std::string::npos,
+          "and offers the newest slot");
+    // the restored file really is a loadable project
+    App b;
+    reset_all(b);
+    CHECK(project_load(b, path), "the offered autosave loads");
+    bool has_noise = false;
+    {
+      std::lock_guard<std::mutex> lk(b.graph_mtx);
+      for (auto &n : b.graph.nodes)
+        if (n->type == "Noise") has_noise = true;
+    }
+    CHECK(has_noise, "and contains the session's work");
+  }
+  autosave_mark_recovery_answered();
+  {
+    std::string path;
+    CHECK(!autosave_crash_recovery_available(path),
+          "answered once means not asked again");
+  }
+  autosave_session_end();
+  CHECK(!fs::exists(dir / "session.lock", ec), "an orderly end removes the lock");
+
+  fs::remove_all(dir, ec);
+}
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   test_graph_view_sanity();
@@ -881,6 +972,7 @@ int main() {
   test_obj_import_rejects_bad_indices();
   test_object_matrix();
   test_scene_persistence();
+  test_autosave();
   std::printf("\n%s (%d failures)\n", g_failures ? "FAILED" : "ALL PASSED",
               g_failures);
   return g_failures ? 1 : 0;

@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "project.autosave", "area": "studio", "phase": "22",
+      "description": "Autosave every two minutes when the history has moved, three slots in rotation, and crash recovery offering the newest slot back after an unclean exit",
+      "test_file": "test_undo.cpp", "test_symbol": "test_autosave" },
+
     { "id": "mask.distance_field", "area": "engine", "phase": "22",
       "description": "Exact Euclidean distance transform (Felzenszwalb-Huttenlocher), plus Median and Equalize filters",
       "test_file": "test_engine.cpp", "test_symbol": "test_distance_and_filters" },

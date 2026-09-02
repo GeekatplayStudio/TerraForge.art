@@ -148,6 +148,8 @@ set(STUDIO_SOURCES
     studio/panel_viewport.cpp
     studio/toolbar.cpp
     studio/dialog_new.cpp
+    studio/autosave.cpp
+    studio/autosave_ui.cpp
     studio/gizmo.cpp
     studio/toolbar_bars.cpp
     studio/terrain_styles.cpp
@@ -231,7 +233,9 @@ add_executable(undo_tests
     studio/node_library.cpp
     studio/scene.cpp
     studio/scene_io.cpp
-    studio/render_settings.cpp)
+    studio/render_settings.cpp
+    studio/autosave.cpp
+    studio/console.cpp)
 target_include_directories(undo_tests PRIVATE studio)
 target_link_libraries(undo_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
