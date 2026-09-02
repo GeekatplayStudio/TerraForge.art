@@ -353,12 +353,16 @@ uniform vec3 u_inst_base;             // the model matrix's own translation
 uniform vec4 u_inst[256];             // x,y,z,scale per copy
 uniform vec4 u_inst_rot[256];         // cos(yaw), sin(yaw)
 out vec3 v_nrm;
+out float v_tint;
 void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
+  v_tint = 1.0;
   if (u_inst_on == 1) {
     vec4 I = u_inst[gl_InstanceID];
-    vec2 r = u_inst_rot[gl_InstanceID].xy;
+    vec4 R = u_inst_rot[gl_InstanceID];
+    vec2 r = R.xy;
+    v_tint = R.z;
     pos = vec3(pos.x*r.x - pos.z*r.y, pos.y, pos.x*r.y + pos.z*r.x) * I.w;
     nrm = vec3(nrm.x*r.x - nrm.z*r.y, nrm.y, nrm.x*r.y + nrm.z*r.x);
     vec4 p = u_model * vec4(pos, 1.0);
@@ -374,6 +378,7 @@ void main(){
 
 const char *const FS_MESH = R"GLSL(#version 430 core
 in vec3 v_nrm;
+in float v_tint;
 out vec4 frag;
 uniform vec3 u_color, u_sun, u_sun_color;
 uniform float u_exposure;
@@ -388,7 +393,7 @@ vec3 aces(vec3 x){
 }
 void main(){
   float ndl = max(dot(normalize(v_nrm), u_sun), 0.0);
-  vec3 col = u_color * (u_sun_color * 1.8 * ndl + vec3(0.35,0.38,0.45));
+  vec3 col = u_color * v_tint * (u_sun_color * 1.8 * ndl + vec3(0.35,0.38,0.45));
   if (u_selected == 1) col = mix(col, vec3(1.0,0.55,0.18), 0.25);
   col = aces(col * u_exposure); col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, 1.0);

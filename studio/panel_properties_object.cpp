@@ -311,7 +311,7 @@ void object_properties_ui(App &a) {
             ch = true;
           }
           if (ch) a.request_eval();
-          ImGui::TextDisabled("%d copies", (int)(o.inst.size() / 6));
+          ImGui::TextDisabled("%d copies", (int)(o.inst.size() / 8));
         }
       }
       if (prop_filter_match("Info")) {

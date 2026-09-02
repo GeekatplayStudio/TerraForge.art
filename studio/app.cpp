@@ -478,7 +478,7 @@ void run_main() {
           o.inst.clear();
           if (!pc) continue;
           size_t count = std::min(pc->size(), (size_t)4096);
-          o.inst.reserve(count * 6);
+          o.inst.reserve(count * 8);
           for (size_t i = 0; i < count; ++i) {
             float px = pc->x[i], pz = pc->y[i], py = 0.f;
             if (hm) {
@@ -498,6 +498,9 @@ void run_main() {
             o.inst.push_back(sc);
             o.inst.push_back(std::cos(yaw));
             o.inst.push_back(std::sin(yaw));
+            // a per-copy brightness so a stand of one mesh reads as many
+            o.inst.push_back(0.85f + ((hb >> 24) & 0xffu) / 255.f * 0.3f);
+            o.inst.push_back(0.f);
           }
         }
       }

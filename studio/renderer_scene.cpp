@@ -231,7 +231,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       unii(prog_mesh, "u_inst_on", 1);
       glUniform3f(glGetUniformLocation(prog_mesh, "u_inst_base"), model[12],
                   model[13], model[14]);
-      const size_t per = 6, batch = 256;
+      const size_t per = 8, batch = 256;
       const size_t total = o.inst.size() / per;
       std::vector<float> pos4(batch * 4), rot4(batch * 4);
       for (size_t off = 0; off < total; off += batch) {
@@ -244,7 +244,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
           pos4[i * 4 + 3] = s[3];
           rot4[i * 4 + 0] = s[4];
           rot4[i * 4 + 1] = s[5];
-          rot4[i * 4 + 2] = 0.f;
+          rot4[i * 4 + 2] = s[6]; // per-copy brightness
           rot4[i * 4 + 3] = 0.f;
         }
         glUniform4fv(glGetUniformLocation(prog_mesh, "u_inst"), (int)nb,
