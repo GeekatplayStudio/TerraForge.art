@@ -241,6 +241,33 @@ def render_mitsuba(sc: dict) -> int:
                       f"{time.time() - t0:.1f}s")
         print(f"pass {i + 1}/{len(schedule)} - {done}/{total_spp} spp", flush=True)
     finish(accum / float(done), sc["output"])
+
+    # render passes: one cheap AOV pass writes depth and normal EXRs beside
+    # the image, for anyone compositing
+    if sc.get("passes"):
+        base = os.path.splitext(sc["output"])[0]
+        aov_dict = dict(scene_dict)
+        aov_dict["integrator"] = {
+            "type": "aov",
+            "aovs": "dd:depth,nn:sh_normal",
+            "img": {"type": "path", "max_depth": 2},
+        }
+        aov_scene = mi.load_dict(aov_dict)
+        img = mi.render(aov_scene, spp=4)
+        try:
+            import numpy as np
+            arr = np.array(img)
+            # channel layout: rgb(3) + depth(1) + normal(3)
+            depth = arr[..., 3:4]
+            normal = arr[..., 4:7]
+            mi.util.write_bitmap(base + "_depth.exr",
+                                 mi.Bitmap(np.ascontiguousarray(depth)))
+            mi.util.write_bitmap(base + "_normal.exr",
+                                 mi.Bitmap(np.ascontiguousarray(
+                                     (normal + 1.0) * 0.5)))
+            print("wrote", base + "_depth.exr", "and", base + "_normal.exr")
+        except Exception as e:
+            print("aov write failed:", e)
     _progress(sc, f"done  {total_spp} spp  {time.time() - t0:.1f}s")
     print("wrote", sc["output"])
     return 0

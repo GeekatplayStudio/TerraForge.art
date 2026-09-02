@@ -38,6 +38,7 @@ struct RenderAssign {
   int width = 1920, height = 1080;
   int samples = 128;
   std::string output = "render.png";
+  bool passes = false; // also write depth + normal AOVs beside the image
 };
 
 struct CameraData {

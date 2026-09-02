@@ -271,6 +271,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       r.height = act.value("height", r.height);
       r.samples = act.value("samples", r.samples);
       if (act.contains("output")) r.output = act["output"].get<std::string>();
+      if (act.contains("passes")) r.passes = act["passes"].get<bool>();
       ++applied;
     } else if (op == "render") {
       a.request_camera_render = scene_active_camera();

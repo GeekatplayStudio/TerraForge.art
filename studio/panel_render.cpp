@@ -34,7 +34,7 @@ namespace studio {
 // render_scene_export.cpp
 bool export_scene(App &a, const std::string &out_png, int width, int height,
                   int spp, const char *engine, std::string &err,
-                  int cam_index = -1);
+                  int cam_index = -1, bool passes = false);
 
 std::string dialog_save_file(const char *filter, const char *def_ext,
                              const char *suggested);
@@ -267,7 +267,7 @@ void render_service_requests(App &a) {
   int engine = std::clamp(r.engine, 0, ENGINE_COUNT - 1);
   std::string err;
   if (export_scene(a, r.output, r.width, r.height, r.samples,
-                   ENGINES[engine].key, err, c)) {
+                   ENGINES[engine].key, err, c, r.passes)) {
     render_window_open = true;
     progress_line.clear();
     render_running.store(true);
