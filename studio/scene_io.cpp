@@ -195,6 +195,10 @@ json scene_to_json() {
     if (o.type == SceneObject::Mesh) {
       jo["path"] = o.path;
       jo["material_node"] = o.material_node;
+      jo["scatter_node"] = o.scatter_node;
+      jo["scatter_scale"] = o.scatter_scale;
+      jo["scatter_jitter"] = o.scatter_jitter;
+      jo["scatter_seed"] = o.scatter_seed;
     } else if (o.type == SceneObject::Camera) {
       const CameraData &c = o.cam;
       jo["camera"] = {
@@ -277,6 +281,10 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     if (o.type == SceneObject::Mesh) {
       o.path = jo.value("path", std::string());
       o.material_node = remap_id(jo.value("material_node", 0ull), idmap);
+      o.scatter_node = remap_id(jo.value("scatter_node", 0ull), idmap);
+      o.scatter_scale = jo.value("scatter_scale", 1.f);
+      o.scatter_jitter = jo.value("scatter_jitter", 0.4f);
+      o.scatter_seed = jo.value("scatter_seed", 0u);
       std::string err;
       if (o.path.empty() || !scene_load_obj_verts(o.path, o.verts, err)) {
         // The geometry is gone but the object is not: its place in the scene,

@@ -225,7 +225,39 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni1(prog_mesh, "u_sat", g_saturation);
     unii(prog_mesh, "u_selected", is_sel ? 1 : 0);
     glBindVertexArray(o.vao);
-    glDrawArrays(GL_TRIANGLES, 0, o.vert_count);
+    if (!o.inst.empty()) {
+      // scattered copies: batches of 256 through the uniform arrays; the
+      // shader swaps each copy's translation in for the model's own
+      unii(prog_mesh, "u_inst_on", 1);
+      glUniform3f(glGetUniformLocation(prog_mesh, "u_inst_base"), model[12],
+                  model[13], model[14]);
+      const size_t per = 6, batch = 256;
+      const size_t total = o.inst.size() / per;
+      std::vector<float> pos4(batch * 4), rot4(batch * 4);
+      for (size_t off = 0; off < total; off += batch) {
+        size_t nb = std::min(batch, total - off);
+        for (size_t i = 0; i < nb; ++i) {
+          const float *s = o.inst.data() + (off + i) * per;
+          pos4[i * 4 + 0] = s[0];
+          pos4[i * 4 + 1] = s[1];
+          pos4[i * 4 + 2] = s[2];
+          pos4[i * 4 + 3] = s[3];
+          rot4[i * 4 + 0] = s[4];
+          rot4[i * 4 + 1] = s[5];
+          rot4[i * 4 + 2] = 0.f;
+          rot4[i * 4 + 3] = 0.f;
+        }
+        glUniform4fv(glGetUniformLocation(prog_mesh, "u_inst"), (int)nb,
+                     pos4.data());
+        glUniform4fv(glGetUniformLocation(prog_mesh, "u_inst_rot"), (int)nb,
+                     rot4.data());
+        glDrawArraysInstanced(GL_TRIANGLES, 0, o.vert_count, (int)nb);
+      }
+      unii(prog_mesh, "u_inst_on", 0);
+    } else {
+      unii(prog_mesh, "u_inst_on", 0);
+      glDrawArrays(GL_TRIANGLES, 0, o.vert_count);
+    }
   }
 
   // sun gizmo (a real, selectable scene object)

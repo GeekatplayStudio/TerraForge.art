@@ -55,6 +55,12 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
       s += R"(- {"op":"place_object","name":"Rock","position":[x,y,z],"scale":0.1,
    "rotation_deg":30}
 - {"op":"select","name":"Terrain"}
+- {"op":"import_object","path":"C:/models/rock.obj","name":"Rock",
+   "position":[x,y,z],"scale":0.1}
+- {"op":"set_scatter","object":"Rock","node":"ScatterPoints","size":0.5,
+   "jitter":0.4,"seed":7}
+   (copies of the mesh appear at every point of the Points node's cloud,
+   standing on the terrain; node "" or 0 unbinds)
 - {"op":"add_planet","name":"Mars","radius":3.5,"relief":0.03,"seed":42,
    "position":[x,y,z],"sea_level":0,"snow_line":0.9,"atmosphere":0.3,
    "rock_low":[0.45,0.25,0.15],"rock_high":[0.6,0.4,0.3],

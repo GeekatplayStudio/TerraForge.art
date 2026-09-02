@@ -301,6 +301,48 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         ++applied;
         break;
       }
+    } else if (op == "import_object") {
+      std::string path = act.value("path", std::string());
+      std::string ierr;
+      int idx = scene_import_obj(path, ierr);
+      if (idx < 0) {
+        err = "import failed: " + ierr;
+      } else {
+        SceneObject &o = sc.objects[idx];
+        if (act.contains("name")) o.name = act["name"].get<std::string>();
+        read_vec3(act, "position", o.pos);
+        if (act.contains("scale")) o.scale = act["scale"].get<float>();
+        sc.selected = idx;
+        a.scene_selection_serial++;
+        ++applied;
+      }
+    } else if (op == "set_scatter") {
+      // bind a mesh object to a Points node: copies of the mesh appear at
+      // every point, standing on the terrain
+      std::string want = act.value("object", std::string());
+      uint64_t node_id = 0;
+      if (act.contains("node")) {
+        if (act["node"].is_number()) node_id = act["node"].get<uint64_t>();
+        else {
+          std::string t = act["node"].get<std::string>();
+          for (auto &cand : a.graph.nodes)
+            if (cand->type == t || std::to_string(cand->id) == t)
+              node_id = cand->id;
+        }
+      }
+      for (auto &o : sc.objects) {
+        if (o.type != SceneObject::Mesh) continue;
+        if (!want.empty() && o.name != want) continue;
+        o.scatter_node = node_id;
+        if (act.contains("size")) o.scatter_scale = act["size"].get<float>();
+        if (act.contains("jitter")) o.scatter_jitter = act["jitter"].get<float>();
+        if (act.contains("seed")) o.scatter_seed = act["seed"].get<uint32_t>();
+        if (!node_id) o.inst.clear();
+        ++applied;
+        if (!want.empty()) break;
+      }
+      if (!applied) err = "no mesh object named '" + want + "'";
+      else a.request_eval();
     } else if (op == "add_planet") {
       int idx = scene_add_planet(act.value("name", std::string()));
       SceneObject &o = sc.objects[idx];

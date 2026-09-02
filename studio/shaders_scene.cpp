@@ -346,10 +346,29 @@ layout(location=1) in vec3 in_nrm;
 uniform mat4 u_mvp;
 uniform mat4 u_model;
 uniform mat3 u_nrm;
+// scattering: when on, each copy replaces the model's translation with its
+// own position and adds a yaw+scale of its own. 256 copies per draw call.
+uniform int u_inst_on;
+uniform vec3 u_inst_base;             // the model matrix's own translation
+uniform vec4 u_inst[256];             // x,y,z,scale per copy
+uniform vec4 u_inst_rot[256];         // cos(yaw), sin(yaw)
 out vec3 v_nrm;
 void main(){
-  vec4 p = u_model * vec4(in_pos, 1.0);
-  v_nrm = normalize(u_nrm * in_nrm);
+  vec3 pos = in_pos;
+  vec3 nrm = in_nrm;
+  if (u_inst_on == 1) {
+    vec4 I = u_inst[gl_InstanceID];
+    vec2 r = u_inst_rot[gl_InstanceID].xy;
+    pos = vec3(pos.x*r.x - pos.z*r.y, pos.y, pos.x*r.y + pos.z*r.x) * I.w;
+    nrm = vec3(nrm.x*r.x - nrm.z*r.y, nrm.y, nrm.x*r.y + nrm.z*r.x);
+    vec4 p = u_model * vec4(pos, 1.0);
+    p.xyz += I.xyz - u_inst_base;
+    v_nrm = normalize(u_nrm * nrm);
+    gl_Position = u_mvp * p;
+    return;
+  }
+  vec4 p = u_model * vec4(pos, 1.0);
+  v_nrm = normalize(u_nrm * nrm);
   gl_Position = u_mvp * p;
 })GLSL";
 

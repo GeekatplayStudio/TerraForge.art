@@ -86,6 +86,14 @@ struct SceneObject {
   unsigned vao = 0, vbo = 0;
   int vert_count = 0;
   bool gpu_dirty = false;
+  // EcoSystem-style scattering: a Points-output node populates the terrain
+  // with copies of this mesh. Zero = not scattered.
+  unsigned long long scatter_node = 0;
+  float scatter_scale = 1.f;        // instance size against the mesh's own
+  float scatter_jitter = 0.4f;      // 0 identical, 1 sizes range 0.5x..1.5x
+  unsigned scatter_seed = 0;
+  // transient, rebuilt after every evaluation: x,y,z,scale,cos,sin per copy
+  std::vector<float> inst;
 };
 
 // The object's model matrix (column-major, for OpenGL) and the matching

@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "scene.scatter", "area": "studio", "phase": "23",
+      "description": "EcoSystem-style mesh scattering: a mesh object bound to any Points node draws instanced copies standing on the terrain, seeded yaw and size jitter, Properties picker, set_scatter and import_object AI ops, binding persists with node-id remap",
+      "test_file": "test_undo.cpp", "test_symbol": "test_scene_persistence" },
+
     { "id": "transform.quilt", "area": "engine", "phase": "23",
       "description": "Quilt: Efros-Freeman patch resynthesis - hashed candidate patches auditioned against the laid overlap, feathered joins, bit-identical per seed",
       "test_file": "test_engine.cpp", "test_symbol": "test_quilt" },

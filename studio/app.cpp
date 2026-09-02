@@ -7,6 +7,7 @@
 #include "planet_renderer.hpp"
 #include "scene.hpp"
 #include "gpx/field_glsl.hpp"
+#include "gpx/planet_math.hpp"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -446,6 +447,59 @@ void run_main() {
           }
         }
         renderer_set_points_overlay(xyz);
+      }
+    }
+
+    // scatter instances: every Mesh object bound to a Points node gets its
+    // copy list rebuilt when the evaluation moves
+    {
+      static uint64_t last_inst_ser = ~0ull;
+      if (last_inst_ser != a.eval_serial) {
+        last_inst_ser = a.eval_serial;
+        const gpx::Heightmap *hm =
+            g_overlay_terrain && !g_overlay_terrain->empty()
+                ? g_overlay_terrain.get()
+                : nullptr;
+        float hs = render_settings().height_scale;
+        for (SceneObject &o : scene().objects) {
+          if (o.type != SceneObject::Mesh || !o.scatter_node) {
+            o.inst.clear();
+            continue;
+          }
+          gpx::Node *sn = a.graph.find_node(o.scatter_node);
+          const gpx::PointCloud *pc = nullptr;
+          if (sn)
+            for (const gpx::Port &p : sn->ports)
+              if (p.dir == gpx::PortDir::Out &&
+                  p.type == gpx::DataType::Points && p.pts && p.pts->size()) {
+                pc = p.pts.get();
+                break;
+              }
+          o.inst.clear();
+          if (!pc) continue;
+          size_t count = std::min(pc->size(), (size_t)4096);
+          o.inst.reserve(count * 6);
+          for (size_t i = 0; i < count; ++i) {
+            float px = pc->x[i], pz = pc->y[i], py = 0.f;
+            if (hm) {
+              int ix = std::clamp((int)(px * hm->w), 0, hm->w - 1);
+              int iy = std::clamp((int)(pz * hm->h), 0, hm->h - 1);
+              py = hm->v[(size_t)iy * hm->w + ix] * hs;
+            }
+            uint32_t hb = gpx::planet::pl_hash_bits((int)i, 11, 0,
+                                                    o.scatter_seed);
+            float yaw = (hb & 0xffffu) / 65535.f * 6.2831853f;
+            float sj = 1.f + (((hb >> 16) & 0xffu) / 255.f - 0.5f) *
+                                 o.scatter_jitter;
+            float sc = o.scatter_scale * sj;
+            o.inst.push_back(px);
+            o.inst.push_back(py);
+            o.inst.push_back(pz);
+            o.inst.push_back(sc);
+            o.inst.push_back(std::cos(yaw));
+            o.inst.push_back(std::sin(yaw));
+          }
+        }
       }
     }
 

@@ -718,6 +718,11 @@ static void test_scene_persistence() {
     m.scl[0] = 2.f; m.scl[1] = 0.5f; m.scl[2] = 1.25f;
     m.yaw = 33.f; m.pitch = -12.f; m.roll = 4.5f;
     m.color[0] = 0.9f; m.color[1] = 0.2f; m.color[2] = 0.1f;
+    gpx::Node *spn = a.graph.add_node("ScatterPoints", 0, 0);
+    m.scatter_node = spn ? spn->id : 0;
+    m.scatter_scale = 0.7f;
+    m.scatter_jitter = 0.55f;
+    m.scatter_seed = 9u;
   }
 
   // a second camera with a changed lens and render assignment
@@ -789,6 +794,9 @@ static void test_scene_persistence() {
     CHECK(m.yaw == 33.f && m.pitch == -12.f && m.roll == 4.5f,
           "heading, pitch and bank survive");
     CHECK(m.layer == (int)sl.layers.size() - 1, "its layer assignment survives");
+    CHECK(m.scatter_node != 0 && m.scatter_scale == 0.7f &&
+              m.scatter_jitter == 0.55f && m.scatter_seed == 9u,
+          "the scatter binding survives, node id remapped");
   }
   CHECK(sl.layers.size() == 2 && sl.layers[1].name == "Props" &&
             !sl.layers[1].visible,

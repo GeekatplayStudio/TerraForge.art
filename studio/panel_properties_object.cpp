@@ -265,6 +265,55 @@ void object_properties_ui(App &a) {
         ImGui::SeparatorText("Surface");
         ImGui::ColorEdit3("Color", o.color);
       }
+      if (prop_filter_match("Scatter")) {
+        ImGui::SeparatorText("Scatter");
+        // pick any node with a point-cloud output; None turns it off
+        {
+          const char *cur = "None";
+          std::string cur_label;
+          gpx::Node *curn = a.graph.find_node(o.scatter_node);
+          if (curn) {
+            cur_label = curn->type + " #" + std::to_string(curn->id);
+            cur = cur_label.c_str();
+          }
+          if (ImGui::BeginCombo("Points node", cur)) {
+            if (ImGui::Selectable("None", o.scatter_node == 0)) {
+              o.scatter_node = 0;
+              o.inst.clear();
+            }
+            for (auto &cand : a.graph.nodes) {
+              bool has_pts = false;
+              for (const gpx::Port &p : cand->ports)
+                has_pts = has_pts || (p.dir == gpx::PortDir::Out &&
+                                      p.type == gpx::DataType::Points);
+              if (!has_pts) continue;
+              std::string label =
+                  cand->type + " #" + std::to_string(cand->id);
+              if (ImGui::Selectable(label.c_str(),
+                                    o.scatter_node == cand->id)) {
+                o.scatter_node = cand->id;
+                a.request_eval();
+              }
+            }
+            ImGui::EndCombo();
+          }
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Copies of this mesh appear at every point of\n"
+                              "the chosen cloud, standing on the terrain.");
+        }
+        if (o.scatter_node) {
+          bool ch = false;
+          ch |= ImGui::SliderFloat("Size", &o.scatter_scale, 0.05f, 4.f);
+          ch |= ImGui::SliderFloat("Size jitter", &o.scatter_jitter, 0.f, 1.f);
+          int sd = (int)o.scatter_seed;
+          if (ImGui::DragInt("Seed", &sd, 1, 0, 1 << 24)) {
+            o.scatter_seed = (unsigned)sd;
+            ch = true;
+          }
+          if (ch) a.request_eval();
+          ImGui::TextDisabled("%d copies", (int)(o.inst.size() / 6));
+        }
+      }
       if (prop_filter_match("Info")) {
         ImGui::SeparatorText("Info");
         ImGui::TextDisabled("%d triangles", o.vert_count / 3);
