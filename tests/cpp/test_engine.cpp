@@ -3057,7 +3057,7 @@ static void test_selectors() {
 
 static void test_noise_variants() {
   std::printf("fBm variants...\n");
-  for (int type : {9, 10, 11}) { // IQ, Jordan, Pingpong
+  for (int type : {9, 10, 11, 12}) { // IQ, Jordan, Pingpong, Voronoise
     gpx::Graph g;
     g.resolution = 64;
     gpx::Node *n = g.add_node("Noise", 0, 0);

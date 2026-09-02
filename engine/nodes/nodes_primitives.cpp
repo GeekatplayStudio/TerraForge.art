@@ -19,7 +19,7 @@ REGISTER_NODE(
                  {"Perlin fBm", "Ridged", "Billow", "Swiss (eroded ridges)",
                   "Value fBm", "Worley F1", "Worley F2", "Worley edges",
                   "Worley F1*F2", "IQ (damped slopes)", "Jordan (crumpled)",
-                  "Pingpong (banded)"},
+                  "Pingpong (banded)", "Voronoise (cell blend)"},
                  1, "Noise");
       add_seed(n.attrs, "seed", "Seed", 0, "Noise");
       add_int(n.attrs, "octaves", "Octaves", 9, 1, 16, "Noise");
@@ -55,6 +55,17 @@ REGISTER_NODE(
               case 2: v = noise::fbm_billow(nx, ny, seed, p); break;
               case 3: v = noise::fbm_swiss(nx, ny, seed, p, warp); break;
               case 4: v = noise::fbm_value(nx, ny, seed, p); break;
+              case 12: { // voronoise fBm: jitter is u, ridge_weight is v
+                float sum = 0, amp = 0.5f, fq = 1;
+                for (int o = 0; o < p.octaves; ++o) {
+                  sum += amp * noise::voronoise(nx * fq, ny * fq,
+                                                seed + (uint32_t)o * 1013u,
+                                                jitter, p.weight);
+                  amp *= p.gain;
+                  fq *= p.lacunarity;
+                }
+                v = sum;
+              } break;
               case 9: v = noise::fbm_iq(nx, ny, seed, p); break;
               case 10: v = noise::fbm_jordan(nx, ny, seed, p); break;
               case 11: v = noise::fbm_pingpong(nx, ny, seed, p); break;

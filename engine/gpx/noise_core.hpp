@@ -210,6 +210,29 @@ inline float fbm_pingpong(float x, float y, uint32_t seed, const FbmParams &p,
   return sum;
 }
 
+// Voronoise (Inigo Quilez): a dial between cellular and value noise. u is
+// the cell jitter, v the blend sharpness - v near 1 blends smoothly (value
+// noise), v near 0 snaps to the nearest cell (mosaic).
+inline float voronoise(float x, float y, uint32_t seed, float u, float v) {
+  int cx = (int)std::floor(x), cy = (int)std::floor(y);
+  float fx = x - cx, fy = y - cy;
+  float k = 1.f + 63.f * std::pow(1.f - v, 4.f);
+  float sum = 0, wt = 0;
+  for (int dy = -2; dy <= 2; ++dy)
+    for (int dx = -2; dx <= 2; ++dx) {
+      uint32_t h = hash2(cx + dx, cy + dy, seed);
+      float ox = ((h & 0x3ffu) / 1023.f) * u;
+      float oy = (((h >> 10) & 0x3ffu) / 1023.f) * u;
+      float val = ((h >> 20) & 0xfffu) / 4095.f;
+      float rx = dx + ox - fx, ry = dy + oy - fy;
+      float d = std::sqrt(rx * rx + ry * ry);
+      float w = std::pow(std::max(0.f, 1.f - d * 0.353553f), k);
+      sum += val * w;
+      wt += w;
+    }
+  return wt > 1e-12f ? sum / wt * 2.f - 1.f : 0.f;
+}
+
 // Gabor noise (Lagae et al.): sparse convolution of oriented cosine kernels
 // under a gaussian envelope. Anisotropy 1 locks every kernel to `orient`,
 // 0 draws orientations from the hash - streaked rock vs isotropic grain.

@@ -2514,7 +2514,7 @@ Coherent noise: fBm, ridged, billow, swiss, value, cellular
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Type | choice: Perlin fBm / Ridged / Billow / Swiss (eroded ridges) / Value fBm / Worley F1 / Worley F2 / Worley edges / Worley F1*F2 / IQ (damped slopes) / Jordan (crumpled) / Pingpong (banded) |  |
+| Type | choice: Perlin fBm / Ridged / Billow / Swiss (eroded ridges) / Value fBm / Worley F1 / Worley F2 / Worley edges / Worley F1*F2 / IQ (damped slopes) / Jordan (crumpled) / Pingpong (banded) / Voronoise (cell blend) |  |
 | Seed | seed |  |
 | Octaves | int, 1 to 16, default 9 |  |
 | Lacunarity | float, 1.2 to 4, default 2 |  |
