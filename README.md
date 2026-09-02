@@ -10,6 +10,9 @@ real-time OpenGL viewport.
 
 ---
 
+**[Node reference](docs/NODES.md)** — every node, port and parameter,
+generated from the registry itself.
+
 ## Features
 
 ### The node graph

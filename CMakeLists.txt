@@ -261,6 +261,11 @@ target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# The node reference generator: docs/NODES.md straight from the registry.
+add_executable(node_docs_gen tools/gen_node_docs.cpp)
+target_link_libraries(node_docs_gen PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 enable_testing()
 add_test(NAME RegressionLock COMMAND regression_tests)
 add_test(NAME NodeContract COMMAND node_tests)
