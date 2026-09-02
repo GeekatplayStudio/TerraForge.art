@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 152 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 153 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -23,7 +23,7 @@ Every node in Geekatplay TerraForge — 152 across 25 categories. Generated from
 | [Mask](#mask) | 11 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
-| [Path](#path) | 6 |
+| [Path](#path) | 7 |
 | [Points](#points) | 5 |
 | [Primitive](#primitive) | 11 |
 | [Render](#render) | 2 |
@@ -2174,6 +2174,20 @@ Distance to a path
 | Invert | toggle, default off |  |
 | Closed loop | toggle, default off |  |
 | Smoothing | int, 0 to 6, default 0 |  |
+
+### PathSpline
+
+A smooth curve through the points
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| path | in | ? |
+| path | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Samples per segment | int, 2 to 64, default 8 |  |
+| Tension | float, 0 to 1, default 0.5 |  |
 
 ### PointsToPath
 

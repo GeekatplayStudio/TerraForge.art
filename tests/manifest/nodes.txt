@@ -89,6 +89,7 @@ PathFind|Path
 PathFractalize|Path
 PathResample|Path
 PathSDF|Path
+PathSpline|Path
 Peaks|Effect
 Plateau|Filter
 PointsFilter|Points

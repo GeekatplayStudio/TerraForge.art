@@ -411,6 +411,8 @@ PathSDF.closed|bool
 PathSDF.invert|bool
 PathSDF.reach|float
 PathSDF.smooth|int
+PathSpline.samples|int
+PathSpline.tension|float
 Peaks.pivot|float
 Peaks.strength|float
 Plateau.level|float

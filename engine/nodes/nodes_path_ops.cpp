@@ -153,4 +153,51 @@ REGISTER_NODE(
         out.add(std::clamp(p.x, 0.f, 1.f), std::clamp(p.z, 0.f, 1.f), 0.f);
     })
 
+REGISTER_NODE(
+    PathSpline, "Path", "A smooth curve through the points",
+    [](Node &n) {
+      n.add_in("path", DataType::Points);
+      n.add_out("path", DataType::Points);
+      add_int(n.attrs, "samples", "Samples per segment", 8, 2, 64, "Spline");
+      add_float(n.attrs, "tension", "Tension", 0.5f, 0.f, 1.f, "Spline");
+    },
+    [](Node &n) {
+      const PointCloud *in = n.in_points("path");
+      PointCloud &out = n.out_points("path");
+      if (!in || in->size() < 2) return;
+      // Catmull-Rom: unlike Chaikin's corner cutting, the curve passes
+      // exactly through every control point; tension 0.5 is the classic
+      // centripetal-feeling default, 0 goes straight, 1 overshoots
+      int samples = n.attrs.get_i("samples", 8);
+      float tens = n.attrs.get_f("tension", 0.5f);
+      size_t nn = in->size();
+      auto px = [&](int i) {
+        return in->x[(size_t)std::clamp(i, 0, (int)nn - 1)];
+      };
+      auto py = [&](int i) {
+        return in->y[(size_t)std::clamp(i, 0, (int)nn - 1)];
+      };
+      for (int seg = 0; seg + 1 < (int)nn; ++seg) {
+        for (int s = 0; s < samples; ++s) {
+          float t = (float)s / samples;
+          float t2 = t * t, t3 = t2 * t;
+          // tangents from the neighbors, scaled by the tension
+          float m1x = tens * (px(seg + 1) - px(seg - 1));
+          float m1y = tens * (py(seg + 1) - py(seg - 1));
+          float m2x = tens * (px(seg + 2) - px(seg));
+          float m2y = tens * (py(seg + 2) - py(seg));
+          float h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t;
+          float h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
+          out.add(std::clamp(h00 * px(seg) + h10 * m1x + h01 * px(seg + 1) +
+                                 h11 * m2x,
+                             0.f, 1.f),
+                  std::clamp(h00 * py(seg) + h10 * m1y + h01 * py(seg + 1) +
+                                 h11 * m2y,
+                             0.f, 1.f),
+                  0.f);
+        }
+      }
+      out.add(in->x[nn - 1], in->y[nn - 1], in->v[nn - 1]);
+    })
+
 } // namespace gpx

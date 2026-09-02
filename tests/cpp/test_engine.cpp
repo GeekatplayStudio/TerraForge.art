@@ -2853,6 +2853,28 @@ static void test_path_nodes() {
   CHECK(fr->port("path", gpx::PortDir::Out)->pts->x == keep.x,
         "fractalize is bit-identical across computes");
 
+  // PathSpline passes exactly through every control point
+  {
+    gpx::Graph g2;
+    g2.resolution = N;
+    gpx::Node *sp = g2.add_node("PathSpline", 0, 0);
+    auto ctrl = std::make_shared<gpx::PointCloud>();
+    ctrl->add(0.1f, 0.1f, 0.f);
+    ctrl->add(0.5f, 0.8f, 0.f);
+    ctrl->add(0.9f, 0.2f, 0.f);
+    sp->port("path", gpx::PortDir::In)->pts = ctrl;
+    gpx::NodeRegistry::instance().find("PathSpline")->compute(*sp);
+    const gpx::PointCloud &cur = *sp->port("path", gpx::PortDir::Out)->pts;
+    CHECK(cur.size() == 17, "two segments at 8 samples plus the endpoint");
+    for (size_t c = 0; c < ctrl->size(); ++c) {
+      bool hit = false;
+      for (size_t i = 0; i < cur.size(); ++i)
+        hit = hit || (std::fabs(cur.x[i] - ctrl->x[c]) < 1e-6f &&
+                      std::fabs(cur.y[i] - ctrl->y[c]) < 1e-6f);
+      CHECK(hit, "the spline passes through each control point");
+    }
+  }
+
   // PathFind: with a wall across the middle and a gap in it, the route
   // must pass through the gap rather than climb the wall
   {
