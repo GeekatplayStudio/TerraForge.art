@@ -410,6 +410,7 @@ void run_main() {
       a.uploaded_serial = a.eval_serial;
     }
 
+    app_service_camera_anim(a);
     app_service_points_overlay(a);
 
     // scatter instances: every Mesh object bound to a Points node gets its

@@ -13,6 +13,7 @@
 // Undo is handled by the caller: ai_apply_actions pushes one step for the
 // whole action document, so a script's changes revert as one edit.
 #include "app.hpp"
+#include "scene.hpp"
 #include "gpx/metanode.hpp"
 #include "gpx/node_graph.hpp"
 #include <json.hpp>
@@ -349,6 +350,34 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     a.graph.time = a.anim_start;
     a.seq_active = true;
     a.request_eval();
+    return 1;
+  }
+
+  if (op == "set_camera_key") {
+    // key the named camera's whole pose (eye + target) at the given time
+    SceneState &sc = scene();
+    std::string want = act.value("camera", act.value("name", std::string()));
+    int idx = -1;
+    for (int i = 0; i < (int)sc.objects.size(); ++i)
+      if (sc.objects[i].type == SceneObject::Camera &&
+          (want.empty() || sc.objects[i].name == want))
+        idx = i;
+    if (idx < 0) {
+      err = "no camera named '" + want + "'";
+      return 0;
+    }
+    CameraData &cd = sc.objects[idx].cam;
+    float t = act.value("time", a.graph.time);
+    bool remove = act.value("remove", false);
+    for (int k = 0; k < 3; ++k) {
+      if (remove) {
+        cd.anim_eye[k].remove_key(t);
+        cd.anim_target[k].remove_key(t);
+      } else {
+        cd.anim_eye[k].set_key(t, cd.eye[k]);
+        cd.anim_target[k].set_key(t, cd.target[k]);
+      }
+    }
     return 1;
   }
 

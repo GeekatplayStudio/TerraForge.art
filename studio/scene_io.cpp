@@ -227,6 +227,20 @@ json scene_to_json() {
             {"passes", c.render.passes},
             {"panorama", c.render.panorama}}},
       };
+      // camera animation tracks, only when they hold keys
+      {
+        json anim;
+        const char *axes[3] = {"x", "y", "z"};
+        for (int k = 0; k < 3; ++k) {
+          if (!c.anim_eye[k].empty())
+            anim[std::string("eye_") + axes[k]] =
+                gpx::track_to_string(c.anim_eye[k]);
+          if (!c.anim_target[k].empty())
+            anim[std::string("target_") + axes[k]] =
+                gpx::track_to_string(c.anim_target[k]);
+        }
+        if (!anim.empty()) jo["camera"]["anim"] = std::move(anim);
+      }
     } else if (o.type == SceneObject::Planet) {
       const PlanetData &P = o.planet;
       jo["planet"] = {
@@ -337,6 +351,18 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
         c.render.output = jr.value("output", c.render.output);
         c.render.passes = jr.value("passes", c.render.passes);
         c.render.panorama = jr.value("panorama", c.render.panorama);
+      }
+      if (jc.contains("anim")) {
+        const json &ja = jc["anim"];
+        const char *axes[3] = {"x", "y", "z"};
+        for (int k = 0; k < 3; ++k) {
+          std::string ek = std::string("eye_") + axes[k];
+          std::string tk = std::string("target_") + axes[k];
+          if (ja.contains(ek))
+            gpx::track_from_string(c.anim_eye[k], ja[ek].get<std::string>());
+          if (ja.contains(tk))
+            gpx::track_from_string(c.anim_target[k], ja[tk].get<std::string>());
+        }
       }
     } else if (o.type == SceneObject::Planet && jo.contains("planet")) {
       const json &jp = jo["planet"];

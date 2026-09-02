@@ -165,6 +165,7 @@ void scene_rebuild_scatter_instances(App &a);
 // per-frame services (app_services.cpp)
 void app_service_sequence(App &a);
 void app_service_points_overlay(App &a);
+void app_service_camera_anim(App &a);
 void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm);
 struct SceneObject;
 void camera_properties_ui(App &a, SceneObject &obj);

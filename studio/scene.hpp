@@ -1,5 +1,6 @@
 // Geekatplay TerraForge — scene objects & layers
 #pragma once
+#include "gpx/animation.hpp"
 #include "gpx/planet_math.hpp"
 #include <string>
 #include <vector>
@@ -45,6 +46,9 @@ struct RenderAssign {
 struct CameraData {
   float eye[3] = {0.5f, 0.45f, 1.7f};
   float target[3] = {0.5f, 0.1f, 0.5f};
+  // animation: one track per component; empty tracks cost nothing and the
+  // camera holds still. Sampled at the graph clock each frame.
+  gpx::Track anim_eye[3], anim_target[3];
   // physical lens
   float focal_mm = 35.f;
   int format = 0;         // index into gpx::cam::sensor_formats

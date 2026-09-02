@@ -80,6 +80,21 @@ void scene_rebuild_scatter_instances(App &a) {
   }
 }
 
+// Keyed cameras follow their tracks at the graph clock. Empty tracks leave
+// the camera exactly where the user put it.
+void app_service_camera_anim(App &a) {
+  for (SceneObject &o : scene().objects) {
+    if (o.type != SceneObject::Camera) continue;
+    CameraData &cd = o.cam;
+    for (int k = 0; k < 3; ++k) {
+      if (!cd.anim_eye[k].empty())
+        cd.eye[k] = cd.anim_eye[k].sample(a.graph.time);
+      if (!cd.anim_target[k].empty())
+        cd.target[k] = cd.anim_target[k].sample(a.graph.time);
+    }
+  }
+}
+
 void app_service_points_overlay(App &a) {
     // points overlay: whenever the selection or the evaluation moves, hand
     // the renderer the selected node's point cloud (if it has one) with
