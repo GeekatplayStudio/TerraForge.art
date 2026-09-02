@@ -88,6 +88,7 @@ set(ENGINE_SOURCES
     engine/attribute.cpp
     engine/animation.cpp
     engine/node_graph.cpp
+    engine/node.cpp
     engine/port_catalog.cpp
     engine/hydrology.cpp
     engine/distance.cpp
@@ -109,12 +110,14 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_pbr_library.cpp
     engine/nodes/nodes_modeling.cpp
     engine/nodes/nodes_surface.cpp
+    engine/nodes/nodes_surface_forms.cpp
     engine/nodes/nodes_atmosphere.cpp
     engine/nodes/nodes_material_graph.cpp
     engine/nodes/nodes_hydro.cpp
     engine/nodes/nodes_logic.cpp
     external/miniz/miniz.c
     engine/nodes/nodes_field.cpp
+    engine/nodes/nodes_field_math.cpp
     engine/nodes/nodes_field_shapes.cpp
     engine/nodes/nodes_path.cpp
     engine/nodes/nodes_displace.cpp
