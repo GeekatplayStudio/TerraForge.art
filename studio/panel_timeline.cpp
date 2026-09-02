@@ -7,6 +7,7 @@
 // rather than freezing anything.
 #include "app.hpp"
 #include "render_settings.hpp"
+#include "scene.hpp"
 #include <imgui.h>
 #include <algorithm>
 #include <cstdio>
@@ -90,10 +91,50 @@ void draw_panel_timeline(App &a) {
     a.request_eval();
   }
 
+  // ---- camera pose keys, when a camera is the scene selection -------------
+  {
+    SceneState &sc = scene();
+    if (sc.selected >= 0 && sc.selected < (int)sc.objects.size() &&
+        sc.objects[sc.selected].type == SceneObject::Camera) {
+      SceneObject &co = sc.objects[sc.selected];
+      CameraData &cd = co.cam;
+      ImGui::SeparatorText((co.name + " (camera)").c_str());
+      bool keyed = cd.anim_eye[0].has_key_at(a.graph.time);
+      if (ImGui::SmallButton(keyed ? "[K] pose" : " K  pose")) {
+        for (int k = 0; k < 3; ++k) {
+          if (keyed) {
+            cd.anim_eye[k].remove_key(a.graph.time);
+            cd.anim_target[k].remove_key(a.graph.time);
+          } else {
+            cd.anim_eye[k].set_key(a.graph.time, cd.eye[k]);
+            cd.anim_target[k].set_key(a.graph.time, cd.target[k]);
+          }
+        }
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Key this camera's eye and target at the playhead.\n"
+                          "Move the camera, key again - the sequence plays\n"
+                          "the move.");
+      ImGui::SameLine();
+      int nk = (int)cd.anim_eye[0].keys.size();
+      if (nk) {
+        ImGui::TextDisabled("(%d pose keys)", nk);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("clear##campose"))
+          for (int k = 0; k < 3; ++k) {
+            cd.anim_eye[k].keys.clear();
+            cd.anim_target[k].keys.clear();
+          }
+      } else {
+        ImGui::TextDisabled("(no pose keys)");
+      }
+    }
+  }
+
   // ---- tracks of the selected node ----------------------------------------
   gpx::Node *n = a.graph.find_node(a.selected_node);
   if (!n) {
-    ImGui::TextDisabled("Select a node to keyframe its parameters.");
+    ImGui::TextDisabled("Select a graph node to keyframe its parameters.");
     ImGui::End();
     return;
   }
