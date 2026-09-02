@@ -11,6 +11,10 @@
   ],
   "features": [
 
+    { "id": "hydro.flood", "area": "engine", "phase": "23",
+      "description": "Flood: standing water at a set level, everywhere-below or edge-connected (walled basins stay dry); outputs surface, depth and mask",
+      "test_file": "test_engine.cpp", "test_symbol": "test_flood" },
+
     { "id": "filter.morphology", "area": "engine", "phase": "23",
       "description": "Morphology (dilate/erode/open/close/gradient/top hat/black hat, square or octagon element), AreaRemove blob pruning, and Zhang-Suen Skeleton",
       "test_file": "test_engine.cpp", "test_symbol": "test_morphology" },

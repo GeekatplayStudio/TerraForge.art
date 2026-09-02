@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 135 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 136 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -18,7 +18,7 @@ Every node in Geekatplay TerraForge — 135 across 25 categories. Generated from
 | [Field Noise](#field-noise) | 3 |
 | [Filter](#filter) | 16 |
 | [Group](#group) | 1 |
-| [Hydrology](#hydrology) | 1 |
+| [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 7 |
 | [Material](#material) | 18 |
@@ -1361,6 +1361,25 @@ Floods closed basins to their outlet - filled terrain for flow routing, plus lak
 | Drainage slope | float, 0 to 0.01, default 0 | A hair of tilt across each filled flat so water still crosses it toward the outlet. Leave at 0 for true level lakes; raise it slightly when the filled surface feeds flow accumulation or erosion. |
 | Ignore puddles below | float, 0 to 0.2, default 0 | Depth and mask ignore anything shallower than this, so a thousand pinprick hollows do not read as lakes. The filled terrain is unaffected. |
 | Normalise depth | toggle, default on | Scales depth to 0..1 so it can drive a mask or a blend directly. Off leaves it in terrain units. |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### Flood
+
+Standing water at a set level
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| depth | out | heightmap |
+| water_mask | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Water level | float, 0 to 1, default 0.3 |  |
+| Fill | choice: Everywhere below / Connected to the edge |  |
+| Normalize depth | toggle, default on |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ## Logic

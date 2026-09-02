@@ -2803,6 +2803,41 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_flood() {
+  std::printf("standing water...\n");
+  const int N = 64;
+  gpx::Heightmap in(N, N);
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) in.at(x, y) = x / (float)N; // ramp to the east
+  // an enclosed pit high on the ramp: deep, but walled off from the sea
+  for (int y = 30; y < 34; ++y)
+    for (int x = 50; x < 54; ++x) in.at(x, y) = 0.05f;
+
+  auto run = [&](int mode) {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node("Flood", 0, 0);
+    n->attrs.find("level")->f = 0.3f;
+    n->attrs.find("mode")->i = mode;
+    n->port("input", gpx::PortDir::In)->hmap =
+        std::make_shared<gpx::Heightmap>(in);
+    gpx::NodeRegistry::instance().find("Flood")->compute(*n);
+    return std::pair<gpx::Heightmap, gpx::Heightmap>(
+        *n->port("water_mask", gpx::PortDir::Out)->hmap,
+        *n->port("output", gpx::PortDir::Out)->hmap);
+  };
+
+  auto [edge_mask, edge_out] = run(1);
+  CHECK(edge_mask.at(2, 32) == 1.f, "the low west side floods from the edge");
+  CHECK(edge_mask.at(52, 32) == 0.f, "the walled pit stays dry");
+  CHECK(edge_mask.at(62, 32) == 0.f, "high ground stays dry");
+  CHECK(edge_out.at(2, 32) > in.at(2, 32), "the surface rises to the level");
+
+  auto [any_mask, any_out] = run(0);
+  (void)any_out;
+  CHECK(any_mask.at(52, 32) == 1.f, "everywhere-below mode floods the pit too");
+}
+
 static void test_morphology() {
   std::printf("morphology...\n");
   const int N = 64;
@@ -3090,6 +3125,7 @@ int main() {
   test_path_carve();
   test_points_domain();
   test_morphology();
+  test_flood();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

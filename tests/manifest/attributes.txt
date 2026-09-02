@@ -242,6 +242,10 @@ FillBasins.normalize_depth|bool
 FlatColor.b|float
 FlatColor.g|float
 FlatColor.r|float
+Flood.blend_invert|bool
+Flood.level|float
+Flood.mode|choice
+Flood.normalize_depth|bool
 FlowAccumulation.blend_invert|bool
 FlowAccumulation.fill_pits|bool
 FlowAccumulation.log_scale|bool

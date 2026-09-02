@@ -66,6 +66,75 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    Flood, "Hydrology", "Standing water at a set level",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      n.add_out("depth");
+      n.add_out("water_mask");
+      add_float(n.attrs, "level", "Water level", 0.3f, 0.f, 1.f, "Flood");
+      add_choice(n.attrs, "mode", "Fill",
+                 {"Everywhere below", "Connected to the edge"}, 1, "Flood");
+      add_bool(n.attrs, "normalize_depth", "Normalize depth", true, "Flood");
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      Heightmap &depth = n.out_hmap("depth");
+      Heightmap &mask = n.out_hmap("water_mask");
+      out = *in;
+      depth = *in;
+      mask = *in;
+      float mn, mx;
+      in->minmax(mn, mx);
+      float span = (mx - mn) > 1e-12f ? mx - mn : 1.f;
+      float level = mn + n.attrs.get_f("level", 0.3f) * span;
+      int w = in->w, h = in->h;
+      std::vector<unsigned char> wet((size_t)w * h, 0);
+      if (n.attrs.get_choice("mode") == 0) {
+        for (size_t i = 0; i < wet.size(); ++i) wet[i] = in->v[i] < level;
+      } else {
+        // BFS from every boundary cell below the level: only water that can
+        // reach the tile edge floods, so basins above the sea stay dry lakes
+        std::vector<size_t> queue;
+        auto seed = [&](int x, int y) {
+          size_t i = (size_t)y * w + x;
+          if (!wet[i] && in->v[i] < level) {
+            wet[i] = 1;
+            queue.push_back(i);
+          }
+        };
+        for (int x = 0; x < w; ++x) { seed(x, 0); seed(x, h - 1); }
+        for (int y = 0; y < h; ++y) { seed(0, y); seed(w - 1, y); }
+        for (size_t q = 0; q < queue.size(); ++q) {
+          size_t c = queue[q];
+          int cx = (int)(c % w), cy = (int)(c / w);
+          const int nb[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+          for (auto &d : nb) {
+            int nx = cx + d[0], ny = cy + d[1];
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            size_t i = (size_t)ny * w + nx;
+            if (!wet[i] && in->v[i] < level) {
+              wet[i] = 1;
+              queue.push_back(i);
+            }
+          }
+        }
+      }
+      bool norm = n.attrs.get_b("normalize_depth", true);
+      float dmax = 1e-12f;
+      for (size_t i = 0; i < wet.size(); ++i)
+        if (wet[i]) dmax = std::max(dmax, level - in->v[i]);
+      for (size_t i = 0; i < wet.size(); ++i) {
+        float d = wet[i] ? level - in->v[i] : 0.f;
+        out.v[i] = wet[i] ? level : in->v[i];
+        depth.v[i] = norm ? d / dmax : d;
+        mask.v[i] = wet[i] ? 1.f : 0.f;
+      }
+    })
+
+REGISTER_NODE(
     Rivers, "Erosion", "Trace rivers from headwaters and carve channels; outputs river + depth masks",
     [](Node &n) {
       n.add_in("input");
