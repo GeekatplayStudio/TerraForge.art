@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 153 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 154 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -25,7 +25,7 @@ Every node in Geekatplay TerraForge — 153 across 25 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 5 |
-| [Primitive](#primitive) | 11 |
+| [Primitive](#primitive) | 12 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 5 |
@@ -2424,6 +2424,28 @@ Import a heightfield image (8/16-bit PNG, JPG, TGA)
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Heightfield image | file path |  |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
+### Landform
+
+Geological set pieces: island, mountain, caldera, rift, mesa
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| output | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Type | choice: Island / Mountain / Caldera / Rift valley / Mesa |  |
+| Center | x/y pair |  |
+| Radius | float, 0.05 to 1, default 0.35 |  |
+| Relief | float, 0 to 1, default 0.5 |  |
+| Direction ° | float, -180 to 180, default 0 |  |
+| Seed | seed |  |
 | Remap to range | toggle, default on |  |
 | Output range | range |  |
 | Invert | toggle, default off |  |

@@ -325,6 +325,17 @@ KMeans.slope_weight|float
 Kuwahara.blend_invert|bool
 Kuwahara.mix|float
 Kuwahara.radius|int
+Landform.angle|float
+Landform.center|vec2
+Landform.post_gain|float
+Landform.post_invert|bool
+Landform.post_range|range
+Landform.post_remap|bool
+Landform.post_zero_edges|float
+Landform.radius|float
+Landform.relief|float
+Landform.seed|seed
+Landform.type|choice
 Levels.gamma|float
 Levels.in_black|float
 Levels.in_white|float

@@ -2803,6 +2803,39 @@ static void test_curve_and_shapes() {
 }
 
 // ------------------------------------------------------------------- paths
+static void test_landform() {
+  std::printf("landforms...\n");
+  const int N = 64;
+  auto run = [&](int type) {
+    gpx::Graph g;
+    g.resolution = N;
+    gpx::Node *n = g.add_node("Landform", 0, 0);
+    n->attrs.find("type")->i = type;
+    n->attrs.find("post_remap")->b = false;
+    gpx::NodeRegistry::instance().find("Landform")->compute(*n);
+    return *n->port("output", gpx::PortDir::Out)->hmap;
+  };
+  auto island = run(0);
+  CHECK(island.at(32, 32) > island.at(2, 2) + 0.2f,
+        "the island rises from the sea");
+  auto caldera = run(2);
+  CHECK(caldera.at(32 + 12, 32) > caldera.at(32, 32) + 0.1f,
+        "the caldera rim stands above the crater floor");
+  auto rift = run(3);
+  // the trench runs along the direction axis (x at angle 0), so sample
+  // across it, not along it
+  CHECK(rift.at(32, 32) < rift.at(32, 4) - 0.2f,
+        "the rift floor sits below the plateau");
+  auto mesa = run(4);
+  CHECK(std::fabs(mesa.at(32, 32) - mesa.at(36, 36)) < 0.08f,
+        "the mesa top is level");
+  CHECK(mesa.at(32, 32) > mesa.at(2, 2) + 0.4f, "the mesa stands tall");
+  bool finite = true;
+  for (auto *hm : {&island, &caldera, &rift, &mesa})
+    for (float v : hm->v) finite = finite && std::isfinite(v);
+  CHECK(finite, "landforms are finite");
+}
+
 static void test_path_nodes() {
   std::printf("path family...\n");
   const int N = 64;
@@ -3480,6 +3513,7 @@ int main() {
   test_noise_variants();
   test_selectors();
   test_path_nodes();
+  test_landform();
   test_field_domain();
   test_field_bridges();
   test_field_glsl();

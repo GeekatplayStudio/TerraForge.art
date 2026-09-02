@@ -11,6 +11,78 @@
 
 namespace gpx {
 
+// -------------------------------------------------------------- Landform
+REGISTER_NODE(
+    Landform, "Primitive", "Geological set pieces: island, mountain, caldera, rift, mesa",
+    [](Node &n) {
+      n.add_out("output");
+      add_choice(n.attrs, "type", "Type",
+                 {"Island", "Mountain", "Caldera", "Rift valley", "Mesa"}, 0);
+      add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -0.5f, 1.5f);
+      add_float(n.attrs, "radius", "Radius", 0.35f, 0.05f, 1.f);
+      add_float(n.attrs, "relief", "Relief", 0.5f, 0.f, 1.f);
+      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f);
+      add_seed(n.attrs);
+      setup_post(n);
+    },
+    [](Node &n) {
+      Heightmap &out = n.out_hmap("output");
+      int type = n.attrs.get_choice("type");
+      float cx, cy;
+      n.attrs.get_vec2("center", cx, cy);
+      float R = n.attrs.get_f("radius", 0.35f);
+      float relief = n.attrs.get_f("relief", 0.5f);
+      float ang = n.attrs.get_f("angle") * 0.017453293f;
+      float ca = std::cos(ang), sa = std::sin(ang);
+      uint32_t seed = n.attrs.get_seed("seed");
+      noise::FbmParams p;
+      p.octaves = 8;
+      parallel_rows(out.h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < out.w; ++x) {
+            float u = x / float(out.w), vv = y / float(out.h);
+            float dx = u - cx, dy = vv - cy;
+            // the rim is wobbled by noise so nothing reads as a compass rose
+            float wob =
+                1.f + 0.25f * relief * noise::fbm(u * 3.f, vv * 3.f, seed, p);
+            float d = std::sqrt(dx * dx + dy * dy) / (R * wob);
+            float detail =
+                noise::fbm_ridged(u * 6.f, vv * 6.f, seed + 7u, p) * relief;
+            float v = 0;
+            switch (type) {
+              case 0: { // island: smooth dome falling to a shore shelf
+                float base = std::clamp(1.f - d, 0.f, 1.f);
+                base = base * base * (3.f - 2.f * base);
+                v = base * (0.55f + 0.45f * detail);
+              } break;
+              case 1: { // mountain: sharper cone, ridged flanks
+                float base = std::max(1.f - d, 0.f);
+                v = std::pow(base, 1.4f) * (0.4f + 0.6f * (detail * 0.5f + 0.5f));
+              } break;
+              case 2: { // caldera: a volcano with the top ring blown out
+                float base = std::max(1.f - d, 0.f);
+                float cone = std::pow(base, 1.2f);
+                float crater = std::exp(-d * d * 16.f) * 0.8f;
+                v = cone - crater + detail * 0.15f * base;
+              } break;
+              case 3: { // rift: a directional trench through the tile
+                float sd = std::fabs(dx * -sa + dy * ca) / R;
+                float trench = std::exp(-sd * sd * 4.f);
+                v = 0.6f + detail * 0.2f - trench * (0.45f + 0.15f * relief);
+              } break;
+              case 4: { // mesa: flat top, steep skirt, talus foot
+                float t = std::clamp((d - 0.7f) / 0.25f, 0.f, 1.f);
+                t = t * t * (3.f - 2.f * t);
+                v = (1.f - t) * (0.85f + detail * 0.1f) + (1.f - d) * 0.05f;
+                v = std::max(v, 0.f);
+              } break;
+            }
+            out.at(x, y) = v;
+          }
+      });
+      apply_post(n, out);
+    })
+
 // -------------------------------------------------------------- FakeStones
 REGISTER_NODE(
     FakeStones, "Primitive", "Terragen-style fake stones: boulders/rocks as displacement",
