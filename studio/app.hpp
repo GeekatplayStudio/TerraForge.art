@@ -142,6 +142,8 @@ void world_properties_ui(App &a);
 void material_properties_ui(App &a);
 void render_properties_ui(App &a);
 void draw_render_window(App &a); // live progressive render view
+void render_service_requests(App &a); // camera/AI render requests, per frame
+void scene_rebuild_scatter_instances(App &a);
 struct SceneObject;
 void camera_properties_ui(App &a, SceneObject &obj);
 void camera_apply_film();

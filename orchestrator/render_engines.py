@@ -153,6 +153,34 @@ def render_mitsuba(sc: dict) -> int:
         scene_dict["env"] = {"type": "constant",
                              "radiance": {"type": "rgb", "value": amb}}
 
+    # scene meshes, scattered copies included: base placement is the exported
+    # model matrix; each copy swaps in its own translation, yaw and scale,
+    # composed exactly as the viewport shader composes them
+    import math as _math
+    for i, m in enumerate(sc.get("meshes", [])):
+        base = mi.ScalarTransform4f(
+            [[m["model"][c * 4 + r] for c in range(4)] for r in range(4)])
+        mesh_bsdf = {"type": "diffuse",
+                     "reflectance": {"type": "rgb", "value": m["color"]}}
+        insts = m.get("instances")
+        if not insts:
+            scene_dict[f"mesh{i}"] = {"type": "obj", "filename": m["obj"],
+                                      "to_world": base, "bsdf": mesh_bsdf}
+            continue
+        scene_dict[f"group{i}"] = {
+            "type": "shapegroup",
+            "child": {"type": "obj", "filename": m["obj"], "bsdf": mesh_bsdf}}
+        bx, by, bz = m["model"][12], m["model"][13], m["model"][14]
+        for k, (x, y, z, s, yaw) in enumerate(insts):
+            t = (mi.ScalarTransform4f().translate([x - bx, y - by, z - bz])
+                 @ base
+                 @ mi.ScalarTransform4f()
+                 .rotate([0, 1, 0], -_math.degrees(yaw)).scale(s))
+            scene_dict[f"inst{i}_{k}"] = {
+                "type": "instance",
+                "shapegroup": {"type": "ref", "id": f"group{i}"},
+                "to_world": t}
+
     water = sc.get("water", {})
     if water.get("enabled"):
         scene_dict["water"] = {

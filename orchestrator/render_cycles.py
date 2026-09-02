@@ -94,6 +94,40 @@ def main() -> None:
     obj.rotation_euler = (math.acos(max(min(d[1], 1.0), -1.0)),
                           0.0, math.atan2(d[0], d[2]))
 
+    # scene meshes, scattered copies as linked duplicates (world axes here
+    # are Blender's: our x,y,z -> x, z, y after the OBJ importer's y-up fix)
+    for m in sc.get("meshes", []):
+        bpy.ops.wm.obj_import(filepath=m["obj"])
+        base = bpy.context.selected_objects[0]
+        mmat = bpy.data.materials.new("TerraForgeProp")
+        mmat.use_nodes = True
+        mb = mmat.node_tree.nodes["Principled BSDF"]
+        mb.inputs["Base Color"].default_value = (*m["color"], 1.0)
+        base.data.materials.append(mmat)
+        px, py, pz = m["position"]
+        s = float(m["scale"])
+        scl = m.get("scl", [1, 1, 1])
+        yaw = math.radians(m["ypr"][0]) if m.get("ypr") else 0.0
+        insts = m.get("instances")
+        if not insts:
+            base.location = (px, pz, py)
+            base.scale = (s * scl[0], s * scl[2], s * scl[1])
+            base.rotation_euler = (0.0, 0.0, -yaw)
+            continue
+        base.location = (insts[0][0], insts[0][2], insts[0][1])
+        first = True
+        for (ix, iy, iz, isc, iyaw) in insts:
+            if first:
+                ob = base
+                first = False
+            else:
+                ob = base.copy()  # linked duplicate: same mesh data
+                scene.collection.objects.link(ob)
+            ob.location = (ix, iz, iy)
+            k = s * isc
+            ob.scale = (k * scl[0], k * scl[2], k * scl[1])
+            ob.rotation_euler = (0.0, 0.0, -iyaw)
+
     # water
     water = sc.get("water", {})
     if water.get("enabled"):

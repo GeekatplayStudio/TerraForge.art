@@ -246,6 +246,54 @@ static bool export_scene(App &a, const std::string &out_png, int width, int heig
                 {"roughness", std::max(rs.mat_roughness * 0.05f, 0.01f)},
                 {"deep", {rs.water_deep_color[0], rs.water_deep_color[1],
                           rs.water_deep_color[2]}}};
+  // scene meshes, scattered copies included, so the offline engines see the
+  // same world the viewport draws (multi-engine parity rule)
+  {
+    scene_rebuild_scatter_instances(a); // a scripted batch may not have ticked
+    json meshes = json::array();
+    SceneState &sc = scene();
+    int mi = 0;
+    for (const SceneObject &o : sc.objects) {
+      if (o.type != SceneObject::Mesh || !sc.object_visible(o) ||
+          o.verts.empty())
+        continue;
+      fs::path mp = dir / ("mesh_" + std::to_string(mi++) + ".obj");
+      std::ofstream mf(mp);
+      const size_t nv = o.verts.size() / 6;
+      for (size_t i = 0; i < nv; ++i)
+        mf << "v " << o.verts[i * 6] << ' ' << o.verts[i * 6 + 1] << ' '
+           << o.verts[i * 6 + 2] << "\nvn " << o.verts[i * 6 + 3] << ' '
+           << o.verts[i * 6 + 4] << ' ' << o.verts[i * 6 + 5] << '\n';
+      for (size_t i = 0; i + 2 < nv; i += 3)
+        mf << "f " << i + 1 << "//" << i + 1 << ' ' << i + 2 << "//" << i + 2
+           << ' ' << i + 3 << "//" << i + 3 << '\n';
+      float model[16], nrm9[9];
+      scene_object_matrix(o, rs.height_scale, model, nrm9);
+      json jm;
+      jm["obj"] = mp.string();
+      jm["color"] = {o.color[0], o.color[1], o.color[2]};
+      jm["model"] = json::array();
+      for (int k = 0; k < 16; ++k) jm["model"].push_back(model[k]);
+      // decomposed placement too, for engines that would rather compose
+      // their own transforms (Blender's axis conventions, mainly)
+      jm["position"] = {o.pos[0], o.pos[1] * rs.height_scale, o.pos[2]};
+      jm["scale"] = o.scale;
+      jm["scl"] = {o.scl[0], o.scl[1], o.scl[2]};
+      jm["ypr"] = {o.yaw, o.pitch, o.roll};
+      if (!o.inst.empty()) {
+        json inst = json::array();
+        const size_t per = 8;
+        for (size_t i = 0; i + per <= o.inst.size(); i += per) {
+          const float *s = o.inst.data() + i;
+          // x, y, z, scale, yaw (radians, from the stored cos/sin)
+          inst.push_back({s[0], s[1], s[2], s[3], std::atan2(s[5], s[4])});
+        }
+        jm["instances"] = std::move(inst);
+      }
+      meshes.push_back(std::move(jm));
+    }
+    j["meshes"] = std::move(meshes);
+  }
   std::ofstream sj(dir / "scene.json");
   sj << j.dump(2);
   return true;
@@ -361,6 +409,38 @@ void draw_render_window(App &a) {
   ImGui::End();
 }
 
+// Serviced from the frame loop, not from any panel: a camera (or the AI, or
+// the scripting inbox) asking to render must work whether or not the Render
+// tab happens to be on screen.
+void render_service_requests(App &a) {
+  SceneState &sc = scene();
+  if (a.request_camera_render < 0) return;
+  int c = a.request_camera_render;
+  a.request_camera_render = -1;
+  if (c < 0 || c >= (int)sc.objects.size() ||
+      sc.objects[c].type != SceneObject::Camera)
+    return;
+  if (render_running.load()) {
+    std::lock_guard<std::mutex> lk(render_mtx);
+    render_status = "a render is already running";
+    return;
+  }
+  const RenderAssign &r = sc.objects[c].cam.render;
+  int engine = std::clamp(r.engine, 0, ENGINE_COUNT - 1);
+  std::string err;
+  if (export_scene(a, r.output, r.width, r.height, r.samples,
+                   ENGINES[engine].key, err)) {
+    render_window_open = true;
+    progress_line.clear();
+    render_running.store(true);
+    std::thread(run_render, (render_workdir() / "scene.json").string(),
+                r.output, project_root().string()).detach();
+  } else {
+    std::lock_guard<std::mutex> lk(render_mtx);
+    render_status = err;
+  }
+}
+
 void render_properties_ui(App &a) {
   static int engine = 0;
   static int width = 1920, height = 1080, spp = 128;
@@ -381,33 +461,6 @@ void render_properties_ui(App &a) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.55f, 0.24f, 1.f));
     ImGui::Text("Render settings of %s", sc.objects[cam].name.c_str());
     ImGui::PopStyleColor();
-  }
-
-  // a camera asked to render itself
-  if (a.request_camera_render >= 0) {
-    int c = a.request_camera_render;
-    a.request_camera_render = -1;
-    if (c >= 0 && c < (int)sc.objects.size() &&
-        sc.objects[c].type == SceneObject::Camera) {
-      const RenderAssign &r = sc.objects[c].cam.render;
-      engine = r.engine;
-      width = r.width;
-      height = r.height;
-      spp = r.samples;
-      snprintf(out_path, sizeof out_path, "%s", r.output.c_str());
-      std::string err;
-      if (export_scene(a, out_path, width, height, spp,
-                       ENGINES[std::clamp(engine, 0, ENGINE_COUNT - 1)].key, err)) {
-        render_window_open = true;
-        progress_line.clear();
-        render_running.store(true);
-        std::thread(run_render, (render_workdir() / "scene.json").string(),
-                    std::string(out_path), project_root().string()).detach();
-      } else {
-        std::lock_guard<std::mutex> lk(render_mtx);
-        render_status = err;
-      }
-    }
   }
 
   ImGui::SeparatorText("Engine");
