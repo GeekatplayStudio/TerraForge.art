@@ -265,11 +265,22 @@ def render_mitsuba(sc: dict) -> int:
         major = np.argmax(ax, axis=0)
         # face picking mirrors the render list above
         def put(mask, img, u, v):
-            uu = np.clip(((u + 1) * 0.5 * (face_res - 1)).astype(int),
-                         0, face_res - 1)
-            vv = np.clip(((1 - (v + 1) * 0.5) * (face_res - 1)).astype(int),
-                         0, face_res - 1)
-            out[mask] = img[vv[mask], uu[mask]]
+            # bilinear: the nearest-texel version left visible stair-steps
+            # along every face boundary
+            fu = np.clip((u + 1) * 0.5 * (face_res - 1), 0, face_res - 1)
+            fv = np.clip((1 - (v + 1) * 0.5) * (face_res - 1), 0,
+                         face_res - 1)
+            u0 = np.floor(fu).astype(int)
+            v0 = np.floor(fv).astype(int)
+            u1 = np.minimum(u0 + 1, face_res - 1)
+            v1 = np.minimum(v0 + 1, face_res - 1)
+            du = (fu - u0)[..., None]
+            dv = (fv - v0)[..., None]
+            m = mask
+            out[m] = (img[v0[m], u0[m]] * (1 - du[m]) * (1 - dv[m]) +
+                      img[v0[m], u1[m]] * du[m] * (1 - dv[m]) +
+                      img[v1[m], u0[m]] * (1 - du[m]) * dv[m] +
+                      img[v1[m], u1[m]] * du[m] * dv[m])
         m = (major == 0) & (dx > 0); put(m, imgs[0], -dz / np.abs(dx), dy / np.abs(dx))
         m = (major == 0) & (dx < 0); put(m, imgs[1], dz / np.abs(dx), dy / np.abs(dx))
         m = (major == 2) & (dz > 0); put(m, imgs[2], dx / np.abs(dz), dy / np.abs(dz))

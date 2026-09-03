@@ -364,6 +364,43 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     unii(prog_gizmo, "u_selected", (int)li == sc.selected ? 1 : 0);
     glBindVertexArray(vao_sphere);
     glDrawArrays(GL_TRIANGLES, 0, sphere_verts);
+    // a spot shows its aim: four cone edge lines to the reach distance
+    if (o.light_type == 1) {
+      float yaw2 = o.yaw * 0.017453293f, pit2 = o.pitch * 0.017453293f;
+      float dx = std::cos(pit2) * std::sin(yaw2);
+      float dy = std::sin(pit2);
+      float dz = std::cos(pit2) * std::cos(yaw2);
+      float half = std::clamp(o.light_cone, 1.f, 170.f) * 0.5f * 0.017453293f;
+      // an orthonormal frame around the axis
+      float ux = -dz, uy = 0.f, uz = dx;
+      float ul = std::sqrt(ux * ux + uz * uz);
+      if (ul < 1e-4f) { ux = 1; uz = 0; ul = 1; }
+      ux /= ul; uz /= ul;
+      float vx = dy * uz - dz * uy, vy = dz * ux - dx * uz,
+            vz = dx * uy - dy * ux;
+      float ox = o.pos[0], oy = o.pos[1] * RS.height_scale, oz = o.pos[2];
+      float L = o.light_radius;
+      float s = std::sin(half), c2 = std::cos(half);
+      std::vector<float> seg;
+      for (int k = 0; k < 4; ++k) {
+        float a2 = k * 1.5707963f;
+        float rx = ux * std::cos(a2) + vx * std::sin(a2);
+        float ry = uy * std::cos(a2) + vy * std::sin(a2);
+        float rz = uz * std::cos(a2) + vz * std::sin(a2);
+        seg.insert(seg.end(), {ox, oy, oz, ox + (dx * c2 + rx * s) * L,
+                               oy + (dy * c2 + ry * s) * L,
+                               oz + (dz * c2 + rz * s) * L});
+      }
+      glBindVertexArray(vao_dyn);
+      glBindBuffer(GL_ARRAY_BUFFER, vbo_dyn);
+      glBufferSubData(GL_ARRAY_BUFFER, 0, seg.size() * 4, seg.data());
+      glUseProgram(prog_lines);
+      glUniformMatrix4fv(glGetUniformLocation(prog_lines, "u_mvp"), 1,
+                         GL_FALSE, mvp);
+      glUniform4f(glGetUniformLocation(prog_lines, "u_color"), o.color[0],
+                  o.color[1], o.color[2], 0.55f);
+      glDrawArrays(GL_LINES, 0, (int)(seg.size() / 3));
+    }
   }
 
   // reference grid
