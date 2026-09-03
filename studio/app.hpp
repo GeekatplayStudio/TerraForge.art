@@ -54,6 +54,7 @@ struct App {
     float pos_x = 0, pos_y = 0;
     double ms = 0;
     bool enabled = true;
+    int collapse = 0; // 0 expanded, 1 compact (no preview), 2 header only
     std::vector<PortView> ports;
   };
   struct LinkView {

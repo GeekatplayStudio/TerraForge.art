@@ -45,6 +45,7 @@ void App::refresh_snapshot() {
     v.pos_y = n->pos_y;
     v.ms = n->last_compute_ms;
     v.enabled = n->enabled;
+    v.collapse = n->ui_collapse;
     total += n->last_compute_ms;
     v.ports.reserve(n->ports.size());
     for (const auto &p : n->ports) {

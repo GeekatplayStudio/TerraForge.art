@@ -61,6 +61,10 @@ public:
   // semantic as Terragen's Enable checkbox, and it costs each node nothing
   // because the graph implements it during link resolution.
   bool enabled = true;
+  // How the node editor draws it: 0 expanded, 1 compact (ports only),
+  // 2 header only. Presentation, but saved with the graph so a tidy layout
+  // survives a reload.
+  int ui_collapse = 0;
   double last_compute_ms = 0;
   std::string error;
 

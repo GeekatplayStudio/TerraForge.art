@@ -7,6 +7,7 @@
 #include "undo.hpp"
 #include "gpx/metanode.hpp"
 #include <imgui.h>
+#include <imgui_internal.h> // SetPixelDensity: crisp text at any zoom
 #include <imgui_node_editor.h>
 #include <json.hpp>
 #include <algorithm>
@@ -77,9 +78,43 @@ void draw_panel_graph(App &a) {
   ed::SetCurrentEditor(ED);
   ed::PushStyleColor(ed::StyleColor_Bg, ImVec4(0.075f, 0.075f, 0.08f, 1.f));
   ed::PushStyleColor(ed::StyleColor_Grid, ImVec4(1.f, 1.f, 1.f, 0.025f));
+  const ImVec4 acc = ImGui::ColorConvertU32ToFloat4(theme::accent());
+  ed::PushStyleColor(ed::StyleColor_HovNodeBorder, ImVec4(acc.x, acc.y, acc.z, 0.6f));
+  ed::PushStyleColor(ed::StyleColor_SelNodeBorder, acc);
+  ed::PushStyleColor(ed::StyleColor_HovLinkBorder, ImVec4(acc.x, acc.y, acc.z, 0.7f));
+  ed::PushStyleColor(ed::StyleColor_SelLinkBorder, acc);
+  ed::PushStyleColor(ed::StyleColor_PinRect, ImVec4(acc.x, acc.y, acc.z, 0.35f));
+  ed::PushStyleColor(ed::StyleColor_PinRectBorder, ImVec4(acc.x, acc.y, acc.z, 0.9f));
+  ed::PushStyleVar(ed::StyleVar_HoveredNodeBorderWidth, 2.f);
+  ed::PushStyleVar(ed::StyleVar_SelectedNodeBorderWidth, 2.5f);
+  ed::PushStyleVar(ed::StyleVar_LinkStrength, 120.f);
+  ed::PushStyleVar(ed::StyleVar_PinRadius, 0.f);
   ed::Begin("GeekatplayGraph");
+  // Text is rasterised for the zoom the canvas is drawn at. The editor scales
+  // its draw list after the fact, so glyphs baked at the base size arrive
+  // stretched — that was the blur on zooming in. GetCurrentZoom() is the
+  // inverse scale; the pixel density is the scale itself.
+  const bool dyn_fonts =
+      (ImGui::GetIO().BackendFlags & ImGuiBackendFlags_RendererHasTextures) != 0;
+  if (dyn_fonts) {
+    float inv = ed::GetCurrentZoom();
+    float scale = inv > 1e-4f ? 1.f / inv : 1.f;
+    ImGui::SetPixelDensity(std::clamp(scale, 0.5f, 4.f) *
+                           ImGui::GetMainViewport()->FramebufferScale.x);
+  }
 
   bool eval_running = !can_edit;
+  // collapse requests raised by last frame's chevrons or the H key
+  if (!eval_running && !g_collapse_requests.empty()) {
+    for (const CollapseRequest &r : g_collapse_requests)
+      if (gpx::Node *n = a.graph.find_node(r.node))
+        n->ui_collapse = r.mode < 0 ? (n->ui_collapse + 1) % 3
+                                    : std::clamp(r.mode, 0, 2);
+    g_collapse_requests.clear();
+    a.refresh_snapshot();
+  } else if (eval_running) {
+    g_collapse_requests.clear();
+  }
 
   // A node belongs to the workspace of its category — and also to any
   // workspace it is wired into. ErosionLayers sits in Terrain, but once its
@@ -150,8 +185,12 @@ void draw_panel_graph(App &a) {
       // A link naming a port that does not exist is a corrupt file, not a
       // link to draw at pin 0.
       if (fi == SIZE_MAX || ti == SIZE_MAX) continue;
-      ed::Link(l.id, pin_id(l.from_node, fi), pin_id(l.to_node, ti),
-               ImVec4(0.78f, 0.47f, 0.19f, 0.9f), 1.5f);
+      // the wire is the colour of what it carries, same as the connector
+      const App::PortView &fp = fn->ports[fi];
+      ImVec4 lc = ImGui::ColorConvertU32ToFloat4(
+          theme::port_color(fp.is_texture, fp.is_field, fp.field_type, fp.is_points));
+      lc.w = 0.85f;
+      ed::Link(l.id, pin_id(l.from_node, fi), pin_id(l.to_node, ti), lc, 2.2f);
     }
   }
 
@@ -292,6 +331,15 @@ void draw_panel_graph(App &a) {
       a.graph_layout_serial++;
       a.request_eval();
     }
+  }
+
+  // H cycles the detail level of the selection: expanded, compact, title bar
+  if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) &&
+      !ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_H, false)) {
+    ed::NodeId sel[64];
+    int count = ed::GetSelectedNodes(sel, 64);
+    for (int i = 0; i < count; ++i)
+      g_collapse_requests.push_back({(uint64_t)sel[i].Get(), -1});
   }
 
   // bypass the selection (Ctrl+E) — the shortcut every node app has for
@@ -463,7 +511,9 @@ void draw_panel_graph(App &a) {
   if (navigate_countdown >= 0 && navigate_countdown-- == 0)
     ed::NavigateToContent(0.f);
   ed::End();
-  ed::PopStyleColor(2);
+  if (dyn_fonts) ImGui::SetPixelDensity(ImGui::GetMainViewport()->FramebufferScale.x);
+  ed::PopStyleVar(4);
+  ed::PopStyleColor(8);
   ed::SetCurrentEditor(nullptr);
   ImGui::End();
 }

@@ -172,6 +172,7 @@ std::string graph_to_json(const Graph &g) {
     for (const auto &a : n->attrs.items) attrs[a.key] = attr_to_json(a);
     jn["attrs"] = attrs;
     if (!n->enabled) jn["enabled"] = false;
+    if (n->ui_collapse) jn["collapse"] = n->ui_collapse;
     nodes.push_back(jn);
   }
   j["nodes"] = nodes;
@@ -203,6 +204,7 @@ bool graph_from_json(Graph &g, const std::string &text, std::string &err,
     if (!n) continue; // unknown node type: skip, keep loading
     idmap[jn["id"].get<uint64_t>()] = n->id;
     n->enabled = jn.value("enabled", true);
+    n->ui_collapse = jn.value("collapse", 0);
     if (jn.contains("attrs"))
       for (auto &a : n->attrs.items)
         if (jn["attrs"].contains(a.key)) attr_from_json(a, jn["attrs"][a.key]);

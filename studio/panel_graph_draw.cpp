@@ -18,13 +18,18 @@ namespace ed = ax::NodeEditor;
 namespace studio {
 
 
-// A node is drawn as a coloured header over a dark body, which is how Cinema
-// 4D and Cycles 4D draw theirs. The header *is* the category: a graph is then
-// readable at a distance, before any label is legible, which is the whole
-// reason for colouring nodes at all. Our previous design put a four-pixel tick
-// beside the title, which carried the same information and conveyed none of it.
+// A node is a card: a rounded dark body under a coloured title bar, with the
+// connectors sitting on its left and right edges so a wire visibly *meets*
+// the node rather than disappearing into it. The bar is the category — a
+// graph is readable at a distance, before any label is legible — and the
+// connector's colour is the data type, so what a wire carries is visible at
+// both ends and along its length. Three levels of detail: expanded (ports,
+// preview, timing), compact (ports only) and header only, where every wire
+// converges on one connector per side.
 void draw_node(App &a, const App::NodeView &n) {
+  using namespace nodemetric;
   const bool selected = a.selected_node == n.id;
+  const int collapse = std::clamp(n.collapse, 0, 2);
   // a bypassed node stays visible but reads as inert, so you can see the
   // structure you are keeping without mistaking it for part of the result
   ed::PushStyleColor(ed::StyleColor_NodeBg,
@@ -36,24 +41,23 @@ void draw_node(App &a, const App::NodeView &n) {
       ImGui::ColorConvertU32ToFloat4(!n.error.empty() ? theme::error()
                                      : selected      ? theme::accent()
                                                      : theme::node_border()));
-  ed::PushStyleVar(ed::StyleVar_NodeRounding, 0.f);
+  ed::PushStyleVar(ed::StyleVar_NodeRounding, ROUNDING);
   ed::PushStyleVar(ed::StyleVar_NodeBorderWidth, selected ? 2.f : 1.f);
   // no top padding: the header bar has to reach the node's own edges
-  ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(0, 0, 0, 6));
+  ed::PushStyleVar(ed::StyleVar_NodePadding,
+                   ImVec4(0, 0, 0, collapse == 2 ? 0.f : 7.f));
   ed::BeginNode(n.id);
 
   ImU32 hc = theme::category_color(n.category);
   if (!n.enabled) hc = theme::fade(theme::shade(hc, 0.55f), 0.9f);
   ImDrawList *dl = ImGui::GetWindowDrawList();
+  const ImU32 body_col = n.enabled ? theme::node_bg()
+                                   : theme::fade(theme::node_bg(), 0.72f);
 
   // ---- measure ----------------------------------------------------------
-  // Inputs on the left and outputs on the right have to share rows, so the
-  // node's width must be decided *before* either column is drawn. Laying the
-  // inputs out first and then right-aligning the outputs against whatever
-  // width happened to result puts the two sets on different rows entirely,
-  // with the outputs stranded below the preview — which is not how any node
-  // editor is read.
-  const float dot_col = nodemetric::PORT_R * 2 + 6.f;
+  // Inputs on the left and outputs on the right share rows, so the width is
+  // decided before either column is drawn.
+  const float dot_col = PORT_R + 4.f; // room between the edge and the label
   float in_label_w = 0.f, out_label_w = 0.f;
   size_t in_n = 0, out_n = 0;
   for (const App::PortView &p : n.ports) {
@@ -61,25 +65,22 @@ void draw_node(App &a, const App::NodeView &n) {
     if (p.is_input) { in_label_w = std::max(in_label_w, tw); ++in_n; }
     else { out_label_w = std::max(out_label_w, tw); ++out_n; }
   }
-  float head_w = ImGui::CalcTextSize(n.type.c_str()).x;
+  float head_w = ImGui::CalcTextSize(n.type.c_str()).x + CHEVRON_W + 4.f;
   if (!n.enabled) head_w += 6.f + ImGui::CalcTextSize("bypassed").x;
-  const unsigned prev_tex = previews_get(n.id);
+  const unsigned prev_tex = collapse == 0 ? previews_get(n.id) : 0;
   const float ports_w = (in_n ? dot_col + in_label_w : 0.f) +
-                        (in_n && out_n ? nodemetric::COL_GAP : 0.f) +
+                        (in_n && out_n ? COL_GAP : 0.f) +
                         (out_n ? out_label_w + dot_col : 0.f);
-  float body_w = std::max(head_w, ports_w) + nodemetric::PAD_X * 2.f;
-  if (prev_tex)
-    body_w = std::max(body_w, nodemetric::PREVIEW + nodemetric::PAD_X * 2.f);
+  float body_w = std::max(head_w, collapse == 2 ? 0.f : ports_w) + PAD_X * 2.f;
+  if (prev_tex) body_w = std::max(body_w, PREVIEW + PAD_X * 2.f);
+  body_w = std::max(body_w, 120.f);
 
   // ---- header ----------------------------------------------------------
-  // The bar itself is painted after EndNode, when the node's real rectangle is
-  // known; this reserves its height and, with the measured width, fixes the
-  // node's own width so the columns below can be placed absolutely.
   const ImVec2 head_pos = ImGui::GetCursorScreenPos();
-  ImGui::Dummy(ImVec2(body_w, nodemetric::HEADER_H));
+  ImGui::Dummy(ImVec2(body_w, HEADER_H));
 
   ImGui::SetCursorScreenPos(
-      ImVec2(head_pos.x + nodemetric::PAD_X, head_pos.y + 3.f));
+      ImVec2(head_pos.x + PAD_X, head_pos.y + (HEADER_H - ImGui::GetFontSize()) * 0.5f));
   ImGui::PushStyleColor(ImGuiCol_Text, theme::text_on_header());
   ImGui::TextUnformatted(n.type.c_str());
   ImGui::PopStyleColor();
@@ -89,114 +90,163 @@ void draw_node(App &a, const App::NodeView &n) {
     ImGui::TextUnformatted("bypassed");
     ImGui::PopStyleColor();
   }
+  // the collapse toggle: a chevron at the header's right, cycling the three
+  // levels; H does the same for the whole selection
+  {
+    ImVec2 c0(head_pos.x + body_w - CHEVRON_W - 2.f, head_pos.y + 2.f);
+    ImGui::SetCursorScreenPos(c0);
+    ImGui::PushID((int)(n.id & 0x7fffffff));
+    if (ImGui::InvisibleButton("##collapse", ImVec2(CHEVRON_W, HEADER_H - 4.f)))
+      g_collapse_requests.push_back({n.id, -1});
+    ImGui::PopID();
+    const bool hot = ImGui::IsItemHovered();
+    if (hot)
+      ImGui::SetTooltip("%s", collapse == 0 ? "Compact: hide the preview"
+                              : collapse == 1 ? "Collapse to the title bar"
+                                              : "Expand");
+    ImVec2 cc(c0.x + CHEVRON_W * 0.5f, head_pos.y + HEADER_H * 0.5f);
+    ImU32 ccol = hot ? IM_COL32(255, 255, 255, 255)
+                     : theme::fade(theme::text_on_header(), 0.75f);
+    const float s = 3.5f;
+    if (collapse == 2) // pointing right: closed
+      dl->AddTriangleFilled(ImVec2(cc.x - s * 0.6f, cc.y - s),
+                            ImVec2(cc.x + s * 0.8f, cc.y),
+                            ImVec2(cc.x - s * 0.6f, cc.y + s), ccol);
+    else if (collapse == 1) // a short bar: half way
+      dl->AddRectFilled(ImVec2(cc.x - s, cc.y - 1.f), ImVec2(cc.x + s, cc.y + 1.f),
+                        ccol);
+    else // pointing down: open
+      dl->AddTriangleFilled(ImVec2(cc.x - s, cc.y - s * 0.6f),
+                            ImVec2(cc.x + s, cc.y - s * 0.6f),
+                            ImVec2(cc.x, cc.y + s * 0.8f), ccol);
+  }
 
+  // The connector: a filled disc on the edge with a dark ring, so it reads
+  // against both the body and the canvas. Required ports are solid, optional
+  // ones hollow — which is one less thing to learn from a tooltip.
   auto port_dot = [&](ImVec2 c, ImU32 col, bool filled) {
-    // filled = required, hollow = optional. The shape says whether you have
-    // to connect it, so that is one less thing to learn from a tooltip.
-    if (filled) dl->AddCircleFilled(c, nodemetric::PORT_R, col, 12);
+    dl->AddCircleFilled(c, PORT_R + 1.5f, theme::shade(body_col, 0.6f), 16);
+    if (filled) dl->AddCircleFilled(c, PORT_R, col, 16);
     else {
-      dl->AddCircleFilled(c, nodemetric::PORT_R, theme::node_bg(), 12);
-      dl->AddCircle(c, nodemetric::PORT_R, col, 12, 1.6f);
+      dl->AddCircleFilled(c, PORT_R, body_col, 16);
+      dl->AddCircle(c, PORT_R - 0.5f, col, 16, 1.8f);
     }
   };
-
-  // ---- ports: inputs left, outputs right, on shared rows ----------------
-  // One row per index, so the first input sits opposite the first output and a
-  // wire entering a node lines up with the wire leaving it. Both columns are
-  // positioned in screen space against the width measured above.
-  const float rows_top = head_pos.y + nodemetric::HEADER_H + 5.f;
-  const size_t rows = std::max(in_n, out_n);
-  size_t in_row = 0, out_row = 0;
-  for (size_t i = 0; i < n.ports.size(); ++i) {
-    const App::PortView &p = n.ports[i];
-    const size_t row = p.is_input ? in_row++ : out_row++;
-    const float y = rows_top + row * nodemetric::ROW_H;
-    const float tw = ImGui::CalcTextSize(p.name.c_str()).x;
-
-    if (p.is_input) {
-      ImGui::SetCursorScreenPos(ImVec2(head_pos.x + nodemetric::PAD_X, y));
-      ed::BeginPin(pin_id(n.id, i), ed::PinKind::Input);
-      ImVec2 dot(head_pos.x + nodemetric::PAD_X + nodemetric::PORT_R,
-                 y + nodemetric::ROW_H * 0.5f);
-      port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type,
-                                 p.is_points),
-               !p.optional);
-      ImGui::Dummy(ImVec2(dot_col, nodemetric::ROW_H));
-      ImGui::SameLine(0, 0);
-      ImGui::PushStyleColor(ImGuiCol_Text,
-                            p.optional ? theme::text_dim() : theme::text());
-      ImGui::TextUnformatted(p.name.c_str());
-      ImGui::PopStyleColor();
-      ed::PinRect(ImVec2(dot.x - 7, dot.y - 7), ImVec2(dot.x + 7, dot.y + 7));
-      ed::EndPin();
-    } else {
-      // right-aligned: the label ends where the dot column begins, so every
-      // output dot in the node sits on one vertical line
-      const float x = head_pos.x + body_w - nodemetric::PAD_X - dot_col - tw;
-      ImGui::SetCursorScreenPos(ImVec2(x, y));
-      ed::BeginPin(pin_id(n.id, i), ed::PinKind::Output);
-      ImGui::PushStyleColor(ImGuiCol_Text, theme::text());
-      ImGui::TextUnformatted(p.name.c_str());
-      ImGui::PopStyleColor();
-      ImVec2 dot(head_pos.x + body_w - nodemetric::PAD_X - nodemetric::PORT_R,
-                 y + nodemetric::ROW_H * 0.5f);
-      port_dot(dot, theme::port_color(p.is_texture, p.is_field, p.field_type,
-                                 p.is_points),
-               true);
-      ImGui::SameLine(0, 0);
-      ImGui::Dummy(ImVec2(dot_col, nodemetric::ROW_H));
-      ed::PinRect(ImVec2(dot.x - 7, dot.y - 7), ImVec2(dot.x + 7, dot.y + 7));
-      ed::EndPin();
-    }
-  }
-  // Claim the full block the rows occupy, so the node's height follows them
-  // and the preview lands underneath rather than on top.
-  ImGui::SetCursorScreenPos(ImVec2(head_pos.x, rows_top));
-  ImGui::Dummy(ImVec2(body_w, rows * nodemetric::ROW_H + 3.f));
-
-  if (prev_tex) {
-    ImGui::SetCursorScreenPos(
-        ImVec2(head_pos.x + (body_w - nodemetric::PREVIEW) * 0.5f,
-               ImGui::GetCursorScreenPos().y));
-    ImGui::Image((ImTextureID)(intptr_t)prev_tex,
-                 ImVec2(nodemetric::PREVIEW, nodemetric::PREVIEW));
-  }
-
-  // node-local indent: SetCursorPosX is window-relative, which throws these
-  // outside any node that is not at the window's left edge
-  auto indent = [] {
-    ImGui::Dummy(ImVec2(nodemetric::PAD_X, 0));
-    ImGui::SameLine(0, 0);
+  auto pin_rect = [&](ImVec2 c) {
+    ed::PinRect(ImVec2(c.x - 9, c.y - 9), ImVec2(c.x + 9, c.y + 9));
   };
-  if (n.ms > 0.01) {
-    indent();
-    ImGui::PushStyleColor(ImGuiCol_Text, theme::text_dim());
-    ImGui::Text("%.1f ms", n.ms);
-    ImGui::PopStyleColor();
-  }
-  if (!n.error.empty()) {
-    indent();
-    ImGui::PushStyleColor(ImGuiCol_Text, theme::error());
-    ImGui::TextUnformatted(n.error.c_str());
-    ImGui::PopStyleColor();
+
+  // ---- ports -------------------------------------------------------------
+  if (collapse == 2) {
+    // header only: every input meets the card at one point on the left edge,
+    // every output leaves from one point on the right
+    const ImVec2 lc(head_pos.x, head_pos.y + HEADER_H * 0.5f);
+    const ImVec2 rc(head_pos.x + body_w, head_pos.y + HEADER_H * 0.5f);
+    bool drew_in = false, drew_out = false;
+    for (size_t i = 0; i < n.ports.size(); ++i) {
+      const App::PortView &p = n.ports[i];
+      ImVec2 c = p.is_input ? lc : rc;
+      ImGui::SetCursorScreenPos(ImVec2(c.x - 1, c.y - 1));
+      ed::BeginPin(pin_id(n.id, i), p.is_input ? ed::PinKind::Input
+                                                : ed::PinKind::Output);
+      ImGui::Dummy(ImVec2(2, 2));
+      pin_rect(c);
+      ed::EndPin();
+      bool &drew = p.is_input ? drew_in : drew_out;
+      if (!drew) {
+        port_dot(c, theme::fade(theme::text(), 0.9f), true);
+        drew = true;
+      }
+    }
+    ImGui::SetCursorScreenPos(ImVec2(head_pos.x, head_pos.y + HEADER_H));
+    ImGui::Dummy(ImVec2(body_w, 1.f));
+  } else {
+    // one row per index, so the first input sits opposite the first output
+    // and a wire entering lines up with the wire leaving
+    const float rows_top = head_pos.y + HEADER_H + 6.f;
+    const size_t rows = std::max(in_n, out_n);
+    size_t in_row = 0, out_row = 0;
+    for (size_t i = 0; i < n.ports.size(); ++i) {
+      const App::PortView &p = n.ports[i];
+      const size_t row = p.is_input ? in_row++ : out_row++;
+      const float y = rows_top + row * ROW_H;
+      const float tw = ImGui::CalcTextSize(p.name.c_str()).x;
+      const ImU32 pc = theme::port_color(p.is_texture, p.is_field, p.field_type,
+                                         p.is_points);
+      if (p.is_input) {
+        ImVec2 dot(head_pos.x, y + ROW_H * 0.5f); // on the left edge
+        ImGui::SetCursorScreenPos(ImVec2(head_pos.x + PAD_X, y));
+        ed::BeginPin(pin_id(n.id, i), ed::PinKind::Input);
+        ImGui::PushStyleColor(ImGuiCol_Text,
+                              p.optional ? theme::text_dim() : theme::text());
+        ImGui::TextUnformatted(p.name.c_str());
+        ImGui::PopStyleColor();
+        pin_rect(dot);
+        ed::EndPin();
+        port_dot(dot, pc, !p.optional);
+      } else {
+        ImVec2 dot(head_pos.x + body_w, y + ROW_H * 0.5f); // on the right edge
+        ImGui::SetCursorScreenPos(ImVec2(head_pos.x + body_w - PAD_X - tw, y));
+        ed::BeginPin(pin_id(n.id, i), ed::PinKind::Output);
+        ImGui::PushStyleColor(ImGuiCol_Text, theme::text());
+        ImGui::TextUnformatted(p.name.c_str());
+        ImGui::PopStyleColor();
+        pin_rect(dot);
+        ed::EndPin();
+        port_dot(dot, pc, true);
+      }
+    }
+    // claim the block the rows occupy so the preview lands underneath
+    ImGui::SetCursorScreenPos(ImVec2(head_pos.x, rows_top));
+    ImGui::Dummy(ImVec2(body_w, rows * ROW_H + 2.f));
+
+    if (prev_tex) {
+      ImVec2 pp(head_pos.x + (body_w - PREVIEW) * 0.5f,
+                ImGui::GetCursorScreenPos().y + 2.f);
+      ImGui::SetCursorScreenPos(pp);
+      ImGui::Image((ImTextureID)(intptr_t)prev_tex, ImVec2(PREVIEW, PREVIEW));
+      dl->AddRect(pp, ImVec2(pp.x + PREVIEW, pp.y + PREVIEW),
+                  theme::shade(body_col, 0.5f), 3.f);
+    }
+    // node-local indent: SetCursorPosX is window-relative, which throws these
+    // outside any node that is not at the window's left edge
+    auto indent = [] {
+      ImGui::Dummy(ImVec2(PAD_X, 0));
+      ImGui::SameLine(0, 0);
+    };
+    if (collapse == 0 && n.ms > 0.01) {
+      indent();
+      ImGui::PushStyleColor(ImGuiCol_Text, theme::text_dim());
+      ImGui::Text("%.1f ms", n.ms);
+      ImGui::PopStyleColor();
+    }
+    if (!n.error.empty()) {
+      indent();
+      ImGui::PushStyleColor(ImGuiCol_Text, theme::error());
+      ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + body_w - PAD_X * 2.f);
+      ImGui::TextUnformatted(n.error.c_str());
+      ImGui::PopTextWrapPos();
+      ImGui::PopStyleColor();
+    }
   }
   ed::EndNode();
   ed::PopStyleVar(3);
   ed::PopStyleColor(2);
 
-  // The header can only be painted once the node's true width is known, and it
-  // has to land *behind* the title that was already written into that space.
-  // The editor keeps a per-node background list for exactly this; drawing into
-  // the ordinary list here would paint the bar over its own text.
+  // The header can only be painted once the node's true width is known, and
+  // it has to land *behind* the title already written into that space: the
+  // editor keeps a per-node background list for exactly this.
   ImVec2 tl = ed::GetNodePosition(n.id);
   ImVec2 sz = ed::GetNodeSize(n.id);
   if (sz.x > 1.f) {
     ImDrawList *bg = ed::GetNodeBackgroundDrawList(n.id);
-    bg->AddRectFilled(tl, ImVec2(tl.x + sz.x, tl.y + nodemetric::HEADER_H), hc);
-    // a hairline under the header separates it from the body without a border
-    bg->AddLine(ImVec2(tl.x, tl.y + nodemetric::HEADER_H),
-                ImVec2(tl.x + sz.x, tl.y + nodemetric::HEADER_H),
-                theme::shade(hc, 0.6f), 1.f);
+    const bool whole = collapse == 2 || sz.y <= HEADER_H + 2.f;
+    bg->AddRectFilled(tl, ImVec2(tl.x + sz.x, tl.y + HEADER_H), hc, ROUNDING,
+                      whole ? ImDrawFlags_RoundCornersAll
+                            : ImDrawFlags_RoundCornersTop);
+    if (!whole)
+      bg->AddLine(ImVec2(tl.x, tl.y + HEADER_H), ImVec2(tl.x + sz.x, tl.y + HEADER_H),
+                  theme::shade(hc, 0.55f), 1.f);
   }
 }
 
