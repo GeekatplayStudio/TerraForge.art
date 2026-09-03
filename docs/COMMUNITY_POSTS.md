@@ -67,6 +67,12 @@ GLSL transpiler for the field graph, deterministic multi-threaded kernels,
 JSON project files, a regression lock and node-contract test battery with a
 performance guard on every commit. Windows first; the engine is portable.
 
+**Who is building it:** Vladimir Chopine of Geekatplay Studio — co-author of the
+official Vue guide *Vue 7: From the Ground Up* (Focal Press) and *3D Art
+Essentials*, and the maker of 3,000+ landscape tutorials on Vue, Terragen and
+World Machine over 35 years in film and VFX. TerraForge is the workflow he has
+taught for twenty years, built as the tool.
+
 Try it, break it, tell us what a terrain artist actually needs:
 https://github.com/GeekatplayStudio/TerraForm
 
@@ -100,6 +106,10 @@ drive the whole app.
 Next up: field-domain fractals, transform gizmos, local high-res zones,
 atmosphere extras, spline editor, network rendering.
 
+I've taught this craft for twenty years (co-author of the official Vue 7
+guide, 3,000+ Vue/Terragen/World Machine tutorials at Geekatplay), so this
+is built from the workflow, not from a spec.
+
 Looking for people who actually make terrains to tell me what's missing or
 wrong. Repo: https://github.com/GeekatplayStudio/TerraForm
 
@@ -113,5 +123,6 @@ that also outputs material masks, Vue-class fractals, planets from 1 m to
 Earth, PBR materials, clouds, cameras, scattering, timeline. Fast PBR
 viewport + final renders in Mitsuba 3, Cycles or LuxCore. Local-AI
 assistant in every panel and a full API/MCP so scripts and agents can build
-scenes. Early, ambitious, and looking for terrain artists to try it and say
+scenes. By the co-author of the official Vue 7 guide and 3,000+ landscape tutorials
+(Geekatplay Studio). Early, ambitious, and looking for terrain artists to try it and say
 what's missing. https://github.com/GeekatplayStudio/TerraForm

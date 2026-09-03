@@ -22,6 +22,17 @@ generated from the registry itself.
 and how we work, for anyone who wants to join.
 **[Community posts](docs/COMMUNITY_POSTS.md)** — the project in three lengths.
 
+## Who is building it
+
+TerraForge is written by **Vladimir Chopine**, co-founder of
+[Geekatplay Studio](https://www.geekatplay.com) — co-author of the official
+Vue guide, *Vue 7: From the Ground Up* (Focal Press), and *3D Art Essentials*
+(Focal Press), and the author of more than 3,000 tutorial episodes and
+workshops on landscape and environment work in Vue, Terragen, World Machine
+and the pipelines around them, over 35 years in film, VFX and design. This is
+the landscape workflow he has taught for twenty years, built as the tool he
+wanted his students to have.
+
 ## Screenshots
 
 | | |
