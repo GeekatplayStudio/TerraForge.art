@@ -217,11 +217,17 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
     json lights = json::array();
     for (const SceneObject &o : scene().objects) {
       if (o.type != SceneObject::Light || !scene().object_visible(o)) continue;
+      float lyaw = o.yaw * 0.017453293f, lpit = o.pitch * 0.017453293f;
       lights.push_back(
           {{"position", {o.pos[0], o.pos[1] * rs.height_scale, o.pos[2]}},
            {"color", {o.color[0], o.color[1], o.color[2]}},
            {"intensity", o.light_intensity},
-           {"reach", o.light_radius}});
+           {"reach", o.light_radius},
+           {"type", o.light_type == 1 ? "spot" : "point"},
+           {"cone_deg", o.light_cone},
+           {"direction",
+            {std::cos(lpit) * std::sin(lyaw), std::sin(lpit),
+             std::cos(lpit) * std::cos(lyaw)}}});
     }
     j["lights"] = std::move(lights);
   }

@@ -76,6 +76,8 @@ struct SceneObject {
   // pos the shared transform, these are the light's own knobs
   float light_intensity = 1.f;
   float light_radius = 0.35f; // world units of reach
+  int light_type = 0;         // 0 point, 1 spot (aims along yaw/pitch)
+  float light_cone = 40.f;    // spot: full cone angle, degrees
   // imported mesh data
   std::string path;
   unsigned long long material_node = 0; // MaterialOutput node driving this object

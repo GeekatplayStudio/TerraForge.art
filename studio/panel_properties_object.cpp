@@ -267,6 +267,13 @@ void object_properties_ui(App &a) {
       ImGui::ColorEdit3("Color", o.color);
       ImGui::SliderFloat("Intensity", &o.light_intensity, 0.f, 10.f);
       ImGui::SliderFloat("Reach", &o.light_radius, 0.01f, 2.f);
+      ImGui::Combo("Type", &o.light_type, "Point\0Spot\0");
+      if (o.light_type == 1) {
+        ImGui::SliderFloat("Cone", &o.light_cone, 5.f, 160.f, "%.0f\xC2\xB0");
+        ImGui::SliderFloat("Heading", &o.yaw, -180.f, 180.f, "%.0f\xC2\xB0");
+        ImGui::SliderFloat("Pitch", &o.pitch, -90.f, 90.f, "%.0f\xC2\xB0");
+        ImGui::TextDisabled("Pitch -90 aims straight down.");
+      }
       ImGui::TextDisabled("Lights the terrain and every mesh within reach.");
       break;
     case SceneObject::Mesh:

@@ -409,6 +409,14 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (act.contains("intensity"))
         o.light_intensity = act["intensity"].get<float>();
       if (act.contains("reach")) o.light_radius = act["reach"].get<float>();
+      if (act.contains("type") && act["type"].is_string())
+        o.light_type = act["type"].get<std::string>() == "spot" ? 1 : 0;
+      if (act.contains("cone")) {
+        o.light_cone = act["cone"].get<float>();
+        o.light_type = 1;
+      }
+      if (act.contains("heading_deg")) o.yaw = act["heading_deg"].get<float>();
+      if (act.contains("pitch_deg")) o.pitch = act["pitch_deg"].get<float>();
       a.scene_selection_serial++;
       ++applied;
     } else if (op == "add_primitive") {

@@ -256,6 +256,7 @@ uniform float u_sun_intensity, u_ambient, u_atmo;
 uniform int u_light_count;
 uniform vec4 u_lights[8];
 uniform vec3 u_light_col[8];
+uniform vec4 u_light_dir[8]; // spot axis xyz + cos(half cone); w<-1 = point
 // material
 uniform float u_roughness, u_metallic, u_specular, u_reflection;
 uniform float u_translucency, u_transparency, u_normal_strength;
@@ -510,8 +511,15 @@ void main(){
     float dist = length(ld);
     float att = clamp(1.0 - dist / lr, 0.0, 1.0);
     att *= att;
-    float nl = max(dot(N, ld / max(dist, 1e-5)), 0.0);
-    direct += kd * albedo / PI * u_light_col[li] * nl * att;
+    vec3 l = ld / max(dist, 1e-5);
+    float nl = max(dot(N, l), 0.0);
+    float cone = 1.0;
+    if (u_light_dir[li].w > -1.0) {
+      float cd2 = dot(-l, u_light_dir[li].xyz);
+      cone = smoothstep(u_light_dir[li].w,
+                        mix(u_light_dir[li].w, 1.0, 0.35), cd2);
+    }
+    direct += kd * albedo / PI * u_light_col[li] * nl * att * cone;
   }
 
   vec3 col = direct + ambient + reflection + translucent;

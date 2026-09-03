@@ -76,7 +76,7 @@ void draw_box_outline(const float *mvp, float x0, float y0, float z0,
 
 
 void upload_scene_lights(unsigned prog, float hscale) {
-  float pos4[8 * 4], col3[8 * 3];
+  float pos4[8 * 4], col3[8 * 3], dir4[8 * 4];
   int count = 0;
   SceneState &sc = scene();
   for (const SceneObject &o : sc.objects) {
@@ -88,12 +88,28 @@ void upload_scene_lights(unsigned prog, float hscale) {
     pos4[count * 4 + 3] = o.light_radius;
     for (int k = 0; k < 3; ++k)
       col3[count * 3 + k] = o.color[k] * o.light_intensity;
+    if (o.light_type == 1) {
+      // the spot aims along the object's heading and pitch; pitch -90 points
+      // straight down, the streetlamp default
+      float yaw = o.yaw * 0.017453293f, pit = o.pitch * 0.017453293f;
+      dir4[count * 4 + 0] = std::cos(pit) * std::sin(yaw);
+      dir4[count * 4 + 1] = std::sin(pit);
+      dir4[count * 4 + 2] = std::cos(pit) * std::cos(yaw);
+      dir4[count * 4 + 3] =
+          std::cos(std::clamp(o.light_cone, 1.f, 170.f) * 0.5f * 0.017453293f);
+    } else {
+      dir4[count * 4 + 0] = 0;
+      dir4[count * 4 + 1] = -1;
+      dir4[count * 4 + 2] = 0;
+      dir4[count * 4 + 3] = -2.f; // no cone cut
+    }
     ++count;
   }
   unii(prog, "u_light_count", count);
   if (count) {
     glUniform4fv(glGetUniformLocation(prog, "u_lights"), count, pos4);
     glUniform3fv(glGetUniformLocation(prog, "u_light_col"), count, col3);
+    glUniform4fv(glGetUniformLocation(prog, "u_light_dir"), count, dir4);
   }
 }
 

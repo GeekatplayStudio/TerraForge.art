@@ -416,6 +416,7 @@ uniform float u_exposure;
 uniform int u_light_count;
 uniform vec4 u_lights[8];
 uniform vec3 u_light_col[8];
+uniform vec4 u_light_dir[8];
 uniform int u_selected;
 uniform vec3 u_grade;
 uniform float u_sat;
@@ -433,7 +434,14 @@ void main(){
     float dist = length(ld);
     float att = clamp(1.0 - dist / max(u_lights[li].w, 1e-3), 0.0, 1.0);
     att *= att;
-    lit += u_light_col[li] * max(dot(normalize(v_nrm), ld / max(dist, 1e-5)), 0.0) * att;
+    vec3 l = ld / max(dist, 1e-5);
+    float cone = 1.0;
+    if (u_light_dir[li].w > -1.0) {
+      float cd2 = dot(-l, u_light_dir[li].xyz);
+      cone = smoothstep(u_light_dir[li].w,
+                        mix(u_light_dir[li].w, 1.0, 0.35), cd2);
+    }
+    lit += u_light_col[li] * max(dot(normalize(v_nrm), l), 0.0) * att * cone;
   }
   vec3 col = u_color * v_tint * lit;
   if (u_selected == 1) col = mix(col, vec3(1.0,0.55,0.18), 0.25);

@@ -130,13 +130,23 @@ def main() -> None:
 
     # scene point lights (axes: our x,y,z -> Blender x, z, y)
     for L in sc.get("lights", []):
-        pl = bpy.data.lights.new("Point", type="POINT")
+        is_spot = L.get("type") == "spot"
+        pl = bpy.data.lights.new("L", type="SPOT" if is_spot else "POINT")
         pl.energy = float(L["intensity"]) * 50.0
         pl.color = tuple(L["color"])
-        ob = bpy.data.objects.new("Point", pl)
+        if is_spot:
+            pl.spot_size = math.radians(float(L.get("cone_deg", 40.0)))
+        ob = bpy.data.objects.new("L", pl)
         scene.collection.objects.link(ob)
         px, py, pz = L["position"]
         ob.location = (px, pz, py)
+        if is_spot:
+            d = L.get("direction", [0, -1, 0])
+            # our y-up dir -> blender z-up; a spot aims down its -Z
+            bd = (d[0], d[2], d[1])
+            ob.rotation_euler = (
+                math.acos(max(min(-bd[2], 1.0), -1.0)), 0.0,
+                math.atan2(-bd[0], bd[1]) if (bd[0] or bd[1]) else 0.0)
 
     # water
     water = sc.get("water", {})

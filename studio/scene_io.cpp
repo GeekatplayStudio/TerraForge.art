@@ -197,6 +197,8 @@ json scene_to_json() {
     if (o.type == SceneObject::Light) {
       jo["light_intensity"] = o.light_intensity;
       jo["light_radius"] = o.light_radius;
+      jo["light_type"] = o.light_type;
+      jo["light_cone"] = o.light_cone;
     }
     if (o.type == SceneObject::Mesh) {
       jo["path"] = o.path;
@@ -305,6 +307,8 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     if (o.type == SceneObject::Light) {
       o.light_intensity = jo.value("light_intensity", 1.f);
       o.light_radius = jo.value("light_radius", 0.35f);
+      o.light_type = jo.value("light_type", 0);
+      o.light_cone = jo.value("light_cone", 40.f);
     }
     if (o.type == SceneObject::Mesh) {
       o.path = jo.value("path", std::string());

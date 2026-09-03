@@ -181,10 +181,24 @@ def render_mitsuba(sc: dict) -> int:
                 "shapegroup": {"type": "ref", "id": f"group{i}"},
                 "to_world": t}
 
-    # scene point lights
+    # scene lights: spots use Mitsuba's spot emitter, points a small
+    # emissive sphere (which also reads as a visible bulb)
     for i, L in enumerate(sc.get("lights", [])):
-        # a small emissive sphere reads as a physical light in a path tracer;
-        # radiance scaled so intensity roughly matches the viewport's falloff
+        if L.get("type") == "spot":
+            p = L["position"]
+            d = L.get("direction", [0, -1, 0])
+            scene_dict[f"light{i}"] = {
+                "type": "spot",
+                "cutoff_angle": max(L.get("cone_deg", 40.0) * 0.5, 1.0),
+                "intensity": {"type": "rgb",
+                              "value": [c * L["intensity"] * 0.5
+                                        for c in L["color"]]},
+                "to_world": mi.ScalarTransform4f().look_at(
+                    origin=p,
+                    target=[p[0] + d[0], p[1] + d[1], p[2] + d[2]],
+                    up=[0, 1, 0] if abs(d[1]) < 0.95 else [1, 0, 0]),
+            }
+            continue
         scene_dict[f"light{i}"] = {
             "type": "sphere",
             "center": L["position"],
