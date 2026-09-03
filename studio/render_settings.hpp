@@ -73,6 +73,10 @@ struct RenderSettings {
     // ortho navigation state
     float ortho_zoom = 1.2f;
     float ortho_cx = 0.5f, ortho_cy = 0.5f;
+    // which camera a perspective view looks through: -2 the active camera
+    // (or the free orbit when none is active), -1 the free orbit, >= 0 a
+    // scene object index that is a camera
+    int scene_camera = -2;
   };
   int viewport_layout = 0; // 0 = single, 1 = quad (persp/top/front/right)
   int viewport_engine = 0; // 0 rasterized PBR, 1 cinematic raymarch
@@ -226,6 +230,8 @@ int renderer_patches_visible();
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);
 void renderer_camera_look_at(const float target[3], float distance);
+// Set for the duration of one view's draw (see ViewConfig::scene_camera).
+int &renderer_camera_override();
 // world-space right/up/forward of a view, for the corner orientation gizmo
 void renderer_view_basis(const RenderSettings::ViewConfig &vc, float *right,
                          float *up, float *fwd);

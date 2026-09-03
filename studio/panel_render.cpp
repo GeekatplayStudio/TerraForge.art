@@ -182,14 +182,8 @@ static void run_probe(std::string root) {
 // ---------------------------------------------------------- live render view
 // Watches the progressive preview the backend refines pass by pass and shows
 // it as it converges, with the pass counter and a cancel button.
-void draw_render_window(App &a) {
-  (void)a;
-  if (!render_window_open) return;
-  if (!ImGui::Begin("Render output", &render_window_open)) {
-    ImGui::End();
-    return;
-  }
-  // reload the preview whenever the backend has written a newer pass
+// reload the preview whenever the backend has written a newer pass
+static void poll_preview() {
   if (!preview_path.empty()) {
     std::error_code ec;
     auto st = fs::last_write_time(preview_path, ec);
@@ -215,6 +209,32 @@ void draw_render_window(App &a) {
     std::ifstream pf(progress_path);
     if (pf) std::getline(pf, progress_line);
   }
+}
+
+// The progressive result for anyone else who wants to show it (the Preview
+// panel): the texture, its size, whether the backend is still refining it,
+// and the pass line. 0 when nothing has been rendered yet.
+unsigned render_live_texture(int &w, int &h, bool &busy, std::string &line) {
+  poll_preview();
+  w = preview_w;
+  h = preview_h;
+  busy = render_running.load();
+  line = progress_line;
+  return preview_w > 0 ? preview_tex : 0;
+}
+
+const char *render_engine_label(int engine) {
+  return ENGINES[std::clamp(engine, 0, ENGINE_COUNT - 1)].label;
+}
+
+void draw_render_window(App &a) {
+  (void)a;
+  if (!render_window_open) return;
+  if (!ImGui::Begin("Render output", &render_window_open)) {
+    ImGui::End();
+    return;
+  }
+  poll_preview();
 
   bool busy = render_running.load();
   ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.47f, 0.19f, 1.f));

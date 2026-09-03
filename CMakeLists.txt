@@ -202,6 +202,7 @@ set(STUDIO_SOURCES
     studio/console.cpp
     studio/crash_log.cpp
     studio/panel_float.cpp
+    studio/panel_preview.cpp
     studio/panel_render.cpp
     studio/render_scene_export.cpp
     studio/scene.cpp

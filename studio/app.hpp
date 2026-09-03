@@ -88,6 +88,7 @@ struct App {
   bool show_toolbar = true;
   bool show_console = true;
   bool show_timeline = false;
+  bool show_preview = true;
   // animation transport
   float anim_start = 0.f, anim_end = 10.f;
   bool anim_playing = false, anim_loop = true;
@@ -168,6 +169,14 @@ void material_properties_ui(App &a);
 void render_properties_ui(App &a);
 void draw_render_window(App &a); // live progressive render view
 void render_service_requests(App &a); // camera/AI render requests, per frame
+// the progressive result of the running/last render, for other panels
+unsigned render_live_texture(int &w, int &h, bool &busy, std::string &line);
+const char *render_engine_label(int engine);
+void render_cancel();
+// The Preview panel: the chosen camera's view, rendered on its own with its
+// own atmosphere/cloud/water/shadow switches and quality, independent of
+// what the working viewports are showing - plus the final engine's result.
+void draw_panel_preview(App &a);
 void draw_panel_timeline(App &a);
 void scene_rebuild_scatter_instances(App &a);
 // per-frame services (app_services.cpp)

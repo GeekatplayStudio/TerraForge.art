@@ -188,7 +188,7 @@ void run_main() {
     // hand already is.
 
     // version bumped whenever the default layout changes shape
-    ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV7");
+    ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV8");
     if (first_frame || a.request_layout_reset) {
       if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr ||
           a.request_layout_reset)
@@ -245,6 +245,7 @@ void run_main() {
     }
     draw_panel_ai(a);
     draw_panel_scene(a); // Outliner
+    draw_panel_preview(a);
     app_service_sequence(a);
 
     render_service_requests(a);

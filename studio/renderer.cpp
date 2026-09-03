@@ -80,8 +80,9 @@ gpx::Heightmap cpu_height; // normalized copy, for picking
 // sculpt brush cursor: uv, radius (<=0 hidden), erase flag. Reset every frame
 // by the viewport, so a hidden panel never leaves a stale ring behind.
 float g_brush[4] = {0, 0, -1.f, 0};
-GLuint fbo[6] = {0}, fbo_color[6] = {0}, fbo_depth[6] = {0};
-int fbo_w[6] = {0}, fbo_h[6] = {0};
+// Six view windows, slot 6 the Preview panel's own target, one spare.
+GLuint fbo[8] = {0}, fbo_color[8] = {0}, fbo_depth[8] = {0};
+int fbo_w[8] = {0}, fbo_h[8] = {0};
 GLuint shadow_fbo = 0, shadow_tex = 0;
 extern const int SHADOW_RES;
 const int SHADOW_RES = 2048;
@@ -232,17 +233,17 @@ void ensure_fbo(int slot, int w, int h) {
 }
 
 // the view-projection each slot last drew with; see renderer_draw_view
-float g_last_mvp[6][16];
-bool g_last_mvp_valid[6] = {false, false, false, false, false, false};
+float g_last_mvp[8][16];
+bool g_last_mvp_valid[8] = {false, false, false, false, false, false, false, false};
 
 const float *renderer_last_mvp(int slot) {
-  slot = std::clamp(slot, 0, 5);
+  slot = std::clamp(slot, 0, 7);
   return g_last_mvp_valid[slot] ? g_last_mvp[slot] : nullptr;
 }
 
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int h,
                             float dt) {
-  slot = std::clamp(slot, 0, 5);
+  slot = std::clamp(slot, 0, 7);
   // Relink here rather than where the graph changed: this is the main thread
   // with the context current, and doing it once before the first view means
   // all six views draw the same program in the same frame.
@@ -281,10 +282,14 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   if (w < 8 || h < 8) return fbo_color[slot];
   ensure_fbo(slot, w, h);
   float eye[3], mvp[16], inv_vp[16];
+  // a view may look through a specific scene camera rather than the active
+  // one - the Preview panel does, so it can show a shot while you orbit
+  renderer_camera_override() = vc.scene_camera;
   if (vc.camera == 0)
     camera_matrices(w, h, eye, mvp, inv_vp);
   else
     ortho_matrices(vc, w, h, render_settings().height_scale, eye, mvp, inv_vp);
+  renderer_camera_override() = -2;
   // Kept for the transform gizmo, which has to project world points onto the
   // same pixels this frame drew them at. Deriving it a second time in the UI
   // would be a second definition of where things are.

@@ -40,6 +40,25 @@ generated from the registry itself.
   smooth or constant), sampled before evaluation. *The timeline UI is not
   built yet.*
 
+### The studio
+- **Node cards:** rounded nodes with a category-coloured title bar,
+  connectors on the left and right edges coloured by data type (the wires
+  carry the same colour), and three detail levels per node — expanded,
+  compact, title bar only — from the header chevron or `H`. Text stays
+  crisp at any zoom.
+- **Several node editors:** `View > New node editor` opens another graph
+  window pinned to a domain (terrain, materials, atmosphere, render, all),
+  each with its own canvas and a side pane showing the selected node's
+  parameters.
+- **Windows that leave the window:** every panel has a corner button that
+  floats it out of the main window — onto a second monitor when there is
+  one — and docks it back.
+- **Preview panel:** the chosen camera's view at the camera's aspect ratio,
+  with its own sky/clouds/water/shadow switches and render scale, redrawn
+  live as the graph changes even when the working viewports have all of
+  that turned off; one button renders it with the camera's final engine
+  and shows the passes as they arrive.
+
 ### Displacement
 - **Redirect** moves where another field is evaluated. Warp, flow, swirl and
   domain distortion are all this one node, and it works on anything — noise,

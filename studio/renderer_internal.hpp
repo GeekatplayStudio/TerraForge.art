@@ -47,8 +47,8 @@ extern GLuint tex_normal, tex_rough, tex_disp;
 extern GLuint tex_cloud_shape, tex_cloud_detail;
 extern bool has_normal_map, has_rough_map, has_disp_map;
 extern int grid_n, index_count;
-extern GLuint fbo[6], fbo_color[6], fbo_depth[6];
-extern int fbo_w[6], fbo_h[6];
+extern GLuint fbo[8], fbo_color[8], fbo_depth[8];
+extern int fbo_w[8], fbo_h[8];
 extern GLuint shadow_fbo, shadow_tex;
 extern const int SHADOW_RES;
 
@@ -96,8 +96,8 @@ extern float g_saturation;
 extern float g_exposure_mult;
 
 // -------------------------------------------------------- per-view matrix
-extern float g_last_mvp[6][16];
-extern bool g_last_mvp_valid[6];
+extern float g_last_mvp[8][16];
+extern bool g_last_mvp_valid[8];
 
 // ---------------------------------------------------------------- helpers
 inline void uni3(GLuint prog, const char *name, const float *v) {

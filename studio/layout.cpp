@@ -35,8 +35,12 @@ void build_default_layout(ImGuiID dockspace_id, int view_count) {
                                                nullptr, &main_id);
   ImGui::DockBuilderDockWindow("Graph", main_id);
   ImGui::DockBuilderDockWindow("###console", bottom);
-  // Blender layout: Outliner on top, one Properties editor below it
+  // Blender layout: Outliner on top, the Preview under it, one Properties
+  // editor below - the picture stays in view while parameters are edited
   ImGui::DockBuilderDockWindow("Outliner", right);
+  ImGuiID preview = ImGui::DockBuilderSplitNode(right_bottom, ImGuiDir_Up, 0.36f,
+                                                nullptr, &right_bottom);
+  ImGui::DockBuilderDockWindow("Preview", preview);
   ImGui::DockBuilderDockWindow("Properties", right_bottom);
 
   // viewport region split into 1..6 independent view windows; each remains a

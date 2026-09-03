@@ -327,6 +327,7 @@ static void menu_view(App &a) {
   ImGui::MenuItem("Properties", nullptr, &a.show_properties);
   ImGui::MenuItem("Viewport", nullptr, &a.show_viewport);
   ImGui::MenuItem("Timeline", nullptr, &a.show_timeline);
+  ImGui::MenuItem("Preview", nullptr, &a.show_preview);
   ImGui::Separator();
   if (ImGui::BeginMenu("New node editor")) {
     // Another graph window, pinned to one domain, with its own canvas and

@@ -144,7 +144,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   float tile_dx = view_eye[0] - 0.5f, tile_dz = view_eye[2] - 0.5f;
   float tile_dist = std::sqrt(tile_dx * tile_dx + view_eye[1] * view_eye[1] +
                               tile_dz * tile_dz);
-  static bool far_tier[6] = {false};
+  static bool far_tier[8] = {false};
   if (!far_tier[slot] && tile_dist > 9.f) far_tier[slot] = true;
   else if (far_tier[slot] && tile_dist < 7.f) far_tier[slot] = false;
   bool near_ground = !far_tier[slot];

@@ -161,10 +161,16 @@ void ortho_matrices(const RenderSettings::ViewConfig &vc, int w, int h,
 // Where the perspective view is looking from and at: the free orbit camera,
 // or the scene camera the user is looking through. One place, so the matrices
 // and the orientation gizmo can never disagree about which way is up.
+int &renderer_camera_override() {
+  static int v = -2; // -2 = none: use the active camera
+  return v;
+}
+
 float perspective_eye_target(float *eye, float *target) {
   float fovy_rad = 0.9f;
   SceneState &sc = scene();
-  int active = scene_active_camera();
+  int ov = renderer_camera_override();
+  int active = ov != -2 ? ov : scene_active_camera();
   if (active >= 0 && active < (int)sc.objects.size() &&
       sc.objects[active].type == SceneObject::Camera) {
     const CameraData &cd = sc.objects[active].cam;
