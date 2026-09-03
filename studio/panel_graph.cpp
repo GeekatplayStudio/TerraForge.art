@@ -199,9 +199,8 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
     e.props_w = std::clamp(e.props_w, 220.f, std::max(220.f, avail.x - 200.f));
     canvas_w = avail.x - e.props_w - 6.f;
   }
-  ImGui::BeginChild("##canvas", ImVec2(canvas_w, 0), ImGuiChildFlags_None,
-                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-
+  // The editor is placed straight in the window (its own Begin takes a
+  // size); wrapping it in a child of ours cost the right-click context menu.
   ed::SetCurrentEditor(e.ctx);
   ed::PushStyleColor(ed::StyleColor_Bg, ImVec4(0.075f, 0.075f, 0.08f, 1.f));
   ed::PushStyleColor(ed::StyleColor_Grid, ImVec4(1.f, 1.f, 1.f, 0.025f));
@@ -216,7 +215,7 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
   ed::PushStyleVar(ed::StyleVar_SelectedNodeBorderWidth, 2.5f);
   ed::PushStyleVar(ed::StyleVar_LinkStrength, 120.f);
   ed::PushStyleVar(ed::StyleVar_PinRadius, 0.f);
-  ed::Begin("GeekatplayGraph");
+  ed::Begin("GeekatplayGraph", ImVec2(e.show_props ? canvas_w : 0.f, 0.f));
   // Text is rasterised for the zoom the canvas is drawn at. The editor scales
   // its draw list after the fact, so glyphs baked at the base size arrive
   // stretched — that was the blur on zooming in. GetCurrentZoom() is the
@@ -599,7 +598,9 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
 
   // Adding a node mutates the graph, so it waits for a frame that holds the
   // lock — the same rule the connect and delete paths follow.
-  if (!eval_running && ed::ShowBackgroundContextMenu()) {
+  if (ed::ShowBackgroundContextMenu()) {
+    log_trace("graph", eval_running ? "right-click on canvas (computing)"
+                                    : "right-click on canvas: create menu");
     g_drag_create.clear(); // a plain right-click filters nothing
     ImGui::OpenPopup("add_node");
   }
@@ -644,7 +645,6 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
   ed::PopStyleVar(4);
   ed::PopStyleColor(8);
   ed::SetCurrentEditor(nullptr);
-  ImGui::EndChild();
 
   // the side pane: this editor's selected node, its parameters
   if (e.show_props) {
