@@ -3,6 +3,10 @@
 #include <json.hpp>
 #include <string>
 
+namespace gpx {
+class Node;
+}
+
 namespace studio {
 struct App;
 
@@ -30,6 +34,17 @@ int ai_graph_op(App &a, const std::string &op, const nlohmann::json &act,
 // strength, shadows, exposure. Same return convention as ai_graph_op.
 int ai_view_op(App &a, const std::string &op, const nlohmann::json &act,
                std::string &err);
+
+// Scene, animation and session ops (ai_ops_scene.cpp): set_time,
+// render_sequence, camera/attribute keys, select_node, set_locked,
+// open_node_editor, set_workspace, evaluate, assign_material. ai_graph_op
+// falls through to it. Same return convention as ai_graph_op.
+int ai_scene_op(App &a, const std::string &op, const nlohmann::json &act,
+                std::string &err);
+
+// Resolve act[key] to a node by id, numeric string, alias or type name (last
+// match). Defined in ai_ops_graph.cpp, shared with ai_ops_scene.cpp.
+gpx::Node *find_node(App &a, const nlohmann::json &act, const char *key);
 
 // The JSON action schema, for prompts, docs and the MCP tool description.
 std::string ai_action_schema(AiDomain domain);

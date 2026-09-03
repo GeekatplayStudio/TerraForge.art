@@ -1,11 +1,13 @@
 // Geekatplay TerraForge - the graph panel's internals, shared between the
-// interaction half (panel_graph.cpp) and the drawing half
-// (panel_graph_draw.cpp). Private to those two.
+// interaction half (panel_graph.cpp), its edit operations
+// (panel_graph_edit_ops.cpp) and the drawing half (panel_graph_draw.cpp).
+// Private to those three.
 #pragma once
 #include "app.hpp"
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <imgui.h>
 #include <imgui_node_editor.h>
 
 namespace studio {
@@ -88,5 +90,13 @@ inline bool g_popup_all = false;
 // panel_graph_draw.cpp
 void draw_node(App &a, const App::NodeView &n);
 void add_node_popup(App &a);
+
+// panel_graph_edit_ops.cpp — pieces of the editor's per-frame body, run in
+// this order between ed::Begin and ed::End
+void editor_create_delete(App &a, GraphEditor &e, bool eval_running,
+                          const ImVec4 &acc);
+void editor_shortcuts(App &a, GraphEditor &e, bool eval_running, bool can_edit);
+void editor_context_menus(App &a, bool eval_running, bool can_edit, int domain,
+                          bool all);
 
 } // namespace studio

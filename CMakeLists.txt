@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.20)
 project(GeekatplayTerraForge VERSION 2.0.0 LANGUAGES C CXX RC)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -90,6 +90,7 @@ set(ENGINE_SOURCES
     engine/attribute.cpp
     engine/animation.cpp
     engine/node_graph.cpp
+    engine/node_graph_eval.cpp
     engine/node.cpp
     engine/port_catalog.cpp
     engine/hydrology.cpp
@@ -155,15 +156,19 @@ endif()
 set(STUDIO_SOURCES
     studio/main.cpp
     studio/app.cpp
+    studio/app_eval.cpp
     studio/app_services.cpp
     studio/layout.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
     studio/icons.cpp
     studio/panel_graph.cpp
+    studio/panel_graph_edit_ops.cpp
     studio/panel_graph_draw.cpp
     studio/panel_properties.cpp
     studio/panel_properties_object.cpp
+    studio/panel_properties_object_surface.cpp
+    studio/panel_properties_scene.cpp
     studio/panel_properties_node.cpp
     studio/panel_attr_tips.cpp
     studio/panel_library.cpp
@@ -186,10 +191,12 @@ set(STUDIO_SOURCES
     studio/renderer_init.cpp
     studio/renderer_export.cpp
     studio/shaders_terrain.cpp
+    studio/shaders_terrain_frag.cpp
     studio/terrain_cull.cpp
     studio/gpu_timer.cpp
     studio/blue_noise.cpp
     studio/shaders_scene.cpp
+    studio/shaders_sky.cpp
     studio/planet_renderer.cpp
     studio/planet_shaders.cpp
     studio/field_gpu_check.cpp
@@ -218,8 +225,11 @@ set(STUDIO_SOURCES
     studio/panel_camera.cpp
     studio/ai_assist.cpp
     studio/ai_actions.cpp
+    studio/ai_actions_camera.cpp
+    studio/ai_actions_scene.cpp
     studio/ai_schema.cpp
     studio/ai_ops_graph.cpp
+    studio/ai_ops_scene.cpp
     studio/ai_ops_view.cpp
     studio/studio_api.cpp
     studio/i18n.cpp

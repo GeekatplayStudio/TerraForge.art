@@ -187,6 +187,8 @@ void app_service_camera_anim(App &a);
 void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm);
 struct SceneObject;
 void camera_properties_ui(App &a, SceneObject &obj);
+// the SurfaceDisplacement picker + "Edit graph" buttons (panel_properties_object_surface.cpp)
+void surface_graph_picker(App &a, unsigned long long *node);
 void camera_apply_film();
 void studio_api_tick(App &a); // scripting / MCP bridge
 void apply_scene_nodes(App &a);
