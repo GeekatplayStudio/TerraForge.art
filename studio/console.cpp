@@ -1,5 +1,6 @@
 // Geekatplay TerraForge — the message log (storage side).
 #include "console.hpp"
+#include "crash_log.hpp"
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
@@ -58,6 +59,15 @@ void log_add(LogLevel lvl, const char *category, const std::string &text) {
   e.time = now_seconds();
   e.category = category ? category : "";
   e.text = text;
+  {
+    // the same line goes to disk at once, so a crash cannot take it along
+    char stamp[64];
+    std::snprintf(stamp, sizeof stamp, "[%9.3f] %s ", e.time, level_tag(lvl));
+    std::string line = stamp;
+    if (!e.category.empty()) line += "[" + e.category + "] ";
+    line += text;
+    crash_log_line(line);
+  }
   g_lines.push_back(std::move(e));
   if (g_lines.size() > MAX_LINES)
     g_lines.erase(g_lines.begin(), g_lines.begin() + (g_lines.size() - MAX_LINES));

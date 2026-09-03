@@ -314,7 +314,13 @@ void node_properties_ui(App &a) {
       g_mirror.pending = false;
     }
   }
-  lk.unlock(); // everything below works on the mirror
+  // Everything below works on the mirror. The unlock has to be conditional:
+  // a unique_lock taken with try_to_lock owns nothing while the evaluation
+  // worker holds the graph, and unlock() on a lock you do not own throws
+  // std::system_error — on the UI thread, in the middle of a frame, which is
+  // std::terminate and the "0xc0000409 in ucrtbase" crash on record three
+  // times over. Every one was someone looking at a node while it computed.
+  if (lk.owns_lock()) lk.unlock();
 
   if (!g_mirror.valid || g_mirror.id != a.selected_node) {
     ImGui::TextDisabled("No node selected.");

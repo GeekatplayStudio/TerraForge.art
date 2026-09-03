@@ -1,6 +1,8 @@
 // Geekatplay Studio — entry point: window, GL, ImGui docking shell
 #include "app.hpp"
 #include "prefs.hpp"
+#include "console.hpp"
+#include "crash_log.hpp"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -16,7 +18,10 @@ App &app() {
 void run_main(); // app.cpp
 } // namespace studio
 
-int main() {
+int main(int argc, char **argv) {
+  // First: the file log and the crash handlers, so whatever fails from here
+  // on leaves a report in <project>/logs.
+  studio::crash_log_init(argc, argv);
   // Hints must come *after* glfwInit(). An identical block used to sit above
   // this call doing nothing at all: glfwWindowHint opens with
   // _GLFW_REQUIRE_INIT() (external/glfw/src/window.c), so before init it
@@ -71,12 +76,16 @@ int main() {
 
   studio::app().window = win;
   studio::run_main();
+  studio::log_info("app", "shutdown: main loop left, saving prefs");
   studio::prefs_save();
 
+  studio::log_info("app", "shutdown: ImGui/GLFW teardown");
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
   glfwDestroyWindow(win);
   glfwTerminate();
+  studio::log_info("app", "shutdown: static destructors next");
+  studio::crash_log_shutdown();
   return 0;
 }

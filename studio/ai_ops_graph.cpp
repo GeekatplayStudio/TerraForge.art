@@ -20,6 +20,7 @@
 #include <json.hpp>
 #include <filesystem>
 #include <map>
+#include <stdexcept>
 #include <string>
 
 using nlohmann::json;
@@ -437,7 +438,19 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
       return 0;
     }
     a.selected_node = n->id;
+    // "properties": true does what clicking the node does — the Properties
+    // panel switches to the Node tab. Scripts could not reach that tab
+    // before, which is why the Properties-while-evaluating crash was never
+    // reproducible from automation.
+    if (act.value("properties", false)) a.prop_tab = TAB_NODE;
     return 1;
+  }
+
+  if (op == "debug_crash") {
+    // Throws on the UI thread on purpose, so the crash pipeline (terminate
+    // handler -> logs/crash_<stamp>.txt with what() and a stack) can be
+    // exercised without waiting for a real one.
+    throw std::runtime_error("debug_crash requested through the actions API");
   }
 
   if (op == "set_workspace") {

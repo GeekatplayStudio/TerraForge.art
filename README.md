@@ -323,6 +323,19 @@ rather than trusting it.
 
 ---
 
+## Logs and crash reports
+
+Every console message is also appended, flushed line by line, to
+`logs/terraforge_<stamp>.log` under the project root (or `$TERRAFORGE_LOG_DIR`),
+so a crash cannot take the log with it. `std::terminate`, `abort()`, a UCRT
+invalid-parameter and unhandled SEH exceptions each write
+`logs/crash_<stamp>.txt` with the reason (an uncaught exception's `what()`
+included) and a stack as `module+RVA`. The build carries `-g`, so
+`python scripts/resolve_crash.py` turns those frames into `file:line`;
+`python scripts/dump_stack.py <file.dmp>` reads a Windows minidump the same
+way. `{"op":"debug_crash"}` on the actions API exercises the whole pipeline.
+The `logs/` folder is local and never committed.
+
 ## Project layout
 
 | Path | Contents |

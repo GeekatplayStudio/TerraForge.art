@@ -109,13 +109,24 @@ static void eval_worker(App &a) {
       a.graph.protected_nodes.clear();
       if (a.view_node) a.graph.protected_nodes.push_back(a.view_node);
       if (a.selected_node) a.graph.protected_nodes.push_back(a.selected_node);
-      a.graph.evaluate();
+      // Node compute is already caught per node inside evaluate(); this is
+      // for everything around it (thread creation, allocation of the
+      // scheduling tables). An exception leaving a std::thread body is
+      // std::terminate, and the worker must outlive any one evaluation.
+      try {
+        a.graph.evaluate();
+      } catch (const std::exception &e) {
+        log_error("eval", std::string("evaluation aborted: ") + e.what());
+      }
       a.graph.resolution = full;
       a.graph.on_progress = nullptr;
     }
     a.eval_serial++;
+    log_fmt(LogLevel::Trace, "eval", "serial %llu done, %zu nodes",
+            (unsigned long long)a.eval_serial, a.graph.nodes.size());
     a.eval.running.store(false);
   }
+  log_info("eval", "worker thread leaving");
 }
 
 void run_main() {
@@ -440,12 +451,18 @@ void run_main() {
     glfwSwapBuffers(a.window);
   }
 
+  // Every step of the way out is logged: the crash reports on record all
+  // came from abort() with no message, and most of them at closing time.
+  log_info("app", "shutdown: window closed, stopping the evaluation worker");
   a.graph.cancel.store(true);
   a.eval.request.store(false);
   if (a.eval.worker.joinable()) a.eval.worker.join();
+  log_info("app", "shutdown: worker joined, clearing previews");
   previews_clear();
+  log_info("app", "shutdown: renderer");
   renderer_shutdown();
   autosave_session_end(); // an orderly exit leaves no lock behind
+  log_info("app", "shutdown: session ended");
 }
 
 } // namespace studio

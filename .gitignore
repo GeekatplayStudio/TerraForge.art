@@ -25,6 +25,9 @@ compile_commands.json
 *.wal
 *.log
 
+# runtime logs and crash reports (studio/crash_log.cpp) - local only
+/logs/
+
 # app state written at runtime
 geekatplay_studio_layout.ini
 geekatplay_graph_view.json

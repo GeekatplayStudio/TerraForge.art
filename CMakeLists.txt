@@ -32,7 +32,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(MSVC)
     add_compile_options(/O2 /permissive-)
 else()
-    add_compile_options(-O3)
+    # -g alongside -O3: no runtime cost, and a crash report's module+RVA
+    # resolves to file:line with addr2line (scripts/resolve_crash.py).
+    add_compile_options(-O3 -g)
 endif()
 
 # ---------------------------------------------------------------- dependencies
@@ -198,6 +200,7 @@ set(STUDIO_SOURCES
     studio/panel_console.cpp
     studio/panel_timeline.cpp
     studio/console.cpp
+    studio/crash_log.cpp
     studio/panel_render.cpp
     studio/render_scene_export.cpp
     studio/scene.cpp
@@ -232,7 +235,8 @@ target_link_libraries(geekatplay_studio PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>"
     imgui imgui_node_editor glad glfw third_party_headers)
 if(WIN32)
-    target_link_libraries(geekatplay_studio PRIVATE opengl32 winhttp)
+    # dbghelp: symbolised stacks in crash reports (studio/crash_log.cpp)
+    target_link_libraries(geekatplay_studio PRIVATE opengl32 winhttp dbghelp)
 endif()
 if(NOT MSVC)
     # console visible in debug runs: strip WIN32 flag effect via entry
@@ -262,10 +266,14 @@ add_executable(undo_tests
     studio/scene_io.cpp
     studio/render_settings.cpp
     studio/autosave.cpp
-    studio/console.cpp)
+    studio/console.cpp
+    studio/crash_log.cpp)
 target_include_directories(undo_tests PRIVATE studio)
 target_link_libraries(undo_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+if(WIN32)
+    target_link_libraries(undo_tests PRIVATE dbghelp)
+endif()
 
 # Regression lock: guards every shipped capability against silent removal.
 add_executable(regression_tests tests/cpp/test_regression.cpp)

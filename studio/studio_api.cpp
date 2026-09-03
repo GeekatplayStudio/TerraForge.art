@@ -4,6 +4,7 @@
 // code path (ai_apply_actions).
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "console.hpp"
 #include "gpu_timer.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
@@ -214,10 +215,13 @@ void studio_api_tick(App &a) {
     fs::remove(inbox, ec);
     if (!text.empty()) {
       std::string err;
-      if (ai_apply_actions(a, text, err))
+      if (ai_apply_actions(a, text, err)) {
         a.status = "API: actions applied";
-      else
+        log_info("api", "actions applied (" + std::to_string(text.size()) + " bytes)");
+      } else {
         a.status = "API error: " + err;
+        log_error("api", err);
+      }
     }
   }
   publish_state(a);

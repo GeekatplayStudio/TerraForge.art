@@ -1,6 +1,7 @@
 #include "gpx/parallel.hpp"
 #include <algorithm>
 #include <cstdlib>
+#include <system_error>
 #include <thread>
 #include <vector>
 
@@ -36,7 +37,15 @@ void parallel_rows(int h, const std::function<void(int, int)> &fn) {
   for (unsigned t = 0; t < nt; ++t) {
     int y0 = (int)t * band, y1 = std::min(h, y0 + band);
     if (y0 >= y1) break;
-    pool.emplace_back(fn, y0, y1);
+    // A thread the OS will not give us (std::system_error) is not a reason
+    // to lose the evaluation: the band runs on this thread instead. The
+    // result is the same — every band is independent and the join below is
+    // the only synchronisation.
+    try {
+      pool.emplace_back(fn, y0, y1);
+    } catch (const std::system_error &) {
+      fn(y0, y1);
+    }
   }
   for (auto &th : pool) th.join();
 }
@@ -52,7 +61,11 @@ void parallel_index(size_t n, const std::function<void(size_t, size_t)> &fn) {
   for (unsigned t = 0; t < nt; ++t) {
     size_t i0 = t * band, i1 = std::min(n, i0 + band);
     if (i0 >= i1) break;
-    pool.emplace_back(fn, i0, i1);
+    try {
+      pool.emplace_back(fn, i0, i1);
+    } catch (const std::system_error &) {
+      fn(i0, i1);
+    }
   }
   for (auto &th : pool) th.join();
 }
