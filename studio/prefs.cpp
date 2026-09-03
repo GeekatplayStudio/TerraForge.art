@@ -27,6 +27,9 @@ void prefs_load() {
     p.interactive_res = j.value("interactive_res", p.interactive_res);
     p.view_count = j.value("view_count", p.view_count);
     p.graph_memory_mb = j.value("graph_memory_mb", p.graph_memory_mb);
+    p.editor_domains.clear();
+    for (const auto &d : j.value("editor_domains", json::array()))
+      if (d.is_number_integer()) p.editor_domains.push_back(d.get<int>());
   } catch (...) {
   }
 }
@@ -42,6 +45,7 @@ void prefs_save() {
   j["interactive_res"] = p.interactive_res;
   j["view_count"] = p.view_count;
   j["graph_memory_mb"] = p.graph_memory_mb;
+  j["editor_domains"] = p.editor_domains;
   std::ofstream f(PREFS_FILE);
   f << j.dump(2);
 }

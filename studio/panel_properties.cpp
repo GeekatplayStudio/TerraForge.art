@@ -1,6 +1,7 @@
 ﻿// Geekatplay Studio — properties panel: auto-generated UI from attributes
 #include "app.hpp"
 #include "ai_assist.hpp"
+#include "panel_float.hpp"
 #include "icons.hpp"
 #include "node_library.hpp"
 #include "undo.hpp"
@@ -78,10 +79,12 @@ void draw_panel_properties(App &a) {
   // The active tab is entirely sticky: selecting objects or nodes never
   // switches it and never steals focus, so working in the node editor is
   // not interrupted by clicking something in a viewport.
+  panel_float_prepare(a, "Properties");
   if (!ImGui::Begin("Properties", &a.show_properties)) {
     ImGui::End();
     return;
   }
+  panel_float_controls(a, "Properties");
 
   // breadcrumb + search
   const char *tab_name = "Scene";

@@ -328,6 +328,19 @@ static void menu_view(App &a) {
   ImGui::MenuItem("Viewport", nullptr, &a.show_viewport);
   ImGui::MenuItem("Timeline", nullptr, &a.show_timeline);
   ImGui::Separator();
+  if (ImGui::BeginMenu("New node editor")) {
+    // Another graph window, pinned to one domain, with its own canvas and
+    // a side pane for the selected node - so the material graph can live on
+    // the second monitor while the terrain graph stays here.
+    const char *names[5] = {"Terrain nodes", "Material nodes",
+                            "Atmosphere nodes", "Render nodes", "All domains"};
+    for (int d = 0; d < 5; ++d)
+      if (ImGui::MenuItem(names[d])) graph_editor_add(a, d);
+    ImGui::Separator();
+    ImGui::MenuItem("Each editor floats out with its corner button", nullptr,
+                    false, false);
+    ImGui::EndMenu();
+  }
   if (ImGui::BeginMenu("Viewport windows")) {
     for (int n = 1; n <= 6; ++n) {
       char label[32];

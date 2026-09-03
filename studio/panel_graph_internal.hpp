@@ -4,6 +4,7 @@
 #pragma once
 #include "app.hpp"
 #include <cstdint>
+#include <string>
 #include <vector>
 #include <imgui_node_editor.h>
 
@@ -55,6 +56,34 @@ struct DragCreate {
   void clear() { node = 0; port.clear(); }
 };
 inline DragCreate g_drag_create;
+
+// One node editor window. The first follows the workspace bar; any further
+// ones are pinned to a domain (materials, atmosphere...) so several graphs
+// can be open side by side or on other screens, each with its own canvas,
+// selection, and optionally the selected node's parameters in a side pane.
+struct GraphEditor {
+  int index = 0;
+  int domain = -1;        // -1 follows a.workspace; 0..3 fixed; 4 = all
+  bool show_all = false;  // "show all domains" checkbox
+  bool show_props = false;
+  float props_w = 300.f;
+  uint64_t selected = 0;
+  bool open = true;
+  bool fresh = false;     // just created: dock beside the main Graph once
+  std::string title;      // window name; ### keeps the id stable
+  std::string settings;   // the editor's own pan/zoom file
+  ax::NodeEditor::EditorContext *ctx = nullptr;
+  uint64_t layout_serial_seen = 0;
+  std::vector<uint64_t> drawn_this_frame;
+  int navigate_countdown = -1;
+  int effective_domain(const App &a) const { return domain < 0 ? a.workspace : domain; }
+  bool all_domains() const { return show_all || domain == 4; }
+};
+
+// Which domain the create menu offers nodes for — set by the editor that
+// opened it, since the popup has no other way to know.
+inline int g_popup_domain = 0;
+inline bool g_popup_all = false;
 
 // panel_graph_draw.cpp
 void draw_node(App &a, const App::NodeView &n);

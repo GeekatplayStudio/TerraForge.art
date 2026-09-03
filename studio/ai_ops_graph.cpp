@@ -446,6 +446,28 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  if (op == "open_node_editor") {
+    // Another node editor window, pinned to a domain: terrain, materials,
+    // atmosphere, render, or all. It opens as a tab beside the main graph;
+    // its corner button floats it out to the second monitor.
+    const json &v = act.contains("domain") ? act["domain"] : act["value"];
+    int d = -1;
+    if (v.is_number()) d = v.get<int>();
+    else if (v.is_string()) {
+      std::string s = v.get<std::string>();
+      for (auto &c : s) c = (char)tolower(c);
+      const char *names[5] = {"terrain", "material", "atmosphere", "render", "all"};
+      for (int i = 0; i < 5; ++i)
+        if (s.find(names[i]) != std::string::npos) d = i;
+    }
+    if (d < 0 || d > 4) {
+      err = "open_node_editor: domain 0..4 or terrain/materials/atmosphere/render/all";
+      return 0;
+    }
+    graph_editor_add(a, d);
+    return 1;
+  }
+
   if (op == "debug_crash") {
     // Throws on the UI thread on purpose, so the crash pipeline (terminate
     // handler -> logs/crash_<stamp>.txt with what() and a stack) can be

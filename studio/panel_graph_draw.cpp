@@ -304,8 +304,7 @@ void add_node_popup(App &a) {
       ImGui::SetTooltip("%s", d->description.c_str());
   };
   auto in_scope = [&](const gpx::NodeDef *d) {
-    return a.graph_show_all_domains ||
-           domain_of_category(d->category) == a.workspace;
+    return g_popup_all || domain_of_category(d->category) == g_popup_domain;
   };
 
   const auto all = gpx::NodeRegistry::instance().all();

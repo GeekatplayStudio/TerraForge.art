@@ -105,6 +105,7 @@ struct App {
   bool seq_sun_sweep = false;
   float seq_sun[4] = {90.f, 10.f, 270.f, 10.f};
   bool request_layout_reset = false;
+  unsigned dockspace_id = 0; // the main dockspace, for "dock this window back"
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
   // Set to a node id to have the graph select it and pan to it on the next
   // frame; the graph panel clears it. This is how "open this in the node
@@ -152,6 +153,12 @@ void draw_console(App &a);     // the message log
 // Properties-editor tab bodies (no window of their own)
 void object_properties_ui(App &a);
 void node_properties_ui(App &a);
+// The same parameters for a given node, as the side pane of a node editor:
+// any_workspace skips the "belongs to another workspace" redirect.
+void node_properties_ui(App &a, uint64_t node_id, bool any_workspace);
+// Open another node editor window: domain 0..3 (terrain, materials,
+// atmosphere, render) or 4 for every domain at once.
+void graph_editor_add(App &a, int domain);
 void scene_properties_ui(App &a);
 // the labelled slider + stepper used throughout the properties editor
 bool scalar_float(const char *id, float *v, float mn, float mx,

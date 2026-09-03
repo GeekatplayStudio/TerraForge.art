@@ -68,6 +68,20 @@ void paint(const Pen &k, Icon ic) {
       k.line(-0.65f, 0.f, 0.65f, 0.f);
       k.line(0.f, -0.65f, 0.f, 0.65f);
       break;
+    case Icon::Detach: // a window leaving through the top-right corner
+      k.line(-0.7f, -0.3f, -0.7f, 0.7f);
+      k.line(-0.7f, 0.7f, 0.3f, 0.7f);
+      k.line(0.3f, 0.7f, 0.3f, 0.1f);
+      k.line(-0.7f, -0.3f, -0.1f, -0.3f);
+      k.line(0.1f, -0.7f, 0.7f, -0.7f);
+      k.line(0.7f, -0.7f, 0.7f, -0.1f);
+      k.line(0.7f, -0.7f, -0.05f, 0.05f);
+      break;
+    case Icon::Dock: // a window settling into the frame
+      k.rect(-0.7f, -0.7f, 0.7f, 0.7f);
+      k.line(-0.7f, -0.3f, 0.7f, -0.3f);
+      k.line(-0.2f, -0.3f, -0.2f, 0.7f);
+      break;
     case Icon::Sky: // sun over a horizon
       k.circle(0.f, -0.2f, 0.3f);
       k.line(-0.75f, 0.55f, 0.75f, 0.55f);

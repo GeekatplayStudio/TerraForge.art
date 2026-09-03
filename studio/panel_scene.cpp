@@ -10,6 +10,7 @@
 // The window keeps the ImGui ID "Outliner" while showing the label "Objects",
 // so docking layouts saved before the rename still place it correctly.
 #include "app.hpp"
+#include "panel_float.hpp"
 #include "console.hpp"
 #include "icons.hpp"
 #include "render_settings.hpp"
@@ -195,10 +196,12 @@ void scene_layers_ui(App &a) {
 }
 
 void draw_panel_scene(App &a) {
+  panel_float_prepare(a, "Objects###Outliner");
   if (!ImGui::Begin("Objects###Outliner")) {
     ImGui::End();
     return;
   }
+  panel_float_controls(a, "Objects###Outliner");
   SceneState &sc = scene();
   int delete_idx = -1;
   add_bar(a, sc, delete_idx);

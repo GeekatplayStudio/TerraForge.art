@@ -20,6 +20,8 @@ enum class Icon {
   Move, Rotate, Scale, Material, Node, Render, Scene, World, Object,
   // viewport: projection, then shading, then overlays
   ViewPersp, ViewTop, ViewFront, ViewRight, Shaded, Textured, Outline,
+  // windows: float out of the main window / dock back into it
+  Detach, Dock,
   Count
 };
 

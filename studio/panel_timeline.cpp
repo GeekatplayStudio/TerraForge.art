@@ -6,6 +6,7 @@
 // requests, so scrubbing a heavy graph degrades to lower frame rates
 // rather than freezing anything.
 #include "app.hpp"
+#include "panel_float.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include <imgui.h>
@@ -17,10 +18,12 @@ namespace studio {
 
 void draw_panel_timeline(App &a) {
   if (!a.show_timeline) return;
+  panel_float_prepare(a, "Timeline");
   if (!ImGui::Begin("Timeline", &a.show_timeline)) {
     ImGui::End();
     return;
   }
+  panel_float_controls(a, "Timeline");
 
   // ---- transport -----------------------------------------------------------
   bool at_start = a.graph.time <= a.anim_start + 1e-6f;

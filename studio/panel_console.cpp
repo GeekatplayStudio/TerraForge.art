@@ -4,6 +4,7 @@
 // message can be quoted in a bug report. Errors used to be tooltips that
 // vanished on mouse-out.
 #include "app.hpp"
+#include "panel_float.hpp"
 #include "console.hpp"
 #include "theme_colors.hpp"
 #include <imgui.h>
@@ -47,10 +48,12 @@ void draw_console(App &a) {
   char title[96];
   std::snprintf(title, sizeof title, "Console%s%s###console",
                 errs ? "  " : "", errs ? "(!)" : "");
+  panel_float_prepare(a, "console");
   if (!ImGui::Begin(title, &a.show_console)) {
     ImGui::End();
     return;
   }
+  panel_float_controls(a, "console");
 
   static int min_level = 0;   // 0 trace .. 3 error
   static char filter[64] = "";

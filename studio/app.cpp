@@ -197,6 +197,7 @@ void run_main() {
       first_frame = false;
     }
     ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+    a.dockspace_id = dockspace_id;
     ImGui::End();
 
     // keep the UI snapshot fresh whenever evaluation is not holding the lock

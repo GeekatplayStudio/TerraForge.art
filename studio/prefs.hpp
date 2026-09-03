@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — user preferences (persisted JSON)
 #pragma once
 #include <string>
+#include <vector>
 
 namespace studio {
 
@@ -21,6 +22,9 @@ struct Prefs {
   // behaviour is unchanged; it is a floor under the worst case, not a
   // day-to-day constraint. 0 means no ceiling.
   int graph_memory_mb = 1024;
+  // Extra node editor windows, one domain each (0 terrain, 1 materials,
+  // 2 atmosphere, 3 render, 4 all), so the layout comes back on launch.
+  std::vector<int> editor_domains;
 };
 
 Prefs &prefs();

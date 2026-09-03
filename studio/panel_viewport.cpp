@@ -6,6 +6,7 @@
 #include "scene.hpp"
 #include "gizmo.hpp"
 #include "icons.hpp"
+#include "panel_float.hpp"
 #include "sculpt.hpp"
 #include "theme_colors.hpp"
 #include <imgui.h>
@@ -138,6 +139,9 @@ static void view_options_popup(App &a, int slot, RenderSettings::ViewConfig &vc,
 // than running off the edge of a narrow view.
 static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7, 3));
+  // float-out / dock-back sits in the far corner; everything else stops
+  // short of it
+  panel_float_controls(a, view_window_name(slot));
   sculpt_toolbar(a); // the tools live left, the view controls right
   ImGui::SameLine();
   const float used = ImGui::GetCursorPosX();
@@ -146,7 +150,7 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
   const float bw = ImGui::GetFontSize() + st.FramePadding.y * 2.f + 6.f;
   const float gap = 2.f, sep = 10.f;
   const float full = bw * 12.f + gap * 8.f + sep * 3.f;
-  const float right = ImGui::GetContentRegionMax().x;
+  const float right = ImGui::GetContentRegionMax().x - bw - 6.f;
 
   auto pick = [&](Icon ic, const char *id, const char *tip, int *value, int on) {
     if (IconButton(ic, id, tip, *value == on)) *value = on;
@@ -408,6 +412,7 @@ void draw_panel_viewport(App &a) {
   int view_count = std::clamp(prefs().view_count, 1, 6);
   for (int slot = 0; slot < view_count; ++slot) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    panel_float_prepare(a, view_window_name(slot));
     bool open = ImGui::Begin(view_window_name(slot), nullptr,
                              ImGuiWindowFlags_NoScrollbar |
                                  ImGuiWindowFlags_NoScrollWithMouse);

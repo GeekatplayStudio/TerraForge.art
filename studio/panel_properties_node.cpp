@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <map>
 #include <cstring>
 #include <imgui.h>
 #include <map>
@@ -286,13 +287,20 @@ struct NodeMirror {
   bool enabled = true;
   bool valid = false;
   bool pending = false; // mirror holds edits not yet written to the node
+  bool was_active = false;
 };
-static NodeMirror g_mirror;
+// One mirror per node rather than one for the panel: several node editors
+// can each show a different node's parameters in the same frame, and a
+// single mirror re-synced by each in turn would drop the other's edits.
+static std::map<uint64_t, NodeMirror> g_mirrors;
 
-void node_properties_ui(App &a) {
+void node_properties_ui(App &a) { node_properties_ui(a, a.selected_node, false); }
+
+void node_properties_ui(App &a, uint64_t node_id, bool any_workspace) {
+  NodeMirror &g_mirror = g_mirrors[node_id];
   std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
   if (lk.owns_lock()) {
-    gpx::Node *live = a.graph.find_node(a.selected_node);
+    gpx::Node *live = a.graph.find_node(node_id);
     if (live) {
       if (g_mirror.pending && g_mirror.id == live->id) {
         // write the queued edits through, then re-sync
@@ -322,15 +330,15 @@ void node_properties_ui(App &a) {
   // times over. Every one was someone looking at a node while it computed.
   if (lk.owns_lock()) lk.unlock();
 
-  if (!g_mirror.valid || g_mirror.id != a.selected_node) {
+  if (!g_mirror.valid || g_mirror.id != node_id) {
     ImGui::TextDisabled("No node selected.");
-    ImGui::TextDisabled("Click a node in the graph below.");
+    ImGui::TextDisabled("Click a node in the graph.");
     return;
   }
   NodeMirror *n = &g_mirror;
   // never show a node that belongs to a different workspace — that was the
   // source of "terrain texture showing under Terrain"
-  if (domain_of_category(n->category) != a.workspace) {
+  if (!any_workspace && domain_of_category(n->category) != a.workspace) {
     const char *ws[4] = {"Terrain", "Materials", "Atmosphere", "Render"};
     ImGui::TextDisabled("%s belongs to the %s workspace.", n->type.c_str(),
                         ws[domain_of_category(n->category) & 3]);
@@ -391,7 +399,8 @@ void node_properties_ui(App &a) {
       a.selected_node = back.empty() ? 0 : back.front();
       a.graph_layout_serial++;
       a.request_eval();
-      ImGui::End();
+      // (an ImGui::End() used to sit here, inside a child of a window this
+      // function never began - a stack imbalance waiting for a MetaNode)
       return;
     }
     if (ImGui::IsItemHovered())
@@ -474,7 +483,7 @@ void node_properties_ui(App &a) {
   // on release, run one full-quality pass. Edits are queued in the mirror and
   // written through on the next frame that can take the lock.
   bool item_active = ImGui::IsAnyItemActive();
-  static bool was_active = false;
+  bool &was_active = g_mirror.was_active;
   if (changed) {
     if (!was_active) undo_push(a, "Edit " + n->type);
     a.eval_interactive.store(item_active);
