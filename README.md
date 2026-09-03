@@ -381,7 +381,7 @@ around.
 ## Build
 
 ```powershell
-git clone https://github.com/GeekatplayStudio/TerraForm.git
+git clone https://github.com/GeekatplayStudio/TerraForge.art.git
 cd TerraForm
 powershell -ExecutionPolicy Bypass -File scripts\get_deps.ps1   # one time
 .\build.ps1

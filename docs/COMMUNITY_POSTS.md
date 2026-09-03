@@ -74,7 +74,7 @@ World Machine over 35 years in film and VFX. TerraForge is the workflow he has
 taught for twenty years, built as the tool.
 
 Try it, break it, tell us what a terrain artist actually needs:
-https://github.com/GeekatplayStudio/TerraForm
+https://github.com/GeekatplayStudio/TerraForge.art
 
 ---
 
@@ -111,7 +111,7 @@ guide, 3,000+ Vue/Terragen/World Machine tutorials at Geekatplay), so this
 is built from the workflow, not from a spec.
 
 Looking for people who actually make terrains to tell me what's missing or
-wrong. Repo: https://github.com/GeekatplayStudio/TerraForm
+wrong. Repo: https://github.com/GeekatplayStudio/TerraForge.art
 
 ---
 
@@ -125,4 +125,4 @@ viewport + final renders in Mitsuba 3, Cycles or LuxCore. Local-AI
 assistant in every panel and a full API/MCP so scripts and agents can build
 scenes. By the co-author of the official Vue 7 guide and 3,000+ landscape tutorials
 (Geekatplay Studio). Early, ambitious, and looking for terrain artists to try it and say
-what's missing. https://github.com/GeekatplayStudio/TerraForm
+what's missing. https://github.com/GeekatplayStudio/TerraForge.art
