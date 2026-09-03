@@ -67,6 +67,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    "jitter":0.4,"seed":7,"sway":0.1}
    (copies of the mesh appear at every point of the Points node's cloud,
    standing on the terrain; node "" or 0 unbinds)
+- {"op":"assign_material","node":"MaterialOutput","object":"Terrain"}
+   (binds a MaterialOutput to an object; omit object for the terrain)
 - {"op":"add_planet","name":"Mars","radius":3.5,"relief":0.03,"seed":42,
    "position":[x,y,z],"sea_level":0,"snow_line":0.9,"atmosphere":0.3,
    "rock_low":[0.45,0.25,0.15],"rock_high":[0.6,0.4,0.3],
@@ -82,7 +84,14 @@ The world is a unit tile: terrain spans x 0..1, z 0..1.)";
       break;
     default:
       s += R"(- {"op":"graph","spec":{ ...node graph in the standard node JSON... }}
-Use this to build terrain or material node graphs.)";
+Use this to build terrain or material node graphs.
+For "eroded terrain with materials that follow the erosion": ErosionLayers
+erodes and outputs masks bedrock/scree/soil/grass/sediment/riverbed/snow
+(+ wetness, flow, and two packed splat textures). Wire the masks into a
+MaterialStack (mask k + albedo k per layer, from TextureFile / PBRMaterial /
+FlatColor), its albedo and roughness into a MaterialOutput, then
+{"op":"assign_material","node":"MaterialOutput"}. The erosion node then shows
+in both the Terrain and Materials workspaces.)";
       break;
   }
   s += R"(

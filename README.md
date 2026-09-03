@@ -117,6 +117,13 @@ generated from the registry itself.
   shallow-water pipe-model solver, explicit and implicit (Braun-Willett)
   stream-power fluvial incision with tectonic uplift and rock hardness,
   thermal talus weathering, aeolian dunes and sediment deposition.
+- **Erosion that decides what grows where:** `ErosionLayers` runs thermal +
+  hydraulic erosion and turns the simulation's side channels (scour, silt,
+  talus, drainage, standing water) into a stack of material masks — bedrock,
+  scree, soil, grass, sediment, riverbed, snow — plus wetness and flow. The
+  layers are priority-ordered and always sum to one, and come packed as two
+  splat textures too. One graph serves both editors: the erosion node shows
+  in the Materials workspace as soon as its masks are wired into a material.
 - **Generators:** multi-type coherent noise (Perlin/ridged/billow/Swiss/value/
   Worley), diamond-square and fault fractals, geometric shapes, geological
   strata, craters, dunes.
@@ -193,6 +200,11 @@ generated from the registry itself.
   normal, roughness, AO) from ambientCG at up to 8K, cached locally.
 - **Multilayer compositing:** splat maps from terrain masks, layer blending,
   color grading, and albedo-to-PBR derivation.
+- **Material stack:** `MaterialStack` blends up to six mask + albedo layers
+  with height-aware blending (silt fills the cracks of the rock before it
+  covers the ridges) into albedo and per-layer roughness for `MaterialOutput`.
+  `examples/macros/erosion_materials.json` builds the whole
+  erosion → layers → material chain and assigns it to the terrain.
 
 ### Scene and lighting
 - **Built-in primitives** — cube, sphere, plane, cylinder, cone — plus OBJ

@@ -81,8 +81,28 @@ void draw_panel_graph(App &a) {
 
   bool eval_running = !can_edit;
 
+  // A node belongs to the workspace of its category — and also to any
+  // workspace it is wired into. ErosionLayers sits in Terrain, but once its
+  // masks feed a MaterialStack it is part of the material too, so it shows
+  // there as well: the shared node the two editors have in common.
+  std::vector<uint64_t> bridged;
+  {
+    auto dom_of = [&](uint64_t id) -> int {
+      for (const auto &n : a.node_views)
+        if (n.id == id) return domain_of_category(n.category);
+      return -1;
+    };
+    for (const App::LinkView &l : a.link_views) {
+      int df = dom_of(l.from_node), dt = dom_of(l.to_node);
+      if (df == dt) continue;
+      if (dt == a.workspace) bridged.push_back(l.from_node);
+      if (df == a.workspace) bridged.push_back(l.to_node);
+    }
+  }
   auto view_visible = [&](const App::NodeView &n) {
-    return a.graph_show_all_domains || domain_of_category(n.category) == a.workspace;
+    if (a.graph_show_all_domains || domain_of_category(n.category) == a.workspace)
+      return true;
+    return std::find(bridged.begin(), bridged.end(), n.id) != bridged.end();
   };
   static uint64_t layout_serial_seen = 0;
   bool push_positions = layout_serial_seen != a.graph_layout_serial;

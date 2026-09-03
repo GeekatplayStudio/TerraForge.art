@@ -1,0 +1,33 @@
+{ "actions": [
+  { "op": "add_node", "type": "Noise", "x": 40, "y": 300, "alias": "base", "attrs": { "octaves": 7 } },
+  { "op": "add_node", "type": "ErosionLayers", "x": 320, "y": 300, "alias": "erode", "attrs": { "snowline": 0.78 } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "erode", "to_port": "input" },
+  { "op": "connect", "from": "erode", "from_port": "output", "to": "TerrainOutput", "to_port": "heightmap" },
+
+  { "op": "add_node", "type": "FlatColor", "x": 640, "y": 40,  "alias": "col_soil",  "attrs": { "r": 0.36, "g": 0.30, "b": 0.24 } },
+  { "op": "add_node", "type": "FlatColor", "x": 640, "y": 140, "alias": "col_rock",  "attrs": { "r": 0.42, "g": 0.40, "b": 0.38 } },
+  { "op": "add_node", "type": "FlatColor", "x": 640, "y": 240, "alias": "col_scree", "attrs": { "r": 0.55, "g": 0.50, "b": 0.44 } },
+  { "op": "add_node", "type": "FlatColor", "x": 640, "y": 340, "alias": "col_grass", "attrs": { "r": 0.20, "g": 0.42, "b": 0.14 } },
+  { "op": "add_node", "type": "FlatColor", "x": 640, "y": 440, "alias": "col_sand",  "attrs": { "r": 0.78, "g": 0.70, "b": 0.52 } },
+  { "op": "add_node", "type": "FlatColor", "x": 640, "y": 540, "alias": "col_snow",  "attrs": { "r": 0.94, "g": 0.95, "b": 0.98 } },
+
+  { "op": "add_node", "type": "MaterialStack", "x": 920, "y": 300, "alias": "stack",
+    "attrs": { "rough_1": 0.9, "rough_2": 0.75, "rough_3": 0.85, "rough_4": 0.95, "rough_5": 0.9, "rough_6": 0.5 } },
+  { "op": "connect", "from": "col_soil",  "from_port": "texture", "to": "stack", "to_port": "albedo 1" },
+  { "op": "connect", "from": "erode",     "from_port": "soil",    "to": "stack", "to_port": "mask 1" },
+  { "op": "connect", "from": "col_rock",  "from_port": "texture", "to": "stack", "to_port": "albedo 2" },
+  { "op": "connect", "from": "erode",     "from_port": "bedrock", "to": "stack", "to_port": "mask 2" },
+  { "op": "connect", "from": "col_scree", "from_port": "texture", "to": "stack", "to_port": "albedo 3" },
+  { "op": "connect", "from": "erode",     "from_port": "scree",   "to": "stack", "to_port": "mask 3" },
+  { "op": "connect", "from": "col_grass", "from_port": "texture", "to": "stack", "to_port": "albedo 4" },
+  { "op": "connect", "from": "erode",     "from_port": "grass",   "to": "stack", "to_port": "mask 4" },
+  { "op": "connect", "from": "col_sand",  "from_port": "texture", "to": "stack", "to_port": "albedo 5" },
+  { "op": "connect", "from": "erode",     "from_port": "sediment","to": "stack", "to_port": "mask 5" },
+  { "op": "connect", "from": "col_snow",  "from_port": "texture", "to": "stack", "to_port": "albedo 6" },
+  { "op": "connect", "from": "erode",     "from_port": "snow",    "to": "stack", "to_port": "mask 6" },
+
+  { "op": "add_node", "type": "MaterialOutput", "x": 1200, "y": 300, "alias": "mat", "attrs": { "name": "Eroded ground" } },
+  { "op": "connect", "from": "stack", "from_port": "albedo",    "to": "mat", "to_port": "base color" },
+  { "op": "connect", "from": "stack", "from_port": "roughness", "to": "mat", "to_port": "roughness" },
+  { "op": "assign_material", "node": "mat" }
+] }

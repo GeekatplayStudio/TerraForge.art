@@ -33,7 +33,7 @@ static const Entry ENTRIES[] = {
     {"Landform", 450},        {"Quilt", 400},
     {"WaveletNoise", 400},    {"DetailEqualizer", 250},
     {"LineNoise", 600},       {"HydraulicBlur", 150},
-    {"FlowWarp", 400},
+    {"FlowWarp", 400},        {"ErosionLayers", 8000},
 };
 
 int main(int argc, char **argv) {

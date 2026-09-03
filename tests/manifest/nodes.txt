@@ -28,6 +28,7 @@ Dissolve|Erosion
 DistanceField|Mask
 Dunes|Primitive
 Equalize|Filter
+ErosionLayers|Erosion
 ExpandShrink|Filter
 ExportHeightmap|Export
 ExportMesh|Export
@@ -85,6 +86,7 @@ MakeTileable|Transform
 MaskPaint|Mask
 MaskToTexture|Material
 MaterialOutput|Material
+MaterialStack|Material
 MathGradient|Operator
 Math|Operator
 MeanShift|Filter

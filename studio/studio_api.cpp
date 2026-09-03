@@ -72,7 +72,8 @@ static void publish_state(App &a) {
                     {"name", o.name},
                     {"type", (int)o.type},
                     {"parent", o.parent},
-                    {"visible", o.visible}});
+                    {"visible", o.visible},
+                    {"material_node", o.material_node}});
   }
   j["objects"] = objs;
   j["selected"] = sc.selected;

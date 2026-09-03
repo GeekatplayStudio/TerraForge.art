@@ -1,13 +1,13 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 175 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 177 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
 | [Analysis](#analysis) | 5 |
 | [Atmosphere](#atmosphere) | 4 |
 | [Effect](#effect) | 7 |
-| [Erosion](#erosion) | 10 |
+| [Erosion](#erosion) | 11 |
 | [Export](#export) | 8 |
 | [Field Bridge](#field-bridge) | 2 |
 | [Field Color](#field-color) | 2 |
@@ -21,7 +21,7 @@ Every node in Geekatplay TerraForge — 175 across 25 categories. Generated from
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 14 |
-| [Material](#material) | 18 |
+| [Material](#material) | 19 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
@@ -391,6 +391,43 @@ Rainwater dissolves the surface into streams, strongest low down
 | Rock hardness | float, 0 to 1, default 0.5 | Hard rock keeps the streams narrow and incised; soft rock lets them spread and flatten the surface. |
 | Low ground bias | float, 0 to 3, default 1 | How much the effect concentrates at low altitude. |
 | Smoothing | float, 0 to 1, default 0.15 |  |
+
+### ErosionLayers
+
+Erode the terrain and derive material layer masks from what the water and rock did
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+| bedrock | out | heightmap |
+| scree | out | heightmap |
+| soil | out | heightmap |
+| grass | out | heightmap |
+| sediment | out | heightmap |
+| riverbed | out | heightmap |
+| snow | out | heightmap |
+| wetness | out | heightmap |
+| flow | out | heightmap |
+| splat A | out | texture |
+| splat B | out | texture |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Erosion | choice: Droplets / Shallow water / Thermal only / Thermal + droplets / Thermal + shallow water | Thermal weathering first drops scree below the cliffs; the hydraulic pass then carves channels and settles silt. |
+| Seed | seed |  |
+| Strength | float, 0.1 to 3, default 1 | Scales droplet count / solver iterations. |
+| Talus angle | float, 0.05 to 4, default 1.2 |  |
+| Thermal iterations | int, 1 to 300, default 40 |  |
+| Relief (height / width) | float, 0.02 to 1, default 0.2 | How tall the terrain is compared with the tile width. A heightmap is 0..1 over a 0..1 tile; real ground rises a fifth of its width or less. Slopes are measured against this, so 0.5 means 45° on the real terrain. |
+| Bedrock slope | float, 0.05 to 0.95, default 0.45 | Slope (0 flat .. 1 vertical, 0.5 = 45°) above which soil cannot hold and rock is exposed. |
+| Grass slope limit | float, 0.02 to 0.9, default 0.25 |  |
+| Sediment threshold | float, 0.02 to 0.95, default 0.25 | How much deposited material makes a cell sand/silt. |
+| Stream threshold | float, 0.1 to 0.98, default 0.55 | Drainage (log scale, 0..1) above which the cell is a riverbed. |
+| Snowline | float, 0 to 1, default 1 | Height above which snow lies on gentle ground. 1 = no snow. |
+| Edge softness | float, 0.005 to 0.4, default 0.08 |  |
+| Wetness spread | float, 0 to 0.05, default 0.01 | Blur radius (fraction of the map) that lets moisture reach past the channel itself. |
 
 ### Glaciation
 
@@ -2038,6 +2075,38 @@ The material: base color, normal, roughness, metallic, height and AO channels
 | Transparency | float, 0 to 1, default 0 |  |
 | Normal strength | float, 0 to 4, default 1 |  |
 | Displacement | float, 0 to 0.1, default 0 | Height map displacement applied to the surface, in world units. |
+
+### MaterialStack
+
+Blend up to six material layers by mask, height-aware, into albedo + roughness
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| mask 1 | in (optional) | heightmap |
+| albedo 1 | in (optional) | texture |
+| mask 2 | in (optional) | heightmap |
+| albedo 2 | in (optional) | texture |
+| mask 3 | in (optional) | heightmap |
+| albedo 3 | in (optional) | texture |
+| mask 4 | in (optional) | heightmap |
+| albedo 4 | in (optional) | texture |
+| mask 5 | in (optional) | heightmap |
+| albedo 5 | in (optional) | texture |
+| mask 6 | in (optional) | heightmap |
+| albedo 6 | in (optional) | texture |
+| albedo | out | texture |
+| roughness | out | texture |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Height blend | float, 0 to 1, default 0.5 | 0: plain weighted mix. 1: the layer whose texture is highest at this texel wins — silt fills the cracks of the rock before it covers the ridges. |
+| Blend depth | float, 0.02 to 1, default 0.25 | How far below the winning layer others still show. |
+| Roughness | float, 0 to 1, default 0.8 |  |
+| Roughness | float, 0 to 1, default 0.8 |  |
+| Roughness | float, 0 to 1, default 0.8 |  |
+| Roughness | float, 0 to 1, default 0.8 |  |
+| Roughness | float, 0 to 1, default 0.8 |  |
+| Roughness | float, 0 to 1, default 0.8 |  |
 
 ### NormalBlend
 

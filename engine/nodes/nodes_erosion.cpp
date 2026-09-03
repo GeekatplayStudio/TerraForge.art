@@ -7,6 +7,7 @@
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
 #include "gpx/parallel.hpp"
+#include "gpx/erosion_kernels.hpp"
 #include <cmath>
 #include <atomic>
 #include <memory>
@@ -16,25 +17,11 @@
 
 namespace gpx {
 
-static const int DX8[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
-static const int DY8[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
-
 // ------------------------------------------------------ particle droplets
-struct DropletParams {
-  int num_particles = 120000;
-  int max_lifetime = 48;
-  float inertia = 0.06f;
-  float capacity = 5.5f;
-  float min_capacity = 0.01f;
-  float erode_rate = 0.4f;
-  float deposit_rate = 0.25f;
-  float evaporate = 0.015f;
-  float gravity = 4.f;
-  int brush_radius = 3;
-};
-
-static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed,
-                           Heightmap *erosion_out, Heightmap *deposit_out) {
+// Parameter structs live in gpx/erosion_kernels.hpp so ErosionLayers can run
+// the same simulation.
+void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed,
+                    Heightmap *erosion_out, Heightmap *deposit_out) {
   int w = map.w, h = map.h;
   std::vector<int> bx, by;
   std::vector<float> bw;
@@ -230,25 +217,13 @@ static void erode_droplets(Heightmap &map, const DropletParams &p, uint32_t seed
 }
 
 // -------------------------------------- shallow-water pipe model (Mei 2007)
-struct PipeParams {
-  int iterations = 120;
-  float dt = 0.02f;
-  float rain = 0.012f;
-  float evaporation = 0.015f;
-  float pipe_area = 20.f;    // A*g/l lumped
-  float capacity_k = 1.f;    // Kc
-  float erode_k = 0.5f;      // Ks
-  float deposit_k = 0.5f;    // Kd
-  float min_tilt = 0.005f;
-};
-
-static void erode_pipes(Heightmap &hmap, const PipeParams &pp,
-                        Heightmap *erosion_out, Heightmap *deposit_out) {
+void erode_pipes(Heightmap &hmap, const PipeParams &pp, Heightmap *erosion_out,
+                 Heightmap *deposit_out, Heightmap *water_out) {
   int w = hmap.w, h = hmap.h;
   size_t N = (size_t)w * h;
   std::vector<float> water(N, 0.f), sed(N, 0.f), sed2(N, 0.f);
   std::vector<float> fL(N, 0.f), fR(N, 0.f), fT(N, 0.f), fB(N, 0.f);
-  std::vector<float> vx(N, 0.f), vy(N, 0.f);
+  std::vector<float> vx(N, 0.f), vy(N, 0.f), tilt_sin(N, 0.f);
   auto idx = [&](int x, int y) { return (size_t)y * w + x; };
   auto Hs = [&](int x, int y) {
     x = std::clamp(x, 0, w - 1);
@@ -301,15 +276,25 @@ static void erode_pipes(Heightmap &hmap, const PipeParams &pp,
         }
     });
     // 4. erosion / deposition by capacity
+    // The tilt reads the neighbours' heights and the update writes this
+    // cell's, so both cannot happen in one pass: at every row-chunk boundary
+    // a thread would read a neighbour that another thread was already
+    // rewriting, and the result depended on who got there first. Measure
+    // the tilt over the whole map first, then update.
+    parallel_rows(h, [&](int y0, int y1) {
+      for (int y = y0; y < y1; ++y)
+        for (int x = 0; x < w; ++x) {
+          float dhx = (hmap.atc(x + 1, y) - hmap.atc(x - 1, y)) * 0.5f * w;
+          float dhy = (hmap.atc(x, y + 1) - hmap.atc(x, y - 1)) * 0.5f * h;
+          float tilt = std::sqrt(dhx * dhx + dhy * dhy);
+          tilt_sin[idx(x, y)] = std::max(tilt / std::sqrt(1.f + tilt * tilt), pp.min_tilt);
+        }
+    });
     parallel_rows(h, [&](int y0, int y1) {
       for (int y = y0; y < y1; ++y)
         for (int x = 0; x < w; ++x) {
           size_t i = idx(x, y);
-          float dhx = (hmap.atc(x + 1, y) - hmap.atc(x - 1, y)) * 0.5f * w;
-          float dhy = (hmap.atc(x, y + 1) - hmap.atc(x, y - 1)) * 0.5f * h;
-          float tilt = std::sqrt(dhx * dhx + dhy * dhy);
-          float sin_tilt = tilt / std::sqrt(1.f + tilt * tilt);
-          sin_tilt = std::max(sin_tilt, pp.min_tilt);
+          float sin_tilt = tilt_sin[i];
           float speed = std::sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
           float C = pp.capacity_k * sin_tilt * speed;
           if (C > sed[i]) {
@@ -346,6 +331,10 @@ static void erode_pipes(Heightmap &hmap, const PipeParams &pp,
   }
   // settle remaining sediment
   for (size_t i = 0; i < N; ++i) hmap.v[i] += sed[i];
+  if (water_out) {
+    *water_out = Heightmap(w, h);
+    water_out->v = water;
+  }
 }
 
 REGISTER_NODE(

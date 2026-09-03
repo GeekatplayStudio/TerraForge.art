@@ -17,6 +17,7 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/hydrology.hpp"
 #include "gpx/node_helpers.hpp"
+#include "gpx/erosion_kernels.hpp"
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -31,9 +32,12 @@ namespace {
 const int DX8[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
 const int DY8[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
 
+} // namespace
+
 // Upslope contributing area per cell, in cell counts. Every cell starts owning
 // itself and pushes its total to its receiver, processed from high to low so a
-// cell is always complete before it drains.
+// cell is always complete before it drains. Declared in erosion_kernels.hpp:
+// ErosionLayers derives its stream and wetness layers from the same routing.
 std::vector<float> flow_accumulate(const Heightmap &in, std::vector<int> *recv_out,
                                    bool fill_pits) {
   const int w = in.w, h = in.h;
@@ -85,6 +89,8 @@ std::vector<float> flow_accumulate(const Heightmap &in, std::vector<int> *recv_o
   if (recv_out) *recv_out = std::move(receiver);
   return area;
 }
+
+namespace {
 
 // Local slope as a gradient magnitude, normalised by the terrain's own
 // amplitude so the result does not depend on how tall the map happens to be.

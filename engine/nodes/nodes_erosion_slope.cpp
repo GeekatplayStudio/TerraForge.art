@@ -8,6 +8,7 @@
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
 #include "gpx/parallel.hpp"
+#include "gpx/erosion_kernels.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -44,64 +45,70 @@ REGISTER_NODE(
       out.minmax(mn, mx);
       float amp = (mx - mn) > 1e-9f ? (mx - mn) : 1.f;
       float talus = n.attrs.get_f("talus", 1.2f) * amp / out.w;
-      int iters = n.attrs.get_i("iterations", 60);
-      bool converge = n.attrs.get_b("converge");
-      if (converge) iters = 2000;
-      float rate = n.attrs.get_f("rate", 0.5f);
-      // Deterministic two-pass talus transport: pass 1 computes each cell's
-      // outflow (writes only its own cell), pass 2 gathers inflow from the
-      // neighbours. No cross-thread writes, so the result is reproducible.
-      Heightmap move_amt(out.w, out.h), move_total(out.w, out.h);
-      Heightmap delta(out.w, out.h);
-      auto excess = [&](int x, int y, int k) {
-        float dist = (DX8[k] && DY8[k]) ? 1.41421356f : 1.f;
-        float d = (out.atc(x, y) - out.atc(x + DX8[k], y + DY8[k])) / dist - talus;
-        return d > 0 ? d : 0.f;
-      };
-      for (int it = 0; it < iters; ++it) {
-        std::atomic<bool> moved{false};
-        parallel_rows(out.h, [&](int y0, int y1) {
-          bool local_moved = false;
-          for (int y = y0; y < y1; ++y)
-            for (int x = 0; x < out.w; ++x) {
-              float dmax = 0, dtotal = 0;
-              for (int k = 0; k < 8; ++k) {
-                float d = excess(x, y, k);
-                if (d > 0) {
-                  dtotal += d;
-                  dmax = std::max(dmax, d);
-                }
-              }
-              move_total.at(x, y) = dtotal;
-              move_amt.at(x, y) = dtotal > 0 ? rate * dmax * 0.5f : 0.f;
-              if (dtotal > 0) local_moved = true;
-            }
-          if (local_moved) moved.store(true);
-        });
-        parallel_rows(out.h, [&](int y0, int y1) {
-          for (int y = y0; y < y1; ++y)
-            for (int x = 0; x < out.w; ++x) {
-              float in = 0;
-              for (int k = 0; k < 8; ++k) {
-                int sx = x + DX8[k], sy = y + DY8[k]; // neighbour giving to us
-                if (sx < 0 || sx >= out.w || sy < 0 || sy >= out.h) continue;
-                float tot = move_total.at(sx, sy);
-                if (tot <= 0) continue;
-                // the neighbour's excess toward this cell is the opposite dir
-                int opp = 7 - k;
-                float share = excess(sx, sy, opp);
-                if (share > 0) in += move_amt.at(sx, sy) * share / tot;
-              }
-              delta.at(x, y) = in - move_amt.at(x, y);
-            }
-        });
-        parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
-          for (size_t i = i0; i < i1; ++i) out.v[i] += delta.v[i];
-        });
-        if (converge && !moved.load()) break;
-      }
+      thermal_relax(out, talus, n.attrs.get_i("iterations", 60),
+                    n.attrs.get_f("rate", 0.5f), n.attrs.get_b("converge"));
       apply_mask_blend(n.in_hmap("mask"), *in, out);
     })
+
+// Deterministic two-pass talus transport: pass 1 computes each cell's
+// outflow (writes only its own cell), pass 2 gathers inflow from the
+// neighbours. No cross-thread writes, so the result is reproducible.
+// Shared with ErosionLayers through gpx/erosion_kernels.hpp.
+void thermal_relax(Heightmap &out, float talus, int iters, float rate,
+                   bool converge, Heightmap *deposit_out) {
+  if (converge) iters = 2000;
+  Heightmap move_amt(out.w, out.h), move_total(out.w, out.h);
+  Heightmap delta(out.w, out.h);
+  if (deposit_out) *deposit_out = Heightmap(out.w, out.h);
+  auto excess = [&](int x, int y, int k) {
+    float dist = (DX8[k] && DY8[k]) ? 1.41421356f : 1.f;
+    float d = (out.atc(x, y) - out.atc(x + DX8[k], y + DY8[k])) / dist - talus;
+    return d > 0 ? d : 0.f;
+  };
+  for (int it = 0; it < iters; ++it) {
+    std::atomic<bool> moved{false};
+    parallel_rows(out.h, [&](int y0, int y1) {
+      bool local_moved = false;
+      for (int y = y0; y < y1; ++y)
+        for (int x = 0; x < out.w; ++x) {
+          float dmax = 0, dtotal = 0;
+          for (int k = 0; k < 8; ++k) {
+            float d = excess(x, y, k);
+            if (d > 0) {
+              dtotal += d;
+              dmax = std::max(dmax, d);
+            }
+          }
+          move_total.at(x, y) = dtotal;
+          move_amt.at(x, y) = dtotal > 0 ? rate * dmax * 0.5f : 0.f;
+          if (dtotal > 0) local_moved = true;
+        }
+      if (local_moved) moved.store(true);
+    });
+    parallel_rows(out.h, [&](int y0, int y1) {
+      for (int y = y0; y < y1; ++y)
+        for (int x = 0; x < out.w; ++x) {
+          float in = 0;
+          for (int k = 0; k < 8; ++k) {
+            int sx = x + DX8[k], sy = y + DY8[k]; // neighbour giving to us
+            if (sx < 0 || sx >= out.w || sy < 0 || sy >= out.h) continue;
+            float tot = move_total.at(sx, sy);
+            if (tot <= 0) continue;
+            // the neighbour's excess toward this cell is the opposite dir
+            int opp = 7 - k;
+            float share = excess(sx, sy, opp);
+            if (share > 0) in += move_amt.at(sx, sy) * share / tot;
+          }
+          delta.at(x, y) = in - move_amt.at(x, y);
+          if (deposit_out) deposit_out->at(x, y) += in;
+        }
+    });
+    parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
+      for (size_t i = i0; i < i1; ++i) out.v[i] += delta.v[i];
+    });
+    if (converge && !moved.load()) break;
+  }
+}
 
 // ------------------------------------- stream power: explicit or implicit
 REGISTER_NODE(

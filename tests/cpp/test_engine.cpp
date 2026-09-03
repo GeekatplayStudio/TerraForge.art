@@ -134,6 +134,13 @@ static void test_erosion() {
     CHECK(mx2 - mn2 < (mx - mn) * 2.f + 1.f, "erosion amplitude bounded");
     // erosion must carve, not obliterate: the relief has to survive
     CHECK(mx2 - mn2 > (mx - mn) * 0.25f, "erosion preserves relief");
+    // The pipe model's capacity step used to read neighbour heights in the
+    // same pass that rewrote them, so the result depended on which row chunk
+    // ran first. Two evaluations must agree to the bit.
+    std::vector<float> keep = out->v;
+    g.mark_dirty(ero->id);
+    g.evaluate();
+    CHECK(out_of(ero)->v == keep, "erosion is bit-identical on re-evaluation");
   }
   // stream power both methods
   for (int method = 0; method < 2; ++method) {
@@ -2898,6 +2905,125 @@ static void test_basalt() {
   CHECK(finite, "basalt is finite");
 }
 
+static void test_erosion_layers() {
+  std::printf("erosion layers...\n");
+  const char *layers[7] = {"snow",  "riverbed", "sediment", "bedrock",
+                           "scree", "grass",    "soil"};
+  for (int method = 0; method < 5; ++method) {
+    gpx::Graph g;
+    g.resolution = 96;
+    gpx::Node *noise = g.add_node("Noise");
+    gpx::Node *el = g.add_node("ErosionLayers");
+    el->attrs.find("method")->i = method;
+    el->attrs.find("strength")->f = 0.3f;
+    el->attrs.find("thermal_iters")->i = 10;
+    el->attrs.find("snowline")->f = 0.8f;
+    g.add_link(noise->id, "output", el->id, "input");
+    CHECK(g.evaluate(), "erosion layers evaluate");
+    const gpx::Heightmap *out = out_of(el);
+    CHECK(out && finite_map(*out), "eroded terrain is finite");
+    float mn, mx, mn2, mx2;
+    out_of(noise)->minmax(mn, mx);
+    out->minmax(mn2, mx2);
+    CHECK(mx2 - mn2 > (mx - mn) * 0.25f, "relief survives");
+    // the seven layers are a partition of unity at every cell
+    const gpx::Heightmap *L[7];
+    for (int k = 0; k < 7; ++k) {
+      gpx::Port *p = el->port(layers[k], gpx::PortDir::Out);
+      L[k] = p ? p->hmap.get() : nullptr;
+      CHECK(L[k] && finite_map(*L[k]), "layer mask produced");
+    }
+    float worst = 0;
+    for (size_t i = 0; i < out->v.size(); ++i) {
+      float s = 0;
+      for (int k = 0; k < 7; ++k) s += L[k]->v[i];
+      worst = std::max(worst, std::fabs(s - 1.f));
+    }
+    CHECK(worst < 1e-5f, "layers sum to one everywhere");
+    // bedrock follows steepness, grass avoids it
+    const gpx::Heightmap &hn = *out;
+    double rock_steep = 0, rock_flat = 0, grass_steep = 0, grass_flat = 0;
+    int ns = 0, nf = 0;
+    for (int y = 1; y < hn.h - 1; ++y)
+      for (int x = 1; x < hn.w - 1; ++x) {
+        float dx, dy;
+        hn.gradient_at(x, y, dx, dy);
+        float s = std::sqrt(dx * dx + dy * dy) * hn.w / (mx2 - mn2);
+        size_t i = (size_t)y * hn.w + x;
+        if (s > 1.2f) { rock_steep += L[3]->v[i]; grass_steep += L[5]->v[i]; ++ns; }
+        else if (s < 0.3f) { rock_flat += L[3]->v[i]; grass_flat += L[5]->v[i]; ++nf; }
+      }
+    if (ns > 20 && nf > 20) {
+      CHECK(rock_steep / ns > rock_flat / nf, "bedrock prefers steep ground");
+      CHECK(grass_flat / nf >= grass_steep / ns, "grass prefers flat ground");
+    }
+    // snow lies only above the snowline
+    double snow_low = 0;
+    for (size_t i = 0; i < hn.v.size(); ++i)
+      if ((hn.v[i] - mn2) / (mx2 - mn2) < 0.6f) snow_low += L[0]->v[i];
+    CHECK(snow_low < 1e-6, "no snow below the snowline");
+    // the packed splat carries the same weights
+    gpx::Port *sp = el->port("splat A", gpx::PortDir::Out);
+    CHECK(sp && sp->tex && !sp->tex->empty(), "splat A produced");
+    if (sp && sp->tex && sp->tex->w == hn.w) {
+      float d = 0;
+      for (int y = 0; y < hn.h; ++y)
+        for (int x = 0; x < hn.w; ++x)
+          d = std::max(d, std::fabs(sp->tex->px(x, y)[0] - L[3]->at(x, y)));
+      CHECK(d < 1e-5f, "splat R is the bedrock mask");
+    }
+    // determinism: a second evaluation is bit-identical
+    std::vector<float> keep = L[2]->v, keep_out = out->v;
+    el->attrs.find("softness")->f = 0.081f;
+    el->attrs.find("softness")->f = 0.08f;
+    g.mark_dirty(el->id);
+    g.evaluate();
+    CHECK(out_of(el)->v == keep_out, "eroded terrain is deterministic");
+    CHECK(el->port("sediment", gpx::PortDir::Out)->hmap->v == keep,
+          "layer masks are deterministic");
+  }
+}
+
+static void test_material_stack() {
+  std::printf("material stack...\n");
+  gpx::Graph g;
+  g.resolution = 32;
+  gpx::Node *a = g.add_node("FlatColor");
+  a->attrs.find("r")->f = 1.f; a->attrs.find("g")->f = 0.f; a->attrs.find("b")->f = 0.f;
+  gpx::Node *b = g.add_node("FlatColor");
+  b->attrs.find("r")->f = 0.f; b->attrs.find("g")->f = 1.f; b->attrs.find("b")->f = 0.f;
+  gpx::Node *m = g.add_node("Constant");
+  m->attrs.find("value")->f = 0.25f;
+  gpx::Node *st = g.add_node("MaterialStack");
+  st->attrs.find("height_blend")->f = 0.f;
+  st->attrs.find("rough_1")->f = 0.2f;
+  st->attrs.find("rough_2")->f = 1.f;
+  g.add_link(a->id, "texture", st->id, "albedo 1");
+  g.add_link(b->id, "texture", st->id, "albedo 2");
+  g.add_link(m->id, "output", st->id, "mask 2");
+  CHECK(g.evaluate(), "stack evaluates");
+  const gpx::TextureRGBA *alb = st->port("albedo", gpx::PortDir::Out)->tex.get();
+  const gpx::TextureRGBA *rg = st->port("roughness", gpx::PortDir::Out)->tex.get();
+  CHECK(alb && !alb->empty() && rg && !rg->empty(), "albedo and roughness produced");
+  // layer 1 is the base (weight 1), layer 2 adds 0.25: red 0.8, green 0.2
+  const float *p = alb->px(5, 5);
+  CHECK(std::fabs(p[0] - 0.8f) < 1e-4f && std::fabs(p[1] - 0.2f) < 1e-4f,
+        "linear blend by mask weight");
+  CHECK(std::fabs(rg->px(5, 5)[0] - (0.2f * 0.8f + 1.f * 0.2f)) < 1e-4f,
+        "roughness blends with the same weights");
+  // height blend: green is the brighter texture (luminance .587 vs .299), so
+  // once its weight is close it takes the texel outright instead of mixing
+  st->attrs.find("height_blend")->f = 1.f;
+  st->attrs.find("blend_depth")->f = 0.05f;
+  m->attrs.find("value")->f = 0.9f;
+  g.mark_dirty(m->id);
+  g.mark_dirty(st->id);
+  g.evaluate();
+  p = st->port("albedo", gpx::PortDir::Out)->tex->px(5, 5);
+  CHECK(p[1] > p[0], "with height blending the brighter layer takes the texel");
+  CHECK(p[1] > 0.95f, "and takes it almost entirely");
+}
+
 static void test_quilt() {
   std::printf("quilting...\n");
   gpx::Graph g;
@@ -4079,6 +4205,8 @@ int main() {
   test_universal_blend();
   test_animation_hooks();
   test_buffer_budget();
+  test_erosion_layers();
+  test_material_stack();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;

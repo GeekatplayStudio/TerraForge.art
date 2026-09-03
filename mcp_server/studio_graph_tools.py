@@ -27,8 +27,11 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
     "studio_add_node": {
         "description": "Add a node. `type` is a registry name (Noise, "
                        "Hydraulic, FieldNoise, TerrainOutput...). Optional x/y "
-                       "position and an `attrs` object of parameter values.",
-        "params": {"type": "str", "x": "float", "y": "float", "attrs": "obj"},
+                       "position and an `attrs` object of parameter values. "
+                       "`alias` names the node for later calls: every op that "
+                       "takes `node`/`from`/`to` accepts the alias.",
+        "params": {"type": "str", "x": "float", "y": "float", "attrs": "obj",
+                   "alias": "str"},
     },
     "studio_delete_node": {
         "description": "Delete a node and every link touching it. `node` is an "
@@ -193,6 +196,13 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "batch). Field: path.",
         "params": {"path": "str"},
     },
+    "studio_assign_material": {
+        "description": "Bind a MaterialOutput node to a scene object (the "
+                       "terrain when object is omitted); node '' unbinds. "
+                       "Closes the ErosionLayers -> MaterialStack -> "
+                       "MaterialOutput pipeline.",
+        "params": {"node": "str", "object": "str"},
+    },
     "studio_add_light": {
         "description": "Add a point light. Fields: name, position ([x,y,z]), "
                        "color ([r,g,b]), intensity, reach. set_light edits "
@@ -235,6 +245,7 @@ _SIMPLE = {
     "studio_open_project": "open_project",
     "studio_set_camera_key": "set_camera_key",
     "studio_run_macro": "run_macro",
+    "studio_assign_material": "assign_material",
     "studio_add_light": "add_light",
     "studio_add_primitive": "add_primitive",
 }

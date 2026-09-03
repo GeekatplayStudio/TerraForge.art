@@ -14,10 +14,12 @@
 // whole action document, so a script's changes revert as one edit.
 #include "app.hpp"
 #include "scene.hpp"
+#include "render_settings.hpp"
 #include "gpx/metanode.hpp"
 #include "gpx/node_graph.hpp"
 #include <json.hpp>
 #include <filesystem>
+#include <map>
 #include <string>
 
 using nlohmann::json;
@@ -30,12 +32,28 @@ namespace {
 // is how a person naturally refers to a graph they can see ("the Hydraulic"),
 // so both work; the type form takes the last match, which is the one furthest
 // down the chain and almost always the one meant.
+// Aliases: add_node may carry "alias":"rock", and every later op can say
+// "node":"rock". A macro that creates six FlatColors could not otherwise
+// tell them apart, since the type form always resolves to the last one.
+// Aliases outlive the document on purpose — an MCP session adds a node in
+// one call and wires it in the next — and a stale alias simply fails to
+// resolve once its node is gone.
+std::map<std::string, uint64_t> &aliases() {
+  static std::map<std::string, uint64_t> m;
+  return m;
+}
+
 gpx::Node *find_node(App &a, const json &j, const char *key) {
   if (!j.contains(key)) return nullptr;
   const json &v = j[key];
   if (v.is_number()) return a.graph.find_node(v.get<uint64_t>());
   if (!v.is_string()) return nullptr;
   const std::string s = v.get<std::string>();
+  {
+    auto it = aliases().find(s);
+    if (it != aliases().end())
+      if (gpx::Node *n = a.graph.find_node(it->second)) return n;
+  }
   // a numeric string is still an id
   try {
     size_t used = 0;
@@ -141,6 +159,8 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     if (act.contains("attrs") && act["attrs"].is_object())
       for (auto &[key, val] : act["attrs"].items())
         if (gpx::Attribute *at = n->attrs.find(key)) set_attr_value(*at, val);
+    if (act.contains("alias") && act["alias"].is_string())
+      aliases()[act["alias"].get<std::string>()] = n->id;
     a.selected_node = n->id;
     a.graph_layout_serial++;
     a.request_eval();
@@ -443,6 +463,41 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
 
   if (op == "evaluate") {
     g.mark_all_dirty();
+    a.request_eval();
+    return 1;
+  }
+
+  if (op == "assign_material") {
+    // Bind a MaterialOutput to a scene object (the terrain unless named), the
+    // same thing the Materials panel's Assign button does. "node" 0 or ""
+    // unbinds. This is the last wire of the erosion → material pipeline:
+    // ErosionLayers → MaterialStack → MaterialOutput → the ground.
+    gpx::Node *m = find_node(a, act, "node");
+    bool unbind = act.contains("node") &&
+                  ((act["node"].is_number() && act["node"].get<uint64_t>() == 0) ||
+                   (act["node"].is_string() && act["node"].get<std::string>().empty()));
+    if (!m && !unbind) {
+      err = "assign_material: no such node";
+      return 0;
+    }
+    if (m && m->type != "MaterialOutput") {
+      err = "assign_material: '" + m->type + "' is not a MaterialOutput";
+      return 0;
+    }
+    std::string want = act.value("object", std::string());
+    int hits = 0;
+    for (SceneObject &o : scene().objects) {
+      if (want.empty() ? o.type != SceneObject::Terrain : o.name != want) continue;
+      o.material_node = m ? m->id : 0;
+      ++hits;
+    }
+    if (!hits) {
+      err = "assign_material: no object named '" + want + "'";
+      return 0;
+    }
+    // assigning a material means wanting to see it: the viewport's
+    // "textured" switch is what shows an albedo on the ground at all
+    if (m) render_settings().use_albedo = true;
     a.request_eval();
     return 1;
   }
