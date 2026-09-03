@@ -86,7 +86,10 @@ void labeled_scalar(const char *label, const char *id, float *v, float mn,
 // or baked. The way to author a function is to author a function - so this
 // finds (or builds) the SurfaceDisplacement sink and shows it in the editor,
 // with a FieldNoise already wired into it to start from.
-void open_surface_graph(App &a) {
+// `assign` (may be null) receives the node's id, so the planet or surround
+// that asked owns that graph from now on; `create_new` forces a fresh one
+// even when the graph already has a SurfaceDisplacement.
+void open_surface_graph(App &a, unsigned long long *assign, bool create_new) {
   uint64_t focus = 0;
   {
     std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
@@ -95,8 +98,10 @@ void open_surface_graph(App &a) {
       return;
     }
     gpx::Node *sink = nullptr;
-    for (auto &n : a.graph.nodes)
-      if (n->type == "SurfaceDisplacement") sink = n.get();
+    if (assign && *assign) sink = a.graph.find_node(*assign);
+    if (!sink && !create_new)
+      for (auto &n : a.graph.nodes)
+        if (n->type == "SurfaceDisplacement") sink = n.get();
     if (!sink) {
       undo_push_locked(a, "Add surface displacement");
       float x = 0.f, y = 260.f;
@@ -109,8 +114,43 @@ void open_surface_graph(App &a) {
       a.status = "added a surface displacement graph";
     }
     focus = sink ? sink->id : 0;
+    if (assign && sink) *assign = sink->id;
   }
   if (focus) graph_focus_node(a, focus); // takes the lock itself
+}
+
+// The picker: which SurfaceDisplacement node shapes this surface. Listed by
+// id with what feeds them, so two graphs can be told apart.
+static void surface_graph_picker(App &a, unsigned long long *node) {
+  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::vector<std::pair<unsigned long long, std::string>> sinks;
+  if (lk.owns_lock())
+    for (auto &n : a.graph.nodes)
+      if (n->type == "SurfaceDisplacement") {
+        gpx::Node *src = a.graph.upstream_node(*n, "field");
+        sinks.push_back({n->id, "#" + std::to_string(n->id) + "  " +
+                                    (src ? src->type : std::string("(unwired)"))});
+      }
+  if (lk.owns_lock()) lk.unlock();
+  std::string label = "the graph's first";
+  for (auto &s : sinks)
+    if (s.first == *node) label = s.second;
+  if (*node && label == "the graph's first") label = "(missing) built-in layers";
+  ImGui::SetNextItemWidth(-1);
+  if (ImGui::BeginCombo("##surfgraph", label.c_str())) {
+    if (ImGui::Selectable("the graph's first SurfaceDisplacement", *node == 0))
+      *node = 0;
+    for (auto &s : sinks)
+      if (ImGui::Selectable(s.second.c_str(), s.first == *node)) *node = s.first;
+    ImGui::EndCombo();
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The SurfaceDisplacement node whose field graph\n"
+                      "displaces this surface - each world can have its own,\n"
+                      "as a Terragen planet has its own terrain network.");
+  if (ImGui::Button("Edit graph")) open_surface_graph(a, node, false);
+  ImGui::SameLine();
+  if (ImGui::Button("New graph for this world")) open_surface_graph(a, node, true);
 }
 
 // ------------------------------------------------------------- transform
@@ -349,7 +389,7 @@ void object_properties_ui(App &a) {
       drag_length("Radius", &P.radius, 1.f, 1.f, 1e9f);
       text_length("Circumference", P.radius * 6.2831853f *
                                        render_settings().terrain_size_m);
-      ImGui::DragFloat("Relief", &P.relief, 0.001f, 0.f, 0.15f, "%.3f");
+      ImGui::DragFloat("Relief", &P.relief, 0.001f, 0.f, 1.f, "%.3f");
       if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Maximum mountain height as a fraction of the\n"
                           "radius. Earth is about 0.0014; go higher for\n"
@@ -406,13 +446,11 @@ void object_properties_ui(App &a) {
         ImGui::SetTooltip("Layers stack: a broad ridged layer for the\n"
                           "continents, a finer one for the foothills, a\n"
                           "third at low coverage for dune fields.");
-      if (ImGui::Button("Shape with a node graph", ImVec2(-1, 0)))
-        open_surface_graph(a);
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("For a shape no stack of layers can make. The field\n"
-                          "graph is transpiled to GPU code and evaluated on\n"
-                          "the sphere itself, so it holds up all the way down\n"
+      ImGui::SeparatorText("Surface graph");
+      ImGui::TextDisabled("A field graph, transpiled to GPU code and evaluated\n"
+                          "on the sphere itself - it holds up all the way down\n"
                           "to a walk on the surface.");
+      surface_graph_picker(a, &P.surface_node);
       ImGui::TextDisabled("Surface colour is the rock and water above; the\n"
                           "snow line and sea level decide where each shows.");
       ImGui::TextDisabled("It is all generated on the GPU from these numbers\n"
@@ -427,6 +465,29 @@ void object_properties_ui(App &a) {
                               ? "Shapes the surface of %s."
                               : "Extends the home terrain to the horizon.%s",
                           on_planet ? sc.objects[o.parent].name.c_str() : "");
+      if (!on_planet) {
+        // The home planet: the sphere the terrain tile lies on. Its radius
+        // is a real length from one metre up; small enough and the tile
+        // wraps the whole globe, so this is also how a globe is made from
+        // a heightmap.
+        RenderSettings &rs = render_settings();
+        ImGui::SeparatorText("Home planet");
+        bool flat = rs.planet_radius <= 0.f;
+        if (studio::Checkbox("Flat world", &flat))
+          rs.planet_radius = flat ? 0.f : 1275.f;
+        if (!flat) {
+          drag_length("Radius", &rs.planet_radius, 1.f, 1.f, 1e9f);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Earth is about 6 371 km. Below the tile's own\n"
+                              "circumference the tile wraps the globe\n"
+                              "completely - a 1 m planet from the heightmap.");
+          float circ_m = rs.planet_radius * 6.2831853f * rs.terrain_size_m;
+          text_length("Circumference", circ_m);
+          if (rs.planet_radius * 6.2831853f < 1.f)
+            ImGui::TextDisabled("The tile wraps the whole planet; the\n"
+                                "surround below is not drawn.");
+        }
+      }
       ImGui::SeparatorText("Relief");
       int type = L.type;
       if (ImGui::Combo("Style", &type,
@@ -446,16 +507,20 @@ void object_properties_ui(App &a) {
                           "1 covers everything; lower values confine it to\n"
                           "procedurally chosen regions (continents, ranges).");
       ImGui::DragFloat("Region size", &L.mask_scale, 0.05f, 0.2f, 12.f, "%.2f");
-      ImGui::SeparatorText("Node graph");
-      if (ImGui::Button("Shape with a node graph", ImVec2(-1, 0)))
-        open_surface_graph(a);
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("These layers are parameters, and there are shapes\n"
+      ImGui::SeparatorText("Surface graph");
+      ImGui::TextDisabled("These layers are parameters, and there are shapes\n"
                           "no parameter can make. A field graph can: it is\n"
-                          "transpiled to GPU code and added to every surface\n"
-                          "here and on every planet, at every scale.");
-      ImGui::TextDisabled("One SurfaceDisplacement graph shapes every\n"
-                          "procedural surface in the scene.");
+                          "transpiled to GPU code and evaluated on the\n"
+                          "surface at every scale.");
+      if (on_planet) {
+        // the graph belongs to the planet the layer shapes
+        surface_graph_picker(a, &sc.objects[o.parent].planet.surface_node);
+      } else {
+        // the home planet's surround: named on its first root layer
+        std::vector<int> roots = scene_surface_layers(-1);
+        int owner = roots.empty() ? sc.selected : roots[0];
+        surface_graph_picker(a, &sc.objects[owner].surf.surface_node);
+      }
       if (!on_planet) {
         ImGui::SeparatorText("Ground plane");
         ImGui::SliderFloat("Height scale", &o.surf.height_scale, 0.f, 3.f);

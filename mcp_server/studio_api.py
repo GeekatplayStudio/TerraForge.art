@@ -307,7 +307,7 @@ MCP_TOOLS = {
                        "rock_high, water_color, atmo_color.",
         "params": {"name": "str", "radius": "float", "relief": "float",
                    "seed": "int", "position": "[x,y,z]", "sea_level": "float",
-                   "snow_line": "float", "atmosphere": "float"},
+                   "snow_line": "float", "surface_node": "str", "atmosphere": "float"},
     },
     "studio_set_planet": {
         "description": "Modify an existing planet by name (same fields as "

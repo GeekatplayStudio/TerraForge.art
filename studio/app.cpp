@@ -290,11 +290,8 @@ void run_main() {
           }
         };
 
-        auto compile_sink = [&](const char *type, const char *port,
-                                const char *fn) -> std::string {
-          gpx::Node *sink = nullptr;
-          for (auto &cand : a.graph.nodes)
-            if (cand->type == type && cand->enabled) sink = cand.get();
+        auto compile_node = [&](gpx::Node *sink, const char *type,
+                                const char *port, const char *fn) -> std::string {
           if (!sink || !sink->attrs.get_b("live", true) ||
               !sink->field_connected(port))
             return {};
@@ -331,6 +328,14 @@ void run_main() {
                 sink->attrs.get_f("strength", 0.05f);
           return prog.code;
         };
+        // the last enabled sink of a type is the one that counts
+        auto compile_sink = [&](const char *type, const char *port,
+                                const char *fn) -> std::string {
+          gpx::Node *sink = nullptr;
+          for (auto &cand : a.graph.nodes)
+            if (cand->type == type && cand->enabled) sink = cand.get();
+          return compile_node(sink, type, port, fn);
+        };
         renderer_set_field_program(
             compile_sink("TerrainDisplacement", "field", "gpx_terrain_field"),
             a.eval_serial);
@@ -342,14 +347,22 @@ void run_main() {
         // The same bridge, one domain out: this one shapes every surface that
         // has no heightmap to bake into - planets and the endless ground
         // plane. See engine/nodes/nodes_displace.cpp, SurfaceDisplacement.
+        // Every SurfaceDisplacement node is its own program: a planet names
+        // the one that shapes it, the way a Terragen planet owns its terrain
+        // network, and several worlds can each carry a different graph.
         {
-          std::string surf =
-              compile_sink("SurfaceDisplacement", "field", "gpx_surface_field");
-          float strength = 0.f;
-          for (auto &cand : a.graph.nodes)
-            if (cand->type == "SurfaceDisplacement" && cand->enabled)
-              strength = cand->attrs.get_f("strength", 1.f);
-          planet_set_field_program(surf, strength);
+          std::vector<unsigned long long> live;
+          for (auto &cand : a.graph.nodes) {
+            if (cand->type != "SurfaceDisplacement") continue;
+            live.push_back(cand->id);
+            std::string surf = cand->enabled
+                                   ? compile_node(cand.get(), "SurfaceDisplacement",
+                                                  "field", "gpx_surface_field")
+                                   : std::string();
+            planet_set_field_program(cand->id, surf,
+                                     cand->attrs.get_f("strength", 1.f));
+          }
+          planet_field_programs_keep(live);
         }
         for (auto &cand : a.graph.nodes)
           if (cand->type == "TerrainSurface" && cand->enabled)

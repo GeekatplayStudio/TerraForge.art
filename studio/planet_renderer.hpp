@@ -7,6 +7,7 @@
 // "ultra smart memory" design: distant worlds cost arithmetic, not RAM.
 #pragma once
 #include <string>
+#include <vector>
 
 namespace studio {
 
@@ -31,7 +32,13 @@ bool planet_renderer_init();
 // `strength` weights it against those layers. Both shaders are relinked on the
 // next frame that draws, and a program that fails to compile falls back to the
 // stub rather than leaving the sky empty.
-void planet_set_field_program(const std::string &glsl, float strength);
+// One program pair per SurfaceDisplacement node, keyed by its id: a planet
+// (PlanetData::surface_node) or the home surround names the graph that
+// shapes it. Call for every such node each time the graph changes, then
+// planet_field_programs_keep with the ids still alive.
+void planet_set_field_program(unsigned long long node, const std::string &glsl,
+                              float strength);
+void planet_field_programs_keep(const std::vector<unsigned long long> &live);
 // why the last relink failed, empty if it did not
 const std::string &planet_field_error();
 

@@ -172,7 +172,13 @@ void pass_terrain(const FrameCtx &F) {
     unii(PT, "u_has_rough", (has_rough_map && textured && heavy_maps) ? 1 : 0);
     unii(PT, "u_has_disp", (has_disp_map && RS.mat_displacement > 0) ? 1 : 0);
     uni1(PT, "u_disp_strength", RS.mat_displacement);
-    uni1(PT, "u_frac_amount", RS.fractal_detail);
+    // The micro-relief is a world-unit amount. On a small planet that would
+    // dwarf the globe (12x the radius on a 1 m world), so it is capped at a
+    // twentieth of the radius: a planet is rough, never spiky.
+    uni1(PT, "u_frac_amount",
+         RS.planet_radius > 0.f
+             ? std::min(RS.fractal_detail, RS.planet_radius * 0.05f)
+             : RS.fractal_detail);
     uni1(PT, "u_frac_scale", RS.fractal_scale);
     // zero when no graph is driving displacement, which also short-circuits
     // the stub call in both stages

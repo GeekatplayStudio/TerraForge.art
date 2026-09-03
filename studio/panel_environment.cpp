@@ -125,16 +125,29 @@ static void section_planet(RenderSettings &rs) {
                       "the surface stays fractal instead of turning into\n"
                       "flat grid cells.");
   ImGui::SliderFloat("Detail scale", &rs.fractal_scale, 8.f, 400.f, "%.0f");
-  ImGui::SliderFloat("Planet radius", &rs.planet_radius, 0.f, 4000.f, "%.0f",
-                     ImGuiSliderFlags_Logarithmic);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("0 = flat world. Larger values curve the ground away\n"
-                      "with distance, giving a planetary horizon. The terrain\n"
-                      "tile is 1 unit across, so at a 5 km tile 1275 is about\n"
-                      "Earth — which is where a new scene starts.");
-  if (rs.planet_radius > 0.f) {
-    float horizon = std::sqrt(2.f * rs.planet_radius * 0.02f);
-    ImGui::TextDisabled("horizon about %.1f tiles away at eye height", horizon);
+  // In metres, from one metre up: a small planet wraps the terrain tile
+  // round itself (equirectangular), a large one is the curved horizon.
+  {
+    bool flat = rs.planet_radius <= 0.f;
+    if (studio::Checkbox("Flat world (no planet)", &flat))
+      rs.planet_radius = flat ? 0.f : 1275.f;
+    if (!flat) {
+      float m = rs.planet_radius * rs.terrain_size_m;
+      if (ImGui::SliderFloat("Planet radius", &m, 1.f, 1e8f, "%.0f m",
+                             ImGuiSliderFlags_Logarithmic))
+        rs.planet_radius = std::max(m, 1.f) / rs.terrain_size_m;
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The sphere the terrain lies on. Earth is about\n"
+                          "6 371 000 m. Below the tile's own circumference\n"
+                          "the tile wraps the whole globe - a 1 m planet made\n"
+                          "from the heightmap.");
+      float circ = rs.planet_radius * 6.2831853f;
+      if (circ < 1.f)
+        ImGui::TextDisabled("the tile wraps the whole planet");
+      else
+        ImGui::TextDisabled("horizon about %.1f tiles away at eye height",
+                            std::sqrt(2.f * rs.planet_radius * 0.02f));
+    }
   }
 }
 

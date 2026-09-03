@@ -213,8 +213,16 @@ void main(){
   float h = mix(tile, proc, s);
   vec3 p = vec3(uv.x, h, uv.y);
   if (u_curve > 0.0){
-    vec2 fd = p.xz - u_cam.xz;
-    p.y -= dot(fd, fd) / (2.0 * u_curve);
+    // the same sphere the tile lies on (see gpx_sphere_place in the terrain
+    // shader): centre R below the tile's centre, arc length -> angle,
+    // clamped so nothing wraps past the far side of the globe
+    float k = min(1.0 / u_curve, 6.2831853);
+    float kl = min(1.0 / u_curve, 3.14159265);
+    vec2 a = vec2(clamp((uv.x - 0.5) * k, -3.14159265, 3.14159265),
+                  clamp((uv.y - 0.5) * kl, -1.5707963, 1.5707963));
+    float cl = cos(a.y);
+    vec3 d = vec3(sin(a.x) * cl, cos(a.x) * cl, sin(a.y));
+    p = vec3(0.5, -u_curve, 0.5) + d * (u_curve + h);
   }
   v_world = p; v_uv = uv; v_out = dout;
   gl_Position = u_mvp * vec4(p, 1.0);

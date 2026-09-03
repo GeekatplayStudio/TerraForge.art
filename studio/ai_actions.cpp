@@ -151,6 +151,31 @@ static int engine_index(const std::string &name) {
 }
 
 // ---------------------------------------------------------------- apply
+// "surface_node" on a planet: a node id, an alias/type name resolved like
+// every other node reference (the last SurfaceDisplacement wins), or 0 / ""
+// for "the graph's first one".
+static unsigned long long planet_surface_node_of(App &a, const json &v) {
+  if (v.is_number()) return v.get<unsigned long long>();
+  if (!v.is_string()) return 0;
+  std::string s = v.get<std::string>();
+  if (s.empty()) return 0;
+  unsigned long long last = 0;
+  for (auto &n : a.graph.nodes)
+    if (n->type == s || std::to_string(n->id) == s) last = n->id;
+  if (!last && s == "new") {
+    // a fresh graph for this planet, ready to edit
+    float x = 0.f, y = 260.f;
+    for (auto &n : a.graph.nodes) x = std::max(x, n->pos_x);
+    gpx::Node *src = a.graph.add_node("FieldNoise", x, y);
+    gpx::Node *sink = a.graph.add_node("SurfaceDisplacement", x + 260.f, y);
+    if (src && sink) a.graph.add_link(src->id, "out", sink->id, "field");
+    a.graph_layout_serial++;
+    a.request_eval();
+    last = sink ? sink->id : 0;
+  }
+  return last;
+}
+
 bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
   json j;
   try {
@@ -493,6 +518,8 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       read_vec3(act, "rock_low", P.rock_low);
       read_vec3(act, "rock_high", P.rock_high);
       read_vec3(act, "atmo_color", P.atmo_color);
+      if (act.contains("surface_node"))
+        P.surface_node = planet_surface_node_of(a, act["surface_node"]);
       sc.selected = idx;
       a.scene_selection_serial++;
       ++applied;
@@ -513,6 +540,8 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         read_vec3(act, "rock_low", P.rock_low);
         read_vec3(act, "rock_high", P.rock_high);
         read_vec3(act, "atmo_color", P.atmo_color);
+        if (act.contains("surface_node"))
+          P.surface_node = planet_surface_node_of(a, act["surface_node"]);
         ++applied;
         if (!want.empty()) break;
       }

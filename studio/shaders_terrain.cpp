@@ -17,13 +17,33 @@ uniform float u_hscale;
 uniform vec3 u_cam;
 uniform float u_frac_amount;   // fractal detail height, world units
 uniform float u_frac_scale;    // base frequency of the detail
-uniform float u_planet_radius; // 0 = flat, else curve the world down
+uniform float u_planet_radius; // 0 = flat, else the tile lies on a sphere
 uniform float u_field_strength; // graph-authored displacement, 0 = none
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
 out float v_detail;
+// The tile on a planet. The sphere's centre is R below the tile's centre;
+// a tile point at (s, t) from that centre travels s and t along the surface,
+// i.e. through angles s/R and t/R. When the tile is wider than the whole
+// circumference the angles are clamped so the tile wraps the globe exactly
+// once, equirectangular - which is how a 1 m planet is made from a 5 km
+// heightmap. For a large R this reduces to the familiar r^2/2R drop.
+vec2 gpx_sphere_angles(vec2 uv){
+  float k = min(1.0 / u_planet_radius, 6.2831853);
+  float kl = min(1.0 / u_planet_radius, 3.14159265);
+  return vec2((uv.x - 0.5) * k, (uv.y - 0.5) * kl);
+}
+vec3 gpx_sphere_dir(vec2 a){
+  float cl = cos(a.y);
+  return vec3(sin(a.x) * cl, cos(a.x) * cl, sin(a.y));
+}
+vec3 gpx_sphere_place(vec2 uv, float h){
+  if (u_planet_radius <= 0.0) return vec3(uv.x, h, uv.y);
+  vec3 c = vec3(0.5, -u_planet_radius, 0.5);
+  return c + gpx_sphere_dir(gpx_sphere_angles(uv)) * (u_planet_radius + h);
+}
 void terrain_place(vec2 uv){
   float h = texture(u_height, uv).r * u_hscale;
   if (u_has_disp == 1)
@@ -47,12 +67,8 @@ void terrain_place(vec2 uv){
       p.y += f * u_frac_amount;
     }
   }
-  // planetary curvature: the ground falls away with distance
-  if (u_planet_radius > 0.0){
-    vec2 flat_d = p.xz - u_cam.xz;
-    float r2 = dot(flat_d, flat_d);
-    p.y -= r2 / (2.0 * u_planet_radius);
-  }
+  // planetary curvature: the tile lies on the sphere
+  p = gpx_sphere_place(uv, p.y);
   v_uv = uv; v_world = p;
   gl_Position = u_mvp * vec4(p,1.0);
 }
@@ -118,12 +134,16 @@ bool patch_visible(vec2 c0, vec2 c2){
   vec2 mm = texture(u_patch_bounds, (c0 + c2) * 0.5).rg;
   float ylo = mm.x * u_hscale - u_cull_pad;
   float yhi = mm.y * u_hscale + u_cull_pad;
+  // a small planet wraps the tile round itself; no box bound holds there,
+  // so every patch is drawn (the tile is a globe a few pixels across anyway)
+  if (u_cull_radius > 0.0 && u_cull_radius < 4.0) return true;
   if (u_cull_radius > 0.0){
-    // the surface falls away as r^2/(2R): nearest point lowers the box top,
-    // furthest corner lowers its bottom
-    vec2 d_near = max(max(lo_uv - u_cull_cam.xz, vec2(0.0)),
-                      u_cull_cam.xz - hi_uv);
-    vec2 d_far = max(abs(lo_uv - u_cull_cam.xz), abs(hi_uv - u_cull_cam.xz));
+    // the surface falls away as r^2/(2R) from the tile's centre (the sphere
+    // sits under it): nearest point lowers the box top, furthest corner
+    // lowers its bottom
+    vec2 ctr = vec2(0.5);
+    vec2 d_near = max(max(lo_uv - ctr, vec2(0.0)), ctr - hi_uv);
+    vec2 d_far = max(abs(lo_uv - ctr), abs(hi_uv - ctr));
     yhi -= dot(d_near, d_near) / (2.0 * u_cull_radius);
     ylo -= dot(d_far, d_far) / (2.0 * u_cull_radius);
   }
@@ -260,6 +280,7 @@ uniform vec4 u_light_dir[8]; // spot axis xyz + cos(half cone); w<-1 = point
 // material
 uniform float u_roughness, u_metallic, u_specular, u_reflection;
 uniform float u_translucency, u_transparency, u_normal_strength;
+uniform float u_planet_radius; // the sphere the tile lies on, 0 = flat
 // fog
 uniform int u_fog_type;
 uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
@@ -413,6 +434,18 @@ vec3 apply_fog(vec3 col, vec3 world, vec3 cam, float dist){
 
 void main(){
   vec3 N = get_normal(v_uv);
+  // the normal was built in the flat tile's frame; on a planet that frame is
+  // rotated to the sphere's local east/up/north at this point
+  if (u_planet_radius > 0.0){
+    float k = min(1.0 / u_planet_radius, 6.2831853);
+    float kl = min(1.0 / u_planet_radius, 3.14159265);
+    vec2 a = vec2((v_uv.x - 0.5) * k, (v_uv.y - 0.5) * kl);
+    float cl = cos(a.y), sl = sin(a.y);
+    vec3 up = vec3(sin(a.x) * cl, cos(a.x) * cl, sl);
+    vec3 east = vec3(cos(a.x), -sin(a.x), 0.0);
+    vec3 north = normalize(cross(east, up));
+    N = normalize(east * N.x + up * N.y + north * N.z);
+  }
   if (u_has_normal == 1){
     vec3 nm = texture(u_normal_map, v_uv).xyz * 2.0 - 1.0;
     nm.xy *= u_normal_strength;

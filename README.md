@@ -166,6 +166,16 @@ generated from the registry itself.
   with a fresh seed every click.
 
 ### Planets and infinite terrains
+- **The home planet is a sphere:** the terrain tile lies on a planet whose
+  radius is a real length from 1 m up (Objects ▸ Planet surface, or the
+  Atmosphere tab). Large radii give the curved horizon; below the tile's own
+  circumference the tile wraps the whole globe, equirectangular — a 1 m
+  planet made from the heightmap, with the same nodes, materials and
+  erosion as any terrain.
+- **Every world its own graph:** each planet (and the home surround) names
+  the `SurfaceDisplacement` node whose field graph displaces it, as a
+  Terragen planet has its own terrain network. "New graph for this world" in
+  the planet's properties, or `"surface_node":"new"` in `add_planet`.
 - **Unlimited planets.** Each is a pure parameter block — radius, relief,
   seed, sea level, snow line, rock and water colors, atmosphere — generated
   on the GPU every frame. No textures, no meshes, no caches, so a hundred

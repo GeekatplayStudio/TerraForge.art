@@ -74,8 +74,14 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    "rock_low":[0.45,0.25,0.15],"rock_high":[0.6,0.4,0.3],
    "atmo_color":[0.9,0.6,0.4]}
    (planets are procedural and free: any number is fine. sea_level 0 = dry
-    world; the home terrain tile is at the origin, keep planets 8+ units away)
+    world; the home terrain tile is at the origin, keep planets 8+ units away.
+    "surface_node":"new" gives the planet its own SurfaceDisplacement field
+    graph to shape it, like a Terragen planet's terrain network; or name an
+    existing SurfaceDisplacement node / id)
 - {"op":"set_planet","name":"Mars", ...same fields...}
+- {"op":"set_viewport","planet_radius":1275}   (the HOME planet the terrain
+   tile lies on, in tile units: 1275 = Earth at a 5 km tile, 0.0002 = a 1 m
+   globe made from the heightmap, 0 = flat world)
 - {"op":"add_infinite_terrain","planet":"Mars","style":"mountains"|"hills"|"dunes",
    "scale":5,"amplitude":1.0,"coverage":0.5,"seed":7}
    (omit "planet" to extend the home ground plane to the horizon instead;

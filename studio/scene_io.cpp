@@ -250,6 +250,7 @@ json scene_to_json() {
           {"seed", P.seed},           {"sea_level", P.sea_level},
           {"snow_line", P.snow_line}, {"spin_deg", P.spin_deg},
           {"atmo_density", P.atmo_density},
+          {"surface_node", P.surface_node},
           {"rock_low", vec3_to_json(P.rock_low)},
           {"rock_high", vec3_to_json(P.rock_high)},
           {"water_color", vec3_to_json(P.water_color)},
@@ -263,6 +264,7 @@ json scene_to_json() {
           {"octaves", L.octaves},   {"coverage", L.coverage},
           {"mask_scale", L.mask_scale},
           {"height_scale", o.surf.height_scale},
+          {"surface_node", o.surf.surface_node},
       };
     }
     objs.push_back(std::move(jo));
@@ -378,6 +380,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       P.snow_line = jp.value("snow_line", P.snow_line);
       P.spin_deg = jp.value("spin_deg", P.spin_deg);
       P.atmo_density = jp.value("atmo_density", P.atmo_density);
+      P.surface_node = remap_id(jp.value("surface_node", 0ull), idmap);
       if (jp.contains("rock_low")) vec3_from_json(jp["rock_low"], P.rock_low);
       if (jp.contains("rock_high")) vec3_from_json(jp["rock_high"], P.rock_high);
       if (jp.contains("water_color"))
@@ -395,6 +398,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       L.coverage = js.value("coverage", L.coverage);
       L.mask_scale = js.value("mask_scale", L.mask_scale);
       o.surf.height_scale = js.value("height_scale", o.surf.height_scale);
+      o.surf.surface_node = remap_id(js.value("surface_node", 0ull), idmap);
     }
     sc.objects.push_back(std::move(o));
   }

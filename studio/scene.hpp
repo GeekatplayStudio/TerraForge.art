@@ -23,6 +23,11 @@ struct PlanetData {
   float atmo_color[3] = {0.45f, 0.62f, 0.90f};
   float atmo_density = 0.6f; // 0 = airless rim
   float spin_deg = 0.f;      // static rotation about Y, for variety
+  // The SurfaceDisplacement node whose field graph shapes this planet, the
+  // way a Terragen planet has its own terrain network. 0 = the first such
+  // node in the graph (what every planet used before this existed), so
+  // older scenes look the same.
+  unsigned long long surface_node = 0;
 };
 
 // One infinite procedural terrain layer. Parented to a Planet it shapes that
@@ -31,6 +36,9 @@ struct PlanetData {
 struct InfiniteSurfaceData {
   gpx::planet::Layer layer;   // seed, type, frequency, amplitude, coverage
   float height_scale = 1.f;   // extra multiplier for ground-plane layers
+  // root layers only: the SurfaceDisplacement node shaping the home
+  // planet's surround (0 = the first one in the graph)
+  unsigned long long surface_node = 0;
 };
 
 // per-camera offline render assignment

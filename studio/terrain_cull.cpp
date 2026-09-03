@@ -107,6 +107,9 @@ int patches_visible(const Frustum &f, const std::vector<float> &bounds,
                     int patches, float hscale, float pad, const float cam[3],
                     float planet_radius) {
   if (patches <= 0 || (int)bounds.size() < patches * patches * 2) return 0;
+  // a small planet wraps the tile round itself: no box bound holds, so the
+  // shader draws every patch and this reports the same
+  if (planet_radius > 0.f && planet_radius < 4.f) return patches * patches;
   int visible = 0;
   const float inv = 1.f / (float)patches;
   for (int py = 0; py < patches; ++py)
@@ -117,15 +120,18 @@ int patches_visible(const Frustum &f, const std::vector<float> &bounds,
       float ylo = bounds[i] * hscale - pad;
       float yhi = bounds[i + 1] * hscale + pad;
       if (planet_radius > 0.f) {
-        // The surface curves away: p.y -= |p.xz - cam.xz|^2 / (2R). Over the
-        // patch's footprint that term is smallest at the point nearest the
-        // camera and largest at the furthest corner, so the near distance
-        // lowers the top of the box and the far distance lowers the bottom.
-        float dx = std::max({x0 - cam[0], 0.f, cam[0] - x1});
-        float dz = std::max({z0 - cam[2], 0.f, cam[2] - z1});
+        // The surface curves away from the tile's centre (the sphere sits
+        // under it): p.y -= |p.xz - 0.5|^2 / (2R). Over the patch's footprint
+        // that term is smallest at the point nearest the centre and largest
+        // at the furthest corner, so the near distance lowers the top of the
+        // box and the far distance lowers the bottom.
+        (void)cam;
+        const float c = 0.5f;
+        float dx = std::max({x0 - c, 0.f, c - x1});
+        float dz = std::max({z0 - c, 0.f, c - z1});
         float near2 = dx * dx + dz * dz;
-        float fx = std::max(std::fabs(x0 - cam[0]), std::fabs(x1 - cam[0]));
-        float fz = std::max(std::fabs(z0 - cam[2]), std::fabs(z1 - cam[2]));
+        float fx = std::max(std::fabs(x0 - c), std::fabs(x1 - c));
+        float fz = std::max(std::fabs(z0 - c), std::fabs(z1 - c));
         float far2 = fx * fx + fz * fz;
         yhi -= near2 / (2.f * planet_radius);
         ylo -= far2 / (2.f * planet_radius);
