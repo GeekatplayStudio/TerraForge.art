@@ -57,6 +57,25 @@ void App::refresh_snapshot() {
       pv.is_points = p.type == gpx::DataType::Points;
       pv.field_type = (unsigned)p.field_type;
       pv.optional = p.optional;
+      if (p.dir == gpx::PortDir::Out && p.has_stat) {
+        char buf[48];
+        if (p.pts) std::snprintf(buf, sizeof buf, "%d pts", p.stat_count);
+        else if (p.tex) std::snprintf(buf, sizeof buf, "%dx%d", p.stat_count, p.stat_count);
+        else std::snprintf(buf, sizeof buf, "%.2f..%.2f", p.stat_min, p.stat_max);
+        pv.value = buf;
+      } else if (p.dir == gpx::PortDir::Out && p.type == gpx::DataType::Field &&
+                 p.field_eval) {
+        // a field's value at the tile's centre: exact for constants, a
+        // sample for everything else
+        gpx::FieldContext c = gpx::FieldContext::at(0.5f, 0.f, 0.5f);
+        gpx::FieldValue fv = p.field_eval(*n, c);
+        char buf[48];
+        if (fv.type == gpx::FieldType::Number)
+          std::snprintf(buf, sizeof buf, "%.3g", fv.number());
+        else
+          std::snprintf(buf, sizeof buf, "%.2f %.2f %.2f", fv.v[0], fv.v[1], fv.v[2]);
+        pv.value = buf;
+      }
       v.ports.push_back(std::move(pv));
       if (p.hmap) bytes += p.hmap->v.size() * sizeof(float);
       if (p.tex) bytes += p.tex->v.size() * sizeof(float);
@@ -145,7 +164,36 @@ void run_main() {
   a.eval.worker = std::thread(eval_worker, std::ref(a));
 
   bool first_frame = true;
+  double frame_t0 = glfwGetTime();
+  double last_activity = frame_t0;
   while (!glfwWindowShouldClose(a.window)) {
+    // Frame pacing. Vsync already caps at the display rate; below that the
+    // viewport rate preference decides, and when nothing at all is going on
+    // the loop sleeps to the idle rate, waking on the first event. That is
+    // what stops six views, a live preview and the node editor from holding
+    // the GPU at 100 % while the user is thinking.
+    {
+      const ImGuiIO &io = ImGui::GetIO();
+      double now = glfwGetTime();
+      bool active = a.eval.running.load() || a.eval.request.load() ||
+                    a.anim_playing || a.seq_active ||
+                    io.MouseDelta.x != 0.f || io.MouseDelta.y != 0.f ||
+                    io.MouseWheel != 0.f || ImGui::IsAnyMouseDown() ||
+                    ImGui::IsAnyItemActive() || io.InputQueueCharacters.Size > 0 ||
+                    a.request_camera_render >= 0 || a.eval_serial != a.uploaded_serial;
+      for (int k = (int)ImGuiKey_NamedKey_BEGIN; !active && k < (int)ImGuiKey_NamedKey_END; ++k)
+        if (ImGui::IsKeyDown((ImGuiKey)k)) active = true;
+      if (active) last_activity = now;
+      bool idle = now - last_activity > 0.4;
+      int fps = idle ? std::max(prefs().idle_fps, 1) : std::max(prefs().viewport_fps, 5);
+      double period = 1.0 / fps;
+      double remain = period - (now - frame_t0);
+      if (remain > 0.001) {
+        if (idle) glfwWaitEventsTimeout(remain); // any event wakes the loop
+        else std::this_thread::sleep_for(std::chrono::duration<double>(remain));
+      }
+      frame_t0 = glfwGetTime();
+    }
     glfwPollEvents();
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();

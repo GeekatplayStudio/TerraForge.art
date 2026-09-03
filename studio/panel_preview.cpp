@@ -8,6 +8,7 @@
 // progressive result in the same frame, at the camera's aspect ratio.
 #include "app.hpp"
 #include "panel_float.hpp"
+#include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "theme_colors.hpp"
@@ -76,13 +77,35 @@ void draw_panel_preview(App &a) {
                       "whatever camera is active for rendering.");
   ImGui::SameLine();
   ImGui::SetNextItemWidth(72);
-  ImGui::Combo("##pvq", &P.quality, "25%\0" "50%\0" "100%\0");
+  P.quality = prefs().preview_quality;
+  if (ImGui::Combo("##pvq", &P.quality, "25%\0" "50%\0" "100%\0")) {
+    prefs().preview_quality = P.quality;
+    prefs_save();
+  }
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Render scale of the live view: lower is faster.");
   ImGui::SameLine();
+  ImGui::SetNextItemWidth(78);
+  {
+    // how often the live picture is redrawn; a node edit or a camera move
+    // forces one at once regardless
+    const int RATES[6] = {1, 2, 5, 10, 20, 30};
+    int cur = 3;
+    for (int i = 0; i < 6; ++i)
+      if (RATES[i] == prefs().preview_fps) cur = i;
+    if (ImGui::Combo("##pvfps", &cur, "1 fps\0" "2 fps\0" "5 fps\0" "10 fps\0"
+                                      "20 fps\0" "30 fps\0")) {
+      prefs().preview_fps = RATES[cur];
+      prefs_save();
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Refresh rate of the live view. Changes to the graph\n"
+                        "or the camera redraw it immediately anyway.");
+  }
+  ImGui::SameLine();
   studio::Checkbox("live", &P.live);
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Redraw every frame, so a node edit shows here at once.");
+    ImGui::SetTooltip("Keep redrawing at the rate chosen; off, only Refresh.");
   if (!P.live) {
     ImGui::SameLine();
     if (ImGui::SmallButton("Refresh")) P.refresh = true;
@@ -157,7 +180,20 @@ void draw_panel_preview(App &a) {
   if (P.show_final && final_tex) {
     ImGui::Image((ImTextureID)(intptr_t)final_tex, ImVec2(w, h));
   } else {
-    if (P.live || P.refresh || !P.last_tex) {
+    // due: the rate says so, or something the picture depends on changed
+    static double last_draw = -1.0;
+    static uint64_t last_serial = 0;
+    static float last_eye[3] = {0, 0, 0};
+    float eye[3], tgt[3], fov;
+    renderer_get_camera(eye, tgt, &fov);
+    const double now = ImGui::GetTime();
+    bool changed = a.eval_serial != last_serial || eye[0] != last_eye[0] ||
+                   eye[1] != last_eye[1] || eye[2] != last_eye[2];
+    bool due = now - last_draw >= 1.0 / std::max(prefs().preview_fps, 1);
+    if ((P.live && (due || changed)) || P.refresh || !P.last_tex) {
+      last_draw = now;
+      last_serial = a.eval_serial;
+      for (int k = 0; k < 3; ++k) last_eye[k] = eye[k];
       P.refresh = false;
       const float q = P.quality == 0 ? 0.25f : P.quality == 1 ? 0.5f : 1.f;
       int pw = std::max(16, (int)(w * q)), ph = std::max(16, (int)(h * q));

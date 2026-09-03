@@ -25,6 +25,15 @@ struct Prefs {
   // Extra node editor windows, one domain each (0 terrain, 1 materials,
   // 2 atmosphere, 3 render, 4 all), so the layout comes back on launch.
   std::vector<int> editor_domains;
+  // Frame pacing. The viewports redraw every frame up to this rate; when
+  // nothing is happening (no input, no evaluation, no playback) the app
+  // idles at idle_fps so the GPU is free for the things that are.
+  int viewport_fps = 60;
+  int idle_fps = 15;
+  // The Preview panel's own rate and render scale (0 = 25 %, 1 = 50 %,
+  // 2 = 100 %): the live picture is the most expensive thing on screen.
+  int preview_fps = 10;
+  int preview_quality = 1;
 };
 
 Prefs &prefs();

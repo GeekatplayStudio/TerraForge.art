@@ -337,7 +337,7 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
           std::swap(fp, tp);
         }
         if (fp->dir != gpx::PortDir::Out || tp->dir != gpx::PortDir::In ||
-            fp->type != tp->type || fn == tn) {
+            !gpx::ports_compatible(fp->type, tp->type) || fn == tn) {
           ed::RejectNewItem(ImVec4(0.8f, 0.2f, 0.15f, 1.f), 2.f);
         } else if (ed::AcceptNewItem()) {
           undo_push_locked(a, "Connect nodes");

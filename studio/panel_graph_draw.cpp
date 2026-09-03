@@ -194,6 +194,22 @@ void draw_node(App &a, const App::NodeView &n) {
         pin_rect(dot);
         ed::EndPin();
         port_dot(dot, pc, true);
+        // what the connector carries, in the gap before the label when the
+        // card is wide enough; always in the tooltip
+        if (!p.value.empty() && collapse == 0) {
+          ImGui::PushFont(nullptr, ImGui::GetFontSize() * 0.8f);
+          float vw = ImGui::CalcTextSize(p.value.c_str()).x;
+          float x0 = head_pos.x + body_w - PAD_X - tw - 8.f - vw;
+          float x_min = head_pos.x + PAD_X + (in_n ? dot_col + in_label_w + 8.f : 0.f);
+          if (x0 > x_min)
+            dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
+                        ImVec2(x0, y + (ROW_H - ImGui::GetFontSize()) * 0.5f),
+                        theme::fade(theme::text_dim(), 0.9f), p.value.c_str());
+          ImGui::PopFont();
+          if (ImGui::IsMouseHoveringRect(ImVec2(dot.x - 9, dot.y - 9),
+                                         ImVec2(dot.x + 9, dot.y + 9)))
+            ImGui::SetTooltip("%s: %s", p.name.c_str(), p.value.c_str());
+        }
       }
     }
     // claim the block the rows occupy so the preview lands underneath

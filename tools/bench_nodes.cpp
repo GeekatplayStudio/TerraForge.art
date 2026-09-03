@@ -34,6 +34,8 @@ static const Entry ENTRIES[] = {
     {"WaveletNoise", 400},    {"DetailEqualizer", 250},
     {"LineNoise", 600},       {"HydraulicBlur", 150},
     {"FlowWarp", 400},        {"ErosionLayers", 8000},
+    {"NoiseFractal", 600},    {"TerrainFractal", 600},
+    {"TerrainFractal2", 1500}, {"RockyMountains", 1500},
 };
 
 int main(int argc, char **argv) {

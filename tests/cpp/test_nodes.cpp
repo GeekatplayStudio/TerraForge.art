@@ -654,7 +654,10 @@ static void test_port_catalog() {
           if (!port.empty()) {
             const gpx::Port *p = live->port(port, dir);
             CHECK(p != nullptr, "the chosen port exists in that direction");
-            if (p) CHECK(p->type == t, "the chosen port carries the right type");
+            // exact, or the raster cross-type a wire may take (a texture
+            // into a heightmap input reads as luminance, and back)
+            if (p) CHECK(gpx::ports_compatible(t, p->type),
+                         "the chosen port carries the right type");
           }
         } else {
           CHECK(port.empty(), "a type that is not offered yields no port");

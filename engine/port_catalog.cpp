@@ -61,16 +61,22 @@ bool node_offers(const std::string &node_type, DataType type,
   auto it = c.by_type.find(node_type);
   if (it == c.by_type.end()) return true; // unknown type: fail open
   for (const PortInfo &p : it->second)
-    if (p.dir == want_dir && p.type == type) return true;
+    if (p.dir == want_dir && ports_compatible(type, p.type)) return true;
   return false;
 }
 
 std::string select_port(const Node &live, DataType type, PortDir want_dir,
                         FieldType prefer_field) {
   const bool want_in = want_dir == PortDir::In;
-  std::string conventional, field_match, first;
+  std::string conventional, field_match, first, compatible;
   for (const Port &p : live.ports) {
-    if (p.dir != want_dir || p.type != type) continue;
+    if (p.dir != want_dir) continue;
+    if (p.type != type) {
+      // a heightmap may take a texture and vice versa: the fallback when
+      // nothing of the exact type is offered (ports_compatible)
+      if (compatible.empty() && ports_compatible(type, p.type)) compatible = p.name;
+      continue;
+    }
     if (first.empty()) first = p.name;
     const std::string n = lower(p.name);
     if (conventional.empty() &&
@@ -83,7 +89,8 @@ std::string select_port(const Node &live, DataType type, PortDir want_dir,
   }
   if (!conventional.empty()) return conventional;
   if (!field_match.empty()) return field_match;
-  return first;
+  if (!first.empty()) return first;
+  return compatible;
 }
 
 } // namespace gpx

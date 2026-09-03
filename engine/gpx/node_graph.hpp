@@ -29,6 +29,18 @@ class Node;
 // port for a value walks upstream through the links.
 using FieldEvalFn = std::function<FieldValue(const Node &, const FieldContext &)>;
 
+// A heightmap and a texture are both a picture of the tile in 0..1, so a
+// link may cross between them: a texture into a heightmap input reads as
+// its luminance, a heightmap into a texture input as a grey image. That is
+// what lets an image file drive TerrainOutput, or a fractal feed a material.
+inline bool ports_compatible(DataType from, DataType to) {
+  if (from == to) return true;
+  auto raster = [](DataType t) {
+    return t == DataType::Heightmap || t == DataType::Texture;
+  };
+  return raster(from) && raster(to);
+}
+
 struct Port {
   std::string name;
   PortDir dir = PortDir::In;
@@ -38,6 +50,15 @@ struct Port {
   std::shared_ptr<Heightmap> hmap;
   std::shared_ptr<TextureRGBA> tex;
   std::shared_ptr<PointCloud> pts;
+  // What the output last held, for the editor to show on the connector:
+  // a heightmap's range, a texture's size, a cloud's count. Filled by
+  // Graph::evaluate after the node computes; never by the node itself.
+  float stat_min = 0.f, stat_max = 0.f;
+  int stat_count = 0;
+  bool has_stat = false;
+  // an input holding a buffer converted from the other raster type (see
+  // Node::in_hmap); dropped before every compute so it never goes stale
+  bool converted = false;
   // field domain: what kind of value this port carries, and (on outputs) how
   // to produce it
   FieldType field_type = FieldType::Number;

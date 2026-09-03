@@ -150,7 +150,7 @@ bool Graph::add_link(uint64_t from_node, const std::string &from_port,
   Port *pa = a->port(from_port, PortDir::Out);
   Port *pb = b->port(to_port, PortDir::In);
   if (!pa || !pb) return false;
-  if (pa->type != pb->type) return false;
+  if (!ports_compatible(pa->type, pb->type)) return false;
   // one link per input: replace existing
   links.erase(std::remove_if(links.begin(), links.end(),
                              [&](const Link &l) {
@@ -356,11 +356,37 @@ bool Graph::evaluate() {
       if (on_progress) on_progress(idx, total, n->type);
       n->error.clear();
       auto t0 = std::chrono::steady_clock::now();
+      // inputs that hold a buffer converted from the other raster type are
+      // rebuilt from the live upstream every time
+      for (Port &p : n->ports)
+        if (p.dir == PortDir::In && p.converted) {
+          p.hmap.reset();
+          p.tex.reset();
+          p.converted = false;
+        }
       try {
         def->compute(*n);
         apply_universal_blend_post(*n);
       } catch (const std::exception &e) {
         n->error = e.what();
+      }
+      // what each output now holds, for the connector readouts
+      for (Port &p : n->ports) {
+        if (p.dir != PortDir::Out) continue;
+        p.has_stat = false;
+        if (p.hmap && !p.hmap->empty()) {
+          p.hmap->minmax(p.stat_min, p.stat_max);
+          p.stat_count = (int)p.hmap->w;
+          p.has_stat = true;
+        } else if (p.tex && !p.tex->empty()) {
+          p.stat_count = p.tex->w;
+          p.stat_min = 0.f;
+          p.stat_max = 1.f;
+          p.has_stat = true;
+        } else if (p.pts) {
+          p.stat_count = (int)p.pts->x.size();
+          p.has_stat = true;
+        }
       }
       n->last_compute_ms =
           std::chrono::duration<double, std::milli>(

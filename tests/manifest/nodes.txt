@@ -94,6 +94,7 @@ Median|Filter
 MetaNode|Group
 MixLayers|Operator
 Morphology|Filter
+NoiseFractal|Primitive
 Noise|Primitive
 NormalBlend|Material
 NormalMap|Texture
@@ -125,6 +126,7 @@ RenderQuality|Render
 Repeat|Logic
 Resample|Analysis
 Rivers|Erosion
+RockyMountains|Primitive
 Sample|Field Bridge
 ScatterPoints|Points
 SedimentDeposit|Erosion
@@ -157,6 +159,8 @@ Switch|Logic
 Terrace|Filter
 TerrainClip|Effect
 TerrainDisplacement|Export
+TerrainFractal2|Primitive
+TerrainFractal|Primitive
 TerrainMetrics|Analysis
 TerrainOutput|Export
 TerrainSculpt|Effect

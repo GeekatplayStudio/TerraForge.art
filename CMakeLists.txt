@@ -101,6 +101,8 @@ set(ENGINE_SOURCES
     engine/field_glsl_emitters.cpp
     engine/metanode.cpp
     engine/nodes/nodes_primitives.cpp
+    engine/nodes/nodes_fractals.cpp
+    engine/nodes/nodes_fractals2.cpp
     engine/nodes/nodes_filters.cpp
     engine/nodes/nodes_erosion.cpp
     engine/nodes/nodes_erosion_slope.cpp

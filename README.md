@@ -40,6 +40,33 @@ generated from the registry itself.
   smooth or constant), sampled before evaluation. *The timeline UI is not
   built yet.*
 
+### Vue-class fractals
+- **`NoiseFractal`** — the manual's Simple / Grainy / Variable-Roughness /
+  Fast Perlin fractals in one node, grouped as Vue groups them: base noise
+  (Perlin, value, cellular, cell edges, grainy; per-harmonic rotation; double
+  noise; filter steepness), scale (wavelength, X/Y stretch, stretch damping),
+  fractal (iterations, scale ratio, amplitude ratio, roughness, gain, nine
+  combination modes), variation (smooth level, influence, local influence,
+  grain variation), distortion (amount, scale, an optional distortion map),
+  filter (profile, terrace steps, creep-in, range) and output. Every fractal
+  has the second output Vue's have: **rough areas**, the local roughness,
+  with a reference feature size — to drive material distribution.
+- **`TerrainFractal`** adds the landscape type (plain, ridges, billows, ridge
+  mix, billow-ridge mix), blend, ridge smoothness and bump surge.
+- **`TerrainFractal2`** — rocks emerging from sedimentary soil: overall
+  aspect (turbulence and its damping, large-scale smoothness and contrast,
+  buoyancy), ground aspect (bump surge, rock abundance, soil thickness, rock
+  dispersion), relief-following strata (strength, spacing, offset).
+- **`RockyMountains`** — ridge networks added per iteration, as separate
+  mountains or basins between ridges; scale factor, flat level, ground level,
+  subdivision quality, per-iteration stretch, distortion, optional rocks
+  (correlation iteration, roughness, height) and the eroded variant.
+- **Images and fractals both drive the terrain:** a texture wired into any
+  heightmap input reads as its luminance (an image file straight into
+  `TerrainOutput`), and a heightmap into any texture input reads as a grey
+  image. Field-domain nodes show a preview in the graph, and output
+  connectors show what they carry (range, size, point count, a field's value).
+
 ### The studio
 - **Node cards:** rounded nodes with a category-coloured title bar,
   connectors on the left and right edges coloured by data type (the wires
@@ -53,6 +80,10 @@ generated from the registry itself.
 - **Windows that leave the window:** every panel has a corner button that
   floats it out of the main window — onto a second monitor when there is
   one — and docks it back.
+- **Frame pacing:** Edit ▸ Preferences sets the viewport rate, the idle rate
+  the whole application drops to when nothing is happening (it wakes on the
+  first input), and the Preview panel's own rate and render scale — so six
+  views and a live preview never hold the GPU while you think.
 - **Preview panel:** the chosen camera's view at the camera's aspect ratio,
   with its own sky/clouds/water/shadow switches and render scale, redrawn
   live as the graph changes even when the working viewports have all of

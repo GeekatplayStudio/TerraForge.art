@@ -47,6 +47,7 @@ struct App {
     bool is_points = false;  // the point-cloud domain
     unsigned field_type = 0; // gpx::FieldType, meaningful when is_field
     bool optional = false;
+    std::string value; // outputs: what the connector carries ("0.02..0.97")
   };
   struct NodeView {
     uint64_t id = 0;

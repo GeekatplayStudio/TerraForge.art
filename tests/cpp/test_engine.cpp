@@ -2984,6 +2984,103 @@ static void test_erosion_layers() {
   }
 }
 
+static void test_vue_fractals() {
+  std::printf("vue fractals...\n");
+  const char *types[4] = {"NoiseFractal", "TerrainFractal", "TerrainFractal2",
+                          "RockyMountains"};
+  for (const char *t : types) {
+    gpx::Graph g;
+    g.resolution = 96;
+    gpx::Node *n = g.add_node(t);
+    CHECK(n != nullptr, std::string(t) + " is registered");
+    if (!n) continue;
+    n->attrs.find("post_remap")->b = false;
+    CHECK(g.evaluate(), std::string(t) + " evaluates");
+    const gpx::Heightmap *out = out_of(n);
+    CHECK(out && finite_map(*out), std::string(t) + " output finite");
+    gpx::Port *rp = n->port("rough_areas", gpx::PortDir::Out);
+    if (!(rp && rp->hmap && finite_map(*rp->hmap))) {
+      std::printf("  %s: error='%s' rough=%s w=%d ports:", t, n->error.c_str(),
+                  rp ? (rp->hmap ? "map" : "null") : "no port",
+                  rp && rp->hmap ? rp->hmap->w : -1);
+      for (const gpx::Port &pp : n->ports)
+        std::printf(" %s(%s)", pp.name.c_str(), pp.dir == gpx::PortDir::In ? "in" : "out");
+      std::printf("  type=%s\n", n->type.c_str());
+      if (rp && rp->hmap) {
+        int nan = 0;
+        for (float v : rp->hmap->v) nan += !std::isfinite(v);
+        std::printf("  non-finite: %d of %zu\n", nan, rp->hmap->v.size());
+      }
+    }
+    CHECK(rp && rp->hmap && finite_map(*rp->hmap), std::string(t) + " rough areas");
+    if (!(rp && rp->hmap)) continue;
+    float mn, mx;
+    out->minmax(mn, mx);
+    CHECK(mx - mn > 0.05f, std::string(t) + " has relief");
+    float rmn, rmx;
+    rp->hmap->minmax(rmn, rmx);
+    CHECK(rmn >= 0.f && rmx <= 1.f && rmx > rmn, std::string(t) + " roughness in 0..1 and varies");
+    // the connector readout is filled by the graph after compute
+    gpx::Port *op = n->port("output", gpx::PortDir::Out);
+    CHECK(op && op->has_stat && op->stat_min == mn && op->stat_max == mx,
+          "output port carries its range");
+    // deterministic on re-evaluation
+    std::vector<float> keep = out->v;
+    g.mark_dirty(n->id);
+    g.evaluate();
+    CHECK(out_of(n)->v == keep, std::string(t) + " is deterministic");
+  }
+  // the combination modes and profiles all produce something finite & different
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *n = g.add_node("NoiseFractal");
+    n->attrs.find("post_remap")->b = false;
+    std::vector<float> prev;
+    int distinct = 0;
+    for (int mode = 0; mode < 9; ++mode) {
+      n->attrs.find("combine")->i = mode;
+      g.mark_dirty(n->id);
+      g.evaluate();
+      CHECK(finite_map(*out_of(n)), "combination mode finite");
+      if (out_of(n)->v != prev) ++distinct;
+      prev = out_of(n)->v;
+    }
+    CHECK(distinct >= 7, "combination modes differ from one another");
+    n->attrs.find("combine")->i = 0;
+    n->attrs.find("profile")->i = 1; // terraces
+    g.mark_dirty(n->id);
+    g.evaluate();
+    std::map<float, int> levels;
+    for (float v : out_of(n)->v) levels[std::round(v * 1000.f)]++;
+    CHECK(levels.size() < 64, "terrace profile quantises the altitudes");
+  }
+  // a texture into a heightmap input reads as its luminance
+  {
+    gpx::Graph g;
+    g.resolution = 32;
+    gpx::Node *c = g.add_node("FlatColor");
+    c->attrs.find("r")->f = 1.f; c->attrs.find("g")->f = 0.f; c->attrs.find("b")->f = 0.f;
+    gpx::Node *t = g.add_node("TerrainOutput");
+    CHECK(g.add_link(c->id, "texture", t->id, "heightmap"), "texture links into a heightmap input");
+    t->attrs.find("zero_edges")->f = 0.f;
+    g.evaluate();
+    // the input the node saw: the texture's luminance, built on the wire
+    const gpx::Heightmap *h = t->in_hmap("heightmap");
+    CHECK(h && h->w == 32 && std::fabs(h->at(16, 16) - 0.299f) < 1e-3f,
+          "the heightmap input is the texture's luminance");
+    CHECK(out_of(t, "heightmap") && finite_map(*out_of(t, "heightmap")),
+          "TerrainOutput accepted the image");
+    // and the other way: a heightmap into a texture input is a grey image
+    gpx::Node *nz = g.add_node("Noise");
+    gpx::Node *ca = g.add_node("ColorAdjust");
+    CHECK(g.add_link(nz->id, "output", ca->id, "texture"), "heightmap links into a texture input");
+    g.evaluate();
+    const gpx::TextureRGBA *tx = ca->in_tex("texture");
+    CHECK(tx && !tx->empty() && tx->px(5, 5)[0] == tx->px(5, 5)[1], "the texture input is a grey image");
+  }
+}
+
 static void test_material_stack() {
   std::printf("material stack...\n");
   gpx::Graph g;
@@ -4207,6 +4304,7 @@ int main() {
   test_buffer_budget();
   test_erosion_layers();
   test_material_stack();
+  test_vue_fractals();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;

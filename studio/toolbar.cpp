@@ -278,6 +278,21 @@ static void prefs_dialog() {
     }
     ImGui::SeparatorText("Performance");
     ImGui::SetNextItemWidth(220);
+    ImGui::SliderInt("Viewport rate", &p.viewport_fps, 10, 120, "%d fps");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Upper limit for redrawing the 3D views. Lower it to\n"
+                        "leave the GPU to the render preview and evaluation.");
+    ImGui::SetNextItemWidth(220);
+    ImGui::SliderInt("Idle rate", &p.idle_fps, 2, 60, "%d fps");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("When nothing is happening - no input, no evaluation,\n"
+                        "no playback - the whole application idles at this\n"
+                        "rate and wakes on the first input.");
+    ImGui::SetNextItemWidth(220);
+    ImGui::SliderInt("Preview panel rate", &p.preview_fps, 1, 60, "%d fps");
+    ImGui::SetNextItemWidth(220);
+    ImGui::Combo("Preview panel quality", &p.preview_quality, "25%\0" "50%\0" "100%\0");
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderInt("Preview res while dragging", &p.interactive_res, 64, 512);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Slider drags recompute at this low resolution for\n"

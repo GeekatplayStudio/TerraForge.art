@@ -30,6 +30,10 @@ void prefs_load() {
     p.editor_domains.clear();
     for (const auto &d : j.value("editor_domains", json::array()))
       if (d.is_number_integer()) p.editor_domains.push_back(d.get<int>());
+    p.viewport_fps = j.value("viewport_fps", p.viewport_fps);
+    p.idle_fps = j.value("idle_fps", p.idle_fps);
+    p.preview_fps = j.value("preview_fps", p.preview_fps);
+    p.preview_quality = j.value("preview_quality", p.preview_quality);
   } catch (...) {
   }
 }
@@ -46,6 +50,10 @@ void prefs_save() {
   j["view_count"] = p.view_count;
   j["graph_memory_mb"] = p.graph_memory_mb;
   j["editor_domains"] = p.editor_domains;
+  j["viewport_fps"] = p.viewport_fps;
+  j["idle_fps"] = p.idle_fps;
+  j["preview_fps"] = p.preview_fps;
+  j["preview_quality"] = p.preview_quality;
   std::ofstream f(PREFS_FILE);
   f << j.dump(2);
 }

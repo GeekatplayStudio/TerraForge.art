@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 177 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 181 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -25,7 +25,7 @@ Every node in Geekatplay TerraForge — 177 across 25 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
-| [Primitive](#primitive) | 17 |
+| [Primitive](#primitive) | 21 |
 | [Render](#render) | 2 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 8 |
@@ -2830,6 +2830,92 @@ Coherent noise: fBm, ridged, billow, swiss, value, cellular
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
+### NoiseFractal
+
+Vue-class fractal: base noise over harmonics with stretch, combination modes, variable roughness, distortion and a filter profile; second output is the local roughness
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| envelope | in (optional) | heightmap |
+| distortion map | in (optional) | heightmap |
+| output | out | heightmap |
+| rough_areas | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Base noise | choice: Perlin / Value / Cellular (F1) / Cell edges / Grainy | The pattern repeated at every harmonic. Grainy keeps detail at all frequencies (colour and bump work). |
+| With rotation | toggle, default on | Rotate the noise between harmonics, so the lattice's directions never line up. |
+| Double noise | toggle, default off | A second, offset noise multiplied in: richer variation, about twice the cost. |
+| Filter steepness | float, 0.2 to 4, default 1 | Contrast of the base noise itself. |
+| Seed | seed |  |
+| Wavelength | float, 0.005 to 4, default 0.25 | Size of the largest feature, as a fraction of the tile. |
+| Stretch X / Y | x/y pair |  |
+| Stretch damping | float, 0 to 1, default 0.5 | Less stretch on the finer harmonics, so the whole pattern does not read as smeared. |
+| Iterations | int, 1 to 16, default 8 |  |
+| Scale ratio | float, 0.1 to 0.9, default 0.5 | Wavelength ratio between iterations. 0.5 is classic; above favours the large forms, below the fine detail. |
+| Amplitude ratio | float, 0.05 to 0.95, default 0.5 | Amplitude ratio between iterations. |
+| Roughness | float, 0 to 2, default 1 | Scales the amplitude ratio: more roughness, more detail. |
+| Gain | float, 0.2 to 10, default 1 | Contrast of the result. |
+| Combination mode | choice: Add / Blend / Variable roughness / Variable roughness (abs) / Max / Max (abs) / Min / Min (abs) / Multiply | How the iterations are put together (manual p866-870). |
+| Smooth level | float, -1 to 1, default 0 | Altitude of least roughness; roughness grows with the distance from it (Variable Roughness Fractal). |
+| Influence | float, 0 to 1, default 0 | 0 behaves exactly like a simple fractal. |
+| Local influence | float, 0 to 1, default 0 | 0: keyed on the first iteration's altitude. 1: on the last iteration's, giving local patches of smoothness. |
+| Variation strength | float, 0 to 1, default 0 | Grainy fractal: how much the grain varies over the map. |
+| Variation roughness | float, 0.05 to 2, default 0.5 |  |
+| Smooth area altitude | float, -1 to 1, default 0 |  |
+| Distortion | float, 0 to 1, default 0 | Smears the pattern around, as if pushed by a random flow. |
+| Distortion scale | float, 0.1 to 8, default 1 |  |
+| Distortion map strength | float, 0 to 1, default 0 | The 'distortion map' input, when wired, warps the coordinates by this much. |
+| Filter | choice: None / Terraces / Soft clip / S-curve / Plateau / Valleys | A profile applied to the altitudes (Vue's filter curve). |
+| Terrace steps | float, 2 to 40, default 6 |  |
+| Creep-in | float, 0 to 1, default 0 | How much of the unfiltered signal is mixed back. |
+| Filter range | range | The part of the full range the filter acts on. |
+| Amplitude | float, 0 to 4, default 1 |  |
+| Offset | float, -1 to 1, default 0 |  |
+| Rough areas: ref. feature size | float, 0 to 1, default 0 | Harmonics finer than this (fraction of the tile) count as roughness. 0 counts them all. |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
+### RockyMountains
+
+Vue's Rocky Mountains fractal: irregular ridge networks added per iteration, as separate mountains or basins between ridges, stretched, with optional rocks and an eroded variant
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| envelope | in (optional) | heightmap |
+| output | out | heightmap |
+| rough_areas | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Wavelength | float, 0.01 to 4, default 0.35 |  |
+| Iterations | int, 1 to 16, default 8 |  |
+| Scale ratio | float, 0.1 to 0.9, default 0.5 |  |
+| Roughness | float, 0 to 2, default 1 |  |
+| Gain | float, 0.2 to 10, default 1 |  |
+| Distortion | float, 0 to 1, default 0 |  |
+| Separate mountains | toggle, default on | On: independent mountain blocks side by side. Off: basins separated by irregular ridges. |
+| Scale factor | float, 0.3 to 0.9, default 0.55 | How much smaller each new iteration's features are. |
+| Flat level (per iteration) | float, 0 to 1, default 0.3 | Balance of smooth areas against ridged ones per iteration. |
+| Ground level | float, -1 to 1, default 0 | Sinks the fractal into the ground. |
+| Subdivision quality | int, 0 to 2, default 1 | Higher hides the approximation's discontinuities, at a cost. |
+| Stretch factor | float, 0 to 1, default 0.5 | Each iteration is stretched along its own direction, the way real ridge networks run. |
+| Optional rocks | choice: None / Correlated / Everywhere |  |
+| Rock correlation | int, 0 to 8, default 2 | Rocks follow the ridges seen at this iteration. |
+| Rock roughness | float, 0 to 2, default 1 |  |
+| Rock height | float, 0 to 1, default 0.3 |  |
+| Eroded | toggle, default off | The Eroded Rocky Mountains variant: gullied flanks. |
+| Rough areas: ref. feature size | float, 0 to 1, default 0 |  |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
 ### Shape
 
 Geometric base shapes: slope, bump, crater, cone, ridge line
@@ -2873,6 +2959,96 @@ Terrain modeling: stamp a heightfield shape onto the terrain
 | Blend | choice: Add / Max (merge) / Min (carve) / Replace by mask |  |
 | Edge falloff | float, 0 to 0.5, default 0.15 |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### TerrainFractal
+
+Vue's Terrain Fractal: the fractal with a landscape type (plain, ridges, billows, mixes), ridge smoothness and bump surge; rough areas on the second output
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| envelope | in (optional) | heightmap |
+| distortion map | in (optional) | heightmap |
+| output | out | heightmap |
+| rough_areas | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Base noise | choice: Perlin / Value / Cellular (F1) / Cell edges / Grainy | The pattern repeated at every harmonic. Grainy keeps detail at all frequencies (colour and bump work). |
+| With rotation | toggle, default on | Rotate the noise between harmonics, so the lattice's directions never line up. |
+| Double noise | toggle, default off | A second, offset noise multiplied in: richer variation, about twice the cost. |
+| Filter steepness | float, 0.2 to 4, default 1 | Contrast of the base noise itself. |
+| Seed | seed |  |
+| Wavelength | float, 0.005 to 4, default 0.25 | Size of the largest feature, as a fraction of the tile. |
+| Stretch X / Y | x/y pair |  |
+| Stretch damping | float, 0 to 1, default 0.5 | Less stretch on the finer harmonics, so the whole pattern does not read as smeared. |
+| Iterations | int, 1 to 16, default 8 |  |
+| Scale ratio | float, 0.1 to 0.9, default 0.5 | Wavelength ratio between iterations. 0.5 is classic; above favours the large forms, below the fine detail. |
+| Amplitude ratio | float, 0.05 to 0.95, default 0.5 | Amplitude ratio between iterations. |
+| Roughness | float, 0 to 2, default 1 | Scales the amplitude ratio: more roughness, more detail. |
+| Gain | float, 0.2 to 10, default 1 | Contrast of the result. |
+| Combination mode | choice: Add / Blend / Variable roughness / Variable roughness (abs) / Max / Max (abs) / Min / Min (abs) / Multiply | How the iterations are put together (manual p866-870). |
+| Smooth level | float, -1 to 1, default 0 | Altitude of least roughness; roughness grows with the distance from it (Variable Roughness Fractal). |
+| Influence | float, 0 to 1, default 0 | 0 behaves exactly like a simple fractal. |
+| Local influence | float, 0 to 1, default 0 | 0: keyed on the first iteration's altitude. 1: on the last iteration's, giving local patches of smoothness. |
+| Variation strength | float, 0 to 1, default 0 | Grainy fractal: how much the grain varies over the map. |
+| Variation roughness | float, 0.05 to 2, default 0.5 |  |
+| Smooth area altitude | float, -1 to 1, default 0 |  |
+| Noise / landscape type | choice: Plain noise / Ridges / Billows / Ridge mix / Billow-ridge mix |  |
+| Blend | float, 0 to 1, default 0.5 | Mixed types only: weight of the second shape. |
+| Ridge smoothness | float, 0 to 1, default 0.2 | Rounding of the ridges / billows; not for plain noise. |
+| Bump surge | float, -1 to 1, default 0 | Bumpy areas rise above (+) or sink below (-) the average. |
+| Distortion | float, 0 to 1, default 0 | Smears the pattern around, as if pushed by a random flow. |
+| Distortion scale | float, 0.1 to 8, default 1 |  |
+| Distortion map strength | float, 0 to 1, default 0 | The 'distortion map' input, when wired, warps the coordinates by this much. |
+| Filter | choice: None / Terraces / Soft clip / S-curve / Plateau / Valleys | A profile applied to the altitudes (Vue's filter curve). |
+| Terrace steps | float, 2 to 40, default 6 |  |
+| Creep-in | float, 0 to 1, default 0 | How much of the unfiltered signal is mixed back. |
+| Filter range | range | The part of the full range the filter acts on. |
+| Amplitude | float, 0 to 4, default 1 |  |
+| Offset | float, -1 to 1, default 0 |  |
+| Rough areas: ref. feature size | float, 0 to 1, default 0 | Harmonics finer than this (fraction of the tile) count as roughness. 0 counts them all. |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
+### TerrainFractal2
+
+Vue's Terrain Fractal 2: rocks emerging from sedimentary soil, with regions of rock density, soil thickness, buoyancy and relief-following strata
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| envelope | in (optional) | heightmap |
+| output | out | heightmap |
+| rough_areas | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Wavelength | float, 0.01 to 4, default 0.35 |  |
+| Iterations | int, 1 to 16, default 8 |  |
+| Scale ratio | float, 0.1 to 0.9, default 0.5 |  |
+| Roughness | float, 0 to 2, default 1 |  |
+| Gain | float, 0.2 to 10, default 1 |  |
+| Distortion | float, 0 to 1, default 0 |  |
+| Turbulence | float, 0 to 1, default 0.3 | Overall distortion of the terrain by its first harmonics. |
+| Turbulence damping | float, 0 to 1, default 0.5 | How much the first octaves' turbulence carries into the finer ones. |
+| Large scale smoothness | float, 0 to 1, default 0.5 | Softness of the transition from low to high rock density regions. |
+| Large scale contrast | float, 0 to 3, default 1 | Range over which the rock population can vary. |
+| Buoyancy | float, -1 to 1, default 0.2 | +: low average altitude with rocks rising above it. -: features dig below a high average. 0: around zero. |
+| Bump surge | float, 0 to 2, default 0.5 | How much the rocks spring out of the ground. |
+| Rock abundance | float, 0 to 1, default 0.5 |  |
+| Soil thickness | float, 0 to 1, default 0.4 | Thin: more rocks show and smooth areas keep some roughness. Thick: rocks buried, smooth areas smooth. |
+| Rock dispersion | float, 0 to 1, default 0.3 | Scattered over the landscape rather than gathered. |
+| Processing strength | float, 0 to 1, default 0 |  |
+| Layer spacing | float, 0.01 to 0.5, default 0.08 |  |
+| Offset | float, -0.5 to 0.5, default 0 |  |
+| Remap to range | toggle, default on |  |
+| Output range | range |  |
+| Invert | toggle, default off |  |
+| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### WaveletNoise
 

@@ -105,14 +105,54 @@ const Heightmap *Node::in_hmap(const std::string &name) const {
   if (const Port *local = const_cast<Node *>(this)->port(name, PortDir::In))
     if (local->hmap) return local->hmap.get();
   const Port *up = graph ? graph->upstream(*this, name) : nullptr;
-  return up && up->hmap ? up->hmap.get() : nullptr;
+  if (!up) return nullptr;
+  if (up->hmap) return up->hmap.get();
+  // A texture wired into a heightmap input: its luminance is the height.
+  // Cached on the input port, rebuilt whenever the source differs.
+  if (up->type == DataType::Texture && up->tex && !up->tex->empty()) {
+    Port *local = const_cast<Node *>(this)->port(name, PortDir::In);
+    if (!local) return nullptr;
+    const TextureRGBA &t = *up->tex;
+    auto hm = std::make_shared<Heightmap>(t.w, t.h);
+    for (int y = 0; y < t.h; ++y)
+      for (int x = 0; x < t.w; ++x) {
+        const float *p = t.px(x, y);
+        hm->at(x, y) = p[0] * 0.299f + p[1] * 0.587f + p[2] * 0.114f;
+      }
+    local->hmap = hm; // the local value until the next compute
+    local->converted = true;
+    return local->hmap.get();
+  }
+  return nullptr;
 }
 
 const TextureRGBA *Node::in_tex(const std::string &name) const {
   if (const Port *local = const_cast<Node *>(this)->port(name, PortDir::In))
     if (local->tex) return local->tex.get();
   const Port *up = graph ? graph->upstream(*this, name) : nullptr;
-  return up && up->tex ? up->tex.get() : nullptr;
+  if (!up) return nullptr;
+  if (up->tex) return up->tex.get();
+  // a heightmap wired into a texture input: a grey image of it, 0..1
+  if (up->type == DataType::Heightmap && up->hmap && !up->hmap->empty()) {
+    Port *local = const_cast<Node *>(this)->port(name, PortDir::In);
+    if (!local) return nullptr;
+    const Heightmap &h = *up->hmap;
+    float mn, mx;
+    h.minmax(mn, mx);
+    float d = (mx - mn) > 1e-9f ? (mx - mn) : 1.f;
+    auto tx = std::make_shared<TextureRGBA>(h.w, h.h);
+    for (int y = 0; y < h.h; ++y)
+      for (int x = 0; x < h.w; ++x) {
+        float v = (h.at(x, y) - mn) / d;
+        float *p = tx->px(x, y);
+        p[0] = p[1] = p[2] = v;
+        p[3] = 1.f;
+      }
+    local->tex = tx;
+    local->converted = true;
+    return local->tex.get();
+  }
+  return nullptr;
 }
 
 const PointCloud *Node::in_points(const std::string &name) const {
