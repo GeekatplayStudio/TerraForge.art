@@ -8,10 +8,27 @@ simulated terrain, layered PBR materials, volumetric sky, water, and offline
 path-traced rendering — all in a single native C++ application with a
 real-time OpenGL viewport.
 
+![Erosion that decides what grows where](docs/images/erosion_materials.png)
+
+*One erosion node carved this — and handed the material layers back: bare
+rock on the steep faces, snow on the high gentle ground, soil below, sand in
+the basins, grass on the wet valley floors.*
+
 ---
 
 **[Node reference](docs/NODES.md)** — every node, port and parameter,
 generated from the registry itself.
+**[Developer guide](docs/DEVELOPER_GUIDE.md)** — goals, roadmap, architecture
+and how we work, for anyone who wants to join.
+**[Community posts](docs/COMMUNITY_POSTS.md)** — the project in three lengths.
+
+## Screenshots
+
+| | |
+| :--- | :--- |
+| ![Node cards](docs/images/node_cards.png) *Nodes as cards: typed connectors on the edges, wires coloured by data type, three detail levels.* | ![Several editors](docs/images/studio_editors.png) *A second node editor pinned to Materials, with its own parameters pane; every panel floats out to another monitor.* |
+| ![A 250 m planet](docs/images/planet_250m.png) *The terrain tile wrapped onto a 250 m planet — same nodes, same erosion.* | ![Per-planet surface graph](docs/images/planet_surface_graph.png) *A new planet shaped by its own surface graph, the home tile in front.* |
+| ![Terrain Fractal 2](docs/images/terrain_fractal2.png) *TerrainFractal2 driving the terrain; its grouped parameters; a field node with its preview.* | ![Preview panel](docs/images/preview_panel.png) *The Preview panel: the shot through the chosen camera with its own sky/cloud/water/shadow switches.* |
 
 ## Features
 
