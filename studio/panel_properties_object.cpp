@@ -161,6 +161,18 @@ static void surface_graph_picker(App &a, unsigned long long *node) {
 void transform_ui(App &a, SceneObject &o) {
   (void)a;
   const float hs = render_settings().height_scale;
+  // the lock, and then everything below reads but does not write
+  {
+    bool locked = o.locked;
+    if (studio::Checkbox("Locked", &locked)) o.locked = locked;
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("No gizmo, no dragging, and these fields are read-only\n"
+                        "until unlocked. Also in the Objects tree.");
+  }
+  ImGui::BeginDisabled(o.locked);
+  struct EndDisabledAtExit {
+    ~EndDisabledAtExit() { ImGui::EndDisabled(); }
+  } end_disabled_at_exit;
   if (prop_filter_match("Position")) {
     ImGui::SeparatorText("Position");
     drag_length("X", &o.pos[0]);

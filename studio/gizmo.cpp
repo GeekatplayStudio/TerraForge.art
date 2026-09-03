@@ -81,6 +81,7 @@ bool anchor_of(const SceneObject &o, float out[3]) {
   const RenderSettings &rs = render_settings();
   switch (o.type) {
     case SceneObject::Mesh:
+    case SceneObject::Light:
       out[0] = o.pos[0];
       out[1] = o.pos[1] * rs.height_scale;
       out[2] = o.pos[2];
@@ -120,6 +121,9 @@ int axis_mask(const SceneObject &o, GizmoMode m) {
   switch (o.type) {
     case SceneObject::Mesh:
       return m == GizmoMode::Scale ? 0xF : 0x7;
+    case SceneObject::Light:
+      // a point light moves; a spot also turns; neither scales
+      return m == GizmoMode::Move ? 0x7 : (m == GizmoMode::Rotate ? 0x3 : 0);
     case SceneObject::Planet:
       if (m == GizmoMode::Move) return 0x7;
       if (m == GizmoMode::Rotate) return 0x2; // spin about its own axis
@@ -146,6 +150,7 @@ void apply_move(SceneObject &o, const float d[3]) {
   RenderSettings &rs = render_settings();
   switch (o.type) {
     case SceneObject::Mesh:
+    case SceneObject::Light:
       o.pos[0] = g_drag.start_pos[0] + d[0];
       o.pos[1] = g_drag.start_pos[1] +
                  d[1] / std::max(rs.height_scale, 1e-5f);
@@ -198,6 +203,12 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
   SceneState &sc = scene();
   if (sc.selected < 0 || sc.selected >= (int)sc.objects.size()) return false;
   SceneObject &o = sc.objects[sc.selected];
+  // a locked object has no gizmo and cannot be dragged; a drag in flight
+  // when the lock lands ends right there
+  if (o.locked) {
+    g_drag.active = false;
+    return false;
+  }
   const float *mvp = renderer_last_mvp(slot);
   if (!mvp) return false;
   float anchor[3];
@@ -378,13 +389,21 @@ void gizmo_draw(App &a, int slot, const RenderSettings::ViewConfig &vc,
   if (!mvp) return;
   float anchor[3];
   if (!anchor_of(o, anchor)) return;
-  int mask = axis_mask(o, g_mode);
-  if (!mask) return;
   ImVec2 c;
   if (!project(mvp, anchor, origin, w, h, c)) return;
-
   ImDrawList *dl = ImGui::GetWindowDrawList();
   dl->PushClipRect(origin, ImVec2(origin.x + w, origin.y + h), true);
+  if (o.locked) {
+    // a small padlock where the gizmo would be: the object is selected, it
+    // just cannot be moved from here
+    icon_draw(dl, Icon::Lock, ImVec2(c.x, c.y - 14.f), 16.f,
+              IM_COL32(240, 238, 232, 200));
+    dl->AddCircleFilled(c, 3.f, IM_COL32(240, 238, 232, 200), 12);
+    dl->PopClipRect();
+    return;
+  }
+  int mask = axis_mask(o, g_mode);
+  if (!mask) { dl->PopClipRect(); return; }
 
   float px_per_unit[3] = {0, 0, 0};
   const float probe = 0.01f;

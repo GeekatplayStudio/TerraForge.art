@@ -69,6 +69,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    standing on the terrain; node "" or 0 unbinds)
 - {"op":"assign_material","node":"MaterialOutput","object":"Terrain"}
    (binds a MaterialOutput to an object; omit object for the terrain)
+- {"op":"set_locked","object":"Camera 1","locked":true}
+   (locks an object in place: no gizmo, no dragging; false frees it)
 - {"op":"add_planet","name":"Mars","radius":3.5,"relief":0.03,"seed":42,
    "position":[x,y,z],"sea_level":0,"snow_line":0.9,"atmosphere":0.3,
    "rock_low":[0.45,0.25,0.15],"rock_high":[0.6,0.4,0.3],

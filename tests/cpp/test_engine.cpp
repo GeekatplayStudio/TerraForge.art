@@ -156,6 +156,67 @@ static void test_erosion() {
     gpx::Port *fp = sp->port("flow_map");
     CHECK(fp && fp->hmap && finite_map(*fp->hmap), "flow map produced");
   }
+  // Every erosion node hands back masks of what it did: where material was
+  // taken (exposed), where it came to rest (deposited), and the signed change
+  // with mid-grey for untouched ground. Checked for range and for actually
+  // saying something different from one another.
+  struct MaskSpec { const char *node; const char *taken; const char *rested; };
+  const MaskSpec specs[] = {{"Hydraulic", "exposed_map", "deposition_map"},
+                            {"Thermal", "exposed_map", "talus_map"},
+                            {"StreamPower", "incision_map", "deposit_map"},
+                            {"Wind", "abrasion_map", "deposit_map"}};
+  for (const MaskSpec &s : specs) {
+    gpx::Graph g;
+    g.resolution = 96;
+    gpx::Node *noise = g.add_node("Noise");
+    gpx::Node *e = g.add_node(s.node);
+    if (gpx::Attribute *it = e->attrs.find("iterations")) it->i = 12;
+    if (gpx::Attribute *pt = e->attrs.find("particles")) pt->i = 20;
+    g.add_link(noise->id, "output", e->id, "input");
+    CHECK(g.evaluate(), std::string(s.node) + " evaluates with masks");
+    auto mask = [&](const char *port) -> const gpx::Heightmap * {
+      gpx::Port *p = e->port(port, gpx::PortDir::Out);
+      return p && p->hmap ? p->hmap.get() : nullptr;
+    };
+    const gpx::Heightmap *tk = mask(s.taken), *rs = mask(s.rested), *dl = mask("delta_map");
+    CHECK(tk && rs && dl, std::string(s.node) + " has taken/rested/delta masks");
+    if (!tk || !rs || !dl) continue;
+    float a0, a1, b0, b1, d0, d1;
+    tk->minmax(a0, a1); rs->minmax(b0, b1); dl->minmax(d0, d1);
+    CHECK(a0 >= 0.f && a1 <= 1.f && b0 >= 0.f && b1 <= 1.f, std::string(s.node) + " masks in 0..1");
+    CHECK(a1 > 0.f && b1 > 0.f, std::string(s.node) + " both masks light up somewhere");
+    CHECK(d0 >= 0.f && d1 <= 1.f && (d0 < 0.5f || d1 > 0.5f), std::string(s.node) + " delta is signed about mid-grey");
+    CHECK(tk->v != rs->v, std::string(s.node) + " taken and rested differ");
+  }
+  // the angle of repose in degrees: a steeper angle leaves more relief
+  {
+    gpx::Graph g;
+    g.resolution = 96;
+    gpx::Node *noise = g.add_node("Noise");
+    gpx::Node *t = g.add_node("Thermal");
+    t->attrs.find("iterations")->i = 40;
+    g.add_link(noise->id, "output", t->id, "input");
+    auto relief_at = [&](float deg) {
+      t->attrs.find("angle_deg")->f = deg;
+      g.mark_dirty(t->id);
+      g.evaluate();
+      float mn, mx;
+      out_of(t)->minmax(mn, mx);
+      // relief as the mean local slope, not the range: the range survives
+      // any talus but the slopes do not
+      double s = 0;
+      const gpx::Heightmap &h = *out_of(t);
+      for (int y = 1; y < h.h - 1; ++y)
+        for (int x = 1; x < h.w - 1; ++x) {
+          float dx, dy;
+          h.gradient_at(x, y, dx, dy);
+          s += std::sqrt(dx * dx + dy * dy);
+        }
+      return s;
+    };
+    double gentle = relief_at(10.f), steep = relief_at(60.f);
+    CHECK(gentle < steep, "a lower angle of repose flattens more");
+  }
 }
 
 static void test_masks_and_logic() {

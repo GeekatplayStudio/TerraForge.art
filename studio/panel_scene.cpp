@@ -339,6 +339,14 @@ void draw_panel_scene(App &a) {
     }
 
     ImGui::SameLine();
+    // the lock sits beside the eye: locked objects keep their place - no
+    // gizmo, no drag, transform fields read-only
+    ImGui::SetCursorPosX(eye_x - fs - 4.f);
+    if (row_icon("##lock", o.locked ? Icon::Lock : Icon::Unlock, o.locked,
+                 o.locked ? "Locked - click to allow moving"
+                          : "Unlocked - click to lock in place"))
+      o.locked = !o.locked;
+    ImGui::SameLine();
     ImGui::SetCursorPosX(eye_x);
     if (row_icon("##vis", o.visible ? Icon::Eye : Icon::EyeOff, o.visible,
                  o.visible ? "Visible - click to hide"

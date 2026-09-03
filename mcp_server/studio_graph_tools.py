@@ -196,6 +196,12 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "batch). Field: path.",
         "params": {"path": "str"},
     },
+    "studio_set_locked": {
+        "description": "Lock an object in place (no gizmo, no dragging, "
+                       "transform read-only) or free it. Fields: object "
+                       "(name; omitted = selected), locked (bool).",
+        "params": {"object": "str", "locked": "bool"},
+    },
     "studio_assign_material": {
         "description": "Bind a MaterialOutput node to a scene object (the "
                        "terrain when object is omitted); node '' unbinds. "
@@ -246,6 +252,7 @@ _SIMPLE = {
     "studio_set_camera_key": "set_camera_key",
     "studio_run_macro": "run_macro",
     "studio_assign_material": "assign_material",
+    "studio_set_locked": "set_locked",
     "studio_add_light": "add_light",
     "studio_add_primitive": "add_primitive",
 }

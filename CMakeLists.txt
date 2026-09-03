@@ -306,6 +306,11 @@ add_executable(node_bench tools/bench_nodes.cpp)
 target_link_libraries(node_bench PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# headless chain preview: evaluate "Type:k=v|Type:k=v" and write a hillshade
+add_executable(chain_preview tools/chain_preview.cpp)
+target_link_libraries(chain_preview PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 enable_testing()
 add_test(NAME PerfGuard COMMAND node_bench)
 add_test(NAME RegressionLock COMMAND regression_tests)

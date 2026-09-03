@@ -345,6 +345,12 @@ REGISTER_NODE(
       n.add_out("output");
       n.add_out("erosion_map");
       n.add_out("deposition_map");
+      // the research dossier's list for every erosion node: standing water
+      // (pipe model), the signed change, and where bedrock is exposed -
+      // erosion that outran deposition
+      n.add_out("water_map");
+      n.add_out("delta_map");
+      n.add_out("exposed_map");
       add_choice(n.attrs, "method", "Method",
                  {"Particle droplets", "Shallow water (pipe model)"}, 0);
       add_seed(n.attrs);
@@ -372,6 +378,7 @@ REGISTER_NODE(
       Heightmap &out = n.out_hmap("output");
       Heightmap &ero = n.out_hmap("erosion_map");
       Heightmap &dep = n.out_hmap("deposition_map");
+      Heightmap water; // standing water at the end (pipe model only)
       out = *in;
       float mn, mx;
       out.minmax(mn, mx);
@@ -399,12 +406,27 @@ REGISTER_NODE(
         p.erode_k = n.attrs.get_f("erode_k", 0.5f);
         p.deposit_k = n.attrs.get_f("deposit_k", 0.5f);
         p.evaporation = n.attrs.get_f("sw_evap", 0.015f) * 10.f;
-        erode_pipes(out, p, &ero, &dep);
+        erode_pipes(out, p, &ero, &dep, &water);
       }
       for (auto &v : out.v) v = mn + v * amp;
+      // exposed: net removal, before the side channels are normalised
+      Heightmap &exp = n.out_hmap("exposed_map");
+      for (size_t i = 0; i < exp.v.size(); ++i)
+        exp.v[i] = std::max(ero.v[i] - dep.v[i], 0.f);
+      exp.remap(0.f, 1.f);
       ero.remap(0.f, 1.f);
       dep.remap(0.f, 1.f);
+      Heightmap &wat = n.out_hmap("water_map");
+      wat = water.empty() ? Heightmap(out.w, out.h) : water;
+      wat.remap(0.f, 1.f);
       apply_mask_blend(n.in_hmap("mask"), *in, out);
+      Heightmap &dlt = n.out_hmap("delta_map");
+      float dm = 1e-9f;
+      for (size_t i = 0; i < out.v.size(); ++i) {
+        dlt.v[i] = out.v[i] - in->v[i];
+        dm = std::max(dm, std::fabs(dlt.v[i]));
+      }
+      for (float &v : dlt.v) v = 0.5f + 0.5f * v / dm;
     })
 
 } // namespace gpx

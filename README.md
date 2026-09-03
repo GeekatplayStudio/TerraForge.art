@@ -108,6 +108,11 @@ wanted his students to have.
 - **Windows that leave the window:** every panel has a corner button that
   floats it out of the main window — onto a second monitor when there is
   one — and docks it back.
+- **Gizmos on everything, with a lock:** meshes, lights, cameras, planets,
+  the water level and the sun all move (and turn, and scale where it makes
+  sense) with the viewport gizmo. The padlock beside each object in the
+  Objects tree locks it in place: no gizmo, no dragging, transform fields
+  read-only. `set_locked` does the same from the API.
 - **Frame pacing:** Edit ▸ Preferences sets the viewport rate, the idle rate
   the whole application drops to when nothing is happening (it wakes on the
   first input), and the Preview panel's own rate and render scale — so six
@@ -195,6 +200,16 @@ wanted his students to have.
   shallow-water pipe-model solver, explicit and implicit (Braun-Willett)
   stream-power fluvial incision with tectonic uplift and rock hardness,
   thermal talus weathering, aeolian dunes and sediment deposition.
+- **Every erosion node reports what it did, as masks:** `Hydraulic` gives
+  erosion, deposition, standing water, exposed bedrock and the signed change;
+  `Thermal` gives exposed faces, talus and the change (and takes an angle of
+  repose in degrees); `StreamPower` gives incision, deposit and the change;
+  `Wind` gives abrasion, deposit and the change; `SedimentDeposit` gives the
+  blanket and what it left exposed. Wire any of them into a material.
+- **Terrain ▸ Realistic mountain range:** the preset that reads as a real
+  range — eroded ridges, the shallow-water solver, stream power cutting the
+  drainage network, thermal talus and gullies, material masks on the end —
+  tuned headlessly with `tools/chain_preview` against a dozen alternatives.
 - **Erosion that decides what grows where:** `ErosionLayers` runs thermal +
   hydraulic erosion and turns the simulation's side channels (scour, silt,
   talus, drainage, standing water) into a stack of material masks — bedrock,

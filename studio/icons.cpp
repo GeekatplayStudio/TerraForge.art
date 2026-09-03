@@ -77,6 +77,20 @@ void paint(const Pen &k, Icon ic) {
       k.line(0.7f, -0.7f, 0.7f, -0.1f);
       k.line(0.7f, -0.7f, -0.05f, 0.05f);
       break;
+    case Icon::Lock: // a padlock, shackle closed
+      k.rect(-0.55f, -0.05f, 0.55f, 0.7f);
+      k.line(-0.35f, -0.05f, -0.35f, -0.4f);
+      k.line(0.35f, -0.05f, 0.35f, -0.4f);
+      k.line(-0.35f, -0.4f, 0.35f, -0.4f);
+      k.line(0.f, 0.2f, 0.f, 0.45f);
+      break;
+    case Icon::Unlock: // shackle swung open
+      k.rect(-0.55f, -0.05f, 0.55f, 0.7f);
+      k.line(0.35f, -0.05f, 0.35f, -0.4f);
+      k.line(0.35f, -0.4f, 0.85f, -0.4f);
+      k.line(0.85f, -0.4f, 0.85f, -0.15f);
+      k.line(0.f, 0.2f, 0.f, 0.45f);
+      break;
     case Icon::Dock: // a window settling into the frame
       k.rect(-0.7f, -0.7f, 0.7f, 0.7f);
       k.line(-0.7f, -0.3f, 0.7f, -0.3f);

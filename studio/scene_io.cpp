@@ -182,6 +182,7 @@ json scene_to_json() {
         {"kind", kind_name(o.type)},
         {"name", o.name},
         {"visible", o.visible},
+        {"locked", o.locked},
         {"builtin", o.builtin},
         {"layer", o.layer},
         {"parent", o.parent},
@@ -294,6 +295,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     if (!kind_from_name(jo.value("kind", std::string()), o.type)) continue;
     o.name = jo.value("name", std::string("object"));
     o.visible = jo.value("visible", true);
+    o.locked = jo.value("locked", false);
     o.builtin = jo.value("builtin", false);
     o.layer = jo.value("layer", 0);
     o.parent = jo.value("parent", -1);

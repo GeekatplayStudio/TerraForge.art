@@ -457,6 +457,9 @@ Hydraulic erosion: particle droplets or shallow-water pipe model
 | output | out | heightmap |
 | erosion_map | out | heightmap |
 | deposition_map | out | heightmap |
+| water_map | out | heightmap |
+| delta_map | out | heightmap |
+| exposed_map | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
@@ -527,6 +530,7 @@ Fill valleys with smooth sediment
 | mask | in (optional) | heightmap |
 | output | out | heightmap |
 | sediment_map | out | heightmap |
+| exposed_map | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
@@ -545,6 +549,9 @@ Fluvial erosion E=K·A^m·S^n — explicit incision or implicit solver with tect
 | mask | in (optional) | heightmap |
 | output | out | heightmap |
 | flow_map | out | heightmap |
+| incision_map | out | heightmap |
+| deposit_map | out | heightmap |
+| delta_map | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
@@ -566,10 +573,15 @@ Thermal weathering — talus slopes to angle of repose
 | input | in | heightmap |
 | mask | in (optional) | heightmap |
 | output | out | heightmap |
+| exposed_map | out | heightmap |
+| talus_map | out | heightmap |
+| delta_map | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Talus angle | float, 0.05 to 4, default 1.2 |  |
+| Talus angle (legacy) | float, 0.05 to 4, default 1.2 | Relief units per texel. Used only while the angle of repose below is 0. |
+| Angle of repose | float, 0 to 80, default 0 | In degrees on the real terrain: scree settles at about 35°, dry sand at 30-34°, wet soil steeper. 0 keeps the legacy talus value. |
+| Relief (height / width) | float, 0.02 to 1, default 0.2 | How tall the terrain is against the tile width; the angle above is measured against this. |
 | Iterations | int, 1 to 500, default 60 |  |
 | Transport rate | float, 0.05 to 1, default 0.5 |  |
 | Run to convergence | toggle, default off |  |
@@ -583,6 +595,9 @@ Aeolian erosion — windward abrasion, leeward deposition (dunes)
 | input | in | heightmap |
 | mask | in (optional) | heightmap |
 | output | out | heightmap |
+| abrasion_map | out | heightmap |
+| deposit_map | out | heightmap |
+| delta_map | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |

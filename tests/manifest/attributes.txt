@@ -878,9 +878,11 @@ TextureTransform.mirror|bool
 TextureTransform.offset|vec2
 TextureTransform.rotation|float
 TextureTransform.tiles|vec2
+Thermal.angle_deg|float
 Thermal.converge|bool
 Thermal.iterations|int
 Thermal.rate|float
+Thermal.relief|float
 Thermal.talus|float
 Threshold.invert|bool
 Threshold.level|float

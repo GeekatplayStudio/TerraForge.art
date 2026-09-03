@@ -31,7 +31,21 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("output");
-      add_float(n.attrs, "talus", "Talus angle", 1.2f, 0.05f, 4.f);
+      // the material masks: where rock was shed (exposed faces), where the
+      // scree came to rest, and the signed change (mid-grey = untouched)
+      n.add_out("exposed_map");
+      n.add_out("talus_map");
+      n.add_out("delta_map");
+      add_float(n.attrs, "talus", "Talus angle (legacy)", 1.2f, 0.05f, 4.f)
+          .tooltip = "Relief units per texel. Used only while the angle of\n"
+                     "repose below is 0.";
+      add_float(n.attrs, "angle_deg", "Angle of repose", 0.f, 0.f, 80.f)
+          .tooltip = "In degrees on the real terrain: scree settles at about\n"
+                     "35°, dry sand at 30-34°, wet soil steeper. 0 keeps the\n"
+                     "legacy talus value.";
+      add_float(n.attrs, "relief", "Relief (height / width)", 0.2f, 0.02f, 1.f)
+          .tooltip = "How tall the terrain is against the tile width; the\n"
+                     "angle above is measured against this.";
       add_int(n.attrs, "iterations", "Iterations", 60, 1, 500);
       add_float(n.attrs, "rate", "Transport rate", 0.5f, 0.05f, 1.f);
       add_bool(n.attrs, "converge", "Run to convergence", false);
@@ -44,10 +58,35 @@ REGISTER_NODE(
       float mn, mx;
       out.minmax(mn, mx);
       float amp = (mx - mn) > 1e-9f ? (mx - mn) : 1.f;
-      float talus = n.attrs.get_f("talus", 1.2f) * amp / out.w;
+      float talus;
+      const float ang = n.attrs.get_f("angle_deg", 0.f);
+      if (ang > 0.f) {
+        // angle of repose: a rise of tan(a) per unit run. One texel of run is
+        // 1/w of the tile; the map's amplitude is `relief` tile widths, so
+        // in map units the rise per texel is tan(a) / w / relief * amp.
+        const float relief = std::max(n.attrs.get_f("relief", 0.2f), 1e-3f);
+        talus = std::tan(ang * 0.017453293f) / (float)out.w / relief * amp;
+      } else {
+        talus = n.attrs.get_f("talus", 1.2f) * amp / out.w;
+      }
+      Heightmap talus_map, eroded_map;
       thermal_relax(out, talus, n.attrs.get_i("iterations", 60),
-                    n.attrs.get_f("rate", 0.5f), n.attrs.get_b("converge"));
+                    n.attrs.get_f("rate", 0.5f), n.attrs.get_b("converge"),
+                    &talus_map, &eroded_map);
       apply_mask_blend(n.in_hmap("mask"), *in, out);
+      Heightmap &exp = n.out_hmap("exposed_map");
+      Heightmap &tal = n.out_hmap("talus_map");
+      Heightmap &dlt = n.out_hmap("delta_map");
+      exp = eroded_map;
+      tal = talus_map;
+      exp.remap(0.f, 1.f);
+      tal.remap(0.f, 1.f);
+      float dm = 1e-9f;
+      for (size_t i = 0; i < out.v.size(); ++i) {
+        dlt.v[i] = out.v[i] - in->v[i];
+        dm = std::max(dm, std::fabs(dlt.v[i]));
+      }
+      for (float &v : dlt.v) v = 0.5f + 0.5f * v / dm;
     })
 
 // Deterministic two-pass talus transport: pass 1 computes each cell's
@@ -55,11 +94,12 @@ REGISTER_NODE(
 // neighbours. No cross-thread writes, so the result is reproducible.
 // Shared with ErosionLayers through gpx/erosion_kernels.hpp.
 void thermal_relax(Heightmap &out, float talus, int iters, float rate,
-                   bool converge, Heightmap *deposit_out) {
+                   bool converge, Heightmap *deposit_out, Heightmap *eroded_out) {
   if (converge) iters = 2000;
   Heightmap move_amt(out.w, out.h), move_total(out.w, out.h);
   Heightmap delta(out.w, out.h);
   if (deposit_out) *deposit_out = Heightmap(out.w, out.h);
+  if (eroded_out) *eroded_out = Heightmap(out.w, out.h);
   auto excess = [&](int x, int y, int k) {
     float dist = (DX8[k] && DY8[k]) ? 1.41421356f : 1.f;
     float d = (out.atc(x, y) - out.atc(x + DX8[k], y + DY8[k])) / dist - talus;
@@ -101,6 +141,7 @@ void thermal_relax(Heightmap &out, float talus, int iters, float rate,
           }
           delta.at(x, y) = in - move_amt.at(x, y);
           if (deposit_out) deposit_out->at(x, y) += in;
+          if (eroded_out) eroded_out->at(x, y) += move_amt.at(x, y);
         }
     });
     parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
@@ -120,6 +161,11 @@ REGISTER_NODE(
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("output");
       n.add_out("flow_map");
+      // the river's work as masks: where the channel cut down (exposed
+      // bedrock), where uplift and diffusion built up, and the signed change
+      n.add_out("incision_map");
+      n.add_out("deposit_map");
+      n.add_out("delta_map");
       add_choice(n.attrs, "method", "Method",
                  {"Explicit incision", "Implicit + uplift (Braun-Willett)"}, 1);
       add_int(n.attrs, "iterations", "Iterations", 40, 1, 400, "Simulation");
@@ -240,6 +286,20 @@ REGISTER_NODE(
       for (size_t i = 0; i < area.size(); ++i) flow.v[i] = std::log1p(area[i]);
       flow.remap(0.f, 1.f);
       apply_mask_blend(n.in_hmap("mask"), *in, out);
+      Heightmap &inc = n.out_hmap("incision_map");
+      Heightmap &dep = n.out_hmap("deposit_map");
+      Heightmap &dlt = n.out_hmap("delta_map");
+      float dm = 1e-9f;
+      for (size_t i = 0; i < out.v.size(); ++i) {
+        float d = out.v[i] - in->v[i];
+        inc.v[i] = std::max(-d, 0.f);
+        dep.v[i] = std::max(d, 0.f);
+        dlt.v[i] = d;
+        dm = std::max(dm, std::fabs(d));
+      }
+      inc.remap(0.f, 1.f);
+      dep.remap(0.f, 1.f);
+      for (float &v : dlt.v) v = 0.5f + 0.5f * v / dm;
     })
 
 } // namespace gpx

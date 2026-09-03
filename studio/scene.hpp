@@ -78,6 +78,10 @@ struct SceneObject {
   int parent = -1;       // index into objects, -1 = root
   bool expanded = true;  // groups: children shown in the Outliner
   bool visible = true;
+  // Locked: no gizmo, no drag, transform fields read-only. The small lock in
+  // the Objects tree, so a placed camera or a tuned light cannot be nudged
+  // by accident while working around it.
+  bool locked = false;
   bool builtin = false;
   CameraData cam;        // valid when type == Camera
   // valid when type == Light: a point light; color is the shared color[3],

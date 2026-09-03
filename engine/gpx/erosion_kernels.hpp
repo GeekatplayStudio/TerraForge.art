@@ -51,7 +51,8 @@ void erode_pipes(Heightmap &hmap, const PipeParams &pp, Heightmap *erosion_out,
 // per texel above which material moves. deposit_out accumulates material
 // that arrived at each cell — the scree apron below a cliff.
 void thermal_relax(Heightmap &out, float talus, int iterations, float rate,
-                   bool converge, Heightmap *deposit_out = nullptr);
+                   bool converge, Heightmap *deposit_out = nullptr,
+                   Heightmap *eroded_out = nullptr);
 
 // D8 upslope contributing area per cell, in cell counts; deterministic total
 // order. recv_out receives each cell's receiver index (-1 at outlets).

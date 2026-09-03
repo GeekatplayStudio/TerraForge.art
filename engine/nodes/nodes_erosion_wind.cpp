@@ -29,6 +29,12 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("output");
+      // where the wind took material from and where it dropped it - the
+      // masks for exposed rock on the windward faces and loose sand in the
+      // lee; delta is the signed change, mid-grey = untouched
+      n.add_out("abrasion_map");
+      n.add_out("deposit_map");
+      n.add_out("delta_map");
       add_float(n.attrs, "angle", "Wind direction °", 30.f, -180.f, 180.f);
       add_int(n.attrs, "iterations", "Iterations", 40, 1, 300);
       add_float(n.attrs, "strength", "Strength", 0.4f, 0.05f, 1.f);
@@ -68,6 +74,11 @@ REGISTER_NODE(
       auto delta = std::make_unique<std::atomic<int64_t>[]>(N);
       for (size_t i = 0; i < N; ++i)
         delta[i].store(0, std::memory_order_relaxed);
+      Heightmap &abr = n.out_hmap("abrasion_map");
+      Heightmap &dep = n.out_hmap("deposit_map");
+      Heightmap &dlt = n.out_hmap("delta_map");
+      std::fill(abr.v.begin(), abr.v.end(), 0.f);
+      std::fill(dep.v.begin(), dep.v.end(), 0.f);
       int band = (out.h + (int)T - 1) / (int)T;
       for (int it = 0; it < iters; ++it) {
         auto sweep = [&](unsigned tid) {
@@ -108,11 +119,21 @@ REGISTER_NODE(
         parallel_index(N, [&](size_t i0, size_t i1) {
           for (size_t i = i0; i < i1; ++i) {
             int64_t d = delta[i].exchange(0, std::memory_order_relaxed);
-            if (d) out.v[i] += (float)(d * FP_INV);
+            if (!d) continue;
+            float f = (float)(d * FP_INV);
+            out.v[i] += f;
+            if (f < 0.f) abr.v[i] -= f;
+            else dep.v[i] += f;
           }
         });
       }
       apply_mask_blend(n.in_hmap("mask"), *in, out);
+      abr.remap(0.f, 1.f);
+      dep.remap(0.f, 1.f);
+      for (size_t i = 0; i < N; ++i) dlt.v[i] = out.v[i] - in->v[i];
+      float dm = 1e-9f;
+      for (float v : dlt.v) dm = std::max(dm, std::fabs(v));
+      for (float &v : dlt.v) v = 0.5f + 0.5f * v / dm;
     })
 
 // ------------------------------------------------------ sediment blanket
@@ -123,6 +144,7 @@ REGISTER_NODE(
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("output");
       n.add_out("sediment_map");
+      n.add_out("exposed_map"); // what the blanket did not cover
       add_int(n.attrs, "iterations", "Iterations", 40, 1, 300);
       add_float(n.attrs, "amount", "Fill amount", 0.3f, 0.f, 1.f);
     },
@@ -154,6 +176,8 @@ REGISTER_NODE(
         }
       });
       sed.remap(0.f, 1.f);
+      Heightmap &exp = n.out_hmap("exposed_map");
+      for (size_t i = 0; i < exp.v.size(); ++i) exp.v[i] = 1.f - sed.v[i];
       apply_mask_blend(n.in_hmap("mask"), *in, out);
     })
 

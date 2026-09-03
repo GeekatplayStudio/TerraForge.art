@@ -446,6 +446,26 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  if (op == "set_locked") {
+    // Lock an object in place (no gizmo, no dragging, transform read-only)
+    // or free it. Object by name; omitted = the selected one.
+    std::string want = act.value("object", std::string());
+    bool locked = act.value("locked", true);
+    int hits = 0;
+    SceneState &sc = scene();
+    for (int i = 0; i < (int)sc.objects.size(); ++i) {
+      SceneObject &o = sc.objects[i];
+      if (want.empty() ? i != sc.selected : o.name != want) continue;
+      o.locked = locked;
+      ++hits;
+    }
+    if (!hits) {
+      err = "set_locked: no object named '" + want + "'";
+      return 0;
+    }
+    return 1;
+  }
+
   if (op == "open_node_editor") {
     // Another node editor window, pinned to a domain: terrain, materials,
     // atmosphere, render, or all. It opens as a tab beside the main graph;

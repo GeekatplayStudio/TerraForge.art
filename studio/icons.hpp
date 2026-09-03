@@ -22,6 +22,8 @@ enum class Icon {
   ViewPersp, ViewTop, ViewFront, ViewRight, Shaded, Textured, Outline,
   // windows: float out of the main window / dock back into it
   Detach, Dock,
+  // objects: locked against edits / free
+  Lock, Unlock,
   Count
 };
 
