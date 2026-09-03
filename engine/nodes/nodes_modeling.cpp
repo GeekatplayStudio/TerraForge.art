@@ -3,16 +3,135 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "stb_image.h" // impl in nodes_materials.cpp
+#include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
+#include <iterator>
 #include <vector>
 
 namespace gpx {
 
+// Minimal uncompressed GeoTIFF reader: single-band int16/uint16/float32 DEM
+// tiles, strip-organized, either endianness. Compressed TIFFs are refused
+// with a message that says so rather than half-read.
+static bool load_geotiff(const std::string &path, Heightmap &out,
+                         std::string &err) {
+  std::ifstream f(path, std::ios::binary);
+  if (!f) {
+    err = "cannot load: " + path;
+    return false;
+  }
+  std::vector<unsigned char> d((std::istreambuf_iterator<char>(f)),
+                               std::istreambuf_iterator<char>());
+  if (d.size() < 8) {
+    err = "not a TIFF: " + path;
+    return false;
+  }
+  bool le = d[0] == 'I';
+  auto u16 = [&](size_t o) -> uint32_t {
+    return le ? d[o] | (d[o + 1] << 8) : (d[o] << 8) | d[o + 1];
+  };
+  auto u32 = [&](size_t o) -> uint32_t {
+    return le ? d[o] | (d[o + 1] << 8) | (d[o + 2] << 16) | (d[o + 3] << 24)
+              : (d[o] << 24) | (d[o + 1] << 16) | (d[o + 2] << 8) | d[o + 3];
+  };
+  if (u16(2) != 42) {
+    err = "not a classic TIFF: " + path;
+    return false;
+  }
+  size_t ifd = u32(4);
+  if (ifd + 2 > d.size()) { err = "truncated TIFF"; return false; }
+  uint32_t n = u16(ifd);
+  uint32_t width = 0, height = 0, bits = 16, compression = 1, fmt = 1,
+           rows_per_strip = 0xffffffffu;
+  std::vector<uint32_t> strip_off, strip_cnt;
+  auto read_vals = [&](size_t entry, uint32_t count, uint32_t type,
+                       std::vector<uint32_t> &vals) {
+    uint32_t sz = type == 3 ? 2 : 4;
+    size_t src = count * sz <= 4 ? entry + 8 : u32(entry + 8);
+    for (uint32_t i = 0; i < count; ++i)
+      vals.push_back(type == 3 ? u16(src + i * 2) : u32(src + i * 4));
+  };
+  for (uint32_t i = 0; i < n; ++i) {
+    size_t e = ifd + 2 + (size_t)i * 12;
+    if (e + 12 > d.size()) break;
+    uint32_t tag = u16(e), type = u16(e + 2), count = u32(e + 4);
+    std::vector<uint32_t> vals;
+    switch (tag) {
+      case 256: read_vals(e, 1, type, vals); width = vals[0]; break;
+      case 257: read_vals(e, 1, type, vals); height = vals[0]; break;
+      case 258: read_vals(e, 1, type, vals); bits = vals[0]; break;
+      case 259: read_vals(e, 1, type, vals); compression = vals[0]; break;
+      case 273: read_vals(e, count, type, strip_off); break;
+      case 278: read_vals(e, 1, type, vals); rows_per_strip = vals[0]; break;
+      case 279: read_vals(e, count, type, strip_cnt); break;
+      case 339: read_vals(e, 1, type, vals); fmt = vals[0]; break;
+      default: break;
+    }
+  }
+  if (compression != 1) {
+    err = "compressed GeoTIFF (compression " + std::to_string(compression) +
+          ") - re-export uncompressed (gdal_translate -co COMPRESS=NONE)";
+    return false;
+  }
+  if (!width || !height || strip_off.empty()) {
+    err = "unsupported TIFF layout: " + path;
+    return false;
+  }
+  size_t bpp = bits / 8;
+  Heightmap src((int)width, (int)height);
+  size_t row = 0;
+  for (size_t s = 0; s < strip_off.size() && row < height; ++s) {
+    size_t off = strip_off[s];
+    size_t rows = std::min<size_t>(rows_per_strip, height - row);
+    for (size_t r = 0; r < rows; ++r, ++row) {
+      for (size_t x = 0; x < width; ++x) {
+        size_t o = off + (r * width + x) * bpp;
+        if (o + bpp > d.size()) { err = "truncated TIFF data"; return false; }
+        float v = 0;
+        if (bits == 32 && fmt == 3) {
+          uint32_t u = u32(o);
+          std::memcpy(&v, &u, 4);
+        } else if (bits == 16) {
+          uint32_t u = u16(o);
+          v = fmt == 2 ? (float)(int16_t)u : (float)u;
+        } else if (bits == 8) {
+          v = (float)d[o];
+        } else {
+          err = "unsupported TIFF sample: " + std::to_string(bits) + " bit";
+          return false;
+        }
+        src.v[row * width + x] = v;
+      }
+    }
+  }
+  float lo = 1e30f, hi = -1e30f;
+  for (float v : src.v) {
+    if (!std::isfinite(v) || v < -12000.f) continue; // nodata sentinels
+    lo = std::min(lo, v);
+    hi = std::max(hi, v);
+  }
+  float span = hi - lo > 1e-6f ? hi - lo : 1.f;
+  for (float &v : src.v)
+    v = (!std::isfinite(v) || v < -12000.f) ? 0.f : (v - lo) / span;
+  out = src.resampled(out.w, out.h);
+  return true;
+}
+
 static bool load_heightfield(const std::string &path, Heightmap &out,
                              std::string &err) {
   int iw, ih, comp;
+  auto ext_is = [&](const char *e) {
+    size_t n2 = std::strlen(e);
+    if (path.size() < n2) return false;
+    for (size_t i = 0; i < n2; ++i)
+      if (std::tolower((unsigned char)path[path.size() - n2 + i]) != e[i])
+        return false;
+    return true;
+  };
+  if (ext_is(".tif") || ext_is(".tiff")) return load_geotiff(path, out, err);
   // SRTM .hgt: raw big-endian int16, square (3601 or 1201 a side), metres
   // above sea level, -32768 = void. The filename is the format.
   if (path.size() > 4 &&

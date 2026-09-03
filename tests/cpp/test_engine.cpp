@@ -2959,6 +2959,54 @@ static void test_dla() {
         "the growth is bit-identical across computes");
 }
 
+static void test_geotiff_import() {
+  std::printf("GeoTIFF import...\n");
+  // a synthetic little-endian, uncompressed, int16, one-strip 16x16 TIFF
+  const char *file = "test_dem.tif";
+  {
+    std::ofstream f(file, std::ios::binary);
+    auto w16 = [&](uint16_t v) { f.write((char *)&v, 2); };
+    auto w32 = [&](uint32_t v) { f.write((char *)&v, 4); };
+    f.write("II", 2);
+    w16(42);
+    w32(8); // IFD at byte 8
+    // 8 entries
+    w16(8);
+    auto entry = [&](uint16_t tag, uint16_t type, uint32_t count,
+                     uint32_t val) {
+      w16(tag);
+      w16(type);
+      w32(count);
+      w32(val);
+    };
+    entry(256, 3, 1, 16);         // width
+    entry(257, 3, 1, 16);         // height
+    entry(258, 3, 1, 16);         // bits
+    entry(259, 3, 1, 1);          // no compression
+    entry(273, 4, 1, 8 + 2 + 8 * 12 + 4); // strip offset (right after IFD)
+    entry(278, 3, 1, 16);         // rows per strip
+    entry(279, 4, 1, 16 * 16 * 2);
+    entry(339, 3, 1, 2);          // signed int
+    w32(0); // next IFD
+    for (int y = 0; y < 16; ++y)
+      for (int x = 0; x < 16; ++x) {
+        int16_t v = (int16_t)((x + y) * 50 - 200); // includes negatives
+        f.write((char *)&v, 2);
+      }
+  }
+  gpx::Graph g;
+  g.resolution = 16;
+  gpx::Node *n = g.add_node("HeightmapFile", 0, 0);
+  n->attrs.find("path")->s = file;
+  n->attrs.find("post_remap")->b = false;
+  gpx::NodeRegistry::instance().find("HeightmapFile")->compute(*n);
+  CHECK(n->error.empty(), "the GeoTIFF loads");
+  const gpx::Heightmap &out = *n->port("output", gpx::PortDir::Out)->hmap;
+  CHECK(out.at(0, 0) < 0.02f && out.at(15, 15) > 0.98f,
+        "the diagonal ramp survives, negatives normalized in");
+  std::remove(file);
+}
+
 static void test_hgt_import() {
   std::printf("SRTM .hgt import...\n");
   // a synthetic 33x33 big-endian tile: a diagonal ramp with one void cell
@@ -3994,6 +4042,7 @@ int main() {
   test_landform();
   test_points_io();
   test_hgt_import();
+  test_geotiff_import();
   test_dla();
   test_quilt();
   test_basalt();
