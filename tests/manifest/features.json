@@ -355,6 +355,26 @@
       "description": "Every golden project must produce varying output, so a golden cannot silently lock a flat buffer",
       "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },
 
+    { "id": "field.converters", "area": "engine", "phase": "26",
+      "description": "Field type converters: colour/vector/texcoord split and combine, FieldToNumber/Color/Vector/TexCoord adapters with explicit lane and plane choices, HSV in both directions, FieldColorAdjust; FieldVectorOp gains a full vector output; every converter mirrors FieldValue's conversion rules and has a GLSL twin",
+      "test_file": "test_nodes_convert.cpp", "test_symbol": "test_converters_follow_the_rules" },
+
+    { "id": "field.every_output_transpiles", "area": "engine", "phase": "26",
+      "description": "Every field output port of every node (not only the first) has a GLSL emitter that produces its own expression; secondary outputs cannot silently fall back to the primary on the GPU",
+      "test_file": "test_nodes_convert.cpp", "test_symbol": "test_every_field_output_transpiles" },
+
+    { "id": "nodes.component_families", "area": "engine", "phase": "26",
+      "description": "Node families for every major component with their own workspace: Light (LightSource + planned area/sky/gel/volumetric/flare), Camera (SceneCamera, CameraPath + planned), Animation (Oscillator, TimeRemap, AnimationSequence + planned), Scene (ImportObject, Primitive, Planet, InfiniteTerrain + planned), Cloud (planned P5 set), Render (RenderOutput, RenderPasses, RenderBackdrop, PostProcess + planned); planned nodes carry their roadmap phase as attributes and are configuration nodes in the contract",
+      "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" },
+
+    { "id": "render.editor_state", "area": "studio", "phase": "26",
+      "description": "Render editor state saved with the project and covered by undo: backdrop dome (file, 7 mappings, rotation, exposure, tint, blend, haze, sun flag), pass mask, beauty format, render defaults, post-processing; scene objects remember the graph node that drives them, remapped through the node id map on load",
+      "test_file": "test_undo_render.cpp", "test_symbol": "test_settings_roundtrip" },
+
+    { "id": "render.hdr_io", "area": "studio", "phase": "26",
+      "description": "True HDR image files: OpenEXR scanline read (NONE/RLE/ZIPS/ZIP, HALF/FLOAT/UINT) and write (FLOAT, uncompressed), Radiance .hdr read/write, LDR formats loaded as linear light; backs the backdrop dome and the render passes",
+      "test_file": "test_render_hdr.cpp", "test_symbol": "test_exr_roundtrip" },
+
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
       "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }

@@ -49,7 +49,13 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
     case AiDomain::Render:
       s += R"(- {"op":"set_render","engine":"mitsuba"|"cycles"|"luxcore"|"viewport",
    "width":1920,"height":1080,"samples":256,"output":"shot.png"}
-- {"op":"render"}   (starts the render immediately))";
+- {"op":"render"}   (starts the render immediately)
+- {"op":"render_passes","path":"shot.png","width":1920,"height":1080,
+   "format":0|1|2,"passes":["depth","normal","albedo","object_id","direct",
+   "shadow","ambient","specular","atmosphere","environment","position","water_mask"]}
+   (viewport engine: beauty as PNG/EXR/HDR plus one linear EXR per pass)
+- RenderBackdrop / RenderPasses / RenderOutput / PostProcess nodes drive the
+   render editor from the graph: add_node them and set_attr their fields)";
       break;
     case AiDomain::Object:
       s += R"(- {"op":"place_object","name":"Rock","position":[x,y,z],"scale":0.1,

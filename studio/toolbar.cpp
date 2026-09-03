@@ -348,10 +348,12 @@ static void menu_view(App &a) {
     // Another graph window, pinned to one domain, with its own canvas and
     // a side pane for the selected node - so the material graph can live on
     // the second monitor while the terrain graph stays here.
-    const char *names[5] = {"Terrain nodes", "Material nodes",
-                            "Atmosphere nodes", "Render nodes", "All domains"};
-    for (int d = 0; d < 5; ++d)
-      if (ImGui::MenuItem(names[d])) graph_editor_add(a, d);
+    for (int oi = 0; oi < 8; ++oi) {
+      int d = WORKSPACE_ORDER[oi];
+      std::string label = std::string(workspace_name(d)) + " nodes";
+      if (ImGui::MenuItem(label.c_str())) graph_editor_add(a, d);
+    }
+    if (ImGui::MenuItem(workspace_name(WS_ALL))) graph_editor_add(a, WS_ALL);
     ImGui::Separator();
     ImGui::MenuItem("Each editor floats out with its corner button", nullptr,
                     false, false);

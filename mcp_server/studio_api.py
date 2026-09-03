@@ -199,6 +199,16 @@ class Studio:
         shadows, exposure. Only the keys given are changed."""
         return self.send({"op": "set_viewport", **kw})
 
+    def render_passes(self, path: str, width: int = 1920, height: int = 1080,
+                      fmt: int = 0, passes=None) -> Dict[str, Any]:
+        """Render with the viewport engine: the beauty (fmt 0 PNG, 1 EXR,
+        2 HDR) plus one linear EXR per pass name beside it."""
+        act = {"op": "render_passes", "path": path, "width": width,
+               "height": height, "format": fmt}
+        if passes is not None:
+            act["passes"] = passes
+        return self.send(act)
+
     def capture(self, path: str, width: int = 1280,
                 height: int = 720) -> Dict[str, Any]:
         """Render the active camera's viewport to a PNG. The only way a script

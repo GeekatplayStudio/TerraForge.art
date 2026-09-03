@@ -16,9 +16,12 @@ void camera_apply_film() {
   SceneState &sc = scene();
   int active = scene_active_camera();
   static const float neutral[3] = {1.f, 1.f, 1.f};
+  // the PostProcess node's grade sits on top of whatever the camera does
+  const RenderSettings &rs = render_settings();
+  (void)neutral;
   if (active < 0 || active >= (int)sc.objects.size() ||
       sc.objects[active].type != SceneObject::Camera) {
-    renderer_set_film(neutral, 1.f, 1.f);
+    renderer_set_film(rs.post_tint, rs.post_saturation, rs.post_exposure);
     return;
   }
   const CameraData &cd = sc.objects[active].cam;
@@ -26,7 +29,10 @@ void camera_apply_film() {
   const gpx::cam::FilmStock *F = gpx::cam::film_stocks(&nf);
   const gpx::cam::FilmStock &f = F[std::clamp(cd.film, 0, nf - 1)];
   float mult = gpx::cam::exposure_multiplier(cd.aperture, cd.shutter, cd.iso);
-  renderer_set_film(f.tint, f.saturation, mult);
+  float tint[3] = {f.tint[0] * rs.post_tint[0], f.tint[1] * rs.post_tint[1],
+                   f.tint[2] * rs.post_tint[2]};
+  renderer_set_film(tint, f.saturation * rs.post_saturation,
+                    mult * rs.post_exposure);
 }
 
 static const char *SHUTTER_LABELS[] = {"1/1000", "1/500", "1/250", "1/125",

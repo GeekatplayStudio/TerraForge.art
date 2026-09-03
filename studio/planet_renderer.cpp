@@ -51,6 +51,8 @@ static int inf_count = 0;
 static std::vector<int> g_lod_state;
 
 // ------------------------------------------------------------------- helpers
+extern int g_aov; // renderer_aov.cpp: which render pass is being drawn
+
 static void puni3(GLuint p, const char *n, const float *v) {
   glUniform3fv(glGetUniformLocation(p, n), 1, v);
 }
@@ -342,6 +344,7 @@ void planet_draw_all(const PlanetFrame &f) {
     puni3(prog, "u_sun", f.sun);
     puni1(prog, "u_sun_i", f.sun_intensity);
     puni1(prog, "u_exposure", f.exposure);
+    punii(prog, "u_aov", g_aov);
     puni3(prog, "u_grade", f.grade);
     puni1(prog, "u_sat", f.saturation);
   };
@@ -390,6 +393,8 @@ void planet_draw_all(const PlanetFrame &f) {
     puni3(prog, "u_water_c", P.water_color);
     puni3(prog, "u_atmo_c", P.atmo_color);
     puni1(prog, "u_atmo", P.atmo_density);
+    punii(prog, "u_aov", g_aov);
+    punii(prog, "u_object_id", 3 + idx); // scene objects count from 3
     float spin = P.spin_deg * 0.017453293f;
     glUniform2f(glGetUniformLocation(prog, "u_spin"), std::cos(spin),
                 std::sin(spin));
@@ -416,6 +421,7 @@ void infinite_draw(const InfiniteFrame &f) {
   if (!prog_inf) return;
   glUseProgram(prog_inf);
   glUniformMatrix4fv(glGetUniformLocation(prog_inf, "u_mvp"), 1, GL_FALSE, f.mvp);
+  punii(prog_inf, "u_aov", g_aov);
   puni3(prog_inf, "u_cam", f.eye);
   puni3(prog_inf, "u_sun", f.sun);
   puni3(prog_inf, "u_sun_color", f.sun_color);

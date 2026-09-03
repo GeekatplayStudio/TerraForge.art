@@ -2,13 +2,24 @@
 # Regenerate with: regression_tests --update  (review the diff!)
 AOFromHeight|Material
 AlbedoToPBR|Material
+AnimationClip|Animation
+AnimationSequence|Animation
+AreaLight|Light
 AreaRemove|Mask
 AtmosphereSettings|Atmosphere
 BasaltField|Primitive
 Blend|Operator
+BooleanObject|Scene
+CameraPath|Camera
+CameraSwitch|Camera
+CameraTarget|Camera
 ChannelMix|Material
+ChannelSplit|Material
 Clamp|Filter
+CloudDensityField|Cloud
 CloudLayer|Atmosphere
+CloudMaterial|Cloud
+CloudZone|Cloud
 Coast|Erosion
 ColorAdjust|Material
 ColorizeGradient|Texture
@@ -20,6 +31,7 @@ Craggy|Filter
 Crater|Primitive
 CurvatureFromHeight|Material
 Curve|Filter
+DepthOfField|Camera
 DetailEqualizer|Filter
 Detrend|Filter
 DiffusionLimited|Primitive
@@ -27,6 +39,7 @@ DirectionalBlur|Filter
 Dissolve|Erosion
 DistanceField|Mask
 Dunes|Primitive
+Dynamics|Animation
 Equalize|Filter
 ErosionLayers|Erosion
 ExpandShrink|Filter
@@ -36,8 +49,13 @@ ExportPoints|Export
 ExportTexture|Export
 FakeStones|Primitive
 FieldAltitude|Field Input
+FieldColorAdjust|Field Color
+FieldColorCombine|Field Convert
 FieldColorConstant|Field Input
+FieldColorFromHSV|Field Color
+FieldColorHSV|Field Color
 FieldColorMix|Field Color
+FieldColorSplit|Field Convert
 FieldComputeNormal|Field Displace
 FieldConstant|Field Input
 FieldCurve|Field Math
@@ -54,10 +72,18 @@ FieldRedirect|Field Displace
 FieldRemap|Field Math
 FieldShape|Field Noise
 FieldSlope|Field Input
+FieldTexCoordCombine|Field Convert
+FieldTexCoordSplit|Field Convert
 FieldTexCoord|Field Input
 FieldTime|Field Input
+FieldToColor|Field Convert
+FieldToNumber|Field Convert
+FieldToTexCoord|Field Convert
+FieldToVector|Field Convert
 FieldTrig|Field Math
+FieldVectorCombine|Field Convert
 FieldVectorOp|Field Math
+FieldVectorSplit|Field Convert
 FieldVoronoi|Field Noise
 FieldZone|Field Displace
 FillBasins|Hydrology
@@ -77,10 +103,16 @@ Grit|Effect
 HeightmapFile|Primitive
 HydraulicBlur|Erosion
 Hydraulic|Erosion
+ImportObject|Scene
+InfiniteTerrain|Scene
 KMeans|Mask
+KeyframeCurve|Animation
 Kuwahara|Filter
 Landform|Primitive
+LensFlare|Light
 Levels|Material
+LightGel|Light
+LightSource|Light
 LineNoise|Primitive
 MakeTileable|Transform
 MaskPaint|Mask
@@ -94,10 +126,13 @@ Median|Filter
 MetaNode|Group
 MixLayers|Operator
 Morphology|Filter
+MotionBlur|Camera
 NoiseFractal|Primitive
 Noise|Primitive
 NormalBlend|Material
 NormalMap|Texture
+ObjectGroup|Scene
+Oscillator|Animation
 PBRMaterial|Material
 PathCarve|Path
 PathFind|Path
@@ -106,6 +141,7 @@ PathResample|Path
 PathSDF|Path
 PathSpline|Path
 Peaks|Effect
+Planet|Scene
 Plateau|Filter
 PointsFilter|Points
 PointsFromCsv|Points
@@ -116,19 +152,27 @@ PointsSetValues|Points
 PointsShuffle|Points
 PointsToMask|Points
 PointsToPath|Path
+PostProcess|Render
 PowerFractal|Filter
+Primitive|Scene
 Quilt|Transform
 Rasterize|Field Bridge
 RelativeElevation|Analysis
 Remap|Filter
+RenderBackdrop|Render
 RenderCamera|Render
+RenderLayers|Render
+RenderOutput|Render
+RenderPasses|Render
 RenderQuality|Render
+RenderRegion|Render
 Repeat|Logic
 Resample|Analysis
 Rivers|Erosion
 RockyMountains|Primitive
 Sample|Field Bridge
 ScatterPoints|Points
+SceneCamera|Camera
 SedimentDeposit|Erosion
 SelectAltitude|Mask
 SelectBlobs|Mask
@@ -145,9 +189,11 @@ Sharpen|Effect
 Shear|Transform
 SkeletonDistance|Mask
 Skeleton|Mask
+Skylight|Light
 SmoothFill|Filter
 Smooth|Filter
 Snow|Filter
+SpectralClouds|Cloud
 SplatMaterial|Material
 Splatmap|Material
 Stamp|Primitive
@@ -162,6 +208,7 @@ TerrainDisplacement|Export
 TerrainFractal2|Primitive
 TerrainFractal|Primitive
 TerrainMetrics|Analysis
+TerrainObject|Scene
 TerrainOutput|Export
 TerrainSculpt|Effect
 TerrainSurface|Export
@@ -173,7 +220,9 @@ TextureTransform|Material
 Thermal|Erosion
 Threshold|Logic
 Thru|Logic
+TimeRemap|Animation
 Transform|Transform
+VolumetricLight|Light
 WarpDirectional|Transform
 WarpNoise|Transform
 WaterLayer|Atmosphere

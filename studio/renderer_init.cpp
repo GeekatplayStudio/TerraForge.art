@@ -148,7 +148,8 @@ bool renderer_init() {
   prog_sky = link_prog(VS_SKY, fs_sky.c_str());
   prog_lines = link_prog(VS_LINES, FS_LINES);
   prog_bg = link_prog(VS_BG, FS_BG);
-  prog_mesh = link_prog(VS_MESH, FS_MESH);
+  std::string fs_mesh = inject_sky(FS_MESH); // fog and the pass writer
+  prog_mesh = link_prog(VS_MESH, fs_mesh.c_str());
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
   prog_matprev = link_prog(VS_MATPREV, FS_MATPREV);
   make_preview_shapes();

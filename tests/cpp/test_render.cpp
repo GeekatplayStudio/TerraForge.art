@@ -362,8 +362,11 @@ static void test_blue_noise() {
   CHECK(other != p, "the seed does not change the pattern");
 }
 
+int test_render_hdr_run(); // test_render_hdr.cpp
+
 int main() {
   std::printf("renderer maths tests\n");
+  g_failures += test_render_hdr_run();
   test_blue_noise();
   test_frustum_extraction();
   test_bounds_cover_every_texel();

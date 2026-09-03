@@ -130,6 +130,81 @@ belongs to; do not fake a field node with a 1×1 buffer.
     Emission is keyed by node *and* port, and by the evaluation point, since a
     redirect asks for the same subtree somewhere else.
 
+## Field type conversions
+
+1. **Four value types, one conversion table.** `FieldValue::number() /
+   as_color() / as_vector() / as_texcoord()` are the whole rule set for what
+   a number, colour, vector or texture coordinate means when it lands on a
+   port of another type. The transpiler mirrors each one (`as_number`,
+   `as_vec4`, `as_vec3`, `as_vec2` in `field_glsl.cpp`, chosen by the port
+   prefix `''`/`@`/`#`/`%`; `!` is the raw vec4). Add a conversion in both
+   places in the same commit or the GPU disagrees with the CPU.
+2. **A converter branches on the upstream type at compile time.** The CPU
+   node reads `FieldValue::type`; the emitter reads `InputFn::type(port)`
+   (the upstream port's declared type). Both must take the same branch for
+   the same graph. `field_gpu_verify_all` carries a case per converter and
+   the worst measured disagreement is 2e-6.
+3. **Every field output port needs its own emitter.** `emit_node` falls back
+   to the node's primary emitter for a port it does not know, so a forgotten
+   `reg_out` returns the *wrong quantity* rather than failing.
+   `test_every_field_output_transpiles` transpiles every field output of
+   every node and checks that sibling outputs emit different code.
+4. **Colour maths is shared, not duplicated.** `gpx/color_math.hpp` (CPU) and
+   `gpxf_rgb2hsv` / `gpxf_hsv2rgb` in the prelude are the same algorithm,
+   branch for branch.
+
+## Component nodes and workspaces
+
+1. **A node belongs to one workspace through its category**
+   (`domain_of_category`, `WS_*` in `app.hpp`). Terrain, Materials, Objects
+   (Scene), Atmosphere (+Cloud), Lighting (Light), Cameras (Camera),
+   Animation, Render. Workspace numbers are historical - 4 is "all domains"
+   and saved editor layouts carry them - so new workspaces append; never
+   renumber.
+2. **Configuration nodes drive the scene, they do not compute buffers.**
+   Light / Camera / Scene / Cloud / Render categories and every node whose
+   description starts with `[Planned]` are configuration nodes in the
+   contract battery: no output port required, no buffer expected. A planned
+   node is a placeholder with its roadmap phase in its attributes, so the
+   module cannot be forgotten; it does nothing else.
+3. **Node-driven scene objects are found by `driver_node`, then adopted by
+   name, then created - and never deleted** (`scene_nodes_objects.cpp`).
+   Removing the node leaves an ordinary object behind. Lengths on nodes are
+   metres; the conversion to tile units happens there and nowhere else.
+4. **Render nodes are the source of truth when present.** `apply_scene_nodes`
+   copies RenderOutput / RenderPasses / RenderBackdrop / PostProcess into
+   `RenderSettings` after every evaluation; the Render panel edits the same
+   fields and says when a node is overriding them.
+
+## Render passes and the backdrop dome
+
+1. **A pass is the same frame drawn again with `g_aov` set**, never derived
+   from the beauty afterwards. Every shader that draws a surface reads
+   `u_aov` and returns `aov_out(...)` before tone mapping; the sky writes its
+   own cases. A surface shader that ignores `u_aov` writes its finished
+   colour into every pass - the infinite surround did exactly that, and the
+   object-id pass came back full of 0.8.
+2. **Pass numbering is `RenderPass` bit + 1**, `AOV_BEAUTY_LINEAR` = 13.
+   Depth and position leave the GPU in tile units and are scaled to metres
+   when written. Passes go to a float framebuffer (`ensure_fbo(..., hdr)`)
+   and to EXR; decoration (gizmos, outlines, overlays) is skipped while a
+   pass draws.
+3. **Fog is one function** (`FOG_FN`, spliced by `inject_sky`) shared by
+   terrain, water and meshes, so everything at a distance disappears into
+   the same air. Water and meshes had no fog at all before.
+4. **The backdrop lives inside `sky_color()`** (`SKY_FN`), so the sky pass,
+   water reflections and terrain reflections see one dome; bind it
+   (`backdrop_bind`) in every program that carries SKY_FN. The dome is an
+   absolute HDR picture: it is blended in after the procedural sky's
+   nightfall factor and is not dimmed by it. Horizon haze and clouds apply
+   on top; `u_bd_haze` is how much.
+5. **Load images once, versioned by path and mtime** (performance rule 1).
+   Our EXR reader covers scanline NONE/RLE/ZIPS/ZIP; PIZ and the rest are
+   refused with a message rather than misread. Radiance .hdr goes through
+   stb, which handles the run-length files every HDRI site ships; a
+   hand-made flat-scanline .hdr showed banding, an EXR of the same pixels
+   did not.
+
 ## Verifying a renderer change
 
 1. **Look at the picture.** `capture` renders the active camera to a PNG from

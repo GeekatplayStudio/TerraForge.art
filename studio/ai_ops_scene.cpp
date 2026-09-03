@@ -172,12 +172,15 @@ int ai_scene_op(App &a, const std::string &op, const json &act,
     else if (v.is_string()) {
       std::string s = v.get<std::string>();
       for (auto &c : s) c = (char)tolower(c);
-      const char *names[5] = {"terrain", "material", "atmosphere", "render", "all"};
-      for (int i = 0; i < 5; ++i)
+      const char *names[WS_COUNT] = {"terrain", "material", "atmosphere",
+                                     "render",  "all",      "object",
+                                     "light",   "camera",   "animation"};
+      for (int i = 0; i < WS_COUNT; ++i)
         if (s.find(names[i]) != std::string::npos) d = i;
     }
-    if (d < 0 || d > 4) {
-      err = "open_node_editor: domain 0..4 or terrain/materials/atmosphere/render/all";
+    if (d < 0 || d >= WS_COUNT) {
+      err = "open_node_editor: domain 0..8 or terrain/materials/atmosphere/render/"
+            "all/objects/lighting/cameras/animation";
       return 0;
     }
     graph_editor_add(a, d);
@@ -193,19 +196,24 @@ int ai_scene_op(App &a, const std::string &op, const json &act,
 
   if (op == "set_workspace") {
     // Which workflow the second bar has selected, and therefore which tools
-    // the third bar offers: 0 terrain, 1 materials, 2 atmosphere, 3 render.
+    // the third bar offers: 0 terrain, 1 materials, 2 atmosphere, 3 render,
+    // 5 objects, 6 lighting, 7 cameras, 8 animation (4 is "all", not a
+    // workspace).
     const json &v = act.contains("workspace") ? act["workspace"] : act["value"];
     int w = -1;
     if (v.is_number()) w = v.get<int>();
     else if (v.is_string()) {
       std::string s = v.get<std::string>();
       for (auto &c : s) c = (char)tolower(c);
-      const char *names[4] = {"terrain", "material", "atmosphere", "render"};
-      for (int i = 0; i < 4; ++i)
-        if (s.find(names[i]) != std::string::npos) w = i;
+      const char *names[WS_COUNT] = {"terrain", "material", "atmosphere",
+                                     "render",  "",         "object",
+                                     "light",   "camera",   "animation"};
+      for (int i = 0; i < WS_COUNT; ++i)
+        if (names[i][0] && s.find(names[i]) != std::string::npos) w = i;
     }
-    if (w < 0 || w > 3) {
-      err = "set_workspace: 0..3, or terrain/materials/atmosphere/render";
+    if (w < 0 || w >= WS_COUNT || w == WS_ALL) {
+      err = "set_workspace: 0..8 (not 4), or terrain/materials/atmosphere/render/"
+            "objects/lighting/cameras/animation";
       return 0;
     }
     a.workspace = w;

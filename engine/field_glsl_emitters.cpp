@@ -18,6 +18,7 @@ void install_emitters() {
   static bool done = false;
   if (done) return;
   done = true;
+  install_emitters_convert();
 
   // ---- inputs
   reg("FieldPosition", [](const Node &, const InputFn &, EmitCtx &ctx) {
@@ -140,20 +141,41 @@ void install_emitters() {
     return "vec4(mix(" + a + ", " + b + ", " + t + "), 0.0, 0.0, 1.0)";
   });
 
-  reg("FieldVectorOp", [](const Node &n, const InputFn &in, EmitCtx &ctx) {
+  // The whole vector result, mirroring vec_result in nodes_field_math.cpp.
+  // Unconnected A is the zero vector on both sides.
+  auto vecop_result = [](const Node &n, const InputFn &in, EmitCtx &ctx) {
+    std::string a = ctx.declare("vec3", "va", in("#a", "vec3(0.0)"));
+    std::string b = ctx.declare("vec3", "vb", in("#b", "vec3(0.0, 1.0, 0.0)"));
+    switch (n.attrs.get_choice("op")) {
+      case 2: case 6: return "(" + a + " - " + b + ")";
+      case 3: return "(length(" + a + ") > 1e-9 ? normalize(" + a + ") : vec3(0.0))";
+      case 4: return "cross(" + a + ", " + b + ")";
+      case 5: return "(" + a + " + " + b + ")";
+      case 7: return "(" + a + " * " + b + ")";
+      case 8:
+        return "(length(" + b + ") > 1e-9 ? reflect(" + a + ", normalize(" + b +
+               ")) : " + a + ")";
+      default: return a;
+    }
+  };
+  reg("FieldVectorOp", [vecop_result](const Node &n, const InputFn &in, EmitCtx &ctx) {
+    int op = n.attrs.get_choice("op");
+    if (op >= 3) return "vec4(" + vecop_result(n, in, ctx) + ".x, 0.0, 0.0, 1.0)";
     // vector inputs need the xyz of the upstream vec4, so ask for the raw form
-    std::string a = in("#a", ctx.pos.c_str());
+    std::string a = in("#a", "vec3(0.0)");
     std::string b = in("#b", "vec3(0.0, 1.0, 0.0)");
     std::string e;
-    switch (n.attrs.get_choice("op")) {
+    switch (op) {
       case 0: e = "length(" + a + ")"; break;
       case 1: e = "dot(" + a + ", " + b + ")"; break;
-      case 2: e = "distance(" + a + ", " + b + ")"; break;
-      case 3: e = "(length(" + a + ") > 1e-9 ? normalize(" + a + ").x : 0.0)"; break;
-      default: e = "cross(" + a + ", " + b + ").x"; break;
+      default: e = "distance(" + a + ", " + b + ")"; break;
     }
     return "vec4(" + e + ", 0.0, 0.0, 1.0)";
   });
+  reg_out("FieldVectorOp", "vec",
+          [vecop_result](const Node &n, const InputFn &in, EmitCtx &ctx) {
+            return "vec4(" + vecop_result(n, in, ctx) + ", 0.0)";
+          });
 
   // ---- noise
   reg("FieldNoise", [](const Node &n, const InputFn &in, EmitCtx &ctx) {
@@ -436,30 +458,6 @@ void install_emitters() {
     std::string e = "(" + m + ")";
     if (n.attrs.get_b("invert")) e = "(1.0 - " + e + ")";
     return "vec4(" + e + ", 0.0, 0.0, 1.0)";
-  });
-
-  reg("FieldColorMix", [](const Node &n, const InputFn &in, EmitCtx &ctx) {
-    std::string a = ctx.declare("vec4", "ca", in("@a", "vec4(0.0, 0.0, 0.0, 1.0)"));
-    std::string b = ctx.declare("vec4", "cb", in("@b", "vec4(1.0, 1.0, 1.0, 1.0)"));
-    std::string t = ctx.declare(
-        "float", "ct",
-        "clamp(" + in("factor", f2s(n.attrs.get_f("amount", 0.5f)).c_str()) +
-            ", 0.0, 1.0)");
-    std::string v;
-    switch (n.attrs.get_choice("mode")) {
-      case 1: v = "(" + a + ".rgb + " + b + ".rgb)"; break;
-      case 2: v = "(" + a + ".rgb * " + b + ".rgb)"; break;
-      case 3: v = "(1.0 - (1.0 - " + a + ".rgb) * (1.0 - " + b + ".rgb))"; break;
-      case 4:
-        v = "mix(2.0 * " + a + ".rgb * " + b + ".rgb, 1.0 - 2.0 * (1.0 - " + a +
-            ".rgb) * (1.0 - " + b + ".rgb), step(vec3(0.5), " + a + ".rgb))";
-        break;
-      case 5: v = "min(" + a + ".rgb, " + b + ".rgb)"; break;
-      case 6: v = "max(" + a + ".rgb, " + b + ".rgb)"; break;
-      default: v = b + ".rgb"; break;
-    }
-    return "vec4(mix(" + a + ".rgb, " + v + ", " + t + "), mix(" + a + ".a, " +
-           b + ".a, " + t + "))";
   });
 
   // ---- bridge back to a buffer

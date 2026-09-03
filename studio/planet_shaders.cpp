@@ -123,6 +123,7 @@ uniform vec2 u_spin;
 uniform vec3 u_rock_lo, u_rock_hi, u_water_c, u_atmo_c;
 uniform float u_atmo, u_sun_i, u_exposure, u_sat;
 uniform vec3 u_grade;
+uniform int u_aov, u_object_id; // render pass being drawn, 0 = picture
 PL_FN_PLACEHOLDER
 vec3 aces(vec3 x){
   x *= u_grade;
@@ -167,7 +168,23 @@ void main(){
 
   float NdL = max(dot(N, u_sun), 0.0);
   float day = smoothstep(-0.15, 0.25, dot(d, u_sun));
+  vec3 direct = albedo * NdL * u_sun_i * 0.9 * max(day, 0.06);
   vec3 col = albedo * (NdL * u_sun_i * 0.9 + 0.035) * max(day, 0.06);
+  if (u_aov != 0){
+    // a planet is a distant body: no fog, no water mask, its own object id
+    if (u_aov == 1) frag = vec4(length(u_cam - v_world), 0.0, 0.0, 1.0);
+    else if (u_aov == 2) frag = vec4(N, 1.0);
+    else if (u_aov == 3) frag = vec4(v_world, 1.0);
+    else if (u_aov == 4) frag = vec4(float(u_object_id), 0.0, 0.0, 1.0);
+    else if (u_aov == 6) frag = vec4(albedo, 1.0);
+    else if (u_aov == 7) frag = vec4(direct, 1.0);
+    else if (u_aov == 8) frag = vec4(1.0, 0.0, 0.0, 1.0);
+    else if (u_aov == 9) frag = vec4(col - direct, 1.0);
+    else if (u_aov == 11) frag = vec4(0.0, 0.0, 0.0, 1.0);
+    else if (u_aov == 13) frag = vec4(col, 1.0);
+    else frag = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
+  }
   if (water){
     vec3 V = normalize(u_cam - v_world);
     vec3 H = normalize(V + u_sun);
@@ -238,6 +255,7 @@ uniform int u_has_albedo, u_fog_type;
 uniform vec3 u_cam, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon, u_fog_color;
 uniform float u_hscale, u_amp, u_sun_i, u_ambient, u_exposure, u_sat, u_fogd;
 uniform vec3 u_grade;
+uniform int u_aov; // render pass being drawn (renderer_aov.cpp), 0 = picture
 PL_FN_PLACEHOLDER
 vec3 aces(vec3 x){
   x *= u_grade;
@@ -277,13 +295,29 @@ void main(){
   // the ambient half is skylight, so it fades with the same nightfall
   // factor the sky uses - otherwise the surround glows all night
   float day_f = clamp(u_sun.y * 4.0 + 0.35, 0.035, 1.0);
-  vec3 col = alb * (u_sun_color * u_sun_i * NdL * 0.8 / 3.14159
-                    + mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient
-                          * (0.45 + 0.55*N.y) * day_f);
-  if (u_fog_type > 0){
-    float f = 1.0 - exp(-cam_d * u_fogd * 0.35);
-    col = mix(col, u_fog_color, clamp(f, 0.0, 1.0));
+  vec3 direct = alb * u_sun_color * u_sun_i * NdL * 0.8 / 3.14159;
+  vec3 ambient = alb * mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient
+                     * (0.45 + 0.55*N.y) * day_f;
+  vec3 col = direct + ambient;
+  float fog_f = 0.0;
+  if (u_fog_type > 0) fog_f = clamp(1.0 - exp(-cam_d * u_fogd * 0.35), 0.0, 1.0);
+  if (u_aov != 0){
+    // the same quantities the terrain tile writes (aov_out in FOG_FN); the
+    // surround is terrain too, so it carries object id 1
+    if (u_aov == 1) frag = vec4(cam_d, 0.0, 0.0, 1.0);
+    else if (u_aov == 2) frag = vec4(N, 1.0);
+    else if (u_aov == 3) frag = vec4(v_world, 1.0);
+    else if (u_aov == 4) frag = vec4(1.0, 0.0, 0.0, 1.0);
+    else if (u_aov == 6) frag = vec4(alb, 1.0);
+    else if (u_aov == 7) frag = vec4(direct, 1.0);
+    else if (u_aov == 8) frag = vec4(1.0, 0.0, 0.0, 1.0);
+    else if (u_aov == 9) frag = vec4(ambient, 1.0);
+    else if (u_aov == 11) frag = vec4(u_fog_color * fog_f, 1.0 - fog_f);
+    else if (u_aov == 13) frag = vec4(mix(col, u_fog_color, fog_f), 1.0);
+    else frag = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
   }
+  col = mix(col, u_fog_color, fog_f);
   col = aces(col * u_exposure);
   col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, 1.0);

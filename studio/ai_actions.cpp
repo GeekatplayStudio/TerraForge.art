@@ -9,6 +9,7 @@
 #include "ai_assist.hpp"
 #include "ai_actions_internal.hpp"
 #include "app.hpp"
+#include "console.hpp"
 #include "ollama.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
@@ -158,6 +159,31 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
     } else if (op == "render") {
       a.request_camera_render = scene_active_camera();
       ++applied;
+    } else if (op == "render_passes") {
+      // The render editor from a script: the viewport engine draws the beauty
+      // in the chosen format and one linear EXR per requested pass. `passes`
+      // is a bit mask or a list of pass names; absent, the project's setting.
+      RenderSettings &rsg = render_settings();
+      std::string path = act.value("path", rsg.render_path);
+      int w = std::clamp(act.value("width", rsg.render_width), 16, 8192);
+      int h = std::clamp(act.value("height", rsg.render_height), 16, 8192);
+      int mask = rsg.pass_mask;
+      if (act.contains("passes")) {
+        if (act["passes"].is_number()) mask = act["passes"].get<int>();
+        else if (act["passes"].is_array()) {
+          mask = 0;
+          for (const auto &nm : act["passes"])
+            for (int i = 0; i < RENDER_PASS_COUNT; ++i)
+              if (nm.is_string() && nm.get<std::string>() == render_pass_name(i))
+                mask |= 1 << i;
+        }
+      }
+      int format = act.value("format", rsg.render_format);
+      std::string report;
+      bool ok = renderer_render_passes(path, w, h, mask, format, report);
+      log_info("render", report);
+      if (ok) ++applied;
+      else err = "render_passes: " + report;
     } else if (op == "undo") {
       int n = act.value("steps", 1);
       for (int i = 0; i < n && undo_perform(a); ++i) ++applied;
@@ -257,6 +283,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       // shader compute the same numbers as the CPU evaluator?
 
       a.status = "field GPU check:\n" + field_gpu_verify_all(a);
+      log_info("field-gpu", a.status);
 
       ++applied;
 

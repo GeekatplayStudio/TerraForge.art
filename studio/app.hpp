@@ -72,7 +72,7 @@ struct App {
   // smooth realtime feedback; a full-res pass runs on release
   std::atomic<bool> eval_interactive{false};
 
-  // workspace screens: 0 Terrain, 1 Materials, 2 Atmosphere, 3 Render
+  // workspace screen, one of the WS_* domains below (never WS_ALL)
   int workspace = 0;
   bool graph_show_all_domains = false;
   uint64_t scene_selection_serial = 1; // bumped when the scene selection changes
@@ -123,12 +123,40 @@ struct App {
 
 App &app();
 
+// The workspaces. Each is one node editor domain, a tab on the workspace
+// bar, and a filter on the library; a node belongs to exactly one through its
+// category. The numbering is historical (4 was "all domains" before the
+// later workspaces existed, and saved editor layouts carry these numbers),
+// so new workspaces append rather than renumber. WORKSPACE_ORDER is the
+// order the bar shows them in.
+enum : int {
+  WS_TERRAIN = 0,
+  WS_MATERIALS = 1,
+  WS_ATMOSPHERE = 2,
+  WS_RENDER = 3,
+  WS_ALL = 4, // a node editor pinned to every domain at once
+  WS_OBJECTS = 5,
+  WS_LIGHTING = 6,
+  WS_CAMERAS = 7,
+  WS_ANIMATION = 8,
+  WS_COUNT = 9
+};
+static const int WORKSPACE_ORDER[8] = {WS_TERRAIN,  WS_MATERIALS, WS_OBJECTS,
+                                       WS_ATMOSPHERE, WS_LIGHTING, WS_CAMERAS,
+                                       WS_ANIMATION, WS_RENDER};
+// localised name of a workspace (toolbar_bars.cpp)
+const char *workspace_name(int ws);
+
 // which workspace a node category belongs to
 inline int domain_of_category(const std::string &cat) {
-  if (cat == "Material" || cat == "Texture") return 1;
-  if (cat == "Atmosphere") return 2;
-  if (cat == "Render") return 3;
-  return 0; // terrain
+  if (cat == "Material" || cat == "Texture") return WS_MATERIALS;
+  if (cat == "Atmosphere" || cat == "Cloud") return WS_ATMOSPHERE;
+  if (cat == "Render") return WS_RENDER;
+  if (cat == "Scene") return WS_OBJECTS;
+  if (cat == "Light") return WS_LIGHTING;
+  if (cat == "Camera") return WS_CAMERAS;
+  if (cat == "Animation") return WS_ANIMATION;
+  return WS_TERRAIN;
 }
 
 const char *view_window_name(int slot);
@@ -168,6 +196,8 @@ bool scalar_float(const char *id, float *v, float mn, float mx,
 void world_properties_ui(App &a);
 void material_properties_ui(App &a);
 void render_properties_ui(App &a);
+void render_passes_ui(App &a);   // panel_render_editor.cpp: format + passes
+void render_backdrop_ui(App &a); // panel_render_editor.cpp: the HDR dome
 void draw_render_window(App &a); // live progressive render view
 void render_service_requests(App &a); // camera/AI render requests, per frame
 // the progressive result of the running/last render, for other panels

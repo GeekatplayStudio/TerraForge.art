@@ -17,7 +17,7 @@ namespace {
 // are how you happened to be looking, not what the project is.
 struct EnvField {
   const char *key;
-  char kind; // 'f' float, 'i' int, 'b' bool, 'u' node id, 'c' float[3]
+  char kind; // 'f' float, 'i' int, 'b' bool, 'u' node id, 'c' float[3], 's' string
   void *p;
 };
 
@@ -118,6 +118,31 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"use_albedo", 'b', &rs.use_albedo},
       {"shadows", 'b', &rs.shadows},
       {"shadow_softness", 'f', &rs.shadow_softness},
+      // render editor: backdrop dome
+      {"backdrop_enabled", 'b', &rs.backdrop.enabled},
+      {"backdrop_file", 's', &rs.backdrop.file},
+      {"backdrop_mapping", 'i', &rs.backdrop.mapping},
+      {"backdrop_vfov", 'f', &rs.backdrop.vfov},
+      {"backdrop_flip", 'b', &rs.backdrop.flip},
+      {"backdrop_yaw", 'f', &rs.backdrop.yaw},
+      {"backdrop_pitch", 'f', &rs.backdrop.pitch},
+      {"backdrop_exposure_ev", 'f', &rs.backdrop.exposure_ev},
+      {"backdrop_tint", 'c', rs.backdrop.tint},
+      {"backdrop_blend", 'f', &rs.backdrop.blend},
+      {"backdrop_haze", 'f', &rs.backdrop.haze},
+      {"backdrop_hide_sun", 'b', &rs.backdrop.hide_sun},
+      // render editor: passes, output, post
+      {"pass_mask", 'i', &rs.pass_mask},
+      {"render_format", 'i', &rs.render_format},
+      {"render_engine", 'i', &rs.render_engine},
+      {"render_width", 'i', &rs.render_width},
+      {"render_height", 'i', &rs.render_height},
+      {"render_samples", 'i', &rs.render_samples},
+      {"render_path", 's', &rs.render_path},
+      {"post_exposure", 'f', &rs.post_exposure},
+      {"post_saturation", 'f', &rs.post_saturation},
+      {"post_tint", 'c', rs.post_tint},
+      {"post_vignette", 'f', &rs.post_vignette},
   };
 }
 
@@ -195,6 +220,7 @@ json scene_to_json() {
         {"roll", o.roll},
         {"color", vec3_to_json(o.color)},
     };
+    if (o.driver_node) jo["driver_node"] = o.driver_node;
     if (o.type == SceneObject::Light) {
       jo["light_intensity"] = o.light_intensity;
       jo["light_radius"] = o.light_radius;
@@ -307,6 +333,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     o.pitch = jo.value("pitch", 0.f);
     o.roll = jo.value("roll", 0.f);
     if (jo.contains("color")) vec3_from_json(jo["color"], o.color);
+    o.driver_node = remap_id(jo.value("driver_node", 0ull), idmap);
 
     if (o.type == SceneObject::Light) {
       o.light_intensity = jo.value("light_intensity", 1.f);
@@ -429,6 +456,7 @@ json environment_to_json() {
       case 'b': j[f.key] = *(bool *)f.p; break;
       case 'u': j[f.key] = *(unsigned long long *)f.p; break;
       case 'c': j[f.key] = vec3_to_json((float *)f.p); break;
+      case 's': j[f.key] = *(std::string *)f.p; break;
     }
   }
   return j;
@@ -448,6 +476,7 @@ void environment_from_json(const json &j, const GraphIdMap &idmap) {
               remap_id(j[f.key].get<uint64_t>(), idmap);
           break;
         case 'c': vec3_from_json(j[f.key], (float *)f.p); break;
+        case 's': *(std::string *)f.p = j[f.key].get<std::string>(); break;
       }
     } catch (const std::exception &) {
       // one mistyped field keeps its default; the rest of the file still loads

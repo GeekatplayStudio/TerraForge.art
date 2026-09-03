@@ -165,6 +165,8 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     unii(prog_sky, "u_blue_noise", 9);
     unii(prog_sky, "u_cl_octaves", std::clamp(RS.cloud_scatter_octaves, 1, 4));
     uni1(prog_sky, "u_cl_ms_depth", std::clamp(RS.cloud_scatter_depth, 0.05f, 0.99f));
+    backdrop_bind(prog_sky); // the dome is part of the environment too
+    unii(prog_sky, "u_aov", 0);
     unii(prog_sky, "u_panorama", 1);
     unii(prog_sky, "u_hdr", 1);
     unii(prog_sky, "u_no_sun", 1); // the sun is emitted separately

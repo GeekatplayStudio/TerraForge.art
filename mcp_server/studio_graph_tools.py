@@ -137,6 +137,15 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "state. Writes a report beside the API state file.",
         "params": {},
     },
+    "studio_render_passes": {
+        "description": "Render with the viewport engine: the beauty image in "
+                       "format 0 PNG / 1 EXR / 2 HDR plus one linear EXR per "
+                       "pass (depth, normal, position, object_id, water_mask, "
+                       "albedo, direct, shadow, ambient, specular, atmosphere, "
+                       "environment), named <path stem>_<pass>.exr.",
+        "params": {"path": "str", "width": "int", "height": "int",
+                   "format": "int", "passes": "list[str]|int"},
+    },
     "studio_set_time": {
         "description": "Move the animation clock; keyed attributes re-sample "
                        "and the graph re-evaluates. Field: time (seconds).",
@@ -216,6 +225,24 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
         "params": {"name": "str", "position": "list", "color": "list",
                    "intensity": "float", "reach": "float"},
     },
+    "studio_set_light": {
+        "description": "Edit a light by name with the add_light fields: "
+                       "position ([x,y,z]), color ([r,g,b]), intensity, reach.",
+        "params": {"name": "str", "position": "list", "color": "list",
+                   "intensity": "float", "reach": "float"},
+    },
+    "studio_export_instances": {
+        "description": "Write the scattered copies of a mesh object as CSV "
+                       "transforms (x, y, z, scale, yaw_radians per line). "
+                       "Fields: path, object (optional: one mesh by name).",
+        "params": {"path": "str", "object": "str"},
+    },
+    "studio_open_node_editor": {
+        "description": "Open another node editor window pinned to a domain: "
+                       "terrain, materials, atmosphere, render, objects, "
+                       "lighting, cameras, animation, or all.",
+        "params": {"domain": "int|str"},
+    },
     "studio_add_primitive": {
         "description": "Add a built-in mesh: cube, sphere, plane, cylinder "
                        "or cone. Fields: kind, name, position, scale, color.",
@@ -242,6 +269,7 @@ _SIMPLE = {
     "studio_capture": "capture",
     "studio_evaluate": "evaluate",
     "studio_verify_field_gpu": "verify_field_gpu",
+    "studio_render_passes": "render_passes",
     "studio_set_time": "set_time",
     "studio_set_key": "set_key",
     "studio_render_sequence": "render_sequence",
@@ -254,6 +282,9 @@ _SIMPLE = {
     "studio_assign_material": "assign_material",
     "studio_set_locked": "set_locked",
     "studio_add_light": "add_light",
+    "studio_set_light": "set_light",
+    "studio_export_instances": "export_instances",
+    "studio_open_node_editor": "open_node_editor",
     "studio_add_primitive": "add_primitive",
 }
 

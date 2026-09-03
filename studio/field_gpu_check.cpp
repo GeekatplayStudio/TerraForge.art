@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge — CPU/GPU agreement check for field graphs (P0.2).
+// Geekatplay TerraForge — CPU/GPU agreement check for field graphs (P0.2).
 //
 // The whole dual-domain design rests on one claim: the field graph you author
 // evaluates to the same numbers on the CPU (tests, picking, rasterizing) and on
@@ -205,6 +205,8 @@ FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port) 
 
 // Runs the check over a set of representative graphs and returns a report.
 // Called from the API so it can be exercised against the live app.
+void field_gpu_verify_converters(std::string &out); // field_gpu_check_convert.cpp
+
 std::string field_gpu_verify_all(App &a) {
   std::string out;
   auto run_port = [&](const char *name, gpx::Graph &g, gpx::Node *tip,
@@ -431,6 +433,9 @@ std::string field_gpu_verify_all(App &a) {
     g.add_link(nz->id, "out", mx->id, "factor");
     run("colour mix(overlay)", g, mx);
   }
+
+  // converters, colour and animation nodes (field_gpu_check_convert.cpp)
+  field_gpu_verify_converters(out);
 
   // The live terrain program: whether a TerrainDisplacement graph is actually
   // driving the viewport, and whether its generated shader linked. Agreement

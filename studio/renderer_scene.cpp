@@ -175,7 +175,8 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
 
   glBindFramebuffer(GL_FRAMEBUFFER, fbo[slot]);
   glViewport(0, 0, w, h);
-  glClearColor(RS.bg_color[0], RS.bg_color[1], RS.bg_color[2], 1);
+  if (g_aov != 0) glClearColor(0.f, 0.f, 0.f, 1.f); // passes start from nothing
+  else glClearColor(RS.bg_color[0], RS.bg_color[1], RS.bg_color[2], 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glEnable(GL_DEPTH_TEST);
 
@@ -259,6 +260,11 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_mesh, "u_color", o.color);
     uni3(prog_mesh, "u_sun", sun);
     uni3(prog_mesh, "u_sun_color", RS.sun_color);
+    uni3(prog_mesh, "u_cam", view_eye);
+    uni1(prog_mesh, "u_hscale", RS.height_scale);
+    upload_fog_uniforms(prog_mesh, RS, atmosphere);
+    unii(prog_mesh, "u_aov", g_aov);
+    unii(prog_mesh, "u_object_id", 3 + (int)(&o - sc.objects.data()));
     uni1(prog_mesh, "u_exposure", (RS.exposure) * g_exposure_mult);
     uni3(prog_mesh, "u_grade", g_grade);
     uni1(prog_mesh, "u_sat", g_saturation);
@@ -302,7 +308,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   }
 
   // sun gizmo (a real, selectable scene object)
-  if (sun_on) {
+  if (sun_on && g_aov == 0) {
     float gd = 1.9f;
     float gpos[3] = {0.5f + sun[0] * gd, RS.height_scale + sun[1] * gd,
                      0.5f + sun[2] * gd};
@@ -321,7 +327,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
 
   // points overlay: the selected node's point cloud as vertical ticks, so a
   // scatter or a routed path is visible before anything stamps it
-  if (!g_points_overlay.empty()) {
+  if (!g_points_overlay.empty() && g_aov == 0) {
     glUseProgram(prog_lines);
     glUniformMatrix4fv(glGetUniformLocation(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
     glUniform4f(glGetUniformLocation(prog_lines, "u_color"), 1.f, 0.62f, 0.25f,

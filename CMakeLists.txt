@@ -91,6 +91,7 @@ set(ENGINE_SOURCES
     engine/animation.cpp
     engine/node_graph.cpp
     engine/node_graph_eval.cpp
+    engine/field_glsl_emitters_convert.cpp
     engine/node.cpp
     engine/port_catalog.cpp
     engine/hydrology.cpp
@@ -101,6 +102,15 @@ set(ENGINE_SOURCES
     engine/field_glsl.cpp
     engine/field_glsl_emitters.cpp
     engine/metanode.cpp
+    engine/nodes/nodes_field_convert.cpp
+    engine/nodes/nodes_lighting.cpp
+    engine/nodes/nodes_camera.cpp
+    engine/nodes/nodes_animation.cpp
+    engine/nodes/nodes_scene.cpp
+    engine/nodes/nodes_clouds.cpp
+    engine/nodes/nodes_render.cpp
+    engine/nodes/nodes_field_color.cpp
+    engine/nodes/nodes_channels.cpp
     engine/nodes/nodes_primitives.cpp
     engine/nodes/nodes_fractals.cpp
     engine/nodes/nodes_fractals2.cpp
@@ -190,6 +200,9 @@ set(STUDIO_SOURCES
     studio/renderer_programs.cpp
     studio/renderer_init.cpp
     studio/renderer_export.cpp
+    studio/renderer_backdrop.cpp
+    studio/renderer_aov.cpp
+    studio/hdr_image.cpp
     studio/shaders_terrain.cpp
     studio/shaders_terrain_frag.cpp
     studio/terrain_cull.cpp
@@ -200,6 +213,7 @@ set(STUDIO_SOURCES
     studio/planet_renderer.cpp
     studio/planet_shaders.cpp
     studio/field_gpu_check.cpp
+    studio/field_gpu_check_convert.cpp
     studio/preview.cpp
     studio/project_io.cpp
     studio/panel_environment.cpp
@@ -213,6 +227,7 @@ set(STUDIO_SOURCES
     studio/panel_float.cpp
     studio/panel_preview.cpp
     studio/panel_render.cpp
+    studio/panel_render_editor.cpp
     studio/render_scene_export.cpp
     studio/scene.cpp
     studio/scene_primitives.cpp
@@ -220,6 +235,7 @@ set(STUDIO_SOURCES
     studio/render_settings.cpp
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
+    studio/scene_nodes_objects.cpp
     studio/material_library.cpp
     studio/node_library.cpp
     studio/panel_camera.cpp
@@ -272,6 +288,7 @@ target_link_libraries(engine_tests PRIVATE
 # context, so it tests without the renderer.
 add_executable(undo_tests
     tests/cpp/test_undo.cpp
+    tests/cpp/test_undo_render.cpp
     studio/undo.cpp
     studio/project_io.cpp
     studio/node_library.cpp
@@ -295,14 +312,15 @@ target_link_libraries(regression_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
 # Universal node contract, applied to every node in the registry.
-add_executable(node_tests tests/cpp/test_nodes.cpp)
+add_executable(node_tests tests/cpp/test_nodes.cpp tests/cpp/test_nodes_convert.cpp)
 target_link_libraries(node_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
 # Renderer maths that needs no GL context: per-patch visibility, and the
 # packing helpers that follow it.
-add_executable(render_tests tests/cpp/test_render.cpp studio/terrain_cull.cpp
-                            studio/blue_noise.cpp)
+add_executable(render_tests tests/cpp/test_render.cpp tests/cpp/test_render_hdr.cpp
+                            studio/terrain_cull.cpp studio/blue_noise.cpp
+                            studio/hdr_image.cpp)
 target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)

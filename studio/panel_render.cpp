@@ -301,11 +301,13 @@ void render_service_requests(App &a) {
 }
 
 void render_properties_ui(App &a) {
-  static int engine = 0;
-  static int width = 1920, height = 1080, spp = 128;
-  static char out_path[512] = "terraforge_render.png";
-
-  // when a camera is active, the Render tab edits that camera's assignment
+  // With no camera active the tab edits the project's render defaults
+  // (RenderSettings, saved with the scene and driven by the RenderOutput
+  // node); with a camera active it edits that camera's own assignment.
+  RenderSettings &rsg = render_settings();
+  int engine = rsg.render_engine;
+  int width = rsg.render_width, height = rsg.render_height, spp = rsg.render_samples;
+  static char out_path[512] = {0};
   SceneState &sc = scene();
   int cam = scene_active_camera();
   RenderAssign *assign = nullptr;
@@ -320,13 +322,25 @@ void render_properties_ui(App &a) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.55f, 0.24f, 1.f));
     ImGui::Text("Render settings of %s", sc.objects[cam].name.c_str());
     ImGui::PopStyleColor();
+  } else {
+    snprintf(out_path, sizeof out_path, "%s", rsg.render_path.c_str());
   }
+  // whichever is being edited, the fields write back to it
+  auto commit = [&]() {
+    if (assign) {
+      assign->engine = engine; assign->width = width; assign->height = height;
+      assign->samples = spp; assign->output = out_path;
+    } else {
+      rsg.render_engine = engine; rsg.render_width = width; rsg.render_height = height;
+      rsg.render_samples = spp; rsg.render_path = out_path;
+    }
+  };
 
   ImGui::SeparatorText("Engine");
   const char *items = "Mitsuba 3 (path tracer)\0Blender Cycles\0LuxCoreRender\0"
                       "appleseed\0OpenGL viewport (instant)\0";
   ImGui::SetNextItemWidth(-1);
-  if (ImGui::Combo("##engine", &engine, items) && assign) assign->engine = engine;
+  if (ImGui::Combo("##engine", &engine, items)) commit();
   ImGui::TextDisabled("install: %s", ENGINES[engine].install);
   if (engine == 3)
     ImGui::TextDisabled("appleseed has had no release since 2019; the adapter\n"
@@ -348,21 +362,26 @@ void render_properties_ui(App &a) {
 
   ImGui::SeparatorText("Output");
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::InputInt("Width", &width) && assign) assign->width = width;
+  if (ImGui::InputInt("Width", &width)) commit();
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::InputInt("Height", &height) && assign) assign->height = height;
+  if (ImGui::InputInt("Height", &height)) commit();
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::SliderInt("Samples", &spp, 8, 1024) && assign) assign->samples = spp;
+  if (ImGui::SliderInt("Samples", &spp, 8, 1024)) commit();
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("More samples = less noise, longer render.\n"
                       "32 preview, 128 good, 512+ final.");
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::InputText("File", out_path, sizeof out_path) && assign)
-    assign->output = out_path;
+  if (ImGui::InputText("File", out_path, sizeof out_path)) commit();
   if (ImGui::Button("choose file...")) {
     std::string p = dialog_save_file("PNG image\0*.png\0", "png", out_path);
-    if (!p.empty()) snprintf(out_path, sizeof out_path, "%s", p.c_str());
+    if (!p.empty()) {
+      snprintf(out_path, sizeof out_path, "%s", p.c_str());
+      commit();
+    }
   }
+
+  render_passes_ui(a);
+  render_backdrop_ui(a);
 
   ImGui::SeparatorText("Match with viewport");
   ImGui::TextDisabled("The render uses the viewport's sky and volumetric\n"
@@ -375,15 +394,17 @@ void render_properties_ui(App &a) {
     width = std::clamp(width, 64, 8192);
     height = std::clamp(height, 64, 8192);
     if (engine == 4) {
-      a.status = renderer_render_to_file(out_path, width, height)
-                     ? std::string("rendered: ") + out_path
-                     : "RENDER FAILED";
+      std::string report;
+      bool ok = renderer_render_passes(out_path, width, height, rsg.pass_mask,
+                                       rsg.render_format, report);
+      a.status = ok ? std::string("rendered: ") + out_path : "RENDER FAILED";
       std::lock_guard<std::mutex> lk(render_mtx);
-      render_status = a.status;
+      render_status = report;
       render_output = out_path;
     } else {
       std::string err;
-      if (export_scene(a, out_path, width, height, spp, ENGINES[engine].key, err)) {
+      if (export_scene(a, out_path, width, height, spp, ENGINES[engine].key, err,
+                       -1, rsg.pass_mask != 0, false)) {
         render_window_open = true; // pop the live view up immediately
         ImGui::SetWindowFocus("Render output");
         progress_line.clear();

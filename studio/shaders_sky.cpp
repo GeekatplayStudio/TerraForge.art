@@ -37,6 +37,7 @@ uniform int u_panorama;
 uniform int u_hdr;
 uniform int u_no_sun;
 uniform float u_space; // 0 = inside the atmosphere, 1 = open space
+uniform int u_aov;     // render pass being drawn, 0 = the picture
 const float PI = 3.14159265;
 SKY_FN_PLACEHOLDER
 uniform vec3 u_grade;
@@ -193,7 +194,10 @@ void main(){
     dir = normalize(w.xyz / w.w);
   }
   vec3 col = sky_color(dir, u_sky_zenith, u_sky_horizon, u_sun, u_sun_color, u_atmo);
-  if (u_no_sun == 0) {
+  // an HDRI carries its own sun; drawing ours over it would light the scene
+  // twice
+  bool bd_sun_hidden = u_bd_on == 1 && u_bd_hide_sun == 1 && g_bd_weight > 0.0;
+  if (u_no_sun == 0 && !bd_sun_hidden) {
     float s = max(dot(dir, u_sun), 0.0);
     col += u_sun_color * pow(s, 700.0) * 8.0;   // sun disc
   }
@@ -212,13 +216,27 @@ void main(){
   }
   vec4 cl = march_clouds(u_cam, dir, col);
   col = cl.rgb;
+  float fogw = 0.0;
+  vec3 fogcol = vec3(0.0);
   if (u_fog_type != 0) {
     float horizon_fog = pow(1.0 - clamp(dir.y, 0.0, 1.0), 8.0);
     // haze is lit air: it darkens with the same daylight factor as the sky,
     // or night would end at the horizon line
     float fog_day = clamp(u_sun.y * 4.0 + 0.35, 0.035, 1.0);
-    col = mix(col, u_fog_color * fog_day,
-              clamp(horizon_fog * u_fog_density * 0.6, 0.0, 1.0));
+    fogcol = u_fog_color * fog_day;
+    fogw = clamp(horizon_fog * u_fog_density * 0.6, 0.0, 1.0);
+    // the dome is at infinity too, but a photograph may already hold its own
+    // haze, so how much of ours it receives is a dial
+    fogw *= mix(1.0, u_bd_haze, g_bd_weight);
+    col = mix(col, fogcol, fogw);
+  }
+  if (u_aov != 0) {
+    if (u_aov == 1) frag = vec4(1.0e9, 0.0, 0.0, 1.0);          // depth: infinitely far
+    else if (u_aov == 8) frag = vec4(1.0, 0.0, 0.0, 1.0);        // shadow: lit
+    else if (u_aov == 11) frag = vec4(fogcol * fogw, 1.0 - fogw); // atmosphere
+    else if (u_aov == 12 || u_aov == 13) frag = vec4(col, 1.0);  // environment / linear
+    else frag = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
   }
   // Leaving the atmosphere: the sky thins to space so that pulling the camera
   // back actually reveals the planets instead of drowning them in daylight

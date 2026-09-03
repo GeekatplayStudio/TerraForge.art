@@ -30,10 +30,6 @@ uniform vec4 u_light_dir[8]; // spot axis xyz + cos(half cone); w<-1 = point
 uniform float u_roughness, u_metallic, u_specular, u_reflection;
 uniform float u_translucency, u_transparency, u_normal_strength;
 uniform float u_planet_radius; // the sphere the tile lies on, 0 = flat
-// fog
-uniform int u_fog_type;
-uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
-uniform vec3 u_fog_color, u_absorb;
 // sculpt brush cursor: xy = terrain uv, z = radius (<=0 hides), w = erase flag
 uniform vec4 u_brush;
 // cloud shadows
@@ -57,6 +53,7 @@ GPX_SURFACE_PLACEHOLDER
 GPX_ROUGH_PLACEHOLDER
 GPX_BUMP_PLACEHOLDER
 SKY_FN_PLACEHOLDER
+FOG_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -160,25 +157,6 @@ float cloud_shadow(vec3 world){
   float shape = clamp((sn.r - (fbm - 1.0)) / max(2.0 - fbm, 1e-3), 0.0, 1.0);
   float d = clamp((shape - (1.0 - u_cl_cov)) / max(u_cl_cov, 1e-3), 0.0, 1.0);
   return 1.0 - d * 0.65;
-}
-
-vec3 apply_fog(vec3 col, vec3 world, vec3 cam, float dist){
-  if (u_fog_type == 0 || u_fog_density <= 0.0) return col;
-  float level = u_fog_level * u_hscale * 4.0;
-  float falloff = u_fog_falloff / max(u_hscale, 1e-3);
-  float fy0 = cam.y - level, fy1 = world.y - level;
-  float dY = fy1 - fy0;
-  float a = exp(-falloff * max(fy0, 0.0));
-  float b = exp(-falloff * max(fy1, 0.0));
-  float od = (abs(falloff*dY) < 1e-3) ? dist * a
-                                      : abs(dist * (a - b) / (falloff * dY));
-  float dens = u_fog_density * (u_fog_type == 1 ? 0.35 : (u_fog_type == 2 ? 1.0 : 1.8));
-  float f = clamp(1.0 - exp(-od * dens), 0.0, 1.0);
-  float sunward = pow(max(dot(normalize(world - cam), u_sun), 0.0), 6.0);
-  vec3 fogc = u_fog_color * mix(vec3(1.0), u_sun_color * 1.6, sunward * u_fog_scatter);
-  if (u_fog_type == 3) fogc *= vec3(0.85, 0.75, 0.6);
-  col *= mix(vec3(1.0), u_absorb, f);
-  return mix(col, fogc, f);
 }
 
 void main(){
@@ -306,7 +284,15 @@ void main(){
 
   vec3 col = direct + ambient + reflection + translucent;
   float d = length(v_world - u_cam);
-  col = apply_fog(col, v_world, u_cam, d);
+  float fog_f; vec3 fog_c;
+  fog_terms(v_world, u_cam, d, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
+  if (u_aov != 0) {
+    vec3 specular_only = spec * sun_c * NdL * shadow + reflection;
+    frag = aov_out(u_aov, d, N, albedo, v_world, float(u_object_id), direct, shadow,
+                   ambient, specular_only, fog_f, fog_c, 0.0, col);
+    return;
+  }
+  col = apply_fog_terms(col, fog_f, fog_c);
   col = aces(col * u_exposure);
   col = pow(col, vec3(1.0/2.2));
   // sculpt brush ring, drawn on the surface after grading so it stays legible

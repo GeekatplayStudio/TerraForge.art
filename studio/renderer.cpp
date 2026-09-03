@@ -206,8 +206,10 @@ std::string renderer_cull_status() {
   return buf;
 }
 
-void ensure_fbo(int slot, int w, int h) {
-  if (w == fbo_w[slot] && h == fbo_h[slot] && fbo[slot]) return;
+static bool fbo_hdr[8] = {false};
+void ensure_fbo(int slot, int w, int h, bool hdr) {
+  if (w == fbo_w[slot] && h == fbo_h[slot] && fbo[slot] && fbo_hdr[slot] == hdr) return;
+  fbo_hdr[slot] = hdr;
   if (fbo[slot]) {
     glDeleteFramebuffers(1, &fbo[slot]);
     glDeleteTextures(1, &fbo_color[slot]);
@@ -217,8 +219,8 @@ void ensure_fbo(int slot, int w, int h) {
   glBindFramebuffer(GL_FRAMEBUFFER, fbo[slot]);
   glGenTextures(1, &fbo_color[slot]);
   glBindTexture(GL_TEXTURE_2D, fbo_color[slot]);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-               nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, hdr ? GL_RGBA32F : GL_RGBA8, w, h, 0, GL_RGBA,
+               hdr ? GL_FLOAT : GL_UNSIGNED_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,

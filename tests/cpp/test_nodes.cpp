@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge â€” universal node contract (test tier 1).
+// Geekatplay TerraForge â€” universal node contract (test tier 1).
 //
 // One data-driven battery applied to EVERY node in the registry. Adding a node
 // automatically brings it under test, so coverage can never quietly fall behind
@@ -56,8 +56,18 @@ static bool writes_file(const std::string &t) {
 // producing a buffer, so "no image output" is their correct behaviour. They
 // still must satisfy every other part of the contract.
 static bool is_config_node(const std::string &t) {
-  return t == "SunLight" || t == "AtmosphereSettings" || t == "CloudLayer" ||
-         t == "WaterLayer" || t == "RenderCamera" || t == "RenderQuality";
+  if (t == "SunLight" || t == "AtmosphereSettings" || t == "CloudLayer" ||
+      t == "WaterLayer" || t == "RenderCamera" || t == "RenderQuality")
+    return true;
+  // Whole categories are configuration: they describe lights, cameras, scene
+  // objects, the shot and the render rather than computing a buffer. A
+  // planned placeholder node is one of these too.
+  const gpx::NodeDef *d = gpx::NodeRegistry::instance().find(t);
+  if (!d) return false;
+  const std::string &c = d->category;
+  if (d->description.rfind("[Planned]", 0) == 0) return true;
+  return c == "Light" || c == "Camera" || c == "Scene" || c == "Cloud" ||
+         c == "Render" || (c == "Animation" && t == "AnimationSequence");
 }
 // Terminal sinks: they consume and export, so having no output port is correct.
 // TerrainDisplacement and TerrainSurface are sinks too — what they "export" is
@@ -335,7 +345,7 @@ static void check_ports(gpx::Node *n) {
       ++outs;
     }
   }
-  if (!is_sink(n->type) && !is_container(n->type))
+  if (!is_sink(n->type) && !is_container(n->type) && !is_config_node(n->type))
     CHECK(outs >= 1, "has at least one output");
 }
 
@@ -627,7 +637,10 @@ static void test_port_catalog() {
   for (const gpx::NodeDef *d : all) {
     g_node = d->type;
     const std::vector<gpx::PortInfo> &cat = gpx::port_catalog(d->type);
-    CHECK(!cat.empty() || is_sink(d->type) || is_container(d->type),
+    // a configuration node may have no ports at all, and then an empty
+    // catalog entry is the truth rather than a gap
+    CHECK(!cat.empty() || is_sink(d->type) || is_container(d->type) ||
+              is_config_node(d->type),
           "the catalog knows this type's ports");
 
     // the catalog must say exactly what a real node of that type declares,
@@ -687,12 +700,15 @@ static void test_port_catalog() {
   }
 }
 
+int test_nodes_convert_run(); // test_nodes_convert.cpp
+
 int main() {
   std::printf("Geekatplay TerraForge - node contract suite\n\n");
   test_finiteness_checker_binds(); // before anything relies on it
   test_all_nodes_contract();
   test_surface_displacement_bridge();
   test_port_catalog();
+  g_failures += test_nodes_convert_run();
   std::printf("\n%d checks, %s (%d failures)\n", g_checks,
               g_failures ? "FAILED" : "all passed", g_failures);
   return g_failures ? 1 : 0;

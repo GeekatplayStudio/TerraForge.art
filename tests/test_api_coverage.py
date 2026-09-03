@@ -30,6 +30,7 @@ STUDIO = ROOT / "studio"
 #   render       - studio_render fires it as part of configuring output
 EXEMPT = {
     "undo", "redo", "render",
+    "debug_crash",  # exercises the crash pipeline; never a tool
     "set_sun", "set_sky", "set_fog", "set_clouds", "set_water",
 }
 
@@ -49,9 +50,13 @@ ALIASES = {
 
 def handled_ops():
     """Every op the C++ actually accepts, read from the source."""
+    # every ai_*.cpp: the dispatcher has been split across files more than
+    # once (ai_actions, ai_actions_scene, ai_ops_graph, ai_ops_scene,
+    # ai_ops_view), and a fixed file list silently stopped seeing the ops
+    # that moved
     ops = set()
-    for name in ("ai_assist.cpp", "ai_ops_graph.cpp", "ai_ops_view.cpp"):
-        text = (STUDIO / name).read_text(encoding="utf-8", errors="replace")
+    for path in sorted(STUDIO.glob("ai_*.cpp")):
+        text = path.read_text(encoding="utf-8", errors="replace")
         ops |= set(re.findall(r'op == "([a-z_]+)"', text))
     return ops
 

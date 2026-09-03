@@ -114,6 +114,18 @@ struct FieldValue {
       out[0] = out[1] = out[2] = number();
     }
   }
+  // FieldValue::as_texcoord(): texture coordinates pass through, a vector is
+  // read on the ground plane (x, z) — the same plane FieldTexCoord defaults
+  // to — a colour gives (r, g) and a number fills both. Mirrored in GLSL by
+  // as_vec2() in field_glsl.cpp; the two must stay identical.
+  void as_texcoord(float *out) const {
+    switch (type) {
+      case FieldType::TexCoord: out[0] = v[0]; out[1] = v[1]; break;
+      case FieldType::Vector: out[0] = v[0]; out[1] = v[2]; break;
+      case FieldType::Color: out[0] = v[0]; out[1] = v[1]; break;
+      default: out[0] = out[1] = v[0]; break;
+    }
+  }
   bool finite() const {
     for (float f : v)
       if (!std::isfinite(f)) return false;

@@ -65,7 +65,7 @@ inline DragCreate g_drag_create;
 // selection, and optionally the selected node's parameters in a side pane.
 struct GraphEditor {
   int index = 0;
-  int domain = -1;        // -1 follows a.workspace; 0..3 fixed; 4 = all
+  int domain = -1;        // -1 follows a.workspace; a WS_* domain; WS_ALL = all
   bool show_all = false;  // "show all domains" checkbox
   bool show_props = false;
   float props_w = 300.f;
@@ -79,7 +79,7 @@ struct GraphEditor {
   std::vector<uint64_t> drawn_this_frame;
   int navigate_countdown = -1;
   int effective_domain(const App &a) const { return domain < 0 ? a.workspace : domain; }
-  bool all_domains() const { return show_all || domain == 4; }
+  bool all_domains() const { return show_all || domain == WS_ALL; }
 };
 
 // Which domain the create menu offers nodes for — set by the editor that

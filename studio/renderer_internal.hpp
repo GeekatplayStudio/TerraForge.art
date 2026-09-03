@@ -153,8 +153,19 @@ bool view_ray(const RenderSettings::ViewConfig &vc, float u, float v, int w,
 bool ray_sphere(const float *ro, const float *rd, const float *c, float r,
                 float &t);
 
-// framebuffers (renderer.cpp)
-void ensure_fbo(int slot, int w, int h);
+// framebuffers (renderer.cpp); hdr = RGBA32F colour for the render passes
+void ensure_fbo(int slot, int w, int h, bool hdr = false);
+
+// ---------------------------------------------------------- render passes
+// Which pass the scene is being drawn for: 0 the picture, 1..RENDER_PASS_COUNT
+// a RenderPass bit + 1, AOV_BEAUTY_LINEAR the shaded colour before tone
+// mapping. Every shader that draws a surface reads it (u_aov). renderer_aov.cpp.
+extern int g_aov;
+static const int AOV_BEAUTY_LINEAR = 13;
+// the HDR backdrop dome and the fog: bound into every program that carries
+// SKY_FN / FOG_FN (renderer_backdrop.cpp)
+void backdrop_bind(GLuint prog);
+void upload_fog_uniforms(GLuint prog, const RenderSettings &RS, bool atmosphere);
 
 
 // One frame's shared inputs, built once in draw_scene and handed to each

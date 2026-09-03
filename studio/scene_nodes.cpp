@@ -9,6 +9,8 @@
 
 namespace studio {
 
+void apply_object_nodes(App &a); // scene_nodes_objects.cpp
+
 bool scene_nodes_present(App &a, const char *type) {
   for (auto &n : a.graph.nodes)
     if (n->type == type) return true;
@@ -90,8 +92,53 @@ void apply_scene_nodes(App &a) {
       rs.exposure = at.get_f("exposure", rs.exposure);
       rs.height_scale = at.get_f("height_scale", rs.height_scale);
       rs.terrain_size_m = at.get_f("terrain_size_m", rs.terrain_size_m);
+    } else if (n.type == "RenderQuality") {
+      // its engine list has no appleseed entry: 3 there is the viewport
+      int e = at.get_choice("engine");
+      rs.render_engine = e == 3 ? 4 : e;
+      rs.render_width = at.get_i("width", rs.render_width);
+      rs.render_height = at.get_i("height", rs.render_height);
+      rs.render_samples = at.get_i("samples", rs.render_samples);
+      std::string p = at.get_s("path");
+      if (!p.empty()) rs.render_path = p;
+    } else if (n.type == "RenderOutput") {
+      std::string p = at.get_s("path");
+      if (!p.empty()) rs.render_path = p;
+      rs.render_format = at.get_choice("format");
+      rs.render_width = at.get_i("width", rs.render_width);
+      rs.render_height = at.get_i("height", rs.render_height);
+      rs.render_engine = at.get_choice("engine");
+      rs.render_samples = at.get_i("samples", rs.render_samples);
+    } else if (n.type == "RenderPasses") {
+      int m = 0;
+      for (int i = 0; i < RENDER_PASS_COUNT; ++i)
+        if (at.get_b(render_pass_name(i))) m |= 1 << i;
+      rs.pass_mask = m;
+    } else if (n.type == "RenderBackdrop") {
+      RenderSettings::Backdrop &b = rs.backdrop;
+      b.enabled = at.get_b("enabled", b.enabled);
+      b.file = at.get_s("file");
+      b.mapping = at.get_choice("mapping");
+      b.vfov = at.get_f("vfov", b.vfov);
+      b.flip = at.get_b("flip", b.flip);
+      b.yaw = at.get_f("yaw", b.yaw);
+      b.pitch = at.get_f("pitch", b.pitch);
+      b.exposure_ev = at.get_f("exposure", b.exposure_ev);
+      if (const gpx::Attribute *c = at.find("tint"))
+        for (int k = 0; k < 3; ++k) b.tint[k] = c->col[k];
+      b.blend = at.get_f("blend", b.blend);
+      b.haze = at.get_f("haze", b.haze);
+      b.hide_sun = at.get_b("hide_sun", b.hide_sun);
+    } else if (n.type == "PostProcess") {
+      rs.post_exposure = at.get_f("exposure", rs.post_exposure);
+      rs.post_saturation = at.get_f("saturation", rs.post_saturation);
+      if (const gpx::Attribute *c = at.find("tint"))
+        for (int k = 0; k < 3; ++k) rs.post_tint[k] = c->col[k];
+      rs.post_vignette = at.get_f("vignette", rs.post_vignette);
     }
   }
+  // lights, cameras, objects, planets, the sequence: scene_nodes_objects.cpp
+  apply_object_nodes(a);
 }
 
 } // namespace studio

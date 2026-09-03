@@ -339,9 +339,8 @@ void node_properties_ui(App &a, uint64_t node_id, bool any_workspace) {
   // never show a node that belongs to a different workspace — that was the
   // source of "terrain texture showing under Terrain"
   if (!any_workspace && domain_of_category(n->category) != a.workspace) {
-    const char *ws[4] = {"Terrain", "Materials", "Atmosphere", "Render"};
     ImGui::TextDisabled("%s belongs to the %s workspace.", n->type.c_str(),
-                        ws[domain_of_category(n->category) & 3]);
+                        workspace_name(domain_of_category(n->category)));
     if (ImGui::Button("Go to that workspace"))
       a.workspace = domain_of_category(n->category);
     ImGui::SameLine();

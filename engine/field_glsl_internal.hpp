@@ -72,8 +72,19 @@ struct InputFn {
                             const std::string &, const std::string &,
                             const char *)>
       f_at;
+  // The value type of whatever feeds `port` (Number when unconnected), and
+  // whether anything does. Converters mirror FieldValue::type branches with
+  // these, at compile time.
+  std::function<FieldType(const char *)> f_type;
+  std::function<bool(const char *)> f_connected;
   std::string operator()(const char *port, const char *fallback) const {
     return f(port, fallback);
+  }
+  FieldType type(const char *port) const {
+    return f_type ? f_type(port) : FieldType::Number;
+  }
+  bool connected(const char *port) const {
+    return f_connected ? f_connected(port) : false;
   }
   // Evaluate `port` somewhere else: at an explicit position, altitude and
   // detail budget. This is what Redirect, Displace and ComputeNormal need.
@@ -123,6 +134,10 @@ inline void reg_out(const char *type, const char *port,
 
 // Defined in field_glsl_emitters.cpp; registers every node's emitter once.
 void install_emitters();
+
+// field_glsl_emitters_convert.cpp: the type converters, colour split/combine,
+// HSV and colour adjustment. Called once from install_emitters().
+void install_emitters_convert();
 
 } // namespace glslgen
 } // namespace gpx

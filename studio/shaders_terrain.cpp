@@ -239,7 +239,78 @@ int gp_octaves(float dist, float max_oct){
 )GLSL";
 
 // shared sky helper injected into several shaders
+// The sky function is shared by the sky pass, terrain reflections and water
+// reflections, so the backdrop dome lives in it too: whatever looks at the sky
+// sees the same picture. renderer_backdrop.cpp binds the sampler and uniforms
+// in every program that carries this block.
 const char *const SKY_FN = R"GLSL(
+uniform sampler2D u_backdrop;
+uniform int u_bd_on, u_bd_mode, u_bd_flip, u_bd_hide_sun;
+uniform float u_bd_aspect, u_bd_yaw, u_bd_pitch, u_bd_tanhalf, u_bd_gain;
+uniform float u_bd_blend, u_bd_haze;
+uniform vec3 u_bd_tint;
+// how much of the last sky_color() came from the dome (0 = none / no pixel)
+float g_bd_weight = 0.0;
+vec3 bd_rotate(vec3 d){
+  float cy = cos(u_bd_yaw), sy = sin(u_bd_yaw);
+  d = vec3(d.x*cy - d.z*sy, d.y, d.x*sy + d.z*cy);
+  float cp = cos(u_bd_pitch), sp = sin(u_bd_pitch);
+  return vec3(d.x, d.y*cp - d.z*sp, d.y*sp + d.z*cp);
+}
+// Direction to image coordinates for each mapping. Forward is -Z, so the
+// middle of a panorama faces the default camera; v = 0 is the top row.
+// Returns false where the mapping has no pixel (below a sky dome, outside a
+// planar plate) so the procedural sky shows through there.
+bool bd_uv(vec3 d, out vec2 uv){
+  const float PI_ = 3.14159265, PI2 = 6.2831853;
+  uv = vec2(0.5);
+  if (u_bd_mode == 0) {
+    uv = vec2(atan(d.x, -d.z) / PI2 + 0.5, acos(clamp(d.y, -1.0, 1.0)) / PI_);
+  } else if (u_bd_mode == 1) {
+    float r = acos(clamp(-d.z, -1.0, 1.0)) / PI_;
+    float k = r / max(length(d.xy), 1e-6);
+    uv = vec2(d.x * k, -d.y * k) * 0.5 + 0.5;
+  } else if (u_bd_mode == 2) {
+    float m = 2.0 * length(vec3(d.x, d.y, d.z + 1.0));
+    if (m < 1e-6) return false;
+    uv = vec2(d.x / m, -d.y / m) + 0.5;
+  } else if (u_bd_mode == 3) {
+    vec3 a = abs(d); int face; vec2 st;
+    if (a.x >= a.y && a.x >= a.z) { face = d.x > 0.0 ? 0 : 1; st = vec2(d.x > 0.0 ? -d.z : d.z, -d.y) / a.x; }
+    else if (a.y >= a.z) { face = d.y > 0.0 ? 2 : 3; st = vec2(d.x, d.y > 0.0 ? d.z : -d.z) / a.y; }
+    else { face = d.z > 0.0 ? 4 : 5; st = vec2(d.z > 0.0 ? d.x : -d.x, -d.y) / a.z; }
+    st = st * 0.5 + 0.5;
+    vec2 cell, grid;
+    if (u_bd_aspect > 1.0) { // horizontal cross, 4 x 3
+      grid = vec2(4.0, 3.0);
+      if (face == 0) cell = vec2(2.0, 1.0); else if (face == 1) cell = vec2(0.0, 1.0);
+      else if (face == 2) cell = vec2(1.0, 0.0); else if (face == 3) cell = vec2(1.0, 2.0);
+      else if (face == 4) cell = vec2(1.0, 1.0); else cell = vec2(3.0, 1.0);
+    } else { // vertical cross, 3 x 4, the back face upside down at the bottom
+      grid = vec2(3.0, 4.0);
+      if (face == 0) cell = vec2(2.0, 1.0); else if (face == 1) cell = vec2(0.0, 1.0);
+      else if (face == 2) cell = vec2(1.0, 0.0); else if (face == 3) cell = vec2(1.0, 2.0);
+      else if (face == 4) cell = vec2(1.0, 1.0); else { cell = vec2(1.0, 3.0); st = 1.0 - st; }
+    }
+    uv = (cell + st) / grid;
+  } else if (u_bd_mode == 4) {
+    float t = d.y / max(length(d.xz), 1e-6);
+    uv = vec2(atan(d.x, -d.z) / PI2 + 0.5, 0.5 - t / (2.0 * u_bd_tanhalf));
+    if (uv.y < 0.0 || uv.y > 1.0) return false;
+  } else if (u_bd_mode == 5) {
+    if (d.y <= 0.0) return false;
+    float r = acos(clamp(d.y, -1.0, 1.0)) / (PI_ * 0.5) * 0.5;
+    vec2 dir = length(d.xz) > 1e-6 ? normalize(d.xz) : vec2(0.0);
+    uv = vec2(0.5) + r * vec2(dir.x, -dir.y);
+  } else {
+    if (d.z >= -1e-6) return false;
+    vec2 p = d.xy / (-d.z);
+    uv = vec2(p.x / (2.0 * u_bd_tanhalf * u_bd_aspect), -p.y / (2.0 * u_bd_tanhalf)) + 0.5;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return false;
+  }
+  if (u_bd_flip == 1) uv.x = 1.0 - uv.x;
+  return true;
+}
 vec3 sky_color(vec3 dir, vec3 zenith_c, vec3 horizon_c, vec3 sun, vec3 sun_col,
                float atmo){
   float t = clamp(dir.y*0.5+0.5, 0.0, 1.0);
@@ -253,7 +324,69 @@ vec3 sky_color(vec3 dir, vec3 zenith_c, vec3 horizon_c, vec3 sun, vec3 sun_col,
   // and water reflections, so the whole scene agrees about nightfall.
   float day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
   col *= day;
+  // The dome is an absolute HDR picture: it is not dimmed with the procedural
+  // sky, its own lighting is whatever the photograph holds.
+  g_bd_weight = 0.0;
+  if (u_bd_on == 1) {
+    vec2 uv;
+    if (bd_uv(bd_rotate(dir), uv)) {
+      vec3 bd = texture(u_backdrop, uv).rgb * u_bd_gain * u_bd_tint;
+      col = mix(col, bd, u_bd_blend);
+      g_bd_weight = u_bd_blend;
+    }
+  }
   return col;
+}
+)GLSL";
+
+// Height fog, shared by terrain, water and meshes so that every surface at a
+// given distance disappears into the same air, and the render passes: aov_out
+// is what a shader writes instead of its colour while a pass is drawn (see
+// renderer_aov.cpp; the numbers mirror RenderPass bit + 1).
+const char *const FOG_FN = R"GLSL(
+uniform int u_fog_type;
+uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
+uniform vec3 u_fog_color, u_absorb;
+uniform int u_aov, u_object_id;
+// f: fraction of the pixel that is fog; fogc: the colour of that fog
+void fog_terms(vec3 world, vec3 cam, float dist, float hscale, vec3 sun, vec3 sun_col,
+               out float f, out vec3 fogc){
+  f = 0.0; fogc = vec3(0.0);
+  if (u_fog_type == 0 || u_fog_density <= 0.0) return;
+  float level = u_fog_level * hscale * 4.0;
+  float falloff = u_fog_falloff / max(hscale, 1e-3);
+  float fy0 = cam.y - level, fy1 = world.y - level;
+  float dY = fy1 - fy0;
+  float a = exp(-falloff * max(fy0, 0.0));
+  float b = exp(-falloff * max(fy1, 0.0));
+  float od = (abs(falloff*dY) < 1e-3) ? dist * a
+                                      : abs(dist * (a - b) / (falloff * dY));
+  float dens = u_fog_density * (u_fog_type == 1 ? 0.35 : (u_fog_type == 2 ? 1.0 : 1.8));
+  f = clamp(1.0 - exp(-od * dens), 0.0, 1.0);
+  float sunward = pow(max(dot(normalize(world - cam), sun), 0.0), 6.0);
+  fogc = u_fog_color * mix(vec3(1.0), sun_col * 1.6, sunward * u_fog_scatter);
+  if (u_fog_type == 3) fogc *= vec3(0.85, 0.75, 0.6);
+}
+vec3 apply_fog_terms(vec3 col, float f, vec3 fogc){
+  col *= mix(vec3(1.0), u_absorb, f);
+  return mix(col, fogc, f);
+}
+vec4 aov_out(int aov, float depth, vec3 N, vec3 albedo, vec3 world, float object_id,
+             vec3 direct, float shadow, vec3 ambient, vec3 specular,
+             float fog_f, vec3 fog_c, float water_mask, vec3 linear_col){
+  if (aov == 1) return vec4(depth, 0.0, 0.0, 1.0);
+  if (aov == 2) return vec4(N, 1.0);
+  if (aov == 3) return vec4(world, 1.0);
+  if (aov == 4) return vec4(object_id, 0.0, 0.0, 1.0);
+  if (aov == 5) return vec4(water_mask, 0.0, 0.0, 1.0);
+  if (aov == 6) return vec4(albedo, 1.0);
+  if (aov == 7) return vec4(direct, 1.0);
+  if (aov == 8) return vec4(shadow, 0.0, 0.0, 1.0);
+  if (aov == 9) return vec4(ambient, 1.0);
+  if (aov == 10) return vec4(specular, 1.0);
+  if (aov == 11) return vec4(fog_c * fog_f, 1.0 - fog_f);
+  if (aov == 12) return vec4(0.0, 0.0, 0.0, 1.0); // a surface hides the sky
+  return vec4(apply_fog_terms(linear_col, fog_f, fog_c), 1.0); // 13: linear beauty
 }
 )GLSL";
 

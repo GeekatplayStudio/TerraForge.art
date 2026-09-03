@@ -59,6 +59,7 @@ uniform vec3 u_foam_color;
 uniform float u_foam_amount, u_foam_scale, u_foam_crests;
 uniform float u_roughness, u_reflection;
 SKY_FN_PLACEHOLDER
+FOG_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -106,6 +107,19 @@ void main(){
     col = mix(col, u_foam_color, foam);
     alpha = max(alpha, foam * 0.95);
   }
+  // the same air the terrain disappears into: distant water was never fogged
+  float dist = length(v_world - u_cam);
+  float fog_f; vec3 fog_c;
+  fog_terms(v_world, u_cam, dist, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
+  if (u_aov != 0) {
+    vec3 refl_c = skyr * fresnel * (0.5 + 0.5*u_reflection);
+    vec3 spec_c = u_sun_color * spec * 2.0;
+    frag = aov_out(u_aov, dist, n, water, v_world, float(u_object_id), spec_c, 1.0,
+                   refl_c, spec_c + refl_c, fog_f, fog_c, 1.0, col);
+    if (u_aov == 13) frag.a = alpha;
+    return;
+  }
+  col = apply_fog_terms(col, fog_f, fog_c);
   col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, alpha);
 })GLSL";
@@ -175,6 +189,9 @@ uniform vec4 u_lights[8];
 uniform vec3 u_light_col[8];
 uniform vec4 u_light_dir[8];
 uniform int u_selected;
+uniform vec3 u_cam;
+uniform float u_hscale;
+FOG_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -201,6 +218,18 @@ void main(){
     lit += u_light_col[li] * max(dot(normalize(v_nrm), l), 0.0) * att * cone;
   }
   vec3 col = u_color * v_tint * lit;
+  // objects sit in the same air as the ground
+  float dist = length(v_world - u_cam);
+  float fog_f; vec3 fog_c;
+  fog_terms(v_world, u_cam, dist, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
+  if (u_aov != 0) {
+    vec3 alb = u_color * v_tint;
+    frag = aov_out(u_aov, dist, normalize(v_nrm), alb, v_world, float(u_object_id),
+                   alb * u_sun_color * 1.8 * ndl, 1.0, alb * vec3(0.35,0.38,0.45),
+                   vec3(0.0), fog_f, fog_c, 0.0, col);
+    return;
+  }
+  col = apply_fog_terms(col, fog_f, fog_c);
   if (u_selected == 1) col = mix(col, vec3(1.0,0.55,0.18), 0.25);
   col = aces(col * u_exposure); col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, 1.0);

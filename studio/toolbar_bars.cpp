@@ -15,6 +15,7 @@
 // workflow tabs, the camera, the resolution and the statistics all had equal
 // weight and none of them were grouped.
 #include "app.hpp"
+#include "i18n.hpp"
 #include "gizmo.hpp"
 #include "icons.hpp"
 #include "render_settings.hpp"
@@ -29,8 +30,19 @@
 
 namespace studio {
 
-static const char *WORKSPACES[4] = {"Terrain", "Materials", "Atmosphere",
-                                    "Render"};
+const char *workspace_name(int ws) {
+  switch (ws) {
+    case WS_MATERIALS: return tr("workspace.materials");
+    case WS_ATMOSPHERE: return tr("workspace.atmosphere");
+    case WS_RENDER: return tr("workspace.render");
+    case WS_ALL: return tr("workspace.all");
+    case WS_OBJECTS: return tr("workspace.objects");
+    case WS_LIGHTING: return tr("workspace.lighting");
+    case WS_CAMERAS: return tr("workspace.cameras");
+    case WS_ANIMATION: return tr("workspace.animation");
+    default: return tr("workspace.terrain");
+  }
+}
 
 // What the graph is currently holding, for the readout at the end of the tool
 // row. Buffers dominate; everything else is noise beside them.
@@ -53,7 +65,8 @@ void draw_workspace_bar(App &a) {
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, st.ItemSpacing.y));
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(18, 5));
 
-  for (int w = 0; w < 4; ++w) {
+  for (int oi = 0; oi < 8; ++oi) {
+    const int w = WORKSPACE_ORDER[oi];
     const bool active = a.workspace == w;
     if (active) {
       ImGui::PushStyleColor(ImGuiCol_Button,
@@ -68,7 +81,7 @@ void draw_workspace_bar(App &a) {
       ImGui::PushStyleColor(ImGuiCol_Text,
                             ImGui::ColorConvertU32ToFloat4(theme::text_dim()));
     }
-    if (ImGui::Button(WORKSPACES[w]) && a.workspace != w) {
+    if (ImGui::Button(workspace_name(w)) && a.workspace != w) {
       a.workspace = w;
       // a node from another domain must not linger in the inspector
       std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
@@ -79,8 +92,10 @@ void draw_workspace_bar(App &a) {
           a.prop_tab = TAB_OBJECT;
         }
       }
-      if (w == 2) ImGui::SetWindowFocus("Environment");
-      else if (w == 3) ImGui::SetWindowFocus("Render");
+      if (w == WS_ATMOSPHERE) ImGui::SetWindowFocus("Environment");
+      else if (w == WS_RENDER) ImGui::SetWindowFocus("Render");
+      else if (w == WS_OBJECTS) ImGui::SetWindowFocus("Objects");
+      else if (w == WS_ANIMATION) ImGui::SetWindowFocus("Timeline");
     }
     ImGui::PopStyleColor(active ? 3 : 2);
     ImGui::SameLine();
@@ -253,14 +268,123 @@ void tools_render(App &a) {
                       "engine, resolution and sample settings.");
 }
 
+// Objects: what stands in the world.
+void tools_objects(App &a) {
+  SceneState &sc = scene();
+  ImGui::TextDisabled("add");
+  for (const char *kind : {"cube", "sphere", "plane", "cylinder", "cone"}) {
+    ImGui::SameLine();
+    if (ImGui::SmallButton(kind)) {
+      undo_push(a, std::string("Add ") + kind);
+      sc.selected = scene_add_primitive(kind, "");
+      a.scene_selection_serial++;
+    }
+  }
+  tool_sep();
+  if (ImGui::SmallButton("+ planet")) {
+    undo_push(a, "Add planet");
+    sc.selected = scene_add_planet();
+    a.scene_selection_serial++;
+  }
+  ImGui::SameLine();
+  if (ImGui::SmallButton("+ infinite terrain")) {
+    undo_push(a, "Add infinite terrain");
+    sc.selected = scene_add_infinite_surface(-1);
+    a.scene_selection_serial++;
+  }
+  tool_sep();
+  ImGui::TextDisabled("%d objects", (int)sc.objects.size());
+}
+
+// Lighting: the sun and the placed lights.
+void tools_lighting(App &a) {
+  RenderSettings &rs = render_settings();
+  ImGui::TextDisabled("sun");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(120);
+  ImGui::SliderFloat("##sunalt2", &rs.sun_altitude, 1.f, 89.f, "%.0f\xC2\xB0");
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("Sun altitude.");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(120);
+  ImGui::SliderFloat("##sunaz2", &rs.sun_azimuth, 0.f, 360.f, "%.0f\xC2\xB0");
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("Sun azimuth.");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(100);
+  ImGui::SliderFloat("##sunint", &rs.sun_intensity, 0.f, 10.f, "x%.1f");
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("Sun intensity.");
+  tool_sep();
+  studio::Checkbox("shadows", &rs.shadows);
+  tool_sep();
+  if (ImGui::SmallButton("+ light")) {
+    undo_push(a, "Add light");
+    scene().selected = scene_add_light("");
+    a.scene_selection_serial++;
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("A point light in the scene. A LightSource node in the\n"
+                      "graph does the same and keeps it in the network.");
+}
+
+// Cameras: which one, and a new one.
+void tools_cameras(App &a) {
+  camera_tools(a);
+  tool_sep();
+  ImGui::TextDisabled("focal");
+  SceneState &sc = scene();
+  int active = scene_active_camera();
+  if (active >= 0 && active < (int)sc.objects.size() &&
+      sc.objects[active].type == SceneObject::Camera) {
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(120);
+    ImGui::SliderFloat("##focal", &sc.objects[active].cam.focal_mm, 8.f, 800.f,
+                       "%.0f mm", ImGuiSliderFlags_Logarithmic);
+  } else {
+    ImGui::SameLine();
+    ImGui::TextDisabled("(free camera)");
+  }
+}
+
+// Animation: the transport, so the graph can be scrubbed from any panel.
+void tools_animation(App &a) {
+  if (ImGui::SmallButton(a.anim_playing ? "pause" : "play"))
+    a.anim_playing = !a.anim_playing;
+  ImGui::SameLine();
+  if (ImGui::SmallButton("stop")) {
+    a.anim_playing = false;
+    a.graph.time = a.anim_start;
+    a.request_eval();
+  }
+  tool_sep();
+  ImGui::TextDisabled("time");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(160);
+  if (ImGui::SliderFloat("##anim_t", &a.graph.time, a.anim_start, a.anim_end,
+                         "%.2f s"))
+    a.request_eval();
+  tool_sep();
+  ImGui::TextDisabled("range");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(70);
+  ImGui::DragFloat("##anim_s", &a.anim_start, 0.1f, 0.f, a.anim_end, "%.1f");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(70);
+  ImGui::DragFloat("##anim_e", &a.anim_end, 0.1f, a.anim_start, 100000.f, "%.1f");
+  tool_sep();
+  ImGui::TextDisabled("%s", a.seq_active ? "rendering sequence..." : "sequence idle");
+}
+
 } // namespace
 
 void draw_tool_bar(App &a) {
   ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
   switch (a.workspace) {
-    case 1: tools_materials(a); break;
-    case 2: tools_atmosphere(a); break;
-    case 3: tools_render(a); break;
+    case WS_MATERIALS: tools_materials(a); break;
+    case WS_ATMOSPHERE: tools_atmosphere(a); break;
+    case WS_RENDER: tools_render(a); break;
+    case WS_OBJECTS: tools_objects(a); break;
+    case WS_LIGHTING: tools_lighting(a); break;
+    case WS_CAMERAS: tools_cameras(a); break;
+    case WS_ANIMATION: tools_animation(a); break;
     default: tools_terrain(a); break;
   }
 

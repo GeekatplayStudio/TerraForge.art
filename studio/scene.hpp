@@ -93,6 +93,10 @@ struct SceneObject {
   // imported mesh data
   std::string path;
   unsigned long long material_node = 0; // MaterialOutput node driving this object
+  // The graph node (LightSource, SceneCamera, ImportObject, Planet...) whose
+  // attributes this object mirrors, or 0 for an object edited by hand. See
+  // studio/scene_nodes_objects.cpp.
+  unsigned long long driver_node = 0;
   // Transform. Position is in world units (1 unit = the home terrain tile =
   // terrain_size_m metres); the interface shows every one of these as a real
   // length. Rotation is HPB - heading about Y, then pitch about X, then bank

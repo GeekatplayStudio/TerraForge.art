@@ -11,6 +11,27 @@ struct Heightmap;
 
 namespace studio {
 
+// The channels a render can write beside its beauty image, one bit each. The
+// order is the order they are drawn and the order the Render panel lists
+// them; render_pass_name() is the file suffix.
+enum RenderPass : int {
+  PASS_DEPTH = 1 << 0,       // linear distance from the camera, metres
+  PASS_NORMAL = 1 << 1,      // world-space normal, -1..1 stored raw
+  PASS_POSITION = 1 << 2,    // world position, tile units
+  PASS_OBJECT_ID = 1 << 3,   // 0 sky, 1 terrain, 2 water, 3+ scene objects
+  PASS_WATER_MASK = 1 << 4,  // 1 where water covers the pixel
+  PASS_ALBEDO = 1 << 5,      // surface colour before lighting
+  PASS_DIRECT = 1 << 6,      // sun light reaching the surface, shadowed
+  PASS_SHADOW = 1 << 7,      // 1 lit .. 0 in shadow
+  PASS_AMBIENT = 1 << 8,     // sky / ambient light on the surface
+  PASS_SPECULAR = 1 << 9,    // specular and reflection
+  PASS_ATMOSPHERE = 1 << 10, // rgb in-scattered fog, alpha transmittance
+  PASS_ENVIRONMENT = 1 << 11 // sky and backdrop only, linear HDR
+};
+static const int RENDER_PASS_COUNT = 12;
+const char *render_pass_name(int index);  // "depth", "normal", ...
+const char *render_pass_label(int index); // for the UI
+
 struct RenderSettings {
   // sun
   int sun_mode = 0;            // 0 = manual, 1 = geographic (lat/lon/date/time)
@@ -174,6 +195,39 @@ struct RenderSettings {
   bool use_albedo = true;
   bool shadows = true;
   float shadow_softness = 1.5f;
+
+  // ---- the render editor ---------------------------------------------
+  // An HDR image dome at infinite distance. The sky shader samples it by
+  // direction (SKY_FN in shaders_terrain.cpp), so it lights water reflections
+  // and terrain ambient too, and everything the atmosphere does to the sky -
+  // horizon haze, clouds in front, the space transition - happens to it.
+  struct Backdrop {
+    bool enabled = false;
+    std::string file;
+    int mapping = 0;  // 0 lat-long, 1 angular map, 2 mirror ball, 3 cube cross,
+                      // 4 cylindrical, 5 sky dome, 6 planar
+    float vfov = 90.f; // cylindrical / planar: vertical field of view, degrees
+    bool flip = false;
+    float yaw = 0.f, pitch = 0.f;
+    float exposure_ev = 0.f;
+    float tint[3] = {1.f, 1.f, 1.f};
+    float blend = 1.f; // 1 replaces the procedural sky, lower mixes
+    float haze = 1.f;  // how much horizon fog the dome receives
+    bool hide_sun = true;
+  } backdrop;
+  // G-buffer passes written beside the beauty, a RenderPass bit each.
+  int pass_mask = PASS_DEPTH | PASS_NORMAL | PASS_OBJECT_ID | PASS_ALBEDO;
+  int render_format = 0; // beauty: 0 PNG 8-bit, 1 EXR linear, 2 HDR linear
+  // What the Render tab renders with when no scene camera is active; a
+  // camera carries its own RenderAssign.
+  int render_engine = 4; // 4 = the OpenGL viewport
+  int render_width = 1920, render_height = 1080, render_samples = 128;
+  std::string render_path = "terraforge_render.png";
+  // Post-processing after tone mapping (PostProcess node); multiplied into
+  // the active camera's film grading.
+  float post_exposure = 1.f, post_saturation = 1.f;
+  float post_tint[3] = {1.f, 1.f, 1.f};
+  float post_vignette = 0.f;
 };
 
 RenderSettings &render_settings();
@@ -250,5 +304,14 @@ unsigned renderer_material_preview(int size, int shape = 0, float spin = 0.f);
 
 // computes sun direction from settings (handles geographic mode)
 void compute_sun_dir(const RenderSettings &rs, float out_dir[3]);
+
+// The render editor's outputs (renderer_aov.cpp): the beauty in `format`
+// (0 PNG, 1 EXR, 2 HDR) plus one linear EXR per RenderPass bit in
+// `pass_mask`, named <beauty stem>_<pass>.exr. `report` lists what was
+// written or why not.
+bool renderer_render_passes(const std::string &beauty_path, int w, int h,
+                            int pass_mask, int format, std::string &report);
+// what the backdrop loader has to say: size and mean, or the error
+std::string renderer_backdrop_status();
 
 } // namespace studio

@@ -182,16 +182,67 @@ REGISTER_NODE(
 
 // ------------------------------------------------------------------ vector
 REGISTER_NODE(
-    FieldVectorOp, "Field Math", "Vector maths: length, dot, cross, normalize, distance",
+    FieldVectorOp, "Field Math",
+    "Vector maths: length, dot, distance, normalize, cross, add, subtract, multiply, reflect",
     [](Node &n) {
       n.add_field_in("a", FieldType::Vector, true);
       n.add_field_in("b", FieldType::Vector, true);
       add_choice(n.attrs, "op", "Operation",
                  {"Length", "Dot product", "Distance", "Normalize (X)",
-                  "Cross product (X)"},
-                 0);
-      n.add_field_out("out", FieldType::Number, [](const Node &self,
-                                                   const FieldContext &ctx) {
+                  "Cross product (X)", "Add (X)", "Subtract (X)", "Multiply (X)",
+                  "Reflect A off B (X)"},
+                 0)
+          .tooltip = "'out' is a number: the scalar result, or the X lane of a\n"
+                     "vector result. 'vec' is the whole vector result; for the\n"
+                     "scalar operations it passes A through (A - B for Distance).";
+      // The full vector result, shared by both outputs so they can never
+      // disagree about what the operation produced. Mirrored by vecop_result
+      // in field_glsl_emitters.cpp.
+      auto vec_result = [](const Node &self, const FieldContext &ctx, float *r) {
+        float a[3], b[3];
+        self.in_field("a", ctx, FieldValue::vector(0, 0, 0)).as_vector(a);
+        self.in_field("b", ctx, FieldValue::vector(0, 1, 0)).as_vector(b);
+        auto len = [](const float *v) {
+          return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        };
+        switch (self.attrs.get_choice("op")) {
+          case 2: case 6:
+            for (int i = 0; i < 3; ++i) r[i] = a[i] - b[i];
+            break;
+          case 3: {
+            float l = len(a);
+            for (int i = 0; i < 3; ++i) r[i] = l > 1e-9f ? a[i] / l : 0.f;
+            break;
+          }
+          case 4:
+            r[0] = a[1]*b[2] - a[2]*b[1];
+            r[1] = a[2]*b[0] - a[0]*b[2];
+            r[2] = a[0]*b[1] - a[1]*b[0];
+            break;
+          case 5:
+            for (int i = 0; i < 3; ++i) r[i] = a[i] + b[i];
+            break;
+          case 7:
+            for (int i = 0; i < 3; ++i) r[i] = a[i] * b[i];
+            break;
+          case 8: {
+            float l = len(b);
+            if (l > 1e-9f) {
+              float nb[3] = {b[0] / l, b[1] / l, b[2] / l};
+              float d = a[0]*nb[0] + a[1]*nb[1] + a[2]*nb[2];
+              for (int i = 0; i < 3; ++i) r[i] = a[i] - 2.f * d * nb[i];
+            } else {
+              for (int i = 0; i < 3; ++i) r[i] = a[i];
+            }
+            break;
+          }
+          default: // Length, Dot: A passes through
+            for (int i = 0; i < 3; ++i) r[i] = a[i];
+            break;
+        }
+      };
+      n.add_field_out("out", FieldType::Number, [vec_result](const Node &self,
+                                                             const FieldContext &ctx) {
         float a[3], b[3];
         self.in_field("a", ctx, FieldValue::vector(0, 0, 0)).as_vector(a);
         self.in_field("b", ctx, FieldValue::vector(0, 1, 0)).as_vector(b);
@@ -205,12 +256,18 @@ REGISTER_NODE(
             float d[3] = {a[0]-b[0], a[1]-b[1], a[2]-b[2]};
             return FieldValue(len(d));
           }
-          case 3: {
-            float l = len(a);
-            return FieldValue(l > 1e-9f ? a[0] / l : 0.f);
+          default: {
+            float r[3];
+            vec_result(self, ctx, r);
+            return FieldValue(r[0]);
           }
-          default: return FieldValue(a[1]*b[2] - a[2]*b[1]);
         }
+      });
+      n.add_field_out("vec", FieldType::Vector, [vec_result](const Node &self,
+                                                             const FieldContext &ctx) {
+        float r[3];
+        vec_result(self, ctx, r);
+        return FieldValue::vector(r[0], r[1], r[2]);
       });
     },
     [](Node &) {})

@@ -47,6 +47,11 @@ static const std::map<std::string, const char *> &english() {
       {"workspace.materials", "Materials"},
       {"workspace.atmosphere", "Atmosphere"},
       {"workspace.render", "Render"},
+      {"workspace.all", "All domains"},
+      {"workspace.objects", "Objects"},
+      {"workspace.lighting", "Lighting"},
+      {"workspace.cameras", "Cameras"},
+      {"workspace.animation", "Animation"},
       // panels
       {"panel.outliner", "Outliner"},
       {"panel.properties", "Properties"},

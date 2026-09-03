@@ -85,6 +85,26 @@ vec3 gpxf_cell(vec3 p, uint seed, float jitter, int metric){
 }
 // guarded division: the CPU side returns 0 rather than NaN, so must this
 float gpxf_div(float a, float b){ return abs(b) > 1e-9 ? a/b : 0.0; }
+// RGB <-> HSV, mirroring gpx::rgb_to_hsv / hsv_to_rgb (gpx/color_math.hpp)
+vec3 gpxf_rgb2hsv(vec3 c){
+  float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+  float d = mx - mn, h = 0.0;
+  if (d > 1e-9) {
+    if (mx == c.r) h = mod((c.g - c.b) / d, 6.0);
+    else if (mx == c.g) h = (c.b - c.r) / d + 2.0;
+    else h = (c.r - c.g) / d + 4.0;
+    h /= 6.0; if (h < 0.0) h += 1.0;
+  }
+  return vec3(h, mx > 1e-9 ? d / mx : 0.0, mx);
+}
+vec3 gpxf_hsv2rgb(vec3 c){
+  float h = fract(c.x) * 6.0, s = clamp(c.y, 0.0, 1.0), v = c.z;
+  int i = int(floor(h)); float f = h - float(i);
+  float p = v * (1.0 - s), q = v * (1.0 - s * f), t = v * (1.0 - s * (1.0 - f));
+  if (i == 0) return vec3(v, t, p); if (i == 1) return vec3(q, v, p);
+  if (i == 2) return vec3(p, v, t); if (i == 3) return vec3(p, q, v);
+  if (i == 4) return vec3(t, p, v); return vec3(v, p, q);
+}
 // Soft membership of a band. Deliberately not smoothstep: smoothstep(e,e,x) is
 // undefined when the edges coincide, which is exactly what zero fuzziness asks
 // for. Mirrors band() in nodes_field_material.cpp.
@@ -151,15 +171,40 @@ static std::string as_vec4(const std::string &v, FieldType t) {
   return "vec4(vec3(" + as_number(v, t) + "), 1.0)";
 }
 
+// And FieldValue::as_texcoord(): texture coordinates pass through, a vector
+// is read on the ground plane, a colour gives (r, g), a number fills both.
+static std::string as_vec2(const std::string &v, FieldType t) {
+  switch (t) {
+    case FieldType::TexCoord: return v + ".xy";
+    case FieldType::Vector: return v + ".xz";
+    case FieldType::Color: return v + ".xy";
+    default: return "vec2(" + v + ".x)";
+  }
+}
+
+// Which value type feeds an input, or Number when nothing does. Converter
+// nodes branch on this at compile time exactly as their CPU half branches on
+// FieldValue::type, so the two halves take the same path for the same graph.
+static FieldType upstream_type(const Node &n, const char *port) {
+  const Port *src_port = n.graph ? n.graph->upstream(n, port) : nullptr;
+  return src_port ? src_port->field_type : FieldType::Number;
+}
+
 // Resolve one input port to a GLSL expression. A leading '#' asks for the vec3
-// form (vector inputs) and '@' for the vec4 form (colour inputs); otherwise the
-// scalar form. The prefix picks which FieldValue conversion to mirror.
+// form (vector inputs), '@' for the vec4 form (colour inputs), '%' for the
+// vec2 form (texture coordinates) and '!' for the raw vec4 with no conversion
+// at all — the layout FieldValue::v has, for converters that pick lanes by
+// hand; otherwise the scalar form. The prefix picks which FieldValue
+// conversion to mirror.
 static std::string resolve_input(const Node &n, EmitCtx &ctx,
                                  std::set<uint64_t> &visiting, const char *port,
                                  const char *fallback) {
   bool want_vec3 = port[0] == '#';
   bool want_vec4 = port[0] == '@';
-  std::string pname = (want_vec3 || want_vec4) ? port + 1 : port;
+  bool want_vec2 = port[0] == '%';
+  bool want_raw = port[0] == '!';
+  std::string pname =
+      (want_vec3 || want_vec4 || want_vec2 || want_raw) ? port + 1 : port;
   // Which output feeds us matters: a node may produce several, and they are
   // different values, not different views of one.
   const Port *src_port = n.graph ? n.graph->upstream(n, pname) : nullptr;
@@ -168,8 +213,10 @@ static std::string resolve_input(const Node &n, EmitCtx &ctx,
   if (!emit_node(*src, src_port->name, ctx, visiting)) return fallback;
   auto it = ctx.var_of.find(ctx.key(src->id, src_port->name));
   if (it == ctx.var_of.end()) return fallback;
+  if (want_raw) return it->second;
   if (want_vec3) return as_vec3(it->second, src_port->field_type);
   if (want_vec4) return as_vec4(it->second, src_port->field_type);
+  if (want_vec2) return as_vec2(it->second, src_port->field_type);
   return as_number(it->second, src_port->field_type);
 }
 
@@ -217,6 +264,10 @@ static bool emit_node(const Node &n, const std::string &out_port, EmitCtx &ctx,
   in.f_at = [&](const char *port, const std::string &pos, const std::string &alt,
                 const std::string &lod, const char *fallback) {
     return resolve_input_at(n, ctx, visiting, port, pos, alt, lod, fallback);
+  };
+  in.f_type = [&](const char *port) { return upstream_type(n, port); };
+  in.f_connected = [&](const char *port) {
+    return n.graph && n.graph->upstream(n, port) != nullptr;
   };
   std::string expr = e->second.emit(n, in, ctx);
   visiting.erase(n.id);

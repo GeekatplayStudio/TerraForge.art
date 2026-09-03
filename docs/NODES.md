@@ -1,16 +1,20 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 181 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 230 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
 | [Analysis](#analysis) | 5 |
+| [Animation](#animation) | 6 |
 | [Atmosphere](#atmosphere) | 4 |
+| [Camera](#camera) | 6 |
+| [Cloud](#cloud) | 4 |
 | [Effect](#effect) | 7 |
 | [Erosion](#erosion) | 11 |
 | [Export](#export) | 8 |
 | [Field Bridge](#field-bridge) | 2 |
-| [Field Color](#field-color) | 2 |
+| [Field Color](#field-color) | 5 |
+| [Field Convert](#field-convert) | 10 |
 | [Field Displace](#field-displace) | 4 |
 | [Field Input](#field-input) | 9 |
 | [Field Material](#field-material) | 1 |
@@ -19,14 +23,16 @@ Every node in Geekatplay TerraForge — 181 across 25 categories. Generated from
 | [Filter](#filter) | 23 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
+| [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 14 |
-| [Material](#material) | 19 |
+| [Material](#material) | 20 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
 | [Primitive](#primitive) | 21 |
-| [Render](#render) | 2 |
+| [Render](#render) | 8 |
+| [Scene](#scene) | 7 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 8 |
 
@@ -124,6 +130,86 @@ Where water collects — high in flat hollows fed from above, low on steep groun
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+## Animation
+
+### AnimationClip
+
+[Planned] Reusable clip of keyed attributes: paste, shift, stretch, reverse
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### AnimationSequence
+
+The shot: frame range, frame rate, output size and folder for the sequence renderer
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Start (s) | float, 0 to 100000, default 0 |  |
+| End (s) | float, 0 to 100000, default 10 |  |
+| Frames per second | float, 1 to 240, default 30 |  |
+| Width | int, 64 to 8192, default 1280 |  |
+| Height | int, 64 to 8192, default 720 |  |
+| Output folder | text |  |
+| Sweep the sun | toggle, default off |  |
+| Sun from: azimuth ° | float, 0 to 360, default 90 |  |
+| Sun from: altitude ° | float, -10 to 90, default 10 |  |
+| Sun to: azimuth ° | float, 0 to 360, default 270 |  |
+| Sun to: altitude ° | float, -10 to 90, default 10 |  |
+
+### Dynamics
+
+[Planned] Forward dynamics, linking and tracking between objects
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### KeyframeCurve
+
+[Planned] Editable time spline: keys, tangents, interpolation per segment
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### Oscillator
+
+A wave of time: sine, triangle, square or sawtooth, for anything that should pulse
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| time | in (optional) | field (number) |
+| out | out | field (number) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Waveform | choice: Sine / Triangle / Square / Sawtooth |  |
+| Frequency (Hz) | float, 0.001 to 100, default 0.5 |  |
+| Phase | float, 0 to 1, default 0 |  |
+| Amplitude | float, 0 to 1000, default 1 |  |
+| Offset | float, -1000 to 1000, default 0 |  |
+
+### TimeRemap
+
+Speeds, offsets, loops or ping-pongs time before it reaches a graph
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| time | in (optional) | field (number) |
+| out | out | field (number) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Speed | float, -100 to 100, default 1 |  |
+| Offset (s) | float, -10000 to 10000, default 0 |  |
+| Loop length (s, 0 = none) | float, 0 to 10000, default 0 |  |
+| Ping-pong | toggle, default off | With a loop length: run forward then backward instead of jumping. |
 
 ## Atmosphere
 
@@ -232,6 +318,119 @@ Water body: level, colors, waves and foam
 | Shoreline foam | float, 0 to 2, default 0.6 |  |
 | Crest foam | float, 0 to 1, default 0.35 |  |
 | Foam scale | float, 0.5 to 10, default 3 |  |
+
+## Camera
+
+### CameraPath
+
+Fly a camera along a path for the rendered sequence
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| path | in | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Height above ground (m) | float, 0 to 50000, default 400 |  |
+| Ride the path | toggle, default on | When on, the sequence renderer moves the active camera along the connected path over the length of the animation. |
+
+### CameraSwitch
+
+[Planned] Cut between cameras over the timeline
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### CameraTarget
+
+[Planned] Aim a camera at a scene object and keep tracking it
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### DepthOfField
+
+[Planned] Focus distance and bokeh from the camera's aperture
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### MotionBlur
+
+[Planned] Shutter-time motion blur for camera and object movement
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### SceneCamera
+
+A camera in the scene: position, aim, lens, exposure triangle, film
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Scene object | text | Name of the scene camera this node drives. Created when missing; an existing camera of that name is adopted. |
+| Look through it | toggle, default off | Makes this the active camera: the perspective views and the render use it. |
+| Eye X (m) | float, -100000 to 100000, default 2500 |  |
+| Eye height (m) | float, -10000 to 100000, default 2250 |  |
+| Eye Z (m) | float, -100000 to 100000, default 8500 |  |
+| Target X (m) | float, -100000 to 100000, default 2500 |  |
+| Target height (m) | float, -10000 to 100000, default 500 |  |
+| Target Z (m) | float, -100000 to 100000, default 2500 |  |
+| Focal length (mm) | float, 8 to 800, default 35 |  |
+| Aperture f/ | float, 1.2 to 22, default 8 |  |
+| Shutter 1/x s | float, 0.5 to 8000, default 125 |  |
+| ISO | float, 25 to 25600, default 100 |  |
+| Film stock | int, 0 to 7, default 0 | Index into the film stock list (see the Camera properties). |
+
+## Cloud
+
+### CloudDensityField
+
+[Planned] Drive a cloud layer's density from a field graph
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| density | in (optional) | field (number) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### CloudMaterial
+
+[Planned] Shade clouds through the material system
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### CloudZone
+
+[Planned] Confine a cloud layer to a region of the sky
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### SpectralClouds
+
+[Planned] Spectral / high-altitude cloud model and morphing clouds
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
 
 ## Effect
 
@@ -773,6 +972,54 @@ Reads a heightmap as a field, so sculpted or eroded terrain can drive a shader
 
 ## Field Color
 
+### FieldColorAdjust
+
+Colour correction: hue shift, saturation, contrast, brightness, gamma, invert
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| color | in (optional) | field (color) |
+| out | out | field (color) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Hue shift ° | float, -180 to 180, default 0 |  |
+| Saturation | float, 0 to 3, default 1 |  |
+| Contrast | float, 0 to 3, default 1 |  |
+| Brightness | float, -1 to 1, default 0 |  |
+| Gamma | float, 0.1 to 5, default 1 |  |
+| Invert | toggle, default off |  |
+
+### FieldColorFromHSV
+
+Builds a colour from hue, saturation, value and alpha numbers
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| h | in (optional) | field (number) |
+| s | in (optional) | field (number) |
+| v | in (optional) | field (number) |
+| a | in (optional) | field (number) |
+| out | out | field (color) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Hue (when unconnected) | float, 0 to 1, default 0.1 |  |
+| Saturation (when unconnected) | float, 0 to 1, default 0.4 |  |
+| Value (when unconnected) | float, 0 to 1, default 0.6 |  |
+| Alpha (when unconnected) | float, 0 to 1, default 1 |  |
+
+### FieldColorHSV
+
+Takes a colour apart as hue, saturation and value (each 0..1)
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| color | in (optional) | field (color) |
+| h | out | field (number) |
+| s | out | field (number) |
+| v | out | field (number) |
+
 ### FieldColorMix
 
 Blends two colours — mix, add, multiply, screen, overlay, darken, lighten
@@ -802,6 +1049,147 @@ Turns a number into a colour through a gradient
 | :--- | :--- | :--- |
 | Gradient | gradient |  |
 | Input range | range |  |
+
+## Field Convert
+
+### FieldColorCombine
+
+Builds a colour from red, green, blue and alpha numbers
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| r | in (optional) | field (number) |
+| g | in (optional) | field (number) |
+| b | in (optional) | field (number) |
+| a | in (optional) | field (number) |
+| out | out | field (color) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Red (when unconnected) | float, 0 to 1, default 0.5 |  |
+| Green (when unconnected) | float, 0 to 1, default 0.5 |  |
+| Blue (when unconnected) | float, 0 to 1, default 0.5 |  |
+| Alpha (when unconnected) | float, 0 to 1, default 1 |  |
+
+### FieldColorSplit
+
+Takes a colour apart: luminance, red, green, blue and alpha as numbers
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| color | in (optional) | field (color) |
+| luminance | out | field (number) |
+| r | out | field (number) |
+| g | out | field (number) |
+| b | out | field (number) |
+| a | out | field (number) |
+
+### FieldTexCoordCombine
+
+Builds texture coordinates from u and v numbers
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| u | in (optional) | field (number) |
+| v | in (optional) | field (number) |
+| out | out | field (uv) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| U (when unconnected) | float, -64 to 64, default 0 |  |
+| V (when unconnected) | float, -64 to 64, default 0 |  |
+
+### FieldTexCoordSplit
+
+Takes texture coordinates apart into u and v numbers
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| uv | in (optional) | field (uv) |
+| u | out | field (number) |
+| v | out | field (number) |
+
+### FieldToColor
+
+Any value as a colour: grey from a number, RGB from a vector, with an alpha
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| in | in (optional) | field (color) |
+| out | out | field (color) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Alpha (non-colour inputs) | float, 0 to 1, default 1 |  |
+| Vector is -1..1 (remap to 0..1) | toggle, default on | A direction or normal spans -1..1; on it maps that range onto 0..1 the way a normal map does. |
+
+### FieldToNumber
+
+Any value as a number: luminance / length, one lane, alpha, max or average
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| in | in (optional) | field (number) |
+| out | out | field (number) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Read as | choice: Auto (luminance, length, u) / First lane (R / X / U) / Second lane (G / Y / V) / Third lane (B / Z) / Alpha / Largest lane / Average of lanes | Auto is what an unconverted link does: a colour is its luminance, a vector its length. The lane modes pick one component; a type with fewer lanes gives its last one. |
+
+### FieldToTexCoord
+
+Any value as texture coordinates: a vector projected on a plane, RG, or n,n
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| in | in (optional) | field (uv) |
+| out | out | field (uv) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Project a vector on | choice: XZ (ground) / XY (front) / ZY (side) |  |
+
+### FieldToVector
+
+Any value as a vector: a number broadcast, RGB of a colour, UV on a plane
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| in | in (optional) | field (vector) |
+| out | out | field (vector) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Texture coordinates lie on | choice: XZ (ground) / XY (front) / ZY (side) |  |
+
+### FieldVectorCombine
+
+Builds a vector from x, y and z numbers
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| x | in (optional) | field (number) |
+| y | in (optional) | field (number) |
+| z | in (optional) | field (number) |
+| out | out | field (vector) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| X (when unconnected) | float, -1000 to 1000, default 0 |  |
+| Y (when unconnected) | float, -1000 to 1000, default 0 |  |
+| Z (when unconnected) | float, -1000 to 1000, default 0 |  |
+
+### FieldVectorSplit
+
+Takes a vector apart: x, y, z and its length as numbers
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| vector | in (optional) | field (vector) |
+| x | out | field (number) |
+| y | out | field (number) |
+| z | out | field (number) |
+| length | out | field (number) |
 
 ## Field Displace
 
@@ -1079,17 +1467,18 @@ Trigonometry: sine, cosine, tangent and their inverses
 
 ### FieldVectorOp
 
-Vector maths: length, dot, cross, normalize, distance
+Vector maths: length, dot, distance, normalize, cross, add, subtract, multiply, reflect
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
 | a | in (optional) | field (vector) |
 | b | in (optional) | field (vector) |
 | out | out | field (number) |
+| vec | out | field (vector) |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Operation | choice: Length / Dot product / Distance / Normalize (X) / Cross product (X) |  |
+| Operation | choice: Length / Dot product / Distance / Normalize (X) / Cross product (X) / Add (X) / Subtract (X) / Multiply (X) / Reflect A off B (X) | 'out' is a number: the scalar result, or the X lane of a vector result. 'vec' is the whole vector result; for the scalar operations it passes A through (A - B for Distance). |
 
 ## Field Noise
 
@@ -1615,6 +2004,73 @@ Standing water at a set level
 | Normalize depth | toggle, default on |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
+## Light
+
+### AreaLight
+
+[Planned] Rectangular and disc area lights with soft shadows
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### LensFlare
+
+[Planned] Lens flare and reflections editor per light
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### LightGel
+
+[Planned] Projected texture (gel / gobo) on a spot light
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### LightSource
+
+A point or spot light in the scene: position, colour, intensity, reach, cone
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Scene object | text | Name of the scene light this node drives. Created when missing; an existing light of that name is adopted. |
+| Enabled | toggle, default on |  |
+| Type | choice: Point / Spot |  |
+| Colour | color |  |
+| Intensity | float, 0 to 50, default 1 |  |
+| Reach (m) | float, 1 to 100000, default 1750 | Distance at which the light has faded to nothing. |
+| X (m) | float, -100000 to 100000, default 2500 |  |
+| Height (m) | float, -10000 to 100000, default 1500 |  |
+| Z (m) | float, -100000 to 100000, default 2500 |  |
+| Heading ° | float, -180 to 180, default 0 |  |
+| Pitch ° | float, -90 to 90, default -60 |  |
+| Cone angle ° | float, 1 to 179, default 40 |  |
+| Cast shadows | toggle, default off | Recorded now, honoured by the offline engines; the viewport's point lights do not cast shadows yet (roadmap P3). |
+
+### Skylight
+
+[Planned] Global illumination model: ambient, hemispherical sky light, GI
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### VolumetricLight
+
+[Planned] Visible light shafts through haze and cloud
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
 ## Logic
 
 ### Compare
@@ -1969,6 +2425,19 @@ Pack three grayscale inputs into one RGB texture
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Normalize inputs | toggle, default on |  |
+
+### ChannelSplit
+
+Split a texture into red, green, blue, alpha and luminance masks
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| texture | in | texture |
+| r | out | heightmap |
+| g | out | heightmap |
+| b | out | heightmap |
+| a | out | heightmap |
+| luminance | out | heightmap |
 
 ### ColorAdjust
 
@@ -3104,6 +3573,36 @@ Raw per-cell white noise
 
 ## Render
 
+### PostProcess
+
+Image finishing after tone mapping: exposure, saturation, colour tint
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Exposure multiplier | float, 0.1 to 10, default 1 |  |
+| Saturation | float, 0 to 2, default 1 |  |
+| Tint | color |  |
+| Vignette | float, 0 to 1, default 0 | Recorded for the offline post pass; the viewport ignores it for now (roadmap P6 post-render options). |
+
+### RenderBackdrop
+
+An HDR image dome at infinity behind the scene, hazed and clouded by the atmosphere
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Enabled | toggle, default on |  |
+| HDR image (.hdr / .exr / .png / .jpg) | file path |  |
+| Mapping | choice: Equirectangular (lat-long) / Angular map (light probe) / Mirror ball / Cube map cross / Cylindrical panorama / Sky dome (hemisphere) / Planar backdrop | How pixels map onto directions. Lat-long is what HDRI libraries ship; a cross is detected as horizontal or vertical by its aspect; cylindrical and planar use the vertical field of view below. |
+| Vertical field of view ° | float, 5 to 179, default 90 | Cylindrical panorama and planar backdrop only. |
+| Mirror horizontally | toggle, default off |  |
+| Rotate ° | float, -180 to 180, default 0 |  |
+| Tilt ° | float, -90 to 90, default 0 |  |
+| Exposure (EV) | float, -10 to 10, default 0 |  |
+| Tint | color |  |
+| Blend over the sky | float, 0 to 1, default 1 | 1 replaces the procedural sky with the image; lower values mix. Where a mapping has no pixel (below a sky dome, outside a planar backdrop) the procedural sky shows through. |
+| Atmosphere on the dome | float, 0 to 1, default 1 | How much horizon haze and fog the dome receives, as if at infinite distance. Clouds always draw in front of it. |
+| Hide the sun disc | toggle, default on | An HDRI usually contains its own sun. |
+
 ### RenderCamera
 
 Camera and tone mapping for the render
@@ -3117,6 +3616,47 @@ Camera and tone mapping for the render
 | Exposure | float, 0.3 to 3, default 1.1 |  |
 | Terrain height scale | float, 0.02 to 0.8, default 0.22 |  |
 | Terrain size (m) | float, 100 to 100000, default 5000 |  |
+
+### RenderLayers
+
+[Planned] Objects and lights sorted into render layers for compositing
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### RenderOutput
+
+Master output: file, format, size, engine and samples of the render
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Output file | file path |  |
+| Beauty format | choice: PNG 8-bit (tone mapped) / EXR float (linear) / HDR Radiance (linear) | Passes are always written as linear float EXR beside the beauty, whatever this is. |
+| Width | int, 64 to 8192, default 1920 |  |
+| Height | int, 64 to 8192, default 1080 |  |
+| Engine | choice: Mitsuba 3 / Blender Cycles / LuxCoreRender / appleseed / OpenGL viewport |  |
+| Samples | int, 8 to 4096, default 128 |  |
+
+### RenderPasses
+
+Which channels the render writes beside the beauty: depth, normal, id, light, atmosphere...
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Depth (metres) | toggle, default on |  |
+| World normal | toggle, default on |  |
+| World position | toggle, default off |  |
+| Object id | toggle, default on |  |
+| Water mask | toggle, default off |  |
+| Albedo | toggle, default on |  |
+| Direct sun light | toggle, default off |  |
+| Shadow mask | toggle, default off |  |
+| Sky / ambient light | toggle, default off |  |
+| Specular / reflection | toggle, default off |  |
+| Fog & haze (rgb + transmittance) | toggle, default off |  |
+| Sky & backdrop only | toggle, default off |  |
 
 ### RenderQuality
 
@@ -3133,6 +3673,120 @@ Offline render engine, resolution and sampling
 | Height | int, 64 to 8192, default 1080 |  |
 | Samples | int, 8 to 4096, default 128 |  |
 | Output file | file path |  |
+
+### RenderRegion
+
+[Planned] Render only a rectangle of the frame
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+## Scene
+
+### BooleanObject
+
+[Planned] Union, intersection and difference of meshes
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### ImportObject
+
+An imported 3D object (OBJ) placed in the scene, with its transform and colour
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| OBJ file | file path |  |
+| Scene object | text | Name in the Objects tree. Empty: the file name. |
+| Colour | color |  |
+| X (m) | float, -100000 to 100000, default 2500 |  |
+| Height (m) | float, -10000 to 100000, default 0 |  |
+| Z (m) | float, -100000 to 100000, default 2500 |  |
+| Size (m) | float, 0.01 to 100000, default 400 | Uniform size of the object's unit box. |
+| Heading ° | float, -180 to 180, default 0 |  |
+| Pitch ° | float, -180 to 180, default 0 |  |
+| Bank ° | float, -180 to 180, default 0 |  |
+| Visible | toggle, default on |  |
+
+### InfiniteTerrain
+
+An endless procedural terrain layer: on the ground plane or shaping a planet
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Scene object | text |  |
+| Parent planet | text | Name of the Planet object this layer shapes. Empty: extends the home ground plane to the horizon. |
+| Seed | seed |  |
+| Landscape | choice: Rolling hills / Ridged mountains / Billow dunes |  |
+| Feature scale | float, 0.1 to 64, default 3 |  |
+| Amplitude | float, 0 to 4, default 1 |  |
+| Coverage | float, 0 to 1, default 1 | Fraction of the surface the layer occupies. |
+| Region size | float, 0.1 to 10, default 1.5 |  |
+| Height scale | float, 0 to 4, default 1 | Extra multiplier for ground-plane layers. |
+| Visible | toggle, default on |  |
+
+### ObjectGroup
+
+[Planned] Group objects under one transform, with instancing
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
+
+### Planet
+
+A procedural planet: radius, relief, seas, snow, atmosphere and its surface layers
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Scene object | text |  |
+| Radius (m) | float, 10 to 1e+08, default 15000 |  |
+| Relief (fraction of radius) | float, 0 to 0.3, default 0.02 |  |
+| Seed | seed |  |
+| Sea level | float, 0 to 1, default 0.35 | Within the relief range; 0 = no ocean. |
+| Snow line | float, 0 to 1, default 0.75 | Altitude where snow begins; 1 = none. |
+| Lowland rock | color |  |
+| Highland rock | color |  |
+| Ocean | color |  |
+| Atmosphere | color |  |
+| Atmosphere density | float, 0 to 2, default 0.6 | 0 = airless rim. |
+| Spin ° | float, -180 to 180, default 0 |  |
+| X (m) | float, -1e+07 to 1e+07, default 70000 |  |
+| Height (m) | float, -1e+07 to 1e+07, default 17500 |  |
+| Z (m) | float, -1e+07 to 1e+07, default 2500 |  |
+| Visible | toggle, default on |  |
+
+### Primitive
+
+A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Shape | choice: Cube / Sphere / Plane / Cylinder / Cone |  |
+| Scene object | text | Name in the Objects tree. Empty: the shape's name. |
+| Colour | color |  |
+| X (m) | float, -100000 to 100000, default 2500 |  |
+| Height (m) | float, -10000 to 100000, default 0 |  |
+| Z (m) | float, -100000 to 100000, default 2500 |  |
+| Size (m) | float, 0.01 to 100000, default 400 | Uniform size of the object's unit box. |
+| Heading ° | float, -180 to 180, default 0 |  |
+| Pitch ° | float, -180 to 180, default 0 |  |
+| Bank ° | float, -180 to 180, default 0 |  |
+| Visible | toggle, default on |  |
+
+### TerrainObject
+
+[Planned] Several independent heightfield terrains in one scene
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
+| Roadmap phase | text |  |
 
 ## Texture
 

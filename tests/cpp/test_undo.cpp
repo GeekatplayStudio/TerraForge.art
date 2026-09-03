@@ -1027,8 +1027,11 @@ static void test_autosave() {
   fs::remove_all(dir, ec);
 }
 
+int test_undo_render_run(); // test_undo_render.cpp
+
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
+  g_failures += test_undo_render_run();
   test_graph_view_sanity();
   test_graph_undo();
   test_attributes_and_links();

@@ -53,3 +53,27 @@ void compute_sun_dir(const RenderSettings &rs, float out[3]) {
 }
 
 } // namespace studio
+
+// ---- render passes -------------------------------------------------------
+// Names double as file suffixes ("<beauty>_depth.exr"), so they stay short,
+// lower case and stable; the labels are what the Render panel shows.
+namespace studio {
+
+const char *render_pass_name(int index) {
+  static const char *N[RENDER_PASS_COUNT] = {
+      "depth",  "normal", "position", "object_id", "water_mask", "albedo",
+      "direct", "shadow", "ambient",  "specular",  "atmosphere", "environment"};
+  return (index >= 0 && index < RENDER_PASS_COUNT) ? N[index] : "";
+}
+
+const char *render_pass_label(int index) {
+  static const char *L[RENDER_PASS_COUNT] = {
+      "Depth (metres)",      "World normal",       "World position",
+      "Object id",           "Water mask",         "Albedo",
+      "Direct sun light",    "Shadow mask",        "Sky / ambient light",
+      "Specular / reflection", "Fog & haze (rgb + transmittance)",
+      "Sky & backdrop only"};
+  return (index >= 0 && index < RENDER_PASS_COUNT) ? L[index] : "";
+}
+
+} // namespace studio

@@ -105,6 +105,8 @@ void pass_sky(const FrameCtx &F) {
     unii(prog_sky, "u_blue_noise", 9);
     unii(prog_sky, "u_cl_octaves", std::clamp(RS.cloud_scatter_octaves, 1, 4));
     uni1(prog_sky, "u_cl_ms_depth", std::clamp(RS.cloud_scatter_depth, 0.05f, 0.99f));
+    backdrop_bind(prog_sky);
+    unii(prog_sky, "u_aov", g_aov);
     glBindVertexArray(vao_quad);
     if (slot == 0) {
       // Timed for the same reason the terrain pass is: the volumetric march
@@ -202,13 +204,10 @@ void pass_terrain(const FrameCtx &F) {
     uni1(PT, "u_translucency", RS.mat_translucency);
     uni1(PT, "u_transparency", RS.mat_transparency);
     uni1(PT, "u_normal_strength", RS.mat_normal_strength);
-    unii(PT, "u_fog_type", atmosphere ? RS.fog_type : 0);
-    uni1(PT, "u_fog_density", RS.fog_density);
-    uni1(PT, "u_fog_level", RS.fog_level);
-    uni1(PT, "u_fog_falloff", RS.fog_falloff);
-    uni3(PT, "u_fog_color", RS.fog_color);
-    uni3(PT, "u_absorb", RS.absorption_color);
-    uni1(PT, "u_fog_scatter", RS.fog_sun_scatter);
+    upload_fog_uniforms(PT, RS, atmosphere);
+    backdrop_bind(PT);
+    unii(PT, "u_aov", g_aov);
+    unii(PT, "u_object_id", 1);
     unii(PT, "u_cloud_shadows",
          (clouds_ok && atmosphere && cinematic) ? 1 : 0);
     uni1(PT, "u_cl_cov", RS.cloud_coverage);
@@ -318,8 +317,15 @@ void pass_water(const FrameCtx &F) {
   // water
   if (RS.show_water && vc.show_water_view && show_water_obj) {
     glUseProgram(prog_water);
-    glEnable(GL_BLEND);
+    // A geometry pass wants the water surface, not a blend of it with the
+    // bed underneath; only the picture and the linear beauty are translucent.
+    const bool blend = g_aov == 0 || g_aov == AOV_BEAUTY_LINEAR;
+    if (blend) glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    upload_fog_uniforms(prog_water, RS, F.atmosphere);
+    backdrop_bind(prog_water);
+    unii(prog_water, "u_aov", g_aov);
+    unii(prog_water, "u_object_id", 2);
     glUniformMatrix4fv(glGetUniformLocation(prog_water, "u_mvp"), 1, GL_FALSE, mvp);
     uni1(prog_water, "u_hscale", RS.height_scale);
     uni1(prog_water, "u_level", RS.water_level * RS.height_scale);
@@ -352,11 +358,12 @@ void pass_water(const FrameCtx &F) {
     unii(prog_water, "u_height", 0);
     glBindVertexArray(vao_grid);
     glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
-    glDisable(GL_BLEND);
+    if (blend) glDisable(GL_BLEND);
   }
 }
 
 void pass_outlines(const FrameCtx &F) {
+  if (g_aov != 0) return; // decoration, never part of a pass
   RenderSettings &RS = F.RS;
   const RenderSettings::ViewConfig &vc = F.vc;
   const float *mvp = F.mvp;

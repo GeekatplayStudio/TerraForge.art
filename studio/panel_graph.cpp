@@ -38,9 +38,6 @@ std::vector<GraphEditor> &editors() {
   return v;
 }
 
-const char *DOMAIN_NAMES[5] = {"Terrain", "Materials", "Atmosphere", "Render",
-                               "All domains"};
-
 void editor_make(GraphEditor &e, int index, int domain) {
   e.index = index;
   e.domain = domain;
@@ -48,7 +45,7 @@ void editor_make(GraphEditor &e, int index, int domain) {
     e.title = "Graph";
     e.settings = "geekatplay_graph_view.json";
   } else {
-    e.title = std::string(DOMAIN_NAMES[std::clamp(domain, 0, 4)]) +
+    e.title = std::string(workspace_name(std::clamp(domain, 0, WS_COUNT - 1))) +
               " nodes###nodes_editor_" + std::to_string(index);
     e.settings = "geekatplay_graph_view_" + std::to_string(index) + ".json";
     e.show_props = true;
@@ -69,7 +66,7 @@ void editors_init() {
   int k = 1;
   for (int d : prefs().editor_domains) {
     v.emplace_back();
-    editor_make(v.back(), k++, std::clamp(d, 0, 4));
+    editor_make(v.back(), k++, std::clamp(d, 0, WS_COUNT - 1));
   }
 }
 
@@ -89,7 +86,7 @@ void graph_editor_add(App &a, int domain) {
   int index = 1;
   for (const GraphEditor &e : v) index = std::max(index, e.index + 1);
   v.emplace_back();
-  editor_make(v.back(), index, std::clamp(domain, 0, 4));
+  editor_make(v.back(), index, std::clamp(domain, 0, WS_COUNT - 1));
   v.back().fresh = true;
   editors_save_prefs();
 }
@@ -136,7 +133,7 @@ void draw_panel_graph(App &a) {
 // ----------------------------------------------------------- one editor
 static void editor_toolbar(App &a, GraphEditor &e, bool can_edit) {
   if (e.index == 0) {
-    ImGui::TextDisabled("%s nodes", DOMAIN_NAMES[std::clamp(a.workspace, 0, 3)]);
+    ImGui::TextDisabled("%s nodes", workspace_name(a.workspace));
   } else {
     ImGui::SetNextItemWidth(120);
     ImGui::Combo("##dom", &e.domain,
