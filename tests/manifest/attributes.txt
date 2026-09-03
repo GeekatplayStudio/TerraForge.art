@@ -363,6 +363,10 @@ Hydraulic.particles|int
 Hydraulic.rain|float
 Hydraulic.seed|seed
 Hydraulic.sw_evap|float
+HydraulicBlur.amount|float
+HydraulicBlur.blend_invert|bool
+HydraulicBlur.keep_ridges|float
+HydraulicBlur.radius|int
 KMeans.k|int
 KMeans.seed|seed
 KMeans.slope_weight|float

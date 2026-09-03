@@ -1,13 +1,13 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 173 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 174 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
 | [Analysis](#analysis) | 5 |
 | [Atmosphere](#atmosphere) | 4 |
 | [Effect](#effect) | 7 |
-| [Erosion](#erosion) | 9 |
+| [Erosion](#erosion) | 10 |
 | [Export](#export) | 8 |
 | [Field Bridge](#field-bridge) | 2 |
 | [Field Color](#field-color) | 2 |
@@ -440,6 +440,23 @@ Hydraulic erosion: particle droplets or shallow-water pipe model
 | Erosion Ks | float, 0.05 to 2, default 0.5 |  |
 | Deposition Kd | float, 0.05 to 2, default 0.5 |  |
 | Evaporation | float, 0 to 0.2, default 0.015 |  |
+
+### HydraulicBlur
+
+The erosion look at one percent of the cost
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Radius (px) | int, 1 to 64, default 8 |  |
+| Amount | float, 0 to 1, default 0.7 |  |
+| Keep ridges | float, 0 to 1, default 0.7 | Convex ground (ridges, crests) resists the smoothing; concave ground (gullies, hollows) takes it fully - which is the shape hydraulic erosion carves. |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Rivers
 

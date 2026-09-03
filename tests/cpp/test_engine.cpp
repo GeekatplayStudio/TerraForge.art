@@ -3497,6 +3497,31 @@ static void test_local_filters() {
           "clustering is bit-identical across computes");
   }
 
+  // HydraulicBlur: hollows smooth fully, ridges resist
+  {
+    gpx::Heightmap tf(N, N);
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x)
+        tf.at(x, y) = 0.5f + 0.4f * std::sin(x * 0.7f) * std::sin(y * 0.7f);
+    auto hb = run("HydraulicBlur", tf, [](gpx::Node &n) {
+      n.attrs.find("radius")->i = 6;
+      n.attrs.find("amount")->f = 1.f;
+      n.attrs.find("keep_ridges")->f = 1.f;
+    }, "output");
+    // find one peak and one pit of the sine field
+    float peak_before = -1e9f, pit_before = 1e9f;
+    int px = 0, py = 0, qx = 0, qy = 0;
+    for (int y = 4; y < N - 4; ++y)
+      for (int x = 4; x < N - 4; ++x) {
+        if (tf.at(x, y) > peak_before) { peak_before = tf.at(x, y); px = x; py = y; }
+        if (tf.at(x, y) < pit_before) { pit_before = tf.at(x, y); qx = x; qy = y; }
+      }
+    float peak_drop = peak_before - hb.at(px, py);
+    float pit_rise = hb.at(qx, qy) - pit_before;
+    CHECK(pit_rise > peak_drop * 2.f,
+          "hollows fill far more than protected ridges lower");
+  }
+
   // MakeTileable: opposite edges must meet (wrap continuity)
   {
     gpx::Graph g;

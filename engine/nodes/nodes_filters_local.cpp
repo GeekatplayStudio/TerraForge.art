@@ -220,6 +220,45 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
+    HydraulicBlur, "Erosion", "The erosion look at one percent of the cost",
+    [](Node &n) {
+      n.add_in("input");
+      n.add_out("output");
+      add_int(n.attrs, "radius", "Radius (px)", 8, 1, 64, "Blur");
+      add_float(n.attrs, "amount", "Amount", 0.7f, 0.f, 1.f, "Blur");
+      add_float(n.attrs, "keep_ridges", "Keep ridges", 0.7f, 0.f, 1.f, "Blur")
+          .tooltip = "Convex ground (ridges, crests) resists the smoothing;\n"
+                     "concave ground (gullies, hollows) takes it fully -\n"
+                     "which is the shape hydraulic erosion carves.";
+    },
+    [](Node &n) {
+      const Heightmap *in = require_in(n, "input");
+      if (!in) return;
+      Heightmap &out = n.out_hmap("output");
+      out = *in;
+      int r = n.attrs.get_i("radius", 8);
+      float amount = n.attrs.get_f("amount", 0.7f);
+      float keep = n.attrs.get_f("keep_ridges", 0.7f);
+      Heightmap bl(in->w, in->h);
+      lf_blur(*in, bl, r);
+      // curvature decides who gets smoothed: below the local mean = concave
+      // = valley = full blur; above = convex = ridge = protected
+      int w = in->w, h = in->h;
+      parallel_rows(h, [&](int y0, int y1) {
+        for (int y = y0; y < y1; ++y)
+          for (int x = 0; x < w; ++x) {
+            size_t i = (size_t)y * w + x;
+            float conv = in->v[i] - bl.v[i]; // + on ridges, - in hollows
+            float protect = conv > 0.f
+                                ? std::min(conv * 40.f, 1.f) * keep
+                                : 0.f;
+            float k = amount * (1.f - protect);
+            out.v[i] = in->v[i] + (bl.v[i] - in->v[i]) * k;
+          }
+      });
+    })
+
+REGISTER_NODE(
     SetBorders, "Transform", "Pin the tile's borders to a level",
     [](Node &n) {
       n.add_in("input");
