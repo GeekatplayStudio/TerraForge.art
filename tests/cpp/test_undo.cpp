@@ -147,6 +147,47 @@ static void test_scene_undo() {
   CHECK(scene().objects[cam].name == "Test Cam", "redo kept the camera name");
 }
 
+static void test_lights_and_primitives_undo() {
+  std::printf("undo: lights, primitives and scatter bindings...\n");
+  App a;
+  reset_all(a);
+  int before = (int)scene().objects.size();
+
+  undo_push(a, "Add light");
+  int li = scene_add_light("Lamp");
+  scene().objects[li].light_type = 1;
+  scene().objects[li].light_cone = 55.f;
+  CHECK((int)scene().objects.size() == before + 1, "light added");
+
+  undo_push(a, "Add primitive");
+  int pi = scene_add_primitive("sphere", "Ball");
+  gpx::Node *sp = a.graph.add_node("ScatterPoints", 0, 0);
+  scene().objects[pi].scatter_node = sp ? sp->id : 0;
+  scene().objects[pi].scatter_sway = 0.1f;
+  CHECK((int)scene().objects.size() == before + 2, "primitive added");
+
+  undo_perform(a);
+  CHECK((int)scene().objects.size() == before + 1,
+        "undo removed the primitive (and its scatter binding with it)");
+  undo_perform(a);
+  CHECK((int)scene().objects.size() == before, "undo removed the light");
+
+  redo_perform(a);
+  redo_perform(a);
+  CHECK((int)scene().objects.size() == before + 2, "redo restored both");
+  bool light_ok = false, prim_ok = false;
+  for (const SceneObject &o : scene().objects) {
+    if (o.name == "Lamp")
+      light_ok = o.type == SceneObject::Light && o.light_type == 1 &&
+                 o.light_cone == 55.f;
+    if (o.name == "Ball")
+      prim_ok = o.type == SceneObject::Mesh && o.vert_count > 100 &&
+                o.scatter_node != 0 && o.scatter_sway == 0.1f;
+  }
+  CHECK(light_ok, "the spot light came back with cone and type intact");
+  CHECK(prim_ok, "the primitive came back with geometry and scatter binding");
+}
+
 static void test_mesh_vertices_survive() {
   std::printf("undo: imported mesh data...\n");
   App a;
@@ -993,6 +1034,7 @@ int main() {
   test_attributes_and_links();
   test_world_undo();
   test_scene_undo();
+  test_lights_and_primitives_undo();
   test_mesh_vertices_survive();
   test_redo_branch_truncation();
   test_history_and_jump();
