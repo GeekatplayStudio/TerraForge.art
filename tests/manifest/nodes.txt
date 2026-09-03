@@ -82,6 +82,7 @@ Landform|Primitive
 Levels|Material
 LineNoise|Primitive
 MakeTileable|Transform
+MaskPaint|Mask
 MaskToTexture|Material
 MaterialOutput|Material
 MathGradient|Operator

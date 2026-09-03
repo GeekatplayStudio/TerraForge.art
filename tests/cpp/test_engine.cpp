@@ -3296,6 +3296,24 @@ static void test_path_nodes() {
   }
 }
 
+static void test_mask_paint() {
+  std::printf("painted masks...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+  gpx::Node *n = g.add_node("MaskPaint", 0, 0);
+  gpx::Attribute *fa = n->attrs.find("strokes");
+  CHECK(fa && fa->fw == 512, "the stroke field exists at its own resolution");
+  fa->field.assign((size_t)fa->fw * fa->fh, 0.f);
+  // paint a square in field space, with one out-of-range value to clamp
+  for (int y = 100; y < 200; ++y)
+    for (int x = 100; x < 200; ++x)
+      fa->field[(size_t)y * fa->fw + x] = 1.4f;
+  gpx::NodeRegistry::instance().find("MaskPaint")->compute(*n);
+  const gpx::Heightmap &m = *n->port("mask", gpx::PortDir::Out)->hmap;
+  CHECK(m.at(18, 18) == 1.f, "painted area reads 1 (clamped)");
+  CHECK(m.at(50, 50) == 0.f, "unpainted area reads 0");
+}
+
 static void test_selectors() {
   std::printf("selectors...\n");
   const int N = 64;
@@ -4038,6 +4056,7 @@ int main() {
   test_local_filters();
   test_noise_variants();
   test_selectors();
+  test_mask_paint();
   test_path_nodes();
   test_landform();
   test_points_io();

@@ -403,6 +403,8 @@ LineNoise.reach|float
 LineNoise.seed|seed
 MakeTileable.blend_invert|bool
 MakeTileable.feather|float
+MaskPaint.soften|float
+MaskPaint.strokes|field
 MaskToTexture.normalize|bool
 MaskToTexture.offset|float
 MaskToTexture.scale|float

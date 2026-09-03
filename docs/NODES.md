@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 174 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 175 across 25 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -20,7 +20,7 @@ Every node in Geekatplay TerraForge — 174 across 25 categories. Generated from
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
 | [Logic](#logic) | 6 |
-| [Mask](#mask) | 13 |
+| [Mask](#mask) | 14 |
 | [Material](#material) | 18 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
@@ -1708,6 +1708,19 @@ Cluster the terrain into zones
 | Clusters | int, 2 to 8, default 4 |  |
 | Slope weight | float, 0 to 4, default 1 |  |
 | Seed | seed |  |
+
+### MaskPaint
+
+Paint a mask in the viewport
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Painted mask | painted buffer | Select this node and paint in the viewport with the Terrain Editor brushes. Raise paints in, invert (or the eraser) paints out. |
+| Soften | float, 0 to 0.05, default 0 |  |
 
 ### SelectAltitude
 

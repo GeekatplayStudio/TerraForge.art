@@ -15,6 +15,10 @@ SculptState &sculpt_state() {
 
 // ---------------------------------------------------------------- target node
 unsigned long long sculpt_target_node(App &a) {
+  // a selected MaskPaint node captures the brush: strokes paint its mask
+  // instead of sculpting the terrain
+  if (gpx::Node *sel = a.graph.find_node(a.selected_node))
+    if (sel->type == "MaskPaint") return sel->id;
   // an existing sculpt layer is reused; strokes accumulate into it
   for (auto &n : a.graph.nodes)
     if (n->type == "TerrainSculpt") return n->id;
@@ -94,7 +98,8 @@ bool sculpt_apply(App &a, float tx, float tz, float dt) {
   uint64_t id = sculpt_target_node(a);
   gpx::Node *n = a.graph.find_node(id);
   if (!n) return false;
-  gpx::Attribute *fa = n->attrs.find("delta");
+  gpx::Attribute *fa =
+      n->attrs.find(n->type == "MaskPaint" ? "strokes" : "delta");
   if (!fa || fa->fw <= 0 || fa->fh <= 0) return false;
   if (fa->field.empty()) fa->field.assign((size_t)fa->fw * fa->fh, 0.f);
 

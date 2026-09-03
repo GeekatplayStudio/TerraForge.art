@@ -127,6 +127,38 @@ REGISTER_NODE(
 // the graph procedural: change the mountain generator upstream and your
 // hand-carved riverbed is still there, sitting on top of the new shape.
 //
+// A hand-painted mask: the same viewport brushes as TerrainSculpt, but the
+// strokes ARE the output - 0..1, straight into SplatMaterial, ScatterPoints
+// density, PathCarve masks or any blend. Select the node and paint.
+REGISTER_NODE(
+    MaskPaint, "Mask", "Paint a mask in the viewport",
+    [](Node &n) {
+      n.add_out("mask");
+      add_field(n.attrs, "strokes", "Painted mask", 512, 512, 0.f, 1.f,
+                "Paint")
+          .tooltip = "Select this node and paint in the viewport with the\n"
+                     "Terrain Editor brushes. Raise paints in, invert (or\n"
+                     "the eraser) paints out.";
+      add_float(n.attrs, "soften", "Soften", 0.f, 0.f, 0.05f, "Paint");
+    },
+    [](Node &n) {
+      Heightmap &m = n.out_hmap("mask");
+      const Attribute *fa = n.attrs.find("strokes");
+      if (!fa || fa->field.empty() || fa->fw <= 0 || fa->fh <= 0) return;
+      Heightmap layer(fa->fw, fa->fh);
+      layer.v = fa->field;
+      if (layer.w != m.w || layer.h != m.h)
+        layer = layer.resampled(m.w, m.h);
+      float sm = n.attrs.get_f("soften", 0.f);
+      if (sm > 1e-5f) {
+        Heightmap soft;
+        fx_blur(layer, soft, std::max(1, (int)(sm * m.w / 3.f)));
+        layer = soft;
+      }
+      for (size_t i = 0; i < m.v.size(); ++i)
+        m.v[i] = std::clamp(layer.v[i], 0.f, 1.f);
+    })
+
 // (Vue reaches the same conclusion from the other direction — painting on a
 // heightfield terrain there creates a "User Touch-up" node in the graph.)
 REGISTER_NODE(
