@@ -201,8 +201,10 @@ generated from the registry itself.
   by the viewport and every offline engine.
 - **Night**: let the sun set and stars come out over a sky, haze and
   surround that darken together — a campfire in the dark is one AI prompt.
-- **Real-world terrain**: SRTM `.hgt` DEM tiles import directly, alongside
-  8/16-bit PNG heightmaps.
+- **Real-world terrain**: SRTM `.hgt` tiles and uncompressed GeoTIFF DEMs
+  import directly, alongside 8/16-bit PNG heightmaps.
+- **Spot lights** too: cone angle, heading and pitch, in the viewport and
+  every engine.
 
 ### Environment and rendering
 - **Volumetric clouds** raymarched with Perlin-Worley noise, cloud types

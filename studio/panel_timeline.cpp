@@ -202,6 +202,46 @@ void draw_panel_timeline(App &a) {
   }
   if (!shown)
     ImGui::TextDisabled("This node has no keyable number parameters.");
+
+  // ---- dope sheet: every animated track in the whole graph ---------------
+  {
+    bool any = false;
+    for (const auto &gn : a.graph.nodes)
+      for (const gpx::Attribute &at : gn->attrs.items)
+        any = any || !at.anim.empty();
+    if (any) {
+      ImGui::SeparatorText("All animation");
+      float span = std::max(a.anim_end - a.anim_start, 1e-3f);
+      for (const auto &gn : a.graph.nodes)
+        for (const gpx::Attribute &at : gn->attrs.items) {
+          if (at.anim.empty()) continue;
+          ImGui::PushID((void *)&at);
+          std::string label = gn->type + " . " + at.label;
+          if (ImGui::Selectable(label.c_str(), a.selected_node == gn->id,
+                                0, ImVec2(220, 0)))
+            a.selected_node = gn->id;
+          ImGui::SameLine();
+          ImVec2 p0 = ImGui::GetCursorScreenPos();
+          float bar_w = ImGui::GetContentRegionAvail().x;
+          ImDrawList *dl = ImGui::GetWindowDrawList();
+          dl->AddRectFilled(p0, ImVec2(p0.x + bar_w, p0.y + 12),
+                            IM_COL32(45, 45, 48, 255), 2.f);
+          for (const gpx::Key &k : at.anim.keys) {
+            float fx = (k.time - a.anim_start) / span;
+            if (fx < 0.f || fx > 1.f) continue;
+            float mx = p0.x + fx * bar_w;
+            dl->AddRectFilled(ImVec2(mx - 2, p0.y + 1),
+                              ImVec2(mx + 2, p0.y + 11),
+                              IM_COL32(0xc8, 0x78, 0x30, 255), 1.f);
+          }
+          float px2 = p0.x + (a.graph.time - a.anim_start) / span * bar_w;
+          dl->AddLine(ImVec2(px2, p0.y), ImVec2(px2, p0.y + 12),
+                      IM_COL32(230, 230, 230, 200), 1.f);
+          ImGui::Dummy(ImVec2(bar_w, 13));
+          ImGui::PopID();
+        }
+    }
+  }
   ImGui::End();
 }
 
