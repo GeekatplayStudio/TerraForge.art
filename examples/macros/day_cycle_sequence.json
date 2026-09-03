@@ -1,0 +1,4 @@
+{ "actions": [
+  { "op": "add_camera", "name": "CycleCam", "activate": true, "position": [1.2, 0.4, 1.2], "target": [0.5, 0.08, 0.5] },
+  { "op": "render_sequence", "dir": "sequence_daycycle", "fps": 24, "start": 0.0, "end": 4.0, "width": 1280, "height": 720, "sun_from": [70, 3], "sun_to": [290, 45] }
+] }

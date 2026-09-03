@@ -1,0 +1,6 @@
+{ "actions": [
+  { "op": "set_sun", "intensity": 0.03, "altitude_deg": -18 },
+  { "op": "set_sky", "ambient": 0.06 },
+  { "op": "add_light", "name": "Campfire", "position": [0.5, 0.05, 0.5], "color": [1.0, 0.55, 0.2], "intensity": 8.0, "reach": 0.5 },
+  { "op": "add_light", "name": "Moonfill", "position": [0.7, 0.35, 0.3], "color": [0.4, 0.5, 0.9], "intensity": 1.5, "reach": 0.9 }
+] }

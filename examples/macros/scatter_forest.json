@@ -1,0 +1,9 @@
+{ "actions": [
+  { "op": "add_node", "type": "SelectMidrange", "x": 320, "y": 400 },
+  { "op": "add_node", "type": "ScatterPoints", "x": 540, "y": 400 },
+  { "op": "set_attr", "node": "ScatterPoints", "key": "count", "value": 800 },
+  { "op": "set_attr", "node": "ScatterPoints", "key": "value_dist", "value": 1 },
+  { "op": "connect", "from": "SelectMidrange", "from_port": "mask", "to": "ScatterPoints", "to_port": "density" },
+  { "op": "add_primitive", "kind": "cone", "name": "Pine", "position": [0.5, 0.0, 0.5], "scale": 0.04, "color": [0.16, 0.3, 0.16] },
+  { "op": "set_scatter", "object": "Pine", "node": "ScatterPoints", "size": 1.4, "jitter": 0.3, "size_from_value": 0.7, "sway": 0.05 }
+] }
