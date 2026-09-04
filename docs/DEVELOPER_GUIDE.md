@@ -16,7 +16,8 @@ screenshot of something that looks wrong. By contributing you agree that your
 contribution ships under the same terms, including the commercial licence
 Geekatplay Studio grants to paying users.
 
-No GPL or LGPL code may be added — copyleft requires granting downstream
+No GPL or LGPL code may be added ([the record, with what was checked and
+when](LICENSING.md)) — copyleft requires granting downstream
 users commercial freedom that this licence does not grant. Permissive only
 (MIT, BSD, Apache-2.0, zlib, MPL-2.0, CC0), listed in
 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) in the same commit.

@@ -80,10 +80,18 @@ struct MeshRepairOptions {
   size_t min_shell_faces = 8;
   float min_shell_extent = 0.005f; // fraction of the model's own size
   int max_passes = 3;
+  // Last resort when our own stages cannot close the surface: rebuild it
+  // as a solid with the Manifold engine, if this build has it. Skipped
+  // silently when the mesh is already closed; reported when unavailable.
+  bool solidify = true;
 };
 
 struct MeshRepairResult {
   std::vector<std::string> fixes; // "Cleanup: merged 412 duplicate vertices"
+  // Stages that could not run, in the user's language. A repair that
+  // skipped something must say so rather than let the report imply
+  // that everything possible was tried.
+  std::vector<std::string> notes;
   MeshReport before, after;
   std::vector<MeshChange> changes;
   int passes = 0;

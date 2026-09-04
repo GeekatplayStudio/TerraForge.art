@@ -244,10 +244,21 @@ wanted his students to have.
 - Objects ▸ *import mesh · analyse · repair · mesh tools*, or the whole set
   from a script: `import_mesh`, `mesh_analyse`, `mesh_repair`,
   `mesh_reduce`, `mesh_split`, `mesh_export`.
+- **Rebuild it as a solid.** Overlapping shells are the defect nothing else
+  here can even see: two closed pieces running through each other read as
+  perfectly valid, and print as neither. **Solidify** rebuilds the surface as
+  a solid that is manifold by construction and unions the pieces into one —
+  two half-overlapping cubes go from 2 shells to 1, from 24 triangles to 36,
+  enclosing the union rather than the sum. Repair runs it by itself when its
+  own stages cannot close a mesh. Powered by
+  [Manifold](https://github.com/elalish/manifold) v3.5.2 (Apache-2.0),
+  which `scripts/get_deps` fetches; without it the stage is disabled and
+  **says so** rather than quietly doing something weaker.
 - This is [Meshwright](https://github.com/GeekatplayStudio/Meshwright)
   (Geekatplay Studio, MIT) ported from Python to C++ and rebuilt in the
-  studio's own UI. Its GPL-licensed optional engines - MeshLab, MeshFix -
-  are deliberately not part of it; the stages here are written from scratch.
+  studio's own UI. Its GPL-licensed engines — MeshLab and MeshFix — are
+  deliberately not part of it; see [docs/LICENSING.md](docs/LICENSING.md) for
+  what was checked, when, and why.
 
 ### Points, paths and scattering
 - **A third domain: point clouds.** ScatterPoints (random, jittered grid, or
@@ -648,6 +659,9 @@ your terrains, renders, exports or scenes.
 The source is public, readable and forkable, so TerraForge is
 *source-available* rather than open source in the formal sense — the one
 restriction is commercial use.
+
+Which licences we accept and what was verified when is recorded in
+[docs/LICENSING.md](docs/LICENSING.md).
 
 Third-party dependencies keep their own permissive licences (Dear ImGui,
 GLFW, GLM, imgui-node-editor, glad, miniz, nlohmann/json, stb) — see

@@ -7,6 +7,7 @@
 // measured against a fresh analysis of the result; and the export says when
 // the file is not a closed solid, before the print rather than after it.
 #include "app.hpp"
+#include "gpx/mesh_engines.hpp"
 #include "gpx/mesh_io.hpp"
 #include "icons.hpp"
 #include "mesh_object.hpp"
@@ -169,6 +170,10 @@ void draw_repair_report() {
     for (const std::string &f : st.repair.fixes)
       ImGui::BulletText("%s", f.c_str());
   }
+  // A stage that could not run is said out loud, or the table above would
+  // imply that everything possible was tried.
+  for (const std::string &n : st.repair.notes)
+    ImGui::TextWrapped("Not done: %s", n.c_str());
   if (st.repair.changes.empty()) return;
   if (ImGui::BeginTable("##meshdiff", 3,
                         ImGuiTableFlags_SizingStretchProp |
@@ -306,6 +311,19 @@ void draw_panel_mesh(App &a) {
   }
 
   draw_repair_report();
+
+  ImGui::SeparatorText("Rebuild as a solid");
+  ImGui::BeginDisabled(!gpx::mesh_engines().solidify);
+  if (ImGui::Button("Solidify", ImVec2(110, 0)))
+    run(a, "mesh_solidify", nlohmann::json::object());
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  ImGui::TextDisabled("engines: %s", gpx::mesh_engines_text().c_str());
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip(
+        "Rebuilds the surface as a solid that is manifold by construction,\n"
+        "and unions overlapping shells into one piece.\n"
+        "Repair runs this by itself when its own stages cannot close it.");
 
   ImGui::SeparatorText("Reduce");
   static int target = 5000;

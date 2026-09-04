@@ -1,5 +1,9 @@
 # Third-party notices
 
+> Which licences we accept, why, and what was checked when:
+> [`docs/LICENSING.md`](docs/LICENSING.md). Add anything new to **both**
+> files in the commit that adds it.
+
 TerraForge itself is licensed under the [PolyForm Noncommercial License
 1.0.0](LICENSE). The components below are **not** — each keeps its own
 licence, and each of those licences is permissive, so they may be used in
@@ -20,12 +24,18 @@ installer and the packaged build.
 | [nlohmann/json](https://github.com/nlohmann/json) | every JSON document we read or write | MIT | SPDX header in `external/json.hpp` |
 | [stb_image / stb_image_write](https://github.com/nothings/stb) | image loading and saving | public domain (or MIT) | headers in `external/` |
 | [miniz](https://github.com/richgel999/miniz) | zip and PNG compression | MIT / public domain | header in `external/miniz/` |
+| [Manifold](https://github.com/elalish/manifold) v3.5.2 | guaranteed-manifold solid reconstruction in the mesh module | Apache-2.0 | `external/manifold/LICENSE` |
 
 ## Downloaded content
 
 Material libraries fetched from [ambientCG](https://ambientcg.com) are
 **CC0 1.0** (public domain dedication) and carry no obligations. They are
 downloaded at the user's request and are not redistributed with TerraForge.
+
+Manifold is **optional**: `scripts/get_deps` clones it, and the application
+builds and runs without it with that one repair stage disabled and reported
+as unavailable. Apache-2.0 requires its NOTICE and licence to travel with any
+distribution that includes it, which this file and the installer payload do.
 
 ## What is deliberately absent
 

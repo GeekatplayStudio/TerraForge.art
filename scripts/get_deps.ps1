@@ -17,6 +17,11 @@ Clone "https://github.com/ocornut/imgui.git" "imgui" "docking"
 Clone "https://github.com/glfw/glfw.git" "glfw" $null
 Clone "https://github.com/thedmd/imgui-node-editor.git" "imgui-node-editor" $null
 Clone "https://github.com/g-truc/glm.git" "glm" $null
+# Manifold: the mesh module's solid-reconstruction engine (Apache-2.0).
+# Pinned - the build defines GPX_MANIFOLD_VERSION from the same tag.
+# Optional: the application builds and runs without it, with that one
+# repair stage disabled and reported as unavailable.
+Clone "https://github.com/elalish/manifold.git" "manifold" "v3.5.2"
 
 function Fetch($url, $file) {
     if (Test-Path $file) { Write-Host "$file already present" -ForegroundColor DarkGray; return }

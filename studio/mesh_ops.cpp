@@ -5,6 +5,7 @@
 // The module this drives is a port of Meshwright (Geekatplay Studio, MIT):
 // engine/mesh_analysis.cpp, mesh_repair.cpp, mesh_reduce.cpp, mesh_io.cpp.
 #include "app.hpp"
+#include "gpx/mesh_engines.hpp"
 #include "gpx/mesh_io.hpp"
 #include "mesh_object.hpp"
 #include "scene.hpp"
@@ -140,6 +141,23 @@ int ai_mesh_op(App &a, const std::string &op, const json &act,
                   st.reduce.faces_before, st.reduce.faces_after,
                   st.reduce.deviation_frac * 100.0);
     st.note = buf;
+    a.status = "mesh: " + st.note;
+    return 1;
+  }
+
+  if (op == "mesh_solidify") {
+    SceneObject *o = mesh_selected_object(a, err);
+    if (!o) return 0;
+    gpx::TriMesh m = mesh_from_object(*o);
+    if (!gpx::mesh_solidify(m, err)) return 0;
+    undo_push(a, "solidify mesh");
+    mesh_to_object(*o, m);
+    MeshToolsState &st = mesh_tools();
+    gpx::mesh_analyse(m, st.report, mesh_unit_mm(*o));
+    st.has_report = true;
+    st.object = scene().selected;
+    st.issue = -1;
+    st.note = "rebuilt as a solid - " + one_line(st.report);
     a.status = "mesh: " + st.note;
     return 1;
   }

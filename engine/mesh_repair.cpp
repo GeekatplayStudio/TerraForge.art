@@ -5,10 +5,11 @@
 // the diagnosis actually changed. The pipeline repeats until the mesh stops
 // changing, then re-analyses the result from scratch - so the report is
 // measured on the repaired mesh rather than predicted from the operations
-// that ran. Meshwright's later stages (MeshFix, MeshLab, Manifold3D, voxel
-// remesh) are GPL libraries and cannot ship here; the stages below are the
-// ones that fix the overwhelming majority of real files, written from
-// scratch, and the report says plainly when something is left over.
+// that ran. Stages 1-4 are ours, written from scratch; stage 5 is Manifold
+// (Apache-2.0) when the build has it. Meshwright's MeshFix and MeshLab
+// stages are GPL and cannot ship here - where a stage cannot run, the report
+// says so in `notes` rather than let the result imply everything was tried.
+#include "gpx/mesh_engines.hpp"
 #include "gpx/mesh_report.hpp"
 #include <algorithm>
 #include <cmath>
@@ -117,6 +118,29 @@ void mesh_repair(TriMesh &m, const MeshRepairOptions &opt,
     }
 
     if (!moved) break;
+  }
+
+  // Stage 5 - solid reconstruction, only if the surface is still open after
+  // everything above. This is the one stage worth an external engine: it
+  // rebuilds the surface as a solid that is manifold by construction, which
+  // recovers meshes whose defects are not holes at all - overlapping shells,
+  // self-intersections, surfaces wound into themselves.
+  if (opt.solidify) {
+    MeshReport probe;
+    mesh_analyse(m, probe, unit_mm);
+    if (!probe.stats.watertight) {
+      TriMesh candidate = m;
+      std::string why;
+      if (mesh_solidify(candidate, why)) {
+        m = std::move(candidate);
+        out.fixes.push_back(
+            "Solidify: rebuilt the surface as a guaranteed manifold solid");
+      } else {
+        // Not a failure of the repair, but the user must know a stage was
+        // skipped rather than assume everything possible was tried.
+        out.notes.push_back(why);
+      }
+    }
   }
 
   mesh_analyse(m, out.after, unit_mm);

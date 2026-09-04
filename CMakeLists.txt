@@ -123,6 +123,7 @@ set(ENGINE_SOURCES
     engine/attribute.cpp
     engine/animation.cpp
     engine/mesh_analysis.cpp
+    engine/mesh_engines.cpp
     engine/mesh_cleanup.cpp
     engine/mesh_io.cpp
     engine/mesh_reduce.cpp
@@ -195,6 +196,32 @@ set(ENGINE_SOURCES
 add_library(geekatplay_nodeterrain STATIC ${ENGINE_SOURCES})
 target_include_directories(geekatplay_nodeterrain PUBLIC include engine)
 target_link_libraries(geekatplay_nodeterrain PUBLIC third_party_headers)
+
+# ---------------------------------------------------------- optional engines
+# Manifold (Apache-2.0) gives the mesh module guaranteed-manifold solid
+# reconstruction - the one repair stage worth more than we can sensibly write
+# ourselves. It has no required dependencies of its own; scripts/get_deps
+# clones it at a pinned tag, and the build works with or without it (see
+# engine/mesh_engines.cpp and docs/LICENSING.md).
+set(MANIFOLD_TAG "v3.5.2")
+option(TERRAFORGE_WITH_MANIFOLD "Build with the Manifold solid engine" ON)
+if(TERRAFORGE_WITH_MANIFOLD AND EXISTS "${CMAKE_SOURCE_DIR}/external/manifold/CMakeLists.txt")
+    # Only what we use: no 2D cross sections (which would pull in Clipper2),
+    # no TBB, no tests, no bindings, and static so nothing ships a DLL.
+    set(MANIFOLD_CROSS_SECTION OFF CACHE BOOL "" FORCE)
+    set(MANIFOLD_TEST OFF CACHE BOOL "" FORCE)
+    set(MANIFOLD_PAR OFF CACHE BOOL "" FORCE)
+    set(MANIFOLD_PYBIND OFF CACHE BOOL "" FORCE)
+    set(MANIFOLD_DEBUG OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    add_subdirectory(external/manifold EXCLUDE_FROM_ALL)
+    target_link_libraries(geekatplay_nodeterrain PUBLIC manifold)
+    target_compile_definitions(geekatplay_nodeterrain PUBLIC
+        GPX_HAVE_MANIFOLD GPX_MANIFOLD_VERSION="${MANIFOLD_TAG}")
+    message(STATUS "Mesh engines: Manifold ${MANIFOLD_TAG} (solid reconstruction)")
+else()
+    message(STATUS "Mesh engines: none - run scripts/get_deps to add Manifold")
+endif()
 if(WIN32)
     # urlmon: URLDownloadToFileA, the PBR library downloader
     # (engine/nodes/nodes_pbr_library.cpp, guarded by #ifdef _WIN32)

@@ -849,6 +849,14 @@
       "description": "Mesh Tools panel and the Objects tool row: import, analyse, repair, reduce, split into shells and export, with issue locations marked in the viewport, a file-units selector, a measured repair report and an export that warns when the mesh is not a closed solid; import_mesh/mesh_analyse/mesh_repair/mesh_reduce/mesh_split/mesh_export ops and MCP tools",
       "test_file": "test_mesh.cpp",
       "test_symbol": "test_solidity_warns"
+    },
+    {
+      "id": "mesh.solidify",
+      "area": "engine",
+      "phase": "29",
+      "description": "Optional mesh engines behind engine/gpx/mesh_engines.hpp: Manifold v3.5.2 (Apache-2.0) gives guaranteed-manifold solid reconstruction and unions overlapping shells into one solid, running as repair stage 5 when our own stages cannot close the surface; a build without the engine disables the stage and says so in the repair notes rather than degrading silently",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_overlapping_shells"
     }
   ]
 }

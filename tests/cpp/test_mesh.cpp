@@ -5,6 +5,7 @@
 // name the exact number the analysis must produce. A repair tool that says
 // "fixed" without being able to prove it is the thing this module exists to
 // replace, and the same standard applies to its tests.
+#include "gpx/mesh_engines.hpp"
 #include "gpx/mesh_io.hpp"
 #include "gpx/mesh_report.hpp"
 #include <cmath>
@@ -389,7 +390,62 @@ static void test_file_round_trip() {
   fs::remove_all(dir, ec);
 }
 
+// Two cubes that run through each other: each is closed on its own, so
+// nothing reads as a hole and our own stages have nothing to grip - yet the
+// pair is not a printable solid. This is the case the optional engine earns
+// its place on, and the test asserts the contract in BOTH builds: with the
+// engine it becomes one solid, without it the repair says the stage could
+// not run rather than implying everything was tried.
+static void test_overlapping_shells() {
+  TriMesh m = unit_cube();
+  TriMesh other = unit_cube();
+  uint32_t base = (uint32_t)m.vert_count();
+  for (size_t i = 0; i < other.vert_count(); ++i) {
+    m.v.push_back(other.v[i * 3] + 0.5f); // half a cube's overlap
+    m.v.push_back(other.v[i * 3 + 1] + 0.5f);
+    m.v.push_back(other.v[i * 3 + 2] + 0.5f);
+  }
+  for (uint32_t idx : other.f) m.f.push_back(base + idx);
+
+  MeshReport before;
+  mesh_analyse(m, before);
+  check(before.stats.shells == 2, "the two cubes read as two shells");
+  check(before.stats.watertight,
+        "and each is closed, which is why our own stages cannot help");
+
+  const bool have = mesh_engines().solidify;
+  check(!mesh_engines_text().empty(), "the engine line is never empty");
+
+  TriMesh work = m;
+  std::string err;
+  const bool ok = mesh_solidify(work, err);
+  if (have) {
+    check(ok, "with the engine, the pair resolves");
+    if (ok) {
+      MeshReport after;
+      mesh_analyse(work, after);
+      check(after.stats.shells == 1, "into a single shell");
+      check(after.stats.watertight, "that is closed");
+      // Union, not sum: two unit cubes overlapping by half in every axis
+      // enclose 2 - 0.125 of a unit.
+      check_near(after.stats.volume, 1.875, 1e-3,
+                 "and encloses the union's volume, not both cubes added up");
+    }
+  } else {
+    check(!ok, "without the engine, it refuses");
+    check(err.find("not compiled in") != std::string::npos,
+          "and says the engine is missing rather than failing silently");
+    TriMesh again = m;
+    MeshRepairOptions opt;
+    MeshRepairResult res;
+    mesh_repair(again, opt, res);
+    check(!res.notes.empty(),
+          "and a repair records that a stage could not run");
+  }
+}
+
 int main() {
+  test_overlapping_shells();
   test_healthy_cube();
   test_hole_is_found_and_closed();
   test_two_holes_counted_separately();

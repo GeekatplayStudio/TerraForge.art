@@ -46,6 +46,11 @@ clone https://github.com/ocornut/imgui.git              imgui docking
 clone https://github.com/glfw/glfw.git                  glfw
 clone https://github.com/thedmd/imgui-node-editor.git   imgui-node-editor
 clone https://github.com/g-truc/glm.git                 glm
+# Manifold: the mesh module's solid-reconstruction engine (Apache-2.0),
+# pinned to the tag the build names in GPX_MANIFOLD_VERSION. Optional -
+# without it the application builds and that one repair stage reports
+# itself unavailable rather than silently doing something weaker.
+clone https://github.com/elalish/manifold.git           manifold v3.5.2
 
 fetch https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp json.hpp
 fetch https://raw.githubusercontent.com/nothings/stb/master/stb_image.h       stb_image.h
