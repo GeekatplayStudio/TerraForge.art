@@ -109,6 +109,13 @@ struct App {
   float seq_sun[4] = {90.f, 10.f, 270.f, 10.f};
   bool request_layout_reset = false;
   unsigned dockspace_id = 0; // the main dockspace, for "dock this window back"
+  // A layout being loaded. ImGui's window state can only be replaced between
+  // frames, so the menu (or a script) parks the ini text here and app.cpp
+  // applies it at the top of the next frame, before any window is submitted.
+  std::string pending_layout_ini;
+  // The viewport the user touched last: where "add a viewport" and "split"
+  // put the new one, so a new view appears beside the one being worked in.
+  int view_focus = 0;
   uint64_t graph_layout_serial = 1; // bump to push node positions into editor
   // Set to a node id to have the graph select it and pan to it on the next
   // frame; the graph panel clears it. This is how "open this in the node
@@ -161,6 +168,25 @@ inline int domain_of_category(const std::string &cat) {
 }
 
 const char *view_window_name(int slot);
+
+// ------------------------------------------------------------------ layout
+// The dock arrangement: which viewports exist and where every window sits.
+// Viewports are a set of up to RenderSettings::MAX_VIEWS slots (Prefs::view_mask);
+// the helpers below change that set *in place*, without rebuilding the whole
+// layout, so adding a view never costs the user the arrangement they built.
+void build_default_layout(unsigned dockspace_id, unsigned view_mask);
+int view_first_free();                 // -1 when every slot is open
+void view_open(App &a, int slot);      // beside the focused view, as a tab
+void view_close(App &a, int slot);     // never closes the last one
+void view_split(App &a, int slot, bool vertical); // new view beside `slot`
+void views_arrange(App &a, int n);     // n cells in the viewport region
+// Extra node editors, set to exactly these domains (layout load).
+void graph_editors_set(App &a, const std::vector<int> &domains);
+
+// Named layouts (layout_store.cpp). Saving captures the live arrangement;
+// loading applies our own state now and the window positions next frame.
+bool layout_save_current(App &a, const std::string &name, std::string &err);
+bool layout_load_named(App &a, const std::string &name, std::string &err);
 
 // Show `node` in the node editor: switch to the workspace it belongs to,
 // select it, and pan the graph to it. Does nothing if the node is gone.

@@ -100,6 +100,51 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "opacity, blend mode and environment constraints.",
         "params": {"panel": "str", "visible": "bool"},
     },
+    "studio_arrange_views": {
+        "description": "Rearrange the 3D viewport area into 1-8 cells "
+                       "(2 side by side, quad 2x2, 3x2 and so on). Only the "
+                       "viewport area changes; the node editor, properties "
+                       "and console keep their places.",
+        "params": {"count": "int"},
+    },
+    "studio_add_view": {
+        "description": "Open another 3D viewport beside the one last worked "
+                       "in. By default it arrives as a tab; split=true puts "
+                       "it in half the space instead, vertical=true splitting "
+                       "downwards rather than to the right. Up to 8 exist at "
+                       "once, and each can be dragged anywhere or floated "
+                       "onto another monitor.",
+        "params": {"split": "bool", "vertical": "bool", "view": "int"},
+    },
+    "studio_close_view": {
+        "description": "Close one 3D viewport by number (1-8). The last "
+                       "remaining viewport is never closed.",
+        "params": {"view": "int"},
+    },
+    "studio_save_layout": {
+        "description": "Save the current window arrangement under a name: "
+                       "every window's place, which viewports are open and "
+                       "what each one shows. A layout never contains the "
+                       "scene, so it can be loaded over any project.",
+        "params": {"name": "str"},
+    },
+    "studio_load_layout": {
+        "description": "Restore a saved window arrangement by name.",
+        "params": {"name": "str"},
+    },
+    "studio_delete_layout": {
+        "description": "Delete a saved window arrangement by name.",
+        "params": {"name": "str"},
+    },
+    "studio_list_layouts": {
+        "description": "List the saved window arrangements; the names come "
+                       "back in the studio's status line.",
+        "params": {},
+    },
+    "studio_reset_layout": {
+        "description": "Put every window back to the default arrangement.",
+        "params": {},
+    },
     "studio_set_viewport": {
         "description": "How the terrain surface is drawn: adaptive "
                        "subdivision (tessellation, tess_pixels, tess_min, "
@@ -276,6 +321,14 @@ _SIMPLE = {
     "studio_set_workspace": "set_workspace",
     "studio_show_panel": "show_panel",
     "studio_set_viewport": "set_viewport",
+    "studio_arrange_views": "arrange_views",
+    "studio_add_view": "add_view",
+    "studio_close_view": "close_view",
+    "studio_save_layout": "save_layout",
+    "studio_load_layout": "load_layout",
+    "studio_delete_layout": "delete_layout",
+    "studio_list_layouts": "list_layouts",
+    "studio_reset_layout": "reset_layout",
     "studio_capture": "capture",
     "studio_evaluate": "evaluate",
     "studio_verify_field_gpu": "verify_field_gpu",

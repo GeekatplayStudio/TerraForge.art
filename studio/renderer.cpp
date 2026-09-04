@@ -88,8 +88,9 @@ gpx::Heightmap cpu_height; // normalized copy, for picking
 // by the viewport, so a hidden panel never leaves a stale ring behind.
 float g_brush[4] = {0, 0, -1.f, 0};
 // Six view windows, slot 6 the Preview panel's own target, one spare.
-GLuint fbo[8] = {0}, fbo_color[8] = {0}, fbo_depth[8] = {0};
-int fbo_w[8] = {0}, fbo_h[8] = {0};
+GLuint fbo[SLOT_COUNT] = {0}, fbo_color[SLOT_COUNT] = {0},
+       fbo_depth[SLOT_COUNT] = {0};
+int fbo_w[SLOT_COUNT] = {0}, fbo_h[SLOT_COUNT] = {0};
 GLuint shadow_fbo = 0, shadow_tex = 0;
 extern const int SHADOW_RES;
 const int SHADOW_RES = 2048;
@@ -242,8 +243,8 @@ void ensure_fbo(int slot, int w, int h, bool hdr) {
 }
 
 // the view-projection each slot last drew with; see renderer_draw_view
-float g_last_mvp[8][16];
-bool g_last_mvp_valid[8] = {false, false, false, false, false, false, false, false};
+float g_last_mvp[SLOT_COUNT][16];
+bool g_last_mvp_valid[SLOT_COUNT] = {false};
 
 const float *renderer_last_mvp(int slot) {
   slot = std::clamp(slot, 0, 7);

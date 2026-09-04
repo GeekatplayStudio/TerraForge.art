@@ -793,6 +793,22 @@
       "description": "Terrain tile placed onto the planet surface at upload (studio/planet_place.cpp): planet relief shows through flat ground, is levelled under features (flatten), feathered footprints and border, holes become water-filled basins; cached relief, place_* settings persisted and scriptable",
       "test_file": "test_planet_place.cpp",
       "test_symbol": "test_planet_place_run"
+    },
+    {
+      "id": "ui.layouts",
+      "area": "studio",
+      "phase": "28",
+      "description": "Named window layouts: the whole arrangement (ImGui's dock state, which viewports are open, what each shows, which panels are open, the extra node editors) saved by name to <settings>/layouts/*.json and loaded back; View > Layouts, plus save_layout/load_layout/delete_layout/list_layouts/reset_layout ops and MCP tools",
+      "test_file": "test_layout.cpp",
+      "test_symbol": "test_round_trip"
+    },
+    {
+      "id": "ui.viewport_set",
+      "area": "studio",
+      "phase": "28",
+      "description": "Viewports are a set of up to 8 windows rather than a count of 1-6: add, close, split right/down and arrange 1-8 cells without rebuilding the layout, each view closable from its own tab, the last one never closable; arrange_views/add_view/close_view ops",
+      "test_file": "test_layout.cpp",
+      "test_symbol": "test_never_zero_viewports"
     }
   ]
 }

@@ -12,7 +12,14 @@ struct Prefs {
   std::string text_model = "llama3.1";
   std::string vision_model = "llava";
   int interactive_res = 256;   // eval resolution while dragging sliders
-  int view_count = 1;          // viewport windows (1..6), remembered
+  // Which viewport windows are open, one bit per slot (bit 0 = View 1). A set
+  // rather than a count, so closing View 2 of four leaves the other three
+  // exactly where they were instead of renumbering them. Never 0: the app
+  // reopens View 1 rather than leave the user with no viewport at all.
+  unsigned view_mask = 1;
+  // The named layout that was last loaded or saved, so the Layouts menu can
+  // show which one you are working in. Empty means an unnamed arrangement.
+  std::string current_layout;
   // Ceiling on the cached node output buffers, in megabytes. Every output port
   // holds its buffer for the graph's lifetime, so a deep graph at high
   // resolution can hold gigabytes nothing will read again: at 4096 one

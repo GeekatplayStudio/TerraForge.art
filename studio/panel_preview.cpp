@@ -32,7 +32,7 @@ struct PreviewState {
   RenderSettings::ViewConfig vc;
 };
 PreviewState P;
-constexpr int PREVIEW_SLOT = 6;
+constexpr int PREVIEW_SLOT = SLOT_PREVIEW;
 } // namespace
 
 void draw_panel_preview(App &a) {

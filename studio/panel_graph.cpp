@@ -97,6 +97,17 @@ void graph_editor_add(App &a, int domain) {
   editors_save_prefs();
 }
 
+// Replace the extra editors with exactly this set of domains. Loading a
+// layout is the only caller: the editors it describes are part of the
+// arrangement, and leaving stale ones open would mean a loaded layout never
+// quite matches the one that was saved.
+void graph_editors_set(App &a, const std::vector<int> &domains) {
+  editors_init();
+  for (GraphEditor &e : editors())
+    if (e.index > 0) e.open = false; // closed and swept next frame
+  for (int d : domains) graph_editor_add(a, d);
+}
+
 // Show a node in the node editor from anywhere else in the application:
 // switch to the workspace that holds its category, select it and pan to it.
 // The panning itself happens in the editor that draws it next frame.

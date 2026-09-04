@@ -1,4 +1,5 @@
 #include "prefs.hpp"
+#include <algorithm>
 #include "paths.hpp"
 #include <fstream>
 #include <json.hpp>
@@ -34,7 +35,16 @@ void prefs_load() {
     p.text_model = j.value("text_model", p.text_model);
     p.vision_model = j.value("vision_model", p.vision_model);
     p.interactive_res = j.value("interactive_res", p.interactive_res);
-    p.view_count = j.value("view_count", p.view_count);
+    // view_mask replaced view_count in 2026-09: a saved count of N means
+    // the first N views were open, which is exactly the low N bits.
+    if (j.contains("view_mask") && j["view_mask"].is_number())
+      p.view_mask = j["view_mask"].get<unsigned>();
+    else if (j.contains("view_count") && j["view_count"].is_number()) {
+      int n = std::clamp(j["view_count"].get<int>(), 1, 8);
+      p.view_mask = (1u << n) - 1u;
+    }
+    if (!p.view_mask) p.view_mask = 1;
+    p.current_layout = j.value("current_layout", p.current_layout);
     p.graph_memory_mb = j.value("graph_memory_mb", p.graph_memory_mb);
     p.editor_domains.clear();
     for (const auto &d : j.value("editor_domains", json::array()))
@@ -56,7 +66,8 @@ void prefs_save() {
   j["text_model"] = p.text_model;
   j["vision_model"] = p.vision_model;
   j["interactive_res"] = p.interactive_res;
-  j["view_count"] = p.view_count;
+  j["view_mask"] = p.view_mask;
+  j["current_layout"] = p.current_layout;
   j["graph_memory_mb"] = p.graph_memory_mb;
   j["editor_domains"] = p.editor_domains;
   j["viewport_fps"] = p.viewport_fps;

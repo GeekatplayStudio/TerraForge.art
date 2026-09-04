@@ -28,6 +28,31 @@ each one was a bug we already paid for. Do not regress them.
    accent, `studio::Checkbox` (no check marks) instead of `ImGui::Checkbox`.
 6. **Numeric rows** are `[-] [slider-look drag] [+]`: drag to scrub, click to
    type, mouse wheel to step while hovering.
+7. **Never rebuild the dock layout to change one window.**
+   `build_default_layout` starts with `DockBuilderRemoveNode`, which throws
+   away every window the user placed by hand. Adding, closing, splitting or
+   rearranging a viewport edits one dock node and calls `DockBuilderFinish`
+   on that node's root (`studio/layout.cpp`); only "Reset layout" rebuilds.
+   Watch the one trap: when no viewport is docked, the reference node *is*
+   the root dockspace, and clearing its children flattens the whole
+   application into a single tab bar - `views_arrange` checks for that.
+8. **Viewports are a set, not a count.** `Prefs::view_mask` holds one bit per
+   slot (up to `RenderSettings::MAX_VIEWS`), so closing View 2 of four leaves
+   1, 3 and 4 where they are instead of renumbering them under the user's
+   hands. The mask is never 0: an application with no viewport is a bug, so
+   the last one has no close box.
+9. **A layout is arrangement, never content.** `LayoutRecord` carries ImGui's
+   ini text, the open viewports and what each shows, the open panels and the
+   extra node editors - and nothing about the scene or the graph, so a saved
+   layout loads over any project. ImGui can only take new window state
+   between frames, so a load parks the ini in `App::pending_layout_ini` and
+   `app.cpp` applies it at the top of the next frame, before the first
+   `Begin`.
+10. **Offscreen render targets are named, never numbered by hand**
+    (`SLOT_PREVIEW`, `SLOT_AOV`, `SLOT_CAMERA` in `render_settings.hpp`).
+    The camera thumbnail used to borrow slot 4, which was View 5's target as
+    soon as a fifth viewport existed - two features resizing one FBO every
+    frame.
 
 ## Performance rules
 

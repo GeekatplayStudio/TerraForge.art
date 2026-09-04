@@ -335,6 +335,12 @@ static void prefs_dialog() {
   }
 }
 
+// toolbar_layout.cpp: the Viewports and Layouts menus, and the dialog that
+// names a layout being saved.
+void menu_view_viewports(App &a);
+void menu_view_layouts(App &a);
+void layout_dialogs(App &a);
+
 static void menu_view(App &a) {
   if (!ImGui::BeginMenu("View")) return;
   ImGui::MenuItem("Library", nullptr, &a.show_library);
@@ -360,23 +366,10 @@ static void menu_view(App &a) {
                     false, false);
     ImGui::EndMenu();
   }
-  if (ImGui::BeginMenu("Viewport windows")) {
-    for (int n = 1; n <= 6; ++n) {
-      char label[32];
-      snprintf(label, sizeof label, "%d view%s", n, n > 1 ? "s" : "");
-      if (ImGui::MenuItem(label, nullptr, prefs().view_count == n)) {
-        prefs().view_count = n;
-        prefs_save();
-        a.request_layout_reset = true;
-      }
-    }
-    ImGui::Separator();
-    ImGui::MenuItem("Views are dockable windows — drag to float", nullptr, false,
-                    false);
-    ImGui::EndMenu();
-  }
-  ImGui::Separator();
-  if (ImGui::MenuItem("Reset layout")) a.request_layout_reset = true;
+  // Viewports and saved layouts live in toolbar_layout.cpp - this file is at
+  // the 500-line limit and those two menus have real logic behind them.
+  menu_view_viewports(a);
+  menu_view_layouts(a);
   ImGui::EndMenu();
 }
 
@@ -439,6 +432,7 @@ void draw_toolbar(App &a) {
     ImGui::EndMenuBar();
   }
   about_dialog();
+  layout_dialogs(a); // "save layout as" (toolbar_layout.cpp)
   prefs_dialog();
   new_terrain_dialog(a);
 

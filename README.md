@@ -139,6 +139,20 @@ wanted his students to have.
 - **Windows that leave the window:** every panel has a corner button that
   floats it out of the main window — onto a second monitor when there is
   one — and docks it back.
+- **As many viewports as you want, wherever you want them.** Up to eight 3D
+  views, each a normal window: drag one anywhere, split it, tab it beside
+  the node editor, float it onto another monitor, close it from its own tab.
+  **Viewports ▸ Arrange** lays the viewport area out in 1–8 cells (2×2 is one
+  click) and touches nothing else on screen; **Split right** and **Split
+  down** divide the view you last worked in. Adding or closing a viewport
+  never rebuilds the layout, so an arrangement you built by hand survives.
+- **Layouts, saved by name.** The arrangement is remembered between sessions
+  on its own, and **View ▸ Layouts ▸ Save current layout…** keeps as many
+  named ones as you like — the dock arrangement, which viewports are open and
+  what each shows, which panels are open and which node editors exist. A
+  layout never contains the scene, so *Modelling*, *Texturing* and *Lighting*
+  load over any project. Scripts and the assistant reach all of it:
+  `save_layout`, `load_layout`, `arrange_views`, `add_view`, `close_view`.
 - **Gizmos on everything, with a lock:** meshes, lights, cameras, planets,
   the water level and the sun all move (and turn, and scale where it makes
   sense) with the viewport gizmo. The padlock beside each object in the

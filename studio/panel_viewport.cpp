@@ -21,9 +21,10 @@ static const char *DISPLAY_NAMES[] = {"Wireframe", "Solid", "Textured"};
 static const char *ENGINE_NAMES[] = {"Rasterized PBR", "Cinematic raymarch"};
 
 const char *view_window_name(int slot) {
-  static const char *names[6] = {"View 1", "View 2", "View 3",
-                                 "View 4", "View 5", "View 6"};
-  return names[slot < 0 || slot > 5 ? 0 : slot];
+  static const char *names[RenderSettings::MAX_VIEWS] = {
+      "View 1", "View 2", "View 3", "View 4",
+      "View 5", "View 6", "View 7", "View 8"};
+  return names[slot < 0 || slot >= RenderSettings::MAX_VIEWS ? 0 : slot];
 }
 
 static void draw_scale_bar(ImDrawList *dl, ImVec2 corner, float view_px_w,
@@ -78,24 +79,31 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
   studio::Checkbox("Selection outline", &vc.outlines);
 
   ImGui::SeparatorText("Viewport windows");
-  int count = prefs().view_count;
-  ImGui::TextDisabled("How many view windows:");
-  for (int n = 1; n <= 6; ++n) {
+  // Arranging the viewport area, without disturbing anything else on screen.
+  unsigned mask = prefs().view_mask;
+  int open_count = 0;
+  for (int i = 0; i < RenderSettings::MAX_VIEWS; ++i)
+    if (mask & (1u << i)) ++open_count;
+  ImGui::TextDisabled("Arrange:");
+  for (int n = 1; n <= RenderSettings::MAX_VIEWS; ++n) {
     char lbl[8];
     snprintf(lbl, sizeof lbl, "%d", n);
-    bool active = count == n;
+    bool active = open_count == n;
     if (active)
       ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.33f, 0.13f, 1.f));
-    if (ImGui::Button(lbl, ImVec2(34, 0))) {
-      prefs().view_count = n;
-      prefs_save();
-      a.request_layout_reset = true;
-    }
+    if (ImGui::Button(lbl, ImVec2(30, 0))) views_arrange(a, n);
     if (active) ImGui::PopStyleColor();
-    if (n < 6) ImGui::SameLine();
+    if (n < RenderSettings::MAX_VIEWS) ImGui::SameLine();
   }
+  if (ImGui::Button("Split right", ImVec2(96, 0)))
+    view_split(a, a.view_focus, false);
+  ImGui::SameLine();
+  if (ImGui::Button("Split down", ImVec2(96, 0)))
+    view_split(a, a.view_focus, true);
   ImGui::TextDisabled("Each view is a normal window: drag its tab to\n"
-                      "float or re-dock it. Your layout is remembered.");
+                      "move, split, float or re-dock it. The\n"
+                      "arrangement is remembered; View > Layouts\n"
+                      "saves it by name.");
 
   ImGui::SeparatorText("Real-time engine");
   ImGui::SetNextItemWidth(W);
@@ -190,11 +198,11 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
     if (right - used >= compact) {
       ImGui::SetCursorPosX(right - compact);
       ImGui::SetNextItemWidth(96);
-      ImGui::Combo("##cam", &vc.camera, "Perspective Top Front Right ");
+      ImGui::Combo("##cam", &vc.camera, "Perspective\0Top\0Front\0Right\0");
       if (ImGui::IsItemHovered()) ImGui::SetTooltip("Projection");
       ImGui::SameLine(0, gap);
       ImGui::SetNextItemWidth(84);
-      ImGui::Combo("##disp", &vc.display, "Wireframe Solid Textured ");
+      ImGui::Combo("##disp", &vc.display, "Wireframe\0Solid\0Textured\0");
       if (ImGui::IsItemHovered()) ImGui::SetTooltip("Shading");
       ImGui::SameLine(0, gap);
     } else {
@@ -409,14 +417,26 @@ void draw_panel_viewport(App &a) {
   renderer_set_brush_cursor(0, 0, -1.f, false);
   // a stroke that leaves the window still ends when the button comes up
   if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) sculpt_end_stroke(a);
-  int view_count = std::clamp(prefs().view_count, 1, 6);
-  for (int slot = 0; slot < view_count; ++slot) {
+  // The open viewports, in slot order. A closed slot is skipped entirely -
+  // the set is what Prefs::view_mask holds, so closing View 2 of four leaves
+  // 1, 3 and 4 where they are instead of renumbering them.
+  const unsigned mask = prefs().view_mask ? prefs().view_mask : 1u;
+  int closing = -1;
+  for (int slot = 0; slot < RenderSettings::MAX_VIEWS; ++slot) {
+    if (!(mask & (1u << slot))) continue;
+    // Only offer the close box while another viewport would remain.
+    const bool last_one = (mask & ~(1u << slot)) == 0;
+    bool stay = true;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     panel_float_prepare(a, view_window_name(slot));
-    bool open = ImGui::Begin(view_window_name(slot), nullptr,
+    bool open = ImGui::Begin(view_window_name(slot),
+                             last_one ? nullptr : &stay,
                              ImGuiWindowFlags_NoScrollbar |
                                  ImGuiWindowFlags_NoScrollWithMouse);
     ImGui::PopStyleVar();
+    if (!stay) closing = slot;
+    // Where a new viewport goes when the user asks for one.
+    if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered()) a.view_focus = slot;
     if (open) {
       ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6, 4));
       ImGui::BeginChild("##hdr", ImVec2(0, ImGui::GetFrameHeight() + 8),
@@ -428,6 +448,8 @@ void draw_panel_viewport(App &a) {
     }
     ImGui::End();
   }
+  // Closed after the loop: the mask must not change while it is being walked.
+  if (closing >= 0) view_close(a, closing);
 }
 
 } // namespace studio

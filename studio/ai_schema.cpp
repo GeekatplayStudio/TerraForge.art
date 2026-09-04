@@ -78,6 +78,16 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"show_panel","panel":"Material Editor","visible":true}
    (Library, Nodes, Properties, Viewport, Toolbar, Console, Timeline,
    Preview, Material Editor)
+- {"op":"arrange_views","count":4}
+   (the viewport area becomes 1..8 cells; nothing else on screen moves)
+- {"op":"add_view"} / {"op":"add_view","split":true,"vertical":false}
+   (another 3D viewport beside the one last worked in - as a tab, or
+   splitting it; "view":3 opens that particular slot)
+- {"op":"close_view","view":2}
+   (the last remaining viewport is never closed)
+- {"op":"save_layout","name":"Modelling"} / {"op":"load_layout","name":"Modelling"}
+   (a layout is every window's place, the open viewports and what each one
+   shows - never the scene; also delete_layout, list_layouts, reset_layout)
 - {"op":"set_locked","object":"Camera 1","locked":true}
    (locks an object in place: no gizmo, no dragging; false frees it)
 - {"op":"add_planet","name":"Mars","radius":3.5,"relief":0.03,"seed":42,

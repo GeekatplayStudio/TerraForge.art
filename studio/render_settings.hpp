@@ -101,13 +101,20 @@ struct RenderSettings {
   };
   int viewport_layout = 0; // 0 = single, 1 = quad (persp/top/front/right)
   int viewport_engine = 0; // 0 rasterized PBR, 1 cinematic raymarch
-  ViewConfig views[6] = {
+  // Viewports are a set, not a count: any of MAX_VIEWS slots may be open, in
+  // any dock node, and the open ones need not be the first ones. Which are
+  // open lives in Prefs::view_mask (UI state, saved with the layout); what
+  // each one shows lives here.
+  static constexpr int MAX_VIEWS = 8;
+  ViewConfig views[MAX_VIEWS] = {
       {0, 2, true, true, false, true, 1.2f, 0.5f, 0.5f},
       {1, 2, false, true, true, true, 1.2f, 0.5f, 0.5f},
       {2, 1, false, true, true, true, 1.2f, 0.5f, 0.5f},
       {3, 1, false, true, true, true, 1.2f, 0.5f, 0.5f},
       {0, 1, true, true, false, true, 1.2f, 0.5f, 0.5f},
       {1, 0, false, false, true, true, 1.2f, 0.5f, 0.5f},
+      {2, 2, false, true, true, true, 1.2f, 0.5f, 0.5f},
+      {3, 2, false, true, true, true, 1.2f, 0.5f, 0.5f},
   };
   int background_mode = 0; // 0 sky, 1 gradient, 2 solid color
   float bg_color[3] = {0.16f, 0.17f, 0.19f};
@@ -241,6 +248,15 @@ struct RenderSettings {
 RenderSettings &render_settings();
 
 // multi-view rendering (slot 0..3 = independent FBOs)
+// Offscreen render targets, one per drawing surface. Slots 0..MAX_VIEWS-1 are
+// the viewport windows; the rest are named so two features can never quietly
+// share one and fight over its size - which is what happened when the camera
+// thumbnail borrowed slot 4 and a fifth viewport existed.
+constexpr int SLOT_PREVIEW = RenderSettings::MAX_VIEWS;    // Preview panel
+constexpr int SLOT_AOV = RenderSettings::MAX_VIEWS + 1;    // render passes
+constexpr int SLOT_CAMERA = RenderSettings::MAX_VIEWS + 2; // camera thumbnail
+constexpr int SLOT_COUNT = RenderSettings::MAX_VIEWS + 3;
+
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w,
                             int h, float dt);
 void renderer_view_input(RenderSettings::ViewConfig &vc, float dx, float dy,

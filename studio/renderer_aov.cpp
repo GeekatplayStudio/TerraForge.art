@@ -5,7 +5,7 @@
 // writes the requested quantity instead of its shaded colour and returns
 // before tone mapping, so a pass costs one draw of the scene and nothing is
 // approximated from the beauty afterwards. Passes render into a float
-// framebuffer (slot 7) and are written as linear EXR; the beauty goes to
+// framebuffer (SLOT_AOV) and are written as linear EXR; the beauty goes to
 // PNG, EXR or HDR as asked. Planets, gizmos and overlays are skipped while a
 // pass is drawn (see draw_scene) - they carry beauty colours only.
 #include "renderer_internal.hpp"
@@ -28,7 +28,7 @@ namespace {
 // Draw the scene through the free camera (or the active scene camera) into
 // slot 7 at the given size and read it back as floats, top row first.
 void draw_readback(int w, int h, std::vector<float> &px) {
-  ensure_fbo(7, w, h, true);
+  ensure_fbo(SLOT_AOV, w, h, true);
   RenderSettings::ViewConfig vc = render_settings().views[0];
   vc.camera = 0;
   vc.display = 2;
@@ -37,9 +37,9 @@ void draw_readback(int w, int h, std::vector<float> &px) {
   vc.outlines = false;
   float eye[3], mvp[16], inv_vp[16];
   camera_matrices(w, h, eye, mvp, inv_vp);
-  draw_scene(7, vc, w, h, 0.f, eye, mvp, inv_vp);
+  draw_scene(SLOT_AOV, vc, w, h, 0.f, eye, mvp, inv_vp);
   px.resize((size_t)w * h * 4);
-  glBindFramebuffer(GL_FRAMEBUFFER, fbo[7]);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo[SLOT_AOV]);
   glReadPixels(0, 0, w, h, GL_RGBA, GL_FLOAT, px.data());
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   // GL rows start at the bottom; every writer wants the top first

@@ -208,6 +208,8 @@ set(STUDIO_SOURCES
     studio/app_eval.cpp
     studio/app_services.cpp
     studio/layout.cpp
+    studio/layout_record.cpp
+    studio/layout_store.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
     studio/icons.cpp
@@ -224,6 +226,7 @@ set(STUDIO_SOURCES
     studio/panel_nodelist.cpp
     studio/panel_viewport.cpp
     studio/toolbar.cpp
+    studio/toolbar_layout.cpp
     studio/dialog_new.cpp
     studio/autosave.cpp
     studio/autosave_ui.cpp
@@ -435,6 +438,13 @@ target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# Saved window layouts: the record round-trip and the name sanitiser, with
+# no ImGui and no GL in the link (layout_record.cpp is the half without a UI).
+add_executable(layout_tests tests/cpp/test_layout.cpp studio/layout_record.cpp
+                            studio/paths.cpp)
+target_include_directories(layout_tests PRIVATE studio)
+target_link_libraries(layout_tests PRIVATE third_party_headers)
+
 # The node reference generator: docs/NODES.md straight from the registry.
 add_executable(node_docs_gen tools/gen_node_docs.cpp)
 target_link_libraries(node_docs_gen PRIVATE
@@ -457,6 +467,7 @@ add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
 add_test(NAME RenderTests COMMAND render_tests)
+add_test(NAME LayoutTests COMMAND layout_tests)
 
 
 

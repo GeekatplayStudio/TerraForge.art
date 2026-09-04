@@ -85,7 +85,7 @@ void camera_properties_ui(App &a, SceneObject &obj) {
     RenderSettings::ViewConfig vc = render_settings().views[0];
     vc.camera = 0;
     vc.outlines = false;
-    unsigned tex = renderer_draw_view(4, vc, pw, ph, 0.f);
+    unsigned tex = renderer_draw_view(SLOT_CAMERA, vc, pw, ph, 0.f);
     scene_active_camera() = prev_active;
     ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2((float)pw, (float)ph),
                  ImVec2(0, 1), ImVec2(1, 0));

@@ -62,9 +62,6 @@ static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> 
 
 
 
-// studio/layout.cpp
-void build_default_layout(ImGuiID dockspace_id, int view_count);
-
 // studio/app_eval.cpp
 void eval_worker(App &a);
 
@@ -119,6 +116,14 @@ void run_main() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // A layout being loaded lands here: ImGui can only take a new set of
+    // window positions between frames, before anything is submitted.
+    if (!a.pending_layout_ini.empty()) {
+      ImGui::LoadIniSettingsFromMemory(a.pending_layout_ini.c_str(),
+                                       a.pending_layout_ini.size());
+      a.pending_layout_ini.clear();
+    }
+
     // full-window dockspace under the toolbar
     ImGuiViewport *vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(vp->WorkPos);
@@ -160,7 +165,7 @@ void run_main() {
     if (first_frame || a.request_layout_reset) {
       if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr ||
           a.request_layout_reset)
-        build_default_layout(dockspace_id, prefs().view_count);
+        build_default_layout(dockspace_id, prefs().view_mask);
       a.request_layout_reset = false;
       first_frame = false;
     }

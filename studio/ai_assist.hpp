@@ -29,6 +29,12 @@ bool ai_apply_actions(App &a, const std::string &json_text, std::string &err);
 int ai_graph_op(App &a, const std::string &op, const nlohmann::json &act,
                 std::string &err);
 
+// Window layouts and the viewport set (layout_store.cpp): save_layout,
+// load_layout, delete_layout, list_layouts, reset_layout, add_view,
+// close_view, arrange_views. Same return convention as ai_graph_op.
+int ai_layout_op(App &a, const std::string &op, const nlohmann::json &act,
+                 std::string &err);
+
 // Viewport and surface quality (ai_ops_view.cpp): subdivision, per-patch
 // culling, height scale, planetary radius, fractal relief, displacement
 // strength, shadows, exposure. Same return convention as ai_graph_op.
