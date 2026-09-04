@@ -70,6 +70,7 @@ struct InfiniteFrame {
   int fog_type;
   float fog_density;
   const float *fog_color;
+  bool textured = true; // the view's shading mode, as for the terrain tile
 };
 void infinite_draw(const InfiniteFrame &f);
 bool infinite_layers_present(); // any visible root-level InfiniteSurface?

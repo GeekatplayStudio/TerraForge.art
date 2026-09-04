@@ -427,6 +427,7 @@ void infinite_draw(const InfiniteFrame &f) {
   glUseProgram(prog_inf);
   glUniformMatrix4fv(glGetUniformLocation(prog_inf, "u_mvp"), 1, GL_FALSE, f.mvp);
   punii(prog_inf, "u_aov", g_aov);
+  punii(prog_inf, "u_textured", f.textured ? 1 : 0);
   puni3(prog_inf, "u_cam", f.eye);
   puni3(prog_inf, "u_sun", f.sun);
   puni3(prog_inf, "u_sun_color", f.sun_color);

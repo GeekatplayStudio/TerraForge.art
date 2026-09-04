@@ -225,6 +225,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.fog_type = atmosphere ? RS.fog_type : 0;
     inf.fog_density = RS.fog_density;
     inf.fog_color = RS.fog_color;
+    inf.textured = textured;
     infinite_draw(inf);
   }
 

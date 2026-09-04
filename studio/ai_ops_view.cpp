@@ -109,6 +109,31 @@ int ai_view_op(App &a, const std::string &op, const json &act,
 
   n += take_f(act, "cloud_scatter_depth", rs.cloud_scatter_depth, 0.05f, 0.99f);
 
+  // Shading mode, per view or for every view at once. Scripting could set
+  // every other display option but not this one, so no automated check could
+  // ever confirm that "solid" actually stops shading with the material - and
+  // that is precisely where the bug was.
+  if (act.contains("shading")) {
+    const json &v = act["shading"];
+    int mode = -1;
+    if (v.is_number()) mode = v.get<int>();
+    else if (v.is_string()) {
+      std::string t = v.get<std::string>();
+      for (auto &c : t) c = (char)tolower(c);
+      if (t.rfind("wire", 0) == 0) mode = 0;
+      else if (t.rfind("solid", 0) == 0 || t.rfind("shade", 0) == 0) mode = 1;
+      else if (t.rfind("text", 0) == 0) mode = 2;
+    }
+    if (mode < 0 || mode > 2) {
+      err = "set_viewport: shading is 0..2, or wireframe/solid/textured";
+      return 0;
+    }
+    int view = act.value("view", -1); // -1 = every view
+    for (int i = 0; i < 6; ++i)
+      if (view < 0 || view == i) rs.views[i].display = mode;
+    ++n;
+  }
+
   if (act.contains("layout") && act["layout"].is_number())
     rs.viewport_layout = std::clamp(act["layout"].get<int>(), 0, 5), ++n;
   if (act.contains("engine") && act["engine"].is_number())

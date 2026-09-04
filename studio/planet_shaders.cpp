@@ -252,6 +252,7 @@ in float v_out;
 out vec4 frag;
 uniform sampler2D u_height, u_albedo;
 uniform int u_has_albedo, u_fog_type;
+uniform int u_textured; // 1 textured, 0 solid - see the terrain shader
 uniform vec3 u_cam, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon, u_fog_color;
 uniform float u_hscale, u_amp, u_sun_i, u_ambient, u_exposure, u_sat, u_fogd;
 uniform vec3 u_grade;
@@ -290,6 +291,9 @@ void main(){
     vec3 edge = texture(u_albedo, clamp(v_uv, 0.0, 1.0)).rgb;
     alb = mix(edge, alb, smoothstep(0.0, 1.2, v_out));
   }
+  // the surround has to answer the shading mode the same way the tile does,
+  // or turning the texture off leaves a coloured horizon around a grey tile
+  if (u_textured == 0) alb = vec3(0.58, 0.57, 0.55);
 
   float NdL = max(dot(N, u_sun), 0.0);
   // the ambient half is skylight, so it fades with the same nightfall

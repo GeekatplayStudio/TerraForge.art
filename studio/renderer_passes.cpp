@@ -186,9 +186,15 @@ void pass_terrain(const FrameCtx &F) {
     // the stub call in both stages
     uni1(PT, "u_field_strength",
          g_field_glsl.empty() ? 0.f : RS.field_displacement);
-    unii(PT, "u_surface_on", g_surface_glsl.empty() ? 0 : 1);
-    unii(PT, "u_surf_rough_on", g_rough_glsl.empty() ? 0 : 1);
-    unii(PT, "u_surf_bump_on", g_bump_glsl.empty() ? 0 : 1);
+    // Every albedo source is gated on the view's shading mode. A surface
+    // graph used not to be, so a scene carrying one ignored both the Textured
+    // button and the "textured" checkbox entirely - the reported symptom was
+    // that the texture could not be turned off at all.
+    unii(PT, "u_textured", textured ? 1 : 0);
+    unii(PT, "u_surface_on",
+         (!g_surface_glsl.empty() && textured && RS.use_albedo) ? 1 : 0);
+    unii(PT, "u_surf_rough_on", (!g_rough_glsl.empty() && textured) ? 1 : 0);
+    unii(PT, "u_surf_bump_on", (!g_bump_glsl.empty() && textured) ? 1 : 0);
     uni1(PT, "u_surf_bump_strength", g_surf_bump_strength);
     uni1(PT, "u_surf_bump_scale", g_surf_bump_scale);
     glUniform4f(glGetUniformLocation(PT, "u_brush"), g_brush[0],
@@ -245,9 +251,14 @@ void pass_terrain(const FrameCtx &F) {
     if (use_tess) {
       float vp[2] = {(float)w, (float)h};
       glUniform2fv(glGetUniformLocation(PT, "u_viewport"), 1, vp);
-      uni1(PT, "u_tess_px", RS.tess_pixels);
-      uni1(PT, "u_tess_min", RS.tess_min);
-      uni1(PT, "u_tess_max", RS.tess_max);
+      // Wireframe subdivides to one quad per patch. At the shading levels
+      // (8 to 32 an edge over 64x64 patches) the wires land within a pixel or
+      // two of each other and the mode is indistinguishable from solid -
+      // measured at 1.6 % of pixels different, which is what "the wireframe
+      // button does nothing" actually looked like.
+      uni1(PT, "u_tess_px", wireframe ? 1e6f : RS.tess_pixels);
+      uni1(PT, "u_tess_min", wireframe ? 1.f : RS.tess_min);
+      uni1(PT, "u_tess_max", wireframe ? 1.f : RS.tess_max);
       // Per-patch frustum culling. Only trusted once the bounds have actually
       // been built from a heightmap: an unbound or empty bounds texture reads
       // as a zero-height patch everywhere, which would cull ground that is on

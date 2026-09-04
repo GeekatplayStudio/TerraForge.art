@@ -43,6 +43,11 @@ uniform vec2 u_cl_wind;
 const float PI = 3.14159265;
 uniform float u_field_strength;
 uniform int u_surface_on;
+// Shading mode for this view: 1 textured, 0 solid. Solid means no albedo from
+// any source - not the graph texture, not a surface graph, and not the
+// built-in palette either, which is what "Solid" means in every other
+// application and what the button implies.
+uniform int u_textured;
 uniform int u_surf_rough_on;
 uniform int u_surf_bump_on;
 uniform float u_surf_bump_strength;
@@ -183,7 +188,11 @@ void main(){
   }
   float h = texture(u_height, v_uv).r;
   vec3 albedo;
-  if (u_surface_on == 1) {
+  if (u_textured == 0) {
+    // Solid: one neutral surface, so the form is readable without any
+    // material arguing with it.
+    albedo = vec3(0.58, 0.57, 0.55);
+  } else if (u_surface_on == 1) {
     // A colour field shades the terrain per pixel. Slope and facing come from
     // the shaded normal, so a distribution keyed on steepness follows detail
     // finer than the heightmap carrying it.

@@ -172,3 +172,32 @@ def test_install_documentation_covers_every_platform():
         assert needle in doc, f"docs/INSTALL.md never mentions {needle}"
     readme = (ROOT / "README.md").read_text(encoding="utf-8", errors="replace")
     assert "docs/INSTALL.md" in readme, "the README does not link the install guide"
+
+def test_every_terrain_albedo_source_is_gated_on_the_shading_mode():
+    """Solid means solid.
+
+    The terrain fragment shader picks its albedo from a surface graph, then a
+    graph texture, then a built-in palette. `u_surface_on` used to be set from
+    "is there a surface graph" alone, so a scene carrying one ignored both the
+    Textured button and the graph-albedo checkbox, and the texture could not be
+    turned off at all. Every one of those sources is now gated on the view's
+    shading mode, and this is what keeps them that way.
+    """
+    passes = (ROOT / "studio/renderer_passes.cpp").read_text(encoding="utf-8",
+                                                             errors="replace")
+    for uniform in ("u_surface_on", "u_surf_rough_on", "u_surf_bump_on",
+                    "u_has_albedo"):
+        m = re.search(rf'unii\(PT, "{uniform}",(.{{0,160}}?)\);', passes, re.S)
+        assert m, f"{uniform} is no longer set in pass_terrain"
+        assert "textured" in m.group(1), (
+            f"{uniform} is set without consulting `textured`, so the view's "
+            f"shading mode cannot turn it off"
+        )
+    assert 'unii(PT, "u_textured"' in passes, "the shading mode is not sent to the shader"
+
+    frag = (ROOT / "studio/shaders_terrain_frag.cpp").read_text(encoding="utf-8",
+                                                                errors="replace")
+    assert "u_textured == 0" in frag, (
+        "the fragment shader has no solid-shading branch; without it 'solid' "
+        "still paints the built-in rock/grass/snow palette"
+    )
