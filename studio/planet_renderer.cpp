@@ -3,6 +3,7 @@
 #include "scene.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/planet_math.hpp"
+#include "glsl_version.hpp"
 #include <glad/gl.h>
 #include <algorithm>
 #include <cmath>
@@ -65,7 +66,11 @@ static void punii(GLuint p, const char *n, int v) {
 
 static GLuint pl_compile(GLenum type, const std::string &src) {
   GLuint sh = glCreateShader(type);
-  const char *s = src.c_str();
+  // Same choke point as renderer_programs.cpp's compile(): the #version line
+  // is rewritten for the platform (macOS tops out at 4.1 core) and left alone
+  // everywhere else. See studio/glsl_version.hpp.
+  const std::string patched = glsl_for_platform(src.c_str());
+  const char *s = patched.c_str();
   glShaderSource(sh, 1, &s, nullptr);
   glCompileShader(sh);
   GLint ok = 0;

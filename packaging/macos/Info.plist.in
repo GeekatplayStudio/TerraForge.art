@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>                  <string>TerraForge</string>
+  <key>CFBundleDisplayName</key>           <string>Geekatplay TerraForge</string>
+  <key>CFBundleIdentifier</key>            <string>art.terraforge.studio</string>
+  <key>CFBundleVersion</key>               <string>@VERSION@</string>
+  <key>CFBundleShortVersionString</key>    <string>@VERSION@</string>
+  <key>CFBundleExecutable</key>            <string>TerraForge</string>
+  <key>CFBundleIconFile</key>              <string>terraforge.icns</string>
+  <key>CFBundlePackageType</key>           <string>APPL</string>
+  <key>CFBundleSignature</key>             <string>????</string>
+  <key>LSMinimumSystemVersion</key>        <string>11.0</string>
+  <key>NSHighResolutionCapable</key>       <true/>
+  <key>NSHumanReadableCopyright</key>      <string>Vladimir Shopine, Geekatplay Studio</string>
+  <!-- Opening a .gpxt from Finder hands the path to the studio on argv. -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>          <string>TerraForge project</string>
+      <key>CFBundleTypeRole</key>          <string>Editor</string>
+      <key>LSHandlerRank</key>             <string>Owner</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>gpxt</string></array>
+      <key>CFBundleTypeIconFile</key>      <string>terraforge.icns</string>
+    </dict>
+  </array>
+</dict>
+</plist>

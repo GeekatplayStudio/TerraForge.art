@@ -64,6 +64,17 @@ static fs::path tests_src_dir() {
   return "tests/cpp";
 }
 
+// Where a manifest entry's test_file lives. Most are C++ under tests/cpp; a
+// feature owned by a Python test names a .py, which sits one level up. Without
+// this, anything the Python suite owns simply could not be locked, and "the
+// manifest covers every shipped capability" would quietly mean "every
+// capability a C++ test happens to own".
+static fs::path manifest_test_path(const std::string &test_file) {
+  if (test_file.size() > 3 && test_file.compare(test_file.size() - 3, 3, ".py") == 0)
+    return tests_src_dir().parent_path() / test_file;
+  return tests_src_dir() / test_file;
+}
+
 static std::vector<std::string> read_lines(const fs::path &p) {
   std::vector<std::string> out;
   std::ifstream f(p);
@@ -434,7 +445,7 @@ static void check_feature_manifest() {
     CHECK(!f.test_file.empty() && !f.test_symbol.empty(),
           "feature '" + f.id + "' names an owning test");
     if (f.test_file.empty()) continue;
-    fs::path tf = tests_src_dir() / f.test_file;
+    fs::path tf = manifest_test_path(f.test_file);
     auto it = cache.find(tf);
     if (it == cache.end()) {
       cache[tf] = fs::exists(tf) ? read_file(tf) : std::string();

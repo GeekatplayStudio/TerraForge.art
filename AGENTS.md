@@ -356,9 +356,93 @@ belongs to; do not fake a field node with a 1×1 buffer.
    that a restored graph recomputes bit-identically. Extend it when you add
    state that undo must cover.
 
+## Portability
+
+TerraForge builds on Windows, macOS and Linux from one CMake project. Windows
+is the reference platform: the golden hashes were recorded there, and it is
+what most contributors run.
+
+1. **macOS caps OpenGL at 4.1**, and every shader in the repository declares
+   `#version 430 core`. `studio/glsl_version.hpp` rewrites that first line to
+   410 on Apple, and **every** `glShaderSource` call site goes through it -
+   `compile()`, `pl_compile()` and the CPU/GPU checker's own compiler. A new
+   compile path that skips it works on Windows and fails on a Mac with a
+   version error nobody will connect to the new code.
+2. **Nothing above 4.1 may be used**: no compute shaders, no shader storage
+   buffers, no `layout(binding=)`, no explicit uniform locations, no immutable
+   texture storage, no debug callback. Tessellation is fine - it is core in
+   4.0. If a feature genuinely needs 4.3, it needs a fallback, not a broken
+   Mac build.
+3. **Platform code is written for all three, or it is not written.** Every
+   `#ifdef _WIN32` gets a `#elif defined(__APPLE__)` and an `#else`. A branch
+   that silently returns nothing is how the file dialogs "worked" everywhere
+   and opened on Windows only.
+4. **A POSIX signal handler must be async-signal-safe.** The crash path writes
+   with `write()` to a descriptor opened at init and leaves with `_exit()`. No
+   `printf`, no allocation, no `std::string`. A crash handler that crashes
+   tells you nothing at all.
+5. **Windows behaviour is the thing being preserved.** After any portability
+   change, the Windows link line and the test hashes must be unchanged. Both
+   platform ports in this repository were verified that way before anything
+   else was believed.
+
+## Where files go at run time
+
+`studio/paths.cpp` answers this once, and everything asks rather than guessing.
+
+1. **`install_dir()` is read-only, `data_dir()` is writable.** Running from
+   `build/` these are the same place, which is why the distinction went
+   unnoticed for so long. An installed copy breaks it: a macOS bundle is
+   launched with the working directory set to `/`, and a Windows install may
+   sit somewhere the user cannot write.
+2. **Anything the application writes for itself goes through
+   `settings_path()`** - preferences, the ImGui layout, the node-editor view
+   files. It prefers a file of that name in the current directory, so a
+   developer's checkout keeps its own settings and nothing about that workflow
+   changes.
+3. **A new relative path in an `fstream` or an ImGui `SettingsFile` is a bug on
+   macOS.** It will write to `/` and fail without saying so.
+4. `install_dir()` finds the shipped tree by looking for `orchestrator`. The
+   macOS packaging test asserts the bundle still carries it, because if it
+   stops, the offline renderers stop with nothing in the log.
+
+## Packaging
+
+1. **One definition of what ships.** `packaging/windows/stage.ps1` is the only
+   list of what an installed TerraForge consists of, used by both the one-click
+   installer and the setup builder. Two lists is how a package loses the Python
+   layer on a Friday.
+2. **Ship stripped, keep the symbols.** The build carries `-g` on purpose (a
+   crash report's `module+RVA` resolves to `file:line`), and that is 148 of the
+   executable's 159 MB. The addresses in a report are module offsets, so they
+   resolve against the unstripped build the developer still has - which is why
+   the symbols are copied to `dist/symbols` rather than discarded.
+3. **Link the MinGW runtime statically** (`-static-libgcc -static-libstdc++
+   -static`). Otherwise the package needs three DLLs that exist only on a
+   machine with the toolchain. `stage.ps1` reads the real dependency list out
+   of the binary with `objdump` rather than assuming either way.
+4. **Shell scripts must be checked out with LF.** `.gitattributes` pins
+   `*.sh` and `*.command`, and `tests/test_packaging.py` enforces it. A CRLF
+   `.command` fails on macOS with `bad interpreter: /usr/bin/env bash^M`,
+   which reads as a broken script rather than a line-ending problem - and the
+   file looks perfectly fine in the repository that produced it.
+5. **The executable bit lives in the git index**, not the filesystem: Windows
+   checkouts have none. `git update-index --chmod=+x` on every new script, and
+   the packaging test checks the mode is `100755`.
+6. **Both `get_deps` scripts fetch the same versions.** They are the only place
+   the third-party versions are written down; a drift means Windows and macOS
+   build against different sources. The packaging test compares them.
+7. **Install per user, never machine-wide.** No elevation prompt, and the
+   install folder stays writable - which is where the logs go the first time
+   something breaks.
+8. **The uninstaller removes what the application wrote**, and leaves
+   `%LOCALAPPDATA%\GeekatplayTerraForge` alone. Removing the program must not
+   remove someone's work.
+
 ## Before you commit
 
-- `.\build.ps1` must succeed (it fails loudly; do not trust a stale binary).
+- `.\build.ps1` (or `./build.sh`) must succeed. It fails loudly; do not trust a
+  stale binary.
   Kill a running `geekatplay_studio` first — a locked exe fails the link with
   `Permission denied`.
 - `.\test.ps1` must pass — all six suites.

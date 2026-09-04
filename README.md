@@ -16,6 +16,8 @@ the basins, grass on the wet valley floors.*
 
 ---
 
+**[Install guide](docs/INSTALL.md)** — Windows, macOS and Linux, from a
+one-click installer to building it yourself.
 **[Node reference](docs/NODES.md)** — every node, port and parameter,
 generated from the registry itself.
 **[Developer guide](docs/DEVELOPER_GUIDE.md)** — goals, roadmap, architecture
@@ -371,43 +373,87 @@ materials and lighting for you. Everything runs on your machine.
 Open them with File > Open (or the `open_project` scripting op) and press
 around.
 
-## Requirements
+## Install
 
-- Windows 10/11 (the codebase is portable; Windows is what ships today)
-- A GPU supporting **OpenGL 4.3**
-- **CMake 3.20+**, **Ninja**, and a C++20 compiler (MinGW-w64 GCC or MSVC)
-- **Python 3.9+** — optional, for AI assistance and offline rendering
+### Ready-made installers
 
-## Build
+| Platform | Download | Notes |
+|---|---|---|
+| **Windows 10/11** | `TerraForge-<version>-Setup.exe` | Installs for your account only, so there is no administrator prompt. A portable `.zip` is published beside it. |
+| **macOS 11+** | `TerraForge-<version>.dmg` | Drag to Applications. First launch: right-click → Open (the builds are not notarised). |
+
+### One click from source
+
+```
+git clone https://github.com/GeekatplayStudio/TerraForge.art.git
+cd TerraForge.art
+```
+
+**Windows** — double-click **`install.bat`**
+**macOS** — double-click **`install.command`**
+**Linux** — run **`./scripts/install.sh`**
+
+Each one checks for the tools it needs and offers to install the missing ones
+(winget on Windows, Homebrew on macOS, apt/dnf/pacman on Linux), fetches the
+third-party sources, builds, and puts TerraForge where your system expects to
+find applications. Add `-Dev` / `--dev` to build without installing.
+
+### Or build it by hand
 
 ```powershell
-git clone https://github.com/GeekatplayStudio/TerraForge.art.git
-cd TerraForm
-powershell -ExecutionPolicy Bypass -File scripts\get_deps.ps1   # one time
+powershell -ExecutionPolicy Bypass -File scripts\get_deps.ps1   # Windows, once
 .\build.ps1
 .\start.ps1
 ```
 
-`get_deps.ps1` fetches Dear ImGui, GLFW, imgui-node-editor, GLM, GLAD, miniz,
+```bash
+./scripts/get_deps.sh                                           # macOS / Linux, once
+./build.sh
+./start.sh
+```
+
+`get_deps` fetches Dear ImGui, GLFW, imgui-node-editor, GLM, GLAD, miniz,
 nlohmann/json and stb into `external/`. They are not committed to this
-repository.
+repository, and both scripts fetch the same versions.
+
+**[The full install guide](docs/INSTALL.md)** covers prerequisites, flags,
+uninstalling, where your files are kept, building the installers yourself, and
+what to do when something does not work.
+
+### Requirements
+
+| | Minimum |
+|---|---|
+| Windows | 10 (1809) or 11, 64-bit |
+| macOS | 11 Big Sur or newer, Intel or Apple silicon |
+| Linux | any current distribution, X11 or Wayland |
+| Graphics | OpenGL 4.3, or 4.1 on macOS — any GPU since roughly 2012 |
+| Build tools | CMake 3.20+, Ninja, a C++20 compiler (MinGW-w64 GCC, MSVC, Clang or GCC) |
+| Python 3.9+ | optional: the offline path tracers and the AI assistant |
+
+macOS caps OpenGL at 4.1, so TerraForge asks for a 4.1 core profile there and
+compiles its shaders at `#version 410 core`. It uses nothing above 4.1 — no
+compute shaders, no shader storage buffers, no explicit binding layouts — so
+adaptive tessellation, volumetric clouds, shadows and the render passes all
+work on a Mac.
 
 ### Optional extras
 
-```powershell
-pip install mitsuba          # path-traced offline rendering
-pip install -r requirements.txt
-ollama pull llama3.1         # AI terrain from text
-ollama pull llava            # AI terrain from a photograph
+```
+pip install mitsuba                # path-traced offline rendering
+pip install -r requirements.txt    # the whole Python layer
+ollama pull llama3.1               # AI terrain from a description
+ollama pull llava                  # AI terrain from a photograph
 ```
 
 ## Run the tests
 
 ```powershell
-.\test.ps1
+.\test.ps1      # Windows
+./test.sh       # macOS / Linux
 ```
 
-Six suites, all of which must pass before a commit:
+Seven suites, all of which must pass before a commit:
 
 | Suite | Covers |
 |---|---|
@@ -451,12 +497,13 @@ The `logs/` folder is local and never committed.
 | `tests/` | C++ and Python test suites |
 | `tests/manifest/` | The regression lock's records: node, attribute, golden and feature censuses |
 | `tests/projects/` | Golden `.gpxt` projects, re-evaluated to a hash on every run |
-| `scripts/` | Dependency fetcher |
+| `scripts/` | Dependency fetchers and the one-click installers |
+| `packaging/` | Windows setup program (Inno Setup) and macOS .app / .dmg builders |
 
 ## Usage notes
 
-- **Workspaces** across the top switch the editor between Terrain,
-  Materials, Atmosphere and Render.
+- **Workspaces** across the top switch the editor between Terrain, Materials,
+  Objects, Atmosphere, Lighting, Cameras, Animation and Render.
 - **Properties** is a tabbed editor (Render, Scene, World, Object, Material,
   Node) that follows what you select and has a search box.
 - **Right-click a viewport** for view options; the same menu sets how many

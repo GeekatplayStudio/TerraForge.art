@@ -1,4 +1,4 @@
-﻿{
+{
   "_comment": [
     "Feature manifest — the regression lock's human-auditable checklist.",
     "Every shipped user-visible capability appears here and names the test that",
@@ -374,6 +374,18 @@
     { "id": "render.hdr_io", "area": "studio", "phase": "26",
       "description": "True HDR image files: OpenEXR scanline read (NONE/RLE/ZIPS/ZIP, HALF/FLOAT/UINT) and write (FLOAT, uncompressed), Radiance .hdr read/write, LDR formats loaded as linear light; backs the backdrop dome and the render passes",
       "test_file": "test_render_hdr.cpp", "test_symbol": "test_exr_roundtrip" },
+
+    { "id": "install.one_click", "area": "packaging", "phase": "27",
+      "description": "One-click installers: install.bat (Windows, winget), install.command (macOS, Homebrew), scripts/install.sh (Linux, apt/dnf/pacman) each check the toolchain, fetch dependencies, build, and install per user with shortcuts; POSIX twins of get_deps/build/test/start",
+      "test_file": "test_packaging.py", "test_symbol": "test_both_dependency_fetchers_agree" },
+
+    { "id": "install.packages", "area": "packaging", "phase": "27",
+      "description": "Distributable packages: Inno Setup .exe and portable .zip for Windows (per-user, no elevation, .gpxt association, clean uninstall), .app bundle and .dmg for macOS (ad-hoc signed, icns generated with sips/iconutil); binaries stripped for shipping with the debug symbols kept beside them",
+      "test_file": "test_packaging.py", "test_symbol": "test_windows_staging_lists_directories_that_exist" },
+
+    { "id": "platform.posix", "area": "studio", "phase": "27",
+      "description": "macOS and Linux support: OpenGL 4.1 core context and #version 410 shaders on Apple, POSIX file dialogs (osascript/zenity/kdialog), signal-based crash reports with backtrace, BSD-socket Ollama client with chunked decoding, fork/exec render process control, pipe-based console capture, per-user data directory for preferences, layout and node-editor views",
+      "test_file": "test_packaging.py", "test_symbol": "test_macos_bundle_carries_what_the_app_looks_for" },
 
     { "id": "nodes.contract", "area": "meta", "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",

@@ -12,6 +12,7 @@
 #include "terrain_cull.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/field_glsl.hpp"
+#include "glsl_version.hpp"
 #include <imgui.h>
 #include <algorithm>
 #include <cmath>
@@ -64,7 +65,12 @@ std::string inject_sky(const char *src) {
 
 GLuint compile(GLenum type, const char *src) {
   GLuint sh = glCreateShader(type);
-  glShaderSource(sh, 1, &src, nullptr);
+  // glsl_for_platform is the choke point for the #version line: a no-op
+  // everywhere except macOS, which caps OpenGL at 4.1 core. See
+  // studio/glsl_version.hpp for why the downgrade is safe.
+  const std::string patched = glsl_for_platform(src);
+  const char *s = patched.c_str();
+  glShaderSource(sh, 1, &s, nullptr);
   glCompileShader(sh);
   GLint ok = 0;
   glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);

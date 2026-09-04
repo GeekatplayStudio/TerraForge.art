@@ -1,4 +1,5 @@
 #include "prefs.hpp"
+#include "paths.hpp"
 #include <fstream>
 #include <json.hpp>
 
@@ -11,10 +12,18 @@ Prefs &prefs() {
   return p;
 }
 
-static const char *PREFS_FILE = "terraforge_prefs.json";
+// Kept beside the executable when the application is run from a writable
+// working directory (the developer's build/), and in the per-user data
+// directory otherwise - an installed copy may sit somewhere read-only, and a
+// macOS bundle is launched with the working directory set to "/".
+// settings_path() prefers an existing file in the current directory, so an
+// existing checkout keeps the preferences it already has.
+static std::string prefs_file() {
+  return settings_path("terraforge_prefs.json").string();
+}
 
 void prefs_load() {
-  std::ifstream f(PREFS_FILE);
+  std::ifstream f(prefs_file());
   if (!f) return;
   try {
     json j = json::parse(f);
@@ -54,7 +63,7 @@ void prefs_save() {
   j["idle_fps"] = p.idle_fps;
   j["preview_fps"] = p.preview_fps;
   j["preview_quality"] = p.preview_quality;
-  std::ofstream f(PREFS_FILE);
+  std::ofstream f(prefs_file());
   f << j.dump(2);
 }
 

@@ -3,12 +3,14 @@
 #include "prefs.hpp"
 #include "console.hpp"
 #include "crash_log.hpp"
+#include "paths.hpp"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <cstdio>
+#include <string>
 
 namespace studio {
 App &app() {
@@ -35,8 +37,22 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "GLFW init failed\n");
     return 1;
   }
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  // macOS caps OpenGL at 4.1 core and will not ship anything newer, so ask
+  // for what the platform can actually give. A core profile there also
+  // *requires* the forward-compatible flag — without it glfwCreateWindow
+  // fails outright. Nothing in the app needs 4.2/4.3: the shaders are
+  // downgraded to `#version 410 core` by studio/glsl_version.hpp, which
+  // explains why that is safe.
+#ifdef __APPLE__
+  constexpr int gl_major = 4, gl_minor = 1;
+  constexpr const char *imgui_glsl_version = "#version 410";
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+#else
+  constexpr int gl_major = 4, gl_minor = 3;
+  constexpr const char *imgui_glsl_version = "#version 430";
+#endif
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, gl_major);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, gl_minor);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   // No MSAA on the default framebuffer. Every 3D pass renders into its own
   // single-sampled FBO, so the swapchain only ever receives ImGui geometry,
@@ -47,7 +63,9 @@ int main(int argc, char **argv) {
                                      "Geekatplay TerraForge \xC2\xB7 Vladimir Shopine",
                                      nullptr, nullptr);
   if (!win) {
-    std::fprintf(stderr, "window creation failed (OpenGL 4.3 required)\n");
+    std::fprintf(stderr,
+                 "window creation failed (OpenGL %d.%d core profile required)\n",
+                 gl_major, gl_minor);
     return 1;
   }
   glfwMakeContextCurrent(win);
@@ -63,16 +81,24 @@ int main(int argc, char **argv) {
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // floatable/detachable panels
   io.ConfigDragClickToInputText = true; // click a number to type it in
-  io.IniFilename = "geekatplay_studio_layout.ini";
+  // The panel layout is per user, not per install: inside a macOS bundle the
+  // working directory is "/", and an installed Windows copy may sit somewhere
+  // read-only. settings_path() still prefers a file sitting in the current
+  // directory, so a developer's layout stays with their checkout.
+  static const std::string ini_path =
+      studio::settings_path("geekatplay_studio_layout.ini").string();
+  io.IniFilename = ini_path.c_str();
   studio::prefs_load();
-  // real UI font: Segoe UI (falls back to built-in if unavailable)
-  ImFont *ui_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf");
+  // The platform's own interface font, falling back to the built-in one.
+  ImFont *ui_font = nullptr;
+  if (std::string font = studio::ui_font_path(); !font.empty())
+    ui_font = io.Fonts->AddFontFromFileTTF(font.c_str());
   if (!ui_font) io.Fonts->AddFontDefault();
   ImGui::GetStyle().FontSizeBase = studio::prefs().font_size;
   ImGui::GetStyle().FontScaleMain = studio::prefs().ui_scale;
   studio::apply_theme();
   ImGui_ImplGlfw_InitForOpenGL(win, true);
-  ImGui_ImplOpenGL3_Init("#version 430");
+  ImGui_ImplOpenGL3_Init(imgui_glsl_version);
 
   studio::app().window = win;
   studio::run_main();

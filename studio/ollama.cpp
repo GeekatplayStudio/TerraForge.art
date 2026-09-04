@@ -1,6 +1,8 @@
-// Geekatplay TerraForge — minimal Ollama REST client (WinHTTP)
+// Geekatplay TerraForge — minimal Ollama REST client (WinHTTP / BSD sockets)
 #include "ollama.hpp"
 #include <json.hpp>
+#include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <fstream>
 #include <vector>
@@ -9,11 +11,72 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winhttp.h>
+#else
+#include <cerrno>
+#include <fcntl.h>
+#include <netdb.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
 #endif
 
 using json = nlohmann::json;
 
 namespace studio {
+
+#ifndef _WIN32
+// Ollama is documented as a loopback service and speaks plain HTTP, so a
+// socket is the entire client here: no TLS stack, no curl, nothing to ship.
+
+// Chunked is the one framing Ollama can still choose for a non-streaming
+// answer, and a body left in chunk framing is not JSON — it would come back
+// as "bad Ollama response" with the size prefixes sitting in the text.
+static bool dechunk(const std::string &in, std::string &out) {
+  for (size_t i = 0; i < in.size();) {
+    size_t eol = in.find("\r\n", i);
+    if (eol == std::string::npos) return false;
+    size_t len = 0;
+    int digits = 0;
+    for (size_t k = i; k < eol; ++k) {
+      char c = in[k];
+      int d;
+      if (c >= '0' && c <= '9') d = c - '0';
+      else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
+      else if (c >= 'A' && c <= 'F') d = c - 'A' + 10;
+      else break; // a ";chunk-extension" (or trailing space) ends the size
+      len = len * 16 + (size_t)d;
+      ++digits;
+    }
+    if (!digits) return false;
+    i = eol + 2;
+    if (!len) return true; // the terminating chunk; trailers are of no use here
+    if (i + len > in.size()) return false;
+    out.append(in, i, len);
+    i += len + 2; // and the CRLF that closes the chunk
+  }
+  return false; // ran out of bytes before the terminating chunk
+}
+
+// connect() with a deadline. A blocking connect to a port nobody is listening
+// on sits in the kernel for the system's own timeout — over a minute on a
+// stalled host — and the thread waiting is the one the user is looking at.
+static bool connect_timeout(int fd, const sockaddr *addr, socklen_t len, int ms) {
+  int flags = ::fcntl(fd, F_GETFL, 0);
+  ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+  bool ok = ::connect(fd, addr, len) == 0;
+  if (!ok && errno == EINPROGRESS) {
+    pollfd p{fd, POLLOUT, 0};
+    if (::poll(&p, 1, ms) > 0) {
+      int soerr = 0;
+      socklen_t n = sizeof soerr;
+      ok = ::getsockopt(fd, SOL_SOCKET, SO_ERROR, &soerr, &n) == 0 && soerr == 0;
+    }
+  }
+  ::fcntl(fd, F_SETFL, flags); // blocking again: SO_RCVTIMEO bounds the rest
+  return ok;
+}
+#endif
 
 static bool http_post_json(const std::string &url_utf8, const std::string &path,
                            const std::string &body, std::string &response,
@@ -79,9 +142,94 @@ static bool http_post_json(const std::string &url_utf8, const std::string &path,
   WinHttpCloseHandle(session);
   return ok;
 #else
-  (void)url_utf8; (void)path; (void)body; (void)response;
-  err = "HTTP client not implemented on this platform";
-  return false;
+  // host:port out of the url, the same way the Windows branch reads it
+  std::string host = "127.0.0.1", port = "11434";
+  {
+    std::string u = url_utf8;
+    size_t p = u.find("//");
+    if (p != std::string::npos) u = u.substr(p + 2);
+    size_t colon = u.find(':'), slash = u.find('/');
+    std::string h = u.substr(0, std::min(colon, slash));
+    if (!h.empty()) host = h;
+    if (colon != std::string::npos && (slash == std::string::npos || colon < slash))
+      port = u.substr(colon + 1,
+                      slash == std::string::npos ? slash : slash - colon - 1);
+  }
+  // The one message the user can act on: everything below fails because the
+  // server is not there, and naming the address says which one to start.
+  const std::string unreachable =
+      "cannot reach Ollama at " + url_utf8 + " (is `ollama serve` running?)";
+  addrinfo hints{}, *res = nullptr;
+  hints.ai_family = AF_UNSPEC; // localhost resolves to ::1 as often as 127.0.0.1
+  hints.ai_socktype = SOCK_STREAM;
+  if (::getaddrinfo(host.c_str(), port.c_str(), &hints, &res) != 0 || !res) {
+    err = unreachable;
+    return false;
+  }
+  int fd = -1;
+  for (addrinfo *ai = res; ai && fd < 0; ai = ai->ai_next) {
+    int s = ::socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (s < 0) continue;
+    if (connect_timeout(s, ai->ai_addr, (socklen_t)ai->ai_addrlen, 30000)) fd = s;
+    else ::close(s);
+  }
+  ::freeaddrinfo(res);
+  if (fd < 0) {
+    err = unreachable;
+    return false;
+  }
+  // A model thinking on the CPU can take minutes, so the read deadline is
+  // generous; the send side only waits for the kernel's own buffer.
+  timeval tv{600, 0};
+  ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+  tv.tv_sec = 30;
+  ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+  std::string req = "POST " + path + " HTTP/1.1\r\nHost: " + host + ":" + port +
+                    "\r\nContent-Type: application/json\r\nContent-Length: " +
+                    std::to_string(body.size()) +
+                    "\r\nConnection: close\r\n\r\n" + body;
+  for (size_t sent = 0; sent < req.size();) {
+    ssize_t w = ::send(fd, req.data() + sent, req.size() - sent, 0);
+    if (w <= 0) {
+      if (errno == EINTR) continue;
+      ::close(fd);
+      err = unreachable;
+      return false;
+    }
+    sent += (size_t)w;
+  }
+  // "Connection: close" makes EOF the end of the message, so there is no
+  // length to trust and nothing to guess at when the model streams slowly.
+  std::string raw;
+  char buf[16384];
+  for (;;) {
+    ssize_t got = ::recv(fd, buf, sizeof buf, 0);
+    if (got > 0) {
+      raw.append(buf, (size_t)got);
+      continue;
+    }
+    if (got < 0 && errno == EINTR) continue;
+    break;
+  }
+  ::close(fd);
+  size_t head = raw.find("\r\n\r\n");
+  if (head == std::string::npos) {
+    err = raw.empty() ? unreachable : "Ollama closed the connection mid-reply";
+    return false;
+  }
+  std::string headers = raw.substr(0, head);
+  for (char &c : headers) c = (char)std::tolower((unsigned char)c);
+  std::string payload = raw.substr(head + 4);
+  if (headers.find("transfer-encoding: chunked") != std::string::npos) {
+    std::string decoded;
+    if (!dechunk(payload, decoded)) {
+      err = "malformed chunked reply from Ollama";
+      return false;
+    }
+    payload.swap(decoded);
+  }
+  response += payload; // the body only: the caller parses it as JSON
+  return true;
 #endif
 }
 

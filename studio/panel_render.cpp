@@ -24,6 +24,11 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <shellapi.h>
+#else
+#include <cerrno>
+#include <signal.h> // kill(); <csignal> need not declare the POSIX half
+#include <sys/wait.h>
+#include <unistd.h>
 #endif
 
 using json = nlohmann::json;
@@ -39,6 +44,8 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
 
 std::string dialog_save_file(const char *filter, const char *def_ext,
                              const char *suggested);
+// file_dialogs.cpp — hands the finished image to the desktop's own viewer
+void open_in_desktop(const std::string &path);
 bool renderer_render_to_file(const std::string &path, int w, int h);
 bool renderer_export_sky_hdr(const std::string &path, int w, int h);
 
@@ -55,8 +62,26 @@ static bool render_window_open = false;
 static std::string progress_line;
 #ifdef _WIN32
 static PROCESS_INFORMATION render_proc{};
-static std::atomic<bool> render_proc_valid{false};
+#else
+static pid_t render_pid = -1;
 #endif
+static std::atomic<bool> render_proc_valid{false};
+
+// A path on a command line. cmd.exe understands only double quotes; /bin/sh
+// needs single ones, because a render output under a directory with a $ or a
+// backtick in its name would otherwise be substituted before python sees it.
+static std::string q(const std::string &s) {
+#ifdef _WIN32
+  return "\"" + s + "\"";
+#else
+  std::string out = "'";
+  for (char c : s) {
+    if (c == '\'') out += "'\\''";
+    else out += c;
+  }
+  return out + "'";
+#endif
+}
 
 // export_scene (render_scene_export.cpp) points the live view at the files
 // the backend will refine
@@ -95,18 +120,45 @@ static int launch_process(const std::string &cmdline, const std::string &cwd) {
   CloseHandle(pi.hThread);
   return (int)code;
 #else
-  return std::system(("cd \"" + cwd + "\" && " + cmdline).c_str());
+  // fork/exec rather than system(): system() waits inside a child we cannot
+  // name, and Cancel has to be able to signal the renderer itself. The child
+  // is a shell, so the redirection built into the command line still applies.
+  pid_t pid = fork();
+  if (pid < 0) return -1;
+  if (pid == 0) {
+    // Its own session, so cancelling can signal the whole group: killing the
+    // shell alone would leave python rendering with nobody waiting for it.
+    setsid();
+    if (!cwd.empty() && chdir(cwd.c_str()) != 0) _exit(127);
+    execl("/bin/sh", "sh", "-c", cmdline.c_str(), (char *)nullptr);
+    _exit(127); // only reached when /bin/sh itself is missing
+  }
+  {
+    std::lock_guard<std::mutex> lk(render_mtx);
+    render_pid = pid;
+    render_proc_valid.store(true);
+  }
+  int status = 0;
+  while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {} // a signal, not an exit
+  {
+    std::lock_guard<std::mutex> lk(render_mtx);
+    render_proc_valid.store(false);
+  }
+  return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 #endif
 }
 
 void render_cancel() {
-#ifdef _WIN32
   std::lock_guard<std::mutex> lk(render_mtx);
-  if (render_proc_valid.load()) {
-    TerminateProcess(render_proc.hProcess, 1);
-    render_status = "render cancelled";
-  }
+  if (!render_proc_valid.load()) return;
+#ifdef _WIN32
+  TerminateProcess(render_proc.hProcess, 1);
+#else
+  // Negative pid: the child leads its own process group (setsid above), so
+  // this takes the shell and the python renderer under it down together.
+  kill(-render_pid, SIGTERM);
 #endif
+  render_status = "render cancelled";
 }
 
 struct EngineInfo {
@@ -144,8 +196,15 @@ static void run_render(std::string scene_json, std::string out_png,
     std::lock_guard<std::mutex> lk(render_mtx);
     render_status = "rendering (first run may compile kernels)...";
   }
-  std::string cmd = "cmd /c \"python -m orchestrator.render_engines \"" +
-                    scene_json + "\" > \"" + scene_json + ".log\" 2>&1\"";
+  // cmd.exe needs the whole line wrapped again; /bin/sh does not, and the
+  // interpreter is python3 there because "python" may be Python 2 or absent.
+#ifdef _WIN32
+  std::string cmd = "cmd /c \"python -m orchestrator.render_engines " +
+                    q(scene_json) + " > " + q(scene_json + ".log") + " 2>&1\"";
+#else
+  std::string cmd = "python3 -m orchestrator.render_engines " + q(scene_json) +
+                    " > " + q(scene_json + ".log") + " 2>&1";
+#endif
   int rc = launch_process(cmd, root);
   std::string tail;
   {
@@ -167,9 +226,15 @@ static void run_render(std::string scene_json, std::string out_png,
 
 static void run_probe(std::string root) {
   fs::path out = render_workdir() / "engines.txt";
-  std::string cmd = "cmd /c \"cd /d \"" + root +
-                    "\" && python -m orchestrator.render_engines --probe > \"" +
-                    out.string() + "\" 2>&1\"";
+#ifdef _WIN32
+  std::string cmd = "cmd /c \"cd /d " + q(root) +
+                    " && python -m orchestrator.render_engines --probe > " +
+                    q(out.string()) + " 2>&1\"";
+#else
+  std::string cmd = "cd " + q(root) +
+                    " && python3 -m orchestrator.render_engines --probe > " +
+                    q(out.string()) + " 2>&1";
+#endif
   std::system(cmd.c_str());
   std::ifstream f(out);
   std::string all((std::istreambuf_iterator<char>(f)),
@@ -247,11 +312,7 @@ void draw_render_window(App &a) {
   if (busy) {
     if (ImGui::SmallButton("Cancel")) render_cancel();
   } else if (!render_output.empty()) {
-#ifdef _WIN32
-    if (ImGui::SmallButton("Open file"))
-      ShellExecuteA(nullptr, "open", render_output.c_str(), nullptr, nullptr,
-                    SW_SHOWNORMAL);
-#endif
+    if (ImGui::SmallButton("Open file")) open_in_desktop(render_output);
   }
 
   if (preview_tex && preview_w > 0) {
@@ -426,11 +487,8 @@ void render_properties_ui(App &a) {
       ImGui::TextWrapped("%s", render_status.c_str());
       ImGui::PopStyleColor();
     }
-#ifdef _WIN32
     if (!render_output.empty() && ImGui::Button("open image"))
-      ShellExecuteA(nullptr, "open", render_output.c_str(), nullptr, nullptr,
-                    SW_SHOWNORMAL);
-#endif
+      open_in_desktop(render_output);
   }
 }
 

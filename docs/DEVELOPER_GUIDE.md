@@ -212,8 +212,8 @@ one step per document, so an agent's whole batch reverts as one edit.
    file under 500 lines.
 3. Write the test: a `test_*` in `tests/cpp/test_engine.cpp` (or the undo /
    render batteries). Determinism and range checks are the minimum.
-4. Build, run `ctest` (7 suites: RegressionLock, NodeContract, AllTests,
-   EngineTests, UndoTests, RenderTests, PerfGuard).
+4. Build, then `.\test.ps1` (Windows) or `./test.sh` (macOS, Linux) — seven
+   suites, all of which must pass.
 5. `regression_tests --update` to record new nodes/attributes in the
    manifest; `node_docs_gen` to regenerate `docs/NODES.md`.
 6. If it touches the UI, launch the app and verify it *live*: send an action
@@ -237,17 +237,66 @@ one step per document, so an agent's whole batch reverts as one edit.
 
 ### Building
 
-Windows, MinGW-w64 (WinLibs), CMake + Ninja:
+Windows (MinGW-w64 or MSVC), macOS (Clang) and Linux (GCC or Clang), all from
+the same CMake project. The fastest way in is the one-click installer with
+`-Dev` / `--dev`, which builds without installing anything:
 
+```powershell
+.\install.bat            # or: scripts\install.ps1 -Dev
 ```
-scripts/get_deps.ps1        # fetches imgui, glfw, glad, imgui-node-editor...
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-build/geekatplay_studio.exe
+```bash
+./scripts/install.sh --dev
+```
+
+By hand:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\get_deps.ps1
+.\build.ps1 ; .\test.ps1 ; .\start.ps1
+```
+```bash
+./scripts/get_deps.sh
+./build.sh && ./test.sh && ./start.sh
 ```
 
 Optional: `pip install mitsuba`, Blender on PATH, `pip install pyluxcore`;
 Ollama for the assistant; `pip install minidump` to read Windows crash dumps.
+
+**Windows is the reference platform.** The golden hashes were recorded with
+MinGW-w64 GCC, so a change that moves them on MSVC or Clang is expected;
+re-record only on the reference toolchain.
+
+**Portability rules that will bite you** (the full set is in `AGENTS.md`):
+
+- macOS caps OpenGL at **4.1**. `studio/glsl_version.hpp` rewrites the
+  `#version 430 core` line to 410 there, and every `glShaderSource` call site
+  must go through it. Use nothing above 4.1 — no compute, no SSBO, no
+  `layout(binding=)`.
+- Every `#ifdef _WIN32` needs a `__APPLE__` branch and an `#else`. A branch
+  that silently returns nothing is how the file dialogs worked on Windows only.
+- Anything the app writes for itself goes through `studio/paths.cpp`
+  (`settings_path`, `data_dir`). A bare relative path writes to `/` inside a
+  macOS bundle and fails without saying so.
+
+### Packaging
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging\windows\make_installer.ps1
+```
+```bash
+./packaging/macos/make_dmg.sh --build
+```
+
+Writes to `dist/`: a per-user Inno Setup `.exe` and a portable `.zip` on
+Windows, a `.dmg` holding an ad-hoc signed `.app` on macOS. Shipped binaries
+are stripped and the debug symbols are kept in `dist/symbols`, because a crash
+report's addresses are module offsets that resolve against the unstripped
+build. `packaging/windows/stage.ps1` is the single definition of what an
+installed TerraForge consists of; `tests/test_packaging.py` checks the two
+dependency fetchers agree, the shell scripts are LF and executable, and the
+installer stages only directories that exist.
+
+Full user-facing instructions: **[docs/INSTALL.md](INSTALL.md)**.
 
 ### Sending a change
 
@@ -265,6 +314,8 @@ Ollama for the assistant; `pip install minidump` to read Windows crash dumps.
 - A render-parity check between two engines for a feature you use.
 - A `test_*` for something that has none.
 - Translations: the `tr()` dictionary in `studio/i18n.cpp`.
+- Run the macOS or Linux build and report what breaks — those ports are newer
+  than the Windows one and have had far fewer eyes on them.
 - Try to break the crash handler, the undo stack, or the API fuzzer
   (`scripts/fuzz_ops.py`) and file what you find.
 

@@ -185,9 +185,49 @@ static void drain_stderr() {
 }
 } // namespace studio
 #else
+#include <fcntl.h>
+#include <unistd.h>
 namespace studio {
-void log_capture_stderr() {}
-static void drain_stderr() {}
+namespace {
+int g_pipe_fd[2] = {-1, -1};
+}
+
+void log_capture_stderr() {
+  if (g_pipe_fd[0] != -1) return;
+  if (::pipe(g_pipe_fd) != 0) return;
+  // The read end is non-blocking, which is this platform's answer to
+  // PeekNamedPipe: draining is called from the frame loop, and a blocking
+  // read would freeze the UI for as long as nobody wrote to stderr.
+  ::fcntl(g_pipe_fd[0], F_SETFL, ::fcntl(g_pipe_fd[0], F_GETFL, 0) | O_NONBLOCK);
+  g_saved_stderr = ::dup(STDERR_FILENO);
+  ::dup2(g_pipe_fd[1], STDERR_FILENO);
+  setvbuf(stderr, nullptr, _IONBF, 0); // unbuffered, or nothing arrives
+}
+
+// Drained by the panel each frame; EAGAIN is the normal case, not an error.
+static void drain_stderr() {
+  if (g_pipe_fd[0] == -1) return;
+  for (;;) {
+    char buf[4096];
+    ssize_t n = ::read(g_pipe_fd[0], buf, sizeof buf - 1);
+    if (n <= 0) return; // EAGAIN: nothing waiting, come back next frame
+    buf[n] = 0;
+    // split on newlines so one write does not become one giant entry
+    std::string chunk(buf, buf + n);
+    size_t start = 0;
+    while (start < chunk.size()) {
+      size_t nl = chunk.find('\n', start);
+      std::string line = chunk.substr(start, nl == std::string::npos
+                                                 ? std::string::npos
+                                                 : nl - start);
+      while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
+        line.pop_back();
+      if (!line.empty()) log_add(LogLevel::Warn, "stderr", line);
+      if (nl == std::string::npos) break;
+      start = nl + 1;
+    }
+  }
+}
 } // namespace studio
 #endif
 

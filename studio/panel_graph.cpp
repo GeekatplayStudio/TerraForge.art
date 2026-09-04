@@ -6,6 +6,7 @@
 // edit the one graph.
 #include "app.hpp"
 #include "panel_graph_internal.hpp"
+#include "paths.hpp"
 #include "console.hpp"
 #include "panel_float.hpp"
 #include "prefs.hpp"
@@ -43,11 +44,16 @@ void editor_make(GraphEditor &e, int index, int domain) {
   e.domain = domain;
   if (index == 0) {
     e.title = "Graph";
-    e.settings = "geekatplay_graph_view.json";
+    // Per user, not per install: a macOS bundle runs with the working
+    // directory set to "/", and an installed copy may sit in a folder the
+    // user cannot write to. settings_path() still prefers a file already in
+    // the current directory, so a checkout keeps its own canvas layout.
+    e.settings = settings_path("geekatplay_graph_view.json").string();
   } else {
     e.title = std::string(workspace_name(std::clamp(domain, 0, WS_COUNT - 1))) +
               " nodes###nodes_editor_" + std::to_string(index);
-    e.settings = "geekatplay_graph_view_" + std::to_string(index) + ".json";
+    e.settings = settings_path("geekatplay_graph_view_" + std::to_string(index) +
+                               ".json").string();
     e.show_props = true;
   }
   ed::Config cfg;

@@ -1,0 +1,30 @@
+# Line endings.
+#
+# The shell scripts must be checked out with LF on every platform. A .sh or
+# .command file with CRLF endings fails on macOS and Linux with
+# "bad interpreter: /usr/bin/env bash^M" — which reads as a broken script
+# rather than as a line-ending problem, and is exactly how a one-click
+# installer stops being one click.
+*.sh        text eol=lf
+*.command   text eol=lf
+*.bash      text eol=lf
+
+# The reverse for Windows scripts: cmd.exe tolerates LF in most places but not
+# in every one, and a .bat is only ever run on Windows anyway.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+*.iss       text eol=crlf
+
+# Everything else keeps whatever the working tree has, so the existing mixed
+# CRLF/LF sources are not rewritten wholesale.
+* -text
+
+# Binary, never diffed or converted.
+*.png       binary
+*.ico       binary
+*.icns      binary
+*.hdr       binary
+*.exr       binary
+*.pdf       binary
+*.gpxt      binary

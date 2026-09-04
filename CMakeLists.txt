@@ -1,5 +1,23 @@
 cmake_minimum_required(VERSION 3.20)
-project(GeekatplayTerraForge VERSION 2.0.0 LANGUAGES C CXX RC)
+
+# macOS: the oldest system we build for. This has to be set *before* project(),
+# which is when the compiler is probed — set afterwards it would not reach the
+# ABI checks. Left alone if the user or a packaging script already chose one.
+#
+# CMAKE_OSX_ARCHITECTURES is deliberately not set, so a Mac builds natively for
+# its own architecture. A packaging script that wants a universal binary sets
+# it on the command line; do not hard-code it here.
+if(CMAKE_HOST_APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "Minimum macOS version")
+endif()
+
+# RC is the Windows resource compiler. It exists nowhere else, and naming it
+# in LANGUAGES makes configure fail on macOS and Linux before it starts — so
+# it is enabled below, under if(WIN32), instead.
+project(GeekatplayTerraForge VERSION 2.0.0 LANGUAGES C CXX)
+if(WIN32)
+    enable_language(RC)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,6 +56,21 @@ else()
 endif()
 
 # ---------------------------------------------------------------- dependencies
+# System libraries, per platform.
+#
+# Windows keeps naming opengl32 directly, exactly as it always has — the point
+# of this file is portability, not churn on the one platform that works. macOS
+# and Linux go through FindOpenGL, which knows about the framework and about
+# GLVND. On Linux OpenGL_GL_PREFERENCE has no default (CMP0072) and CMake warns
+# unless it is told which one; GLVND is the modern answer.
+if(NOT WIN32)
+    set(OpenGL_GL_PREFERENCE GLVND)
+    find_package(OpenGL REQUIRED)
+    # engine/parallel.cpp runs std::thread; on Linux that needs -pthread at
+    # compile and at link, and every test binary links the engine.
+    find_package(Threads REQUIRED)
+endif()
+
 set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -156,7 +189,12 @@ add_library(geekatplay_nodeterrain STATIC ${ENGINE_SOURCES})
 target_include_directories(geekatplay_nodeterrain PUBLIC include engine)
 target_link_libraries(geekatplay_nodeterrain PUBLIC third_party_headers)
 if(WIN32)
+    # urlmon: URLDownloadToFileA, the PBR library downloader
+    # (engine/nodes/nodes_pbr_library.cpp, guarded by #ifdef _WIN32)
     target_link_libraries(geekatplay_nodeterrain PUBLIC urlmon)
+else()
+    # PUBLIC so every executable that links the engine gets -pthread too.
+    target_link_libraries(geekatplay_nodeterrain PUBLIC Threads::Threads)
 endif()
 if(NOT MSVC)
     target_compile_options(geekatplay_nodeterrain PRIVATE -Wall -Wextra)
@@ -251,15 +289,40 @@ set(STUDIO_SOURCES
     studio/i18n.cpp
     studio/file_dialogs.cpp
     studio/prefs.cpp
+    studio/paths.cpp
     studio/ollama.cpp
-    studio/resources/app.rc
 )
+# The icon and version resource; only the Windows resource compiler can read
+# it, and RC is only enabled there.
+if(WIN32)
+    list(APPEND STUDIO_SOURCES studio/resources/app.rc)
+endif()
 
-add_executable(geekatplay_studio WIN32 ${STUDIO_SOURCES})
-add_custom_command(TARGET geekatplay_studio POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/studio/resources
-            $<TARGET_FILE_DIR:geekatplay_studio>/resources)
+# WIN32 means "no console subsystem" and is a Windows-only flag; MACOSX_BUNDLE
+# means "build a .app". They occupy the same slot, so the platform picks one
+# and there stays exactly one add_executable call. Linux gets neither.
+set(STUDIO_EXE_KIND "")
+if(WIN32)
+    set(STUDIO_EXE_KIND WIN32)
+elseif(APPLE)
+    set(STUDIO_EXE_KIND MACOSX_BUNDLE)
+endif()
+add_executable(geekatplay_studio ${STUDIO_EXE_KIND} ${STUDIO_SOURCES})
+
+# studio/resources has to sit next to the running binary. Inside a .app the
+# binary is in Contents/MacOS, and resources belong in Contents/Resources.
+if(APPLE AND STUDIO_EXE_KIND STREQUAL "MACOSX_BUNDLE")
+    add_custom_command(TARGET geekatplay_studio POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/studio/resources
+                $<TARGET_BUNDLE_CONTENT_DIR:geekatplay_studio>/Resources)
+else()
+    add_custom_command(TARGET geekatplay_studio POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/studio/resources
+                $<TARGET_FILE_DIR:geekatplay_studio>/resources)
+endif()
+
 target_include_directories(geekatplay_studio PRIVATE studio)
 target_link_libraries(geekatplay_studio PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>"
@@ -267,10 +330,46 @@ target_link_libraries(geekatplay_studio PRIVATE
 if(WIN32)
     # dbghelp: symbolised stacks in crash reports (studio/crash_log.cpp)
     target_link_libraries(geekatplay_studio PRIVATE opengl32 winhttp dbghelp)
+else()
+    target_link_libraries(geekatplay_studio PRIVATE OpenGL::GL)
 endif()
-if(NOT MSVC)
-    # console visible in debug runs: strip WIN32 flag effect via entry
-    set_target_properties(geekatplay_studio PROPERTIES LINK_FLAGS "-mconsole")
+if(APPLE)
+    # GLFW's own CMake normally propagates these; naming them again costs
+    # nothing and covers a GLFW built without that propagation.
+    target_link_libraries(geekatplay_studio PRIVATE
+        "-framework Cocoa" "-framework IOKit" "-framework CoreVideo")
+endif()
+if(UNIX AND NOT APPLE)
+    # dlopen, used by GLFW's runtime loading of X11/Wayland
+    target_link_libraries(geekatplay_studio PRIVATE ${CMAKE_DL_LIBS})
+endif()
+if(WIN32 AND NOT MSVC)
+    # MinGW only.
+    #
+    # -mconsole: console visible in debug runs, undoing the WIN32 flag's
+    # subsystem choice. Not an option any other linker knows.
+    #
+    # -static-*: a MinGW build otherwise needs libstdc++-6.dll,
+    # libgcc_s_seh-1.dll and libwinpthread-1.dll beside it, which exist only on
+    # a machine that has the toolchain. Linking them in is what makes the
+    # installed copy and the portable ZIP run on someone else's computer; it
+    # costs about 2 MB and removes a whole class of "it works here" bug.
+    set_target_properties(geekatplay_studio PROPERTIES
+        LINK_FLAGS "-mconsole -static-libgcc -static-libstdc++ -static")
+endif()
+if(APPLE)
+    # Info.plist fields. The .icns is produced by the packaging script and is
+    # referenced by name only, so a plain `cmake --build` works without it —
+    # the bundle just shows the generic icon.
+    # The bundle directory is named after the target (geekatplay_studio.app);
+    # add OUTPUT_NAME "TerraForge" here if it should be TerraForge.app.
+    set_target_properties(geekatplay_studio PROPERTIES
+        MACOSX_BUNDLE_BUNDLE_NAME "TerraForge"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "art.terraforge.studio"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_ICON_FILE "terraforge.icns"
+        MACOSX_BUNDLE_COPYRIGHT "Geekatplay Studio")
 endif()
 
 # ------------------------------------------------------------------- cli/tests

@@ -9,8 +9,14 @@
 *.pdb
 *.ilk
 
-# third-party sources fetched by scripts/get_deps.ps1
+# third-party sources fetched by scripts/get_deps.ps1 / scripts/get_deps.sh
 /external/
+
+# packaging output: the installers, the portable archive, the app bundle and
+# the debug symbols kept beside them. Built by packaging/*, published as
+# release assets, never committed.
+/dist/
+/build/package/
 
 # private development notes, research and roadmaps (not published)
 /docs_private/
@@ -30,7 +36,7 @@ compile_commands.json
 
 # app state written at runtime
 geekatplay_studio_layout.ini
-geekatplay_graph_view.json
+geekatplay_graph_view*.json
 terraforge_prefs.json
 imgui.ini
 *.gpxt

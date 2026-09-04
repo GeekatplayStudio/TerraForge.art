@@ -13,6 +13,7 @@
 #include "render_settings.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/node_graph.hpp"
+#include "glsl_version.hpp"
 #include <glad/gl.h>
 #include <algorithm>
 #include <cmath>
@@ -58,7 +59,11 @@ struct FieldGpuResult {
 static GLuint compile_or_report(GLenum type, const std::string &src,
                                 std::string &err) {
   GLuint sh = glCreateShader(type);
-  const char *s = src.c_str();
+  // The verifier must compile against the same GLSL version the renderer
+  // does, or it would certify agreement for a shader the app cannot run.
+  // See studio/glsl_version.hpp (macOS caps OpenGL at 4.1 core).
+  const std::string patched = glsl_for_platform(src.c_str());
+  const char *s = patched.c_str();
   glShaderSource(sh, 1, &s, nullptr);
   glCompileShader(sh);
   GLint ok = 0;
