@@ -8,14 +8,39 @@ simulated terrain, layered PBR materials, volumetric sky, water, and offline
 path-traced rendering — all in a single native C++ application with a
 real-time OpenGL viewport.
 
-![Erosion that decides what grows where](docs/images/erosion_materials.png)
+![Alpine granite and snow, built from one node chain](docs/images/hero.jpg)
 
-*One erosion node carved this — and handed the material layers back: bare
-rock on the steep faces, snow on the high gentle ground, soil below, sand in
-the basins, grass on the wet valley floors.*
+*Five nodes made this. Ridged noise, pipe-model water erosion, then one
+ErosionLayers node that hands back where the rock, scree, soil, grass and snow
+belong — each one a photoscanned surface, placed by the erosion rather than by
+hand. Rendered in the viewport, in real time.*
+
+## Gallery
+
+Every image on this page comes out of the application's own viewport, from a
+node graph, with no compositing and no touch-ups.
+
+| | |
+|:--:|:--:|
+| ![Alpine](docs/images/terrain_alpine.jpg) **Alpine** — granite, scree and snow above the treeline | ![Red mesa](docs/images/terrain_mesa.jpg) **Red mesa** — sandstone under a low afternoon sun |
+| ![Island](docs/images/terrain_island.jpg) **Island** — shoreline foam, shallow water, grass on the lee slopes | ![Volcanic](docs/images/terrain_volcanic.jpg) **Volcanic** — dark basalt and a caldera at dusk |
+| ![Limestone ridge](docs/images/terrain_ridge.jpg) **Limestone ridge** — pale rock cut by drainage | ![The studio](docs/images/ui_terrain.jpg) **The studio** — the graph that made the view above it |
+
+The five landscapes differ only in their noise, their materials and their
+light. The erosion chain underneath is the same one every time, and every
+picture is reproducible: start the app and run
+
+```
+python scripts/make_gallery.py
+```
+
+which builds each scene through the same action inbox the assistant and the
+MCP tools use, then photographs it.
 
 ---
 
+**[terraforge.art](https://geekatplaystudio.github.io/TerraForge.art/)** — the
+gallery and the studio, in pictures.
 **[Install guide](docs/INSTALL.md)** — Windows, macOS and Linux, from a
 one-click installer to building it yourself.
 **[Node reference](docs/NODES.md)** — every node, port and parameter,
@@ -39,9 +64,11 @@ wanted his students to have.
 
 | | |
 | :--- | :--- |
-| ![Node cards](docs/images/node_cards.png) *Nodes as cards: typed connectors on the edges, wires coloured by data type, three detail levels.* | ![Several editors](docs/images/studio_editors.png) *A second node editor pinned to Materials, with its own parameters pane; every panel floats out to another monitor.* |
+| ![Terrain workspace](docs/images/ui_terrain.jpg) *Terrain: noise into water erosion into layered erosion, each node carrying its own preview and its own timing.* | ![Materials workspace](docs/images/ui_materials.jpg) *Materials: five photoscanned surfaces, each masked by what the erosion decided, blended height-aware.* |
+| ![Objects workspace](docs/images/ui_objects.jpg) *Objects: the scene tree — terrain, water, sun, atmosphere, cameras and planet surfaces, each lockable and hideable.* | ![Atmosphere workspace](docs/images/ui_atmosphere.jpg) *Atmosphere: sun by clock and calendar or by hand, sky, haze, volumetric cloud and water in one place.* |
+| ![Cameras workspace](docs/images/ui_cameras.jpg) *Cameras: real optics — sensor format, focal length, and an exposure triangle that tells you when the shot is blown.* | ![Render workspace](docs/images/ui_render.jpg) *Render: engines, and the twelve G-buffer passes each written as a linear EXR beside the beauty.* |
+| ![Lighting workspace](docs/images/ui_lighting.jpg) *Lighting: a LightSource node places and keeps a real scene light, alongside the sun.* | ![Animation workspace](docs/images/ui_animation.jpg) *Animation: transport, keys on any attribute, and an AnimationSequence node that declares the shot.* |
 | ![A 250 m planet](docs/images/planet_250m.png) *The terrain tile wrapped onto a 250 m planet — same nodes, same erosion.* | ![Per-planet surface graph](docs/images/planet_surface_graph.png) *A new planet shaped by its own surface graph, the home tile in front.* |
-| ![Terrain Fractal 2](docs/images/terrain_fractal2.png) *TerrainFractal2 driving the terrain; its grouped parameters; a field node with its preview.* | ![Preview panel](docs/images/preview_panel.png) *The Preview panel: the shot through the chosen camera with its own sky/cloud/water/shadow switches.* |
 
 ## Features
 

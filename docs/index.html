@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TerraForge — node-based 3D terrain and environment studio</title>
+<meta name="description" content="TerraForge builds photoreal landscapes from a node graph: simulated erosion, photoscanned materials placed by that erosion, volumetric sky, water and path-traced rendering. Native C++, real-time OpenGL, Windows and macOS.">
+<link rel="icon" href="images/hero.jpg">
+<meta property="og:title" content="TerraForge — node-based 3D terrain studio">
+<meta property="og:description" content="Photoreal landscapes from a node graph. Erosion decides where the rock, scree, soil, grass and snow go.">
+<meta property="og:image" content="images/hero.jpg">
+<meta property="og:type" content="website">
+<style>
+  /* Same visual language as the application: flat, zero rounding, dark grey
+     with a dim orange accent. A marketing page that looks nothing like the
+     product it sells is its own kind of lie. */
+  :root {
+    --bg: #16171a;
+    --panel: #1d1f23;
+    --line: #2c2f35;
+    --ink: #dcdad5;
+    --dim: #8e8d89;
+    --accent: #c8781e;
+    --max: 1200px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.65 "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+  header {
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(22,23,26,.94);
+    backdrop-filter: blur(8px);
+  }
+  header .wrap { display: flex; align-items: center; gap: 28px; height: 58px; }
+  .brand { font-weight: 600; letter-spacing: .04em; color: var(--ink); }
+  .brand span { color: var(--accent); }
+  header nav { margin-left: auto; display: flex; gap: 22px; font-size: 14px; }
+  header nav a { color: var(--dim); }
+  header nav a:hover { color: var(--ink); text-decoration: none; }
+
+  .hero { position: relative; }
+  .hero img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; }
+  .hero .shade {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(22,23,26,.55) 0%, rgba(22,23,26,0) 38%, rgba(22,23,26,.92) 100%);
+  }
+  .hero .copy { position: absolute; left: 0; right: 0; bottom: 0; padding-bottom: 46px; }
+  .hero h1 { font-size: clamp(30px, 5.2vw, 62px); line-height: 1.04; margin: 0 0 14px; font-weight: 600; }
+  .hero p { max-width: 660px; color: #cfcdc8; font-size: clamp(15px, 1.6vw, 19px); margin: 0 0 24px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-block; padding: 11px 22px; border: 1px solid var(--accent);
+    color: var(--accent); font-size: 15px;
+  }
+  .btn.solid { background: var(--accent); color: #16171a; font-weight: 600; }
+  .btn:hover { text-decoration: none; background: var(--accent); color: #16171a; }
+
+  section { padding: 74px 0; border-bottom: 1px solid var(--line); }
+  h2 { font-size: clamp(22px, 2.8vw, 32px); margin: 0 0 10px; font-weight: 600; }
+  .lede { color: var(--dim); max-width: 720px; margin: 0 0 34px; }
+
+  .grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); }
+  figure img { width: 100%; display: block; }
+  figcaption { padding: 13px 16px; font-size: 14px; color: var(--dim); }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .wide { grid-column: 1 / -1; }
+
+  .cards { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 20px 22px; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+  .card p { margin: 0; color: var(--dim); font-size: 14.5px; }
+
+  table.spec { width: 100%; border-collapse: collapse; font-size: 15px; }
+  table.spec td { padding: 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.spec td:first-child { color: var(--dim); width: 190px; padding-right: 20px; }
+
+  pre {
+    background: var(--panel); border: 1px solid var(--line); padding: 15px 18px;
+    overflow-x: auto; font-size: 14px; color: #cfcdc8; margin: 0 0 14px;
+    font-family: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  }
+  footer { padding: 42px 0 64px; color: var(--dim); font-size: 14px; }
+  footer a { color: var(--dim); text-decoration: underline; }
+
+  @media (max-width: 640px) {
+    header nav { display: none; }
+    section { padding: 48px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="#top">Terra<span>Forge</span></a>
+    <nav>
+      <a href="#gallery">Gallery</a>
+      <a href="#studio">The studio</a>
+      <a href="#how">How it works</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/GeekatplayStudio/TerraForge.art">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero" id="top">
+  <img src="images/hero.jpg" alt="Alpine granite peaks with snowfields, rendered in TerraForge">
+  <div class="shade"></div>
+  <div class="wrap copy">
+    <h1>Landscapes that erosion&nbsp;builds.</h1>
+    <p>TerraForge is a native node-based studio for 3D terrain and environments.
+       Simulated water carves the valleys, and the same simulation decides where
+       the rock, scree, soil, grass and snow belong — each one a photoscanned
+       surface, placed by the physics rather than by hand.</p>
+    <div class="cta">
+      <a class="btn solid" href="#install">Install</a>
+      <a class="btn" href="https://github.com/GeekatplayStudio/TerraForge.art">Source on GitHub</a>
+    </div>
+  </div>
+</div>
+
+<section id="gallery">
+  <div class="wrap">
+    <h2>Five landscapes, one chain</h2>
+    <p class="lede">Every image on this page is a screenshot of the application's
+       own real-time viewport. Nothing is composited, retouched or rendered
+       elsewhere. The five terrains differ only in their noise, their materials
+       and their light; the erosion underneath is identical.</p>
+    <div class="grid">
+      <figure>
+        <img src="images/terrain_alpine.jpg" alt="Alpine peaks with granite cliffs and snowfields" loading="lazy">
+        <figcaption><b>Alpine.</b> Ridged noise, then water. Snow settles on the high gentle ground, scree gathers below the cliffs.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/terrain_mesa.jpg" alt="Red sandstone mesa country under a low sun" loading="lazy">
+        <figcaption><b>Red mesa.</b> The same chain with sandstone, a flatter relief and a sun twelve degrees above the horizon.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/terrain_island.jpg" alt="An island with shoreline foam and shallow turquoise water" loading="lazy">
+        <figcaption><b>Island.</b> Water at a fixed level, with depth-graded colour and foam worked out along the real shoreline.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/terrain_volcanic.jpg" alt="Dark basalt ridges and a caldera at dusk" loading="lazy">
+        <figcaption><b>Volcanic.</b> A caldera cut into eroded relief, basalt, and a dusk sky seven degrees off the horizon.</figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="images/terrain_ridge.jpg" alt="Pale limestone ridges cut by drainage channels" loading="lazy">
+        <figcaption><b>Limestone ridge.</b> Heavier erosion at a finer scale: the drainage network is what carves the faces, not a noise function pretending to.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="studio">
+  <div class="wrap">
+    <h2>The studio</h2>
+    <p class="lede">Eight workspaces over one shared graph — Terrain, Materials,
+       Objects, Atmosphere, Lighting, Cameras, Animation and Render. Every panel
+       docks, floats and tears out to another monitor.</p>
+    <div class="grid">
+      <figure class="wide">
+        <img src="images/ui_terrain.jpg" alt="TerraForge Terrain workspace: viewport above, node graph below" loading="lazy">
+        <figcaption><b>Terrain.</b> Noise into pipe-model water erosion into layered erosion, and the picture it makes above it. Every node carries its own preview and its own measured time.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/ui_materials.jpg" alt="Materials workspace with photoscanned surfaces feeding a material stack" loading="lazy">
+        <figcaption><b>Materials.</b> Five photoscanned surfaces, each masked by what the erosion decided, blended height-aware so silt fills the cracks before it covers the ridges.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/ui_objects.jpg" alt="Objects workspace showing the scene tree" loading="lazy">
+        <figcaption><b>Objects.</b> Terrain, water, sun, atmosphere, cameras and planet surfaces in one tree, each lockable and hideable.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/ui_atmosphere.jpg" alt="Atmosphere workspace with sun, sky, cloud and water controls" loading="lazy">
+        <figcaption><b>Atmosphere.</b> Sun by latitude, date and clock or by hand; sky, haze, volumetric cloud and water together, because they are one look.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/ui_cameras.jpg" alt="Cameras workspace with lens and exposure controls" loading="lazy">
+        <figcaption><b>Cameras.</b> Real optics: sensor format, focal length, and an exposure triangle that tells you when the shot is blown before you render it.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/ui_render.jpg" alt="Render workspace with engines, passes and backdrop settings" loading="lazy">
+        <figcaption><b>Render.</b> Path tracers or the viewport, twelve G-buffer passes as linear EXR, and an HDR backdrop dome that the atmosphere still acts on.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/ui_lighting.jpg" alt="Lighting workspace with a light source node" loading="lazy">
+        <figcaption><b>Lighting.</b> A LightSource node places a real scene light and keeps it in step; remove the node and the light stays, as an ordinary object.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/ui_animation.jpg" alt="Animation workspace with the timeline and sequence node" loading="lazy">
+        <figcaption><b>Animation.</b> Transport, keys on any attribute, and an AnimationSequence node that declares the frame range, rate and output for the renderer.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/planet_250m.png" alt="The terrain tile wrapped onto a small planet" loading="lazy">
+        <figcaption><b>Planets.</b> The same tile wrapped onto a 250 m world. Planets are parameters, not data, so there is no limit on how many a scene holds.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/planet_surface_graph.png" alt="A planet shaped by its own surface graph" loading="lazy">
+        <figcaption><b>Surface graphs.</b> A planet shaped by its own function graph, compiled to a shader and evaluated on the GPU at whatever detail the camera needs.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p class="lede">Two evaluation domains in one graph. Buffers where neighbours
+       matter, functions where resolution should not.</p>
+    <div class="cards">
+      <div class="card">
+        <h3>Erosion that reports its work</h3>
+        <p>A shallow-water pipe model and a stream-power solver, both deterministic
+           to the bit on any thread count. They hand back not just the terrain but
+           the bedrock, scree, soil, grass, sediment, riverbed, snow, wetness and
+           flow that made it.</p>
+      </div>
+      <div class="card">
+        <h3>Materials the erosion places</h3>
+        <p>Those masks drive a stack of photoscanned CC0 surfaces, downloaded and
+           cached on demand. Blending is height-aware: the layer whose texture is
+           highest at a texel wins, so gravel settles into hollows.</p>
+      </div>
+      <div class="card">
+        <h3>A field domain that compiles to GLSL</h3>
+        <p>Noise, math, colour and displacement nodes evaluate per point in 3D
+           rather than per texel. The graph is transpiled to a shader, and the CPU
+           and GPU results are held to agreement within 4&times;10<sup>-5</sup>.</p>
+      </div>
+      <div class="card">
+        <h3>Detail that keeps resolving</h3>
+        <p>Hardware tessellation with per-patch frustum culling, a float octave
+           count driven by projected pixel size, and fractal relief below the
+           heightmap's own resolution.</p>
+      </div>
+      <div class="card">
+        <h3>Sky, cloud and water as one</h3>
+        <p>Volumetric clouds with multiple-scattering octaves and blue-noise
+           dithering, height fog shared by terrain, water and objects, and an HDR
+           backdrop dome in seven mapping modes.</p>
+      </div>
+      <div class="card">
+        <h3>Everything is scriptable</h3>
+        <p>The assistant, the Python API and the MCP tools all execute the same
+           action path as the interface. Anything you can click, a script can do —
+           including the pictures on this page.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <p class="lede">Ready-made installers for Windows and macOS, or one
+       double-click from a clone. Nothing needs administrator rights.</p>
+
+    <table class="spec">
+      <tr><td>Windows</td><td>Windows 10 (1809) or 11, 64-bit. Run <code>TerraForge-&lt;version&gt;-Setup.exe</code>, or double-click <code>install.bat</code> in a clone. A portable ZIP is published beside the installer.</td></tr>
+      <tr><td>macOS</td><td>macOS 11 or newer, Intel or Apple silicon. Open the <code>.dmg</code> and drag to Applications, or double-click <code>install.command</code> in a clone.</td></tr>
+      <tr><td>Linux</td><td>Any current distribution: <code>./scripts/install.sh</code>.</td></tr>
+      <tr><td>Graphics</td><td>OpenGL 4.3, or 4.1 on macOS — any GPU since roughly 2012.</td></tr>
+      <tr><td>Optional</td><td>Python 3.9+ for the offline path tracers and the local AI assistant. TerraForge renders without either.</td></tr>
+    </table>
+
+    <p style="margin-top:28px">Building from source is three commands:</p>
+<pre>git clone https://github.com/GeekatplayStudio/TerraForge.art.git
+cd TerraForge.art
+./scripts/get_deps.sh &amp;&amp; ./build.sh &amp;&amp; ./start.sh   # macOS / Linux</pre>
+<pre>powershell -ExecutionPolicy Bypass -File scripts\get_deps.ps1   # Windows
+.\build.ps1
+.\start.ps1</pre>
+    <div class="cta" style="margin-top:24px">
+      <a class="btn solid" href="https://github.com/GeekatplayStudio/TerraForge.art/blob/main/docs/INSTALL.md">Full install guide</a>
+      <a class="btn" href="https://github.com/GeekatplayStudio/TerraForge.art/blob/main/docs/NODES.md">Node reference</a>
+      <a class="btn" href="https://github.com/GeekatplayStudio/TerraForge.art/blob/main/docs/DEVELOPER_GUIDE.md">Developer guide</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>TerraForge is built by <b>Vladimir Shopine</b> at
+       <a href="https://www.geekatplay.com">Geekatplay Studio</a> — 230 nodes,
+       native C++20, a real-time OpenGL viewport and a local AI assistant that
+       never sends your work anywhere.</p>
+    <p>Material sets are CC0 from <a href="https://ambientcg.com">ambientCG</a>.
+       Copyright &copy; Geekatplay Studio. All rights reserved.</p>
+  </div>
+</footer>
+
+</body>
+</html>
