@@ -10,391 +10,789 @@
     "exhaustively by nodes.txt / attributes.txt — this file is for capabilities."
   ],
   "features": [
-
-    { "id": "anim.timeline", "area": "studio", "phase": "23",
+    {
+      "id": "anim.timeline",
+      "area": "studio",
+      "phase": "23",
       "description": "Timeline panel: transport, loop range, scrub bar, per-attribute keyframing with key markers and interpolation choice; set_time and set_key AI ops; tracks were already serialized with their attributes",
-      "test_file": "test_engine.cpp", "test_symbol": "test_animation_hooks" },
-
-    { "id": "scene.scatter", "area": "studio", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_animation_hooks"
+    },
+    {
+      "id": "scene.scatter",
+      "area": "studio",
+      "phase": "23",
       "description": "EcoSystem-style mesh scattering: a mesh object bound to any Points node draws instanced copies standing on the terrain, seeded yaw and size jitter, Properties picker, set_scatter and import_object AI ops, binding persists with node-id remap",
-      "test_file": "test_undo.cpp", "test_symbol": "test_scene_persistence" },
-
-    { "id": "transform.quilt", "area": "engine", "phase": "23",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_scene_persistence"
+    },
+    {
+      "id": "transform.quilt",
+      "area": "engine",
+      "phase": "23",
       "description": "Quilt: Efros-Freeman patch resynthesis - hashed candidate patches auditioned against the laid overlap, feathered joins, bit-identical per seed",
-      "test_file": "test_engine.cpp", "test_symbol": "test_quilt" },
-
-    { "id": "filter.modeseek", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_quilt"
+    },
+    {
+      "id": "filter.modeseek",
+      "area": "engine",
+      "phase": "23",
       "description": "MeanShift mode-seeking smoothing, SetBorders rim pinning, SelectBlobs difference-of-gaussians blob detection",
-      "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
-
-    { "id": "primitive.dla", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_local_filters"
+    },
+    {
+      "id": "primitive.dla",
+      "area": "engine",
+      "phase": "23",
       "description": "DiffusionLimited: branching dendrites by particle aggregation, hashed walk (bit-identical), age-tapered relief, stickiness and smoothing controls",
-      "test_file": "test_engine.cpp", "test_symbol": "test_dla" },
-
-    { "id": "noise.gabor", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_dla"
+    },
+    {
+      "id": "noise.gabor",
+      "area": "engine",
+      "phase": "23",
       "description": "GaborNoise: sparse convolution of oriented cosine kernels under a gaussian envelope, anisotropy from locked streaks to isotropic grain, octave stacking",
-      "test_file": "test_engine.cpp", "test_symbol": "test_noise_variants" },
-
-    { "id": "points.io", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_noise_variants"
+    },
+    {
+      "id": "points.io",
+      "area": "engine",
+      "phase": "23",
       "description": "ExportPoints (CSV or PLY, with terrain height baked in) and PointsFromCsv import; the CSV roundtrip is exact",
-      "test_file": "test_engine.cpp", "test_symbol": "test_points_io" },
-
-    { "id": "primitive.landform", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_points_io"
+    },
+    {
+      "id": "primitive.landform",
+      "area": "engine",
+      "phase": "23",
       "description": "Landform set pieces: island, mountain, caldera, rift valley and mesa, noise-wobbled rims and ridged flanks",
-      "test_file": "test_engine.cpp", "test_symbol": "test_landform" },
-
-    { "id": "mask.kmeans", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_landform"
+    },
+    {
+      "id": "mask.kmeans",
+      "area": "engine",
+      "phase": "23",
       "description": "KMeans terrain zoning over height+slope (or a second feature map), seeded init, fixed Lloyd iterations, clusters relabeled by mean height so mask A is always the lowest zone",
-      "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
-
-    { "id": "path.family", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_local_filters"
+    },
+    {
+      "id": "path.family",
+      "area": "engine",
+      "phase": "23",
       "description": "Paths as ordered point clouds: PointsToPath (nearest-neighbor tour), PathResample, PathFractalize (midpoint wander), PathSDF, and PathCarve accepts a connected path input",
-      "test_file": "test_engine.cpp", "test_symbol": "test_path_nodes" },
-
-    { "id": "transform.make_tileable", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_path_nodes"
+    },
+    {
+      "id": "transform.make_tileable",
+      "area": "engine",
+      "phase": "23",
       "description": "MakeTileable: separable periodic cosine crossfade with the half-offset copy, so the tile wraps seamlessly; feather sharpens the crossfade",
-      "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
-
-    { "id": "mask.selectors23", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_local_filters"
+    },
+    {
+      "id": "mask.selectors23",
+      "area": "engine",
+      "phase": "23",
       "description": "SelectMidrange (gaussian band over the height range), SelectTransitions (where two surfaces trade places), SelectBorder (EDT band along a mask boundary, inward/outward/both)",
-      "test_file": "test_engine.cpp", "test_symbol": "test_selectors" },
-
-    { "id": "noise.fbm_variants", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_selectors"
+    },
+    {
+      "id": "noise.fbm_variants",
+      "area": "engine",
+      "phase": "23",
       "description": "IQ (slope-damped), Jordan (gradient-warped squared) and Pingpong (folded) fBm variants on the Noise node",
-      "test_file": "test_engine.cpp", "test_symbol": "test_noise_variants" },
-
-    { "id": "filter.locality", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_noise_variants"
+    },
+    {
+      "id": "filter.locality",
+      "area": "engine",
+      "phase": "23",
       "description": "Kuwahara edge-preserving smoothing, DirectionalBlur, Detrend (best-fit plane removal), RelativeElevation and SmoothFill",
-      "test_file": "test_engine.cpp", "test_symbol": "test_local_filters" },
-
-    { "id": "hydro.flood", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_local_filters"
+    },
+    {
+      "id": "hydro.flood",
+      "area": "engine",
+      "phase": "23",
       "description": "Flood: standing water at a set level, everywhere-below or edge-connected (walled basins stay dry); outputs surface, depth and mask",
-      "test_file": "test_engine.cpp", "test_symbol": "test_flood" },
-
-    { "id": "filter.morphology", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_flood"
+    },
+    {
+      "id": "filter.morphology",
+      "area": "engine",
+      "phase": "23",
       "description": "Morphology (dilate/erode/open/close/gradient/top hat/black hat, square or octagon element), AreaRemove blob pruning, and Zhang-Suen Skeleton",
-      "test_file": "test_engine.cpp", "test_symbol": "test_morphology" },
-
-    { "id": "points.domain", "area": "engine", "phase": "23",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_morphology"
+    },
+    {
+      "id": "points.domain",
+      "area": "engine",
+      "phase": "23",
       "description": "Point-cloud domain: ScatterPoints (random, jittered grid, spaced), PointsRelax, PointsFilter (mask band + keep chance), PointsToMask stamps and PointsSDF distance, all deterministic",
-      "test_file": "test_engine.cpp", "test_symbol": "test_points_domain" },
-
-    { "id": "path.carve", "area": "engine", "phase": "22",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_points_domain"
+    },
+    {
+      "id": "path.carve",
+      "area": "engine",
+      "phase": "22",
       "description": "PathCarve: a drawn polyline, Chaikin-smoothed, stamped and distance-fielded, carving riverbeds, roads and canyons (negative depth builds walls), graded along the line",
-      "test_file": "test_engine.cpp", "test_symbol": "test_path_carve" },
-
-    { "id": "field.shapes_and_curve", "area": "engine", "phase": "22",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_path_carve"
+    },
+    {
+      "id": "field.shapes_and_curve",
+      "area": "engine",
+      "phase": "22",
       "description": "FieldShape (8 analytic waveforms with a GPU mirror) and Curve (a drawn tone curve for elevations through the gradient editor)",
-      "test_file": "test_engine.cpp", "test_symbol": "test_curve_and_shapes" },
-
-    { "id": "project.autosave", "area": "studio", "phase": "22",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_curve_and_shapes"
+    },
+    {
+      "id": "project.autosave",
+      "area": "studio",
+      "phase": "22",
       "description": "Autosave every two minutes when the history has moved, three slots in rotation, and crash recovery offering the newest slot back after an unclean exit",
-      "test_file": "test_undo.cpp", "test_symbol": "test_autosave" },
-
-    { "id": "mask.distance_field", "area": "engine", "phase": "22",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_autosave"
+    },
+    {
+      "id": "mask.distance_field",
+      "area": "engine",
+      "phase": "22",
       "description": "Exact Euclidean distance transform (Felzenszwalb-Huttenlocher), plus Median and Equalize filters",
-      "test_file": "test_engine.cpp", "test_symbol": "test_distance_and_filters" },
-
-    { "id": "project.scene_persistence", "area": "studio", "phase": "22",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_distance_and_filters"
+    },
+    {
+      "id": "project.scene_persistence",
+      "area": "studio",
+      "phase": "22",
       "description": "A project file carries the whole scene - meshes with transforms and material bindings, cameras with lenses and render assignments, layers, selection - and the whole environment, with node-id bindings remapped through the graph loader's id map",
-      "test_file": "test_undo.cpp", "test_symbol": "test_scene_persistence" },
-
-    { "id": "hydro.depression_fill", "area": "engine", "phase": "22",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_scene_persistence"
+    },
+    {
+      "id": "hydro.depression_fill",
+      "area": "engine",
+      "phase": "22",
       "description": "Priority-Flood depression filling: lakes as filled-minus-original, and flow routing that no longer dead-ends in every hollow",
-      "test_file": "test_engine.cpp", "test_symbol": "test_depression_fill" },
-
-    { "id": "field.cellular", "area": "engine", "phase": "22",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_depression_fill"
+    },
+    {
+      "id": "field.cellular",
+      "area": "engine",
+      "phase": "22",
       "description": "Cellular (Worley) noise in the field domain: F1, F2, seam distance and flat cell value, three metrics, mirrored exactly in GLSL",
-      "test_file": "test_engine.cpp", "test_symbol": "test_cellular" },
-
-    { "id": "graph.port_aware_create", "area": "studio", "phase": "22",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_cellular"
+    },
+    {
+      "id": "graph.port_aware_create",
+      "area": "studio",
+      "phase": "22",
       "description": "Dragging a wire onto empty canvas offers only nodes that can take it, then wires the new node up",
-      "test_file": "test_nodes.cpp", "test_symbol": "test_port_catalog" },
-
-    { "id": "surface.node_graph", "area": "renderer", "phase": "22",
+      "test_file": "test_nodes.cpp",
+      "test_symbol": "test_port_catalog"
+    },
+    {
+      "id": "surface.node_graph",
+      "area": "renderer",
+      "phase": "22",
       "description": "Planets and the infinite ground plane are shaped by a field graph, transpiled to GLSL and spliced into the planet shader",
-      "test_file": "test_nodes.cpp", "test_symbol": "test_surface_displacement_bridge" },
-
-    { "id": "engine.registry", "area": "engine", "phase": "1",
+      "test_file": "test_nodes.cpp",
+      "test_symbol": "test_surface_displacement_bridge"
+    },
+    {
+      "id": "engine.registry",
+      "area": "engine",
+      "phase": "1",
       "description": "Self-registering node registry with categories and descriptions",
-      "test_file": "test_engine.cpp", "test_symbol": "test_registry" },
-
-    { "id": "engine.eval_cache", "area": "engine", "phase": "1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_registry"
+    },
+    {
+      "id": "engine.eval_cache",
+      "area": "engine",
+      "phase": "1",
       "description": "Dirty-tracked evaluation: clean nodes are not recomputed, dirt flows downstream only",
-      "test_file": "test_engine.cpp", "test_symbol": "test_graph_eval" },
-
-    { "id": "engine.cycle_rejection", "area": "engine", "phase": "1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_graph_eval"
+    },
+    {
+      "id": "engine.cycle_rejection",
+      "area": "engine",
+      "phase": "1",
       "description": "Cycles are rejected when a link would create one",
-      "test_file": "test_engine.cpp", "test_symbol": "test_cycle_rejection" },
-
-    { "id": "engine.determinism", "area": "engine", "phase": "1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_cycle_rejection"
+    },
+    {
+      "id": "engine.determinism",
+      "area": "engine",
+      "phase": "1",
       "description": "Same seed reproduces bit-identical terrain; different seed differs",
-      "test_file": "test_engine.cpp", "test_symbol": "test_determinism" },
-
-    { "id": "engine.serialization", "area": "engine", "phase": "1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_determinism"
+    },
+    {
+      "id": "engine.serialization",
+      "area": "engine",
+      "phase": "1",
       "description": "Graph round-trips through JSON with attributes and links intact",
-      "test_file": "test_engine.cpp", "test_symbol": "test_serialization" },
-
-    { "id": "terrain.erosion_physics", "area": "terrain", "phase": "2",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_serialization"
+    },
+    {
+      "id": "terrain.erosion_physics",
+      "area": "terrain",
+      "phase": "2",
       "description": "Droplet and pipe-model hydraulic erosion, stream power (explicit + implicit), all preserve relief and stay bounded",
-      "test_file": "test_engine.cpp", "test_symbol": "test_erosion" },
-
-    { "id": "terrain.masks_logic", "area": "terrain", "phase": "5",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_erosion"
+    },
+    {
+      "id": "terrain.masks_logic",
+      "area": "terrain",
+      "phase": "5",
       "description": "Slope/altitude/curvature/cavity masks and logic nodes output normalized [0,1] masks",
-      "test_file": "test_engine.cpp", "test_symbol": "test_masks_and_logic" },
-
-    { "id": "terrain.surface_hydro", "area": "terrain", "phase": "6",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_masks_and_logic"
+    },
+    {
+      "id": "terrain.surface_hydro",
+      "area": "terrain",
+      "phase": "6",
       "description": "Terragen/Gaea-class surface pack: power fractal, stratify, craggy, fake stones, snow, rivers, coast",
-      "test_file": "test_engine.cpp", "test_symbol": "test_surface_nodes" },
-
-    { "id": "terrain.workflow_determinism", "area": "terrain", "phase": "11",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_surface_nodes"
+    },
+    {
+      "id": "terrain.workflow_determinism",
+      "area": "terrain",
+      "phase": "11",
       "description": "A whole authored workflow reproduces bit-identically across runs",
-      "test_file": "test_engine.cpp", "test_symbol": "test_workflow_determinism" },
-
-    { "id": "terrain.effects", "area": "terrain", "phase": "16",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_workflow_determinism"
+    },
+    {
+      "id": "terrain.effects",
+      "area": "terrain",
+      "phase": "16",
       "description": "Grit, Gravel, Peaks, Sharpen, Cracks, Glaciation, Dissolve, TerrainClip — all deterministic, Dissolve emits a flow map, TerrainClip flattens and emits a hole mask",
-      "test_file": "test_engine.cpp", "test_symbol": "test_terrain_effects" },
-
-    { "id": "terrain.sculpt_layer", "area": "terrain", "phase": "16",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_terrain_effects"
+    },
+    {
+      "id": "terrain.sculpt_layer",
+      "area": "terrain",
+      "phase": "16",
       "description": "TerrainSculpt is a non-destructive layer: unpainted is a passthrough, strokes raise the surface, stroke mask marks edits, painted field survives save/load",
-      "test_file": "test_engine.cpp", "test_symbol": "test_sculpt_layer" },
-
-    { "id": "materials.chain", "area": "materials", "phase": "2",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_sculpt_layer"
+    },
+    {
+      "id": "materials.chain",
+      "area": "materials",
+      "phase": "2",
       "description": "Terrain texture, splatmap, splat material and PBR derivation produce finite textures with no node errors",
-      "test_file": "test_engine.cpp", "test_symbol": "test_materials" },
-
-    { "id": "materials.graph", "area": "materials", "phase": "10",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_materials"
+    },
+    {
+      "id": "materials.graph",
+      "area": "materials",
+      "phase": "10",
       "description": "Material graph: MaterialOutput plus channel nodes evaluate as a chain",
-      "test_file": "test_engine.cpp", "test_symbol": "test_material_graph" },
-
-    { "id": "materials.library", "area": "materials", "phase": "11",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_graph"
+    },
+    {
+      "id": "materials.library",
+      "area": "materials",
+      "phase": "11",
       "description": "A material subgraph saves to and loads from the library with fresh node ids",
-      "test_file": "test_engine.cpp", "test_symbol": "test_material_library_roundtrip" },
-
-    { "id": "cameras.optics", "area": "cameras", "phase": "13",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_library_roundtrip"
+    },
+    {
+      "id": "cameras.optics",
+      "area": "cameras",
+      "phase": "13",
       "description": "Real camera optics: sensor formats, FOV from focal length, EV100 and the exposure triangle, film stocks",
-      "test_file": "test_engine.cpp", "test_symbol": "test_camera_math" },
-
-    { "id": "ai.graph_spec", "area": "ai", "phase": "4",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_camera_math"
+    },
+    {
+      "id": "ai.graph_spec",
+      "area": "ai",
+      "phase": "4",
       "description": "AI graph spec builder tolerates unknown types, label strings and markdown fences; registry catalog lists nodes and attributes",
-      "test_file": "test_engine.cpp", "test_symbol": "test_ai_spec" },
-
-    { "id": "planets.relief", "area": "planets", "phase": "17",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_ai_spec"
+    },
+    {
+      "id": "planets.relief",
+      "area": "planets",
+      "phase": "17",
       "description": "Planetary relief is deterministic, bounded, continuous over the sphere with no seams, seed-dependent, and silenced by zero coverage",
-      "test_file": "test_engine.cpp", "test_symbol": "test_planet_math" },
-
-    { "id": "undo.graph", "area": "undo", "phase": "15",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_planet_math"
+    },
+    {
+      "id": "undo.graph",
+      "area": "undo",
+      "phase": "15",
       "description": "Undo/redo of node add/delete, attribute edits and links",
-      "test_file": "test_undo.cpp", "test_symbol": "test_graph_undo" },
-
-    { "id": "undo.attributes_links", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_graph_undo"
+    },
+    {
+      "id": "undo.attributes_links",
+      "area": "undo",
+      "phase": "15",
       "description": "Attribute values and links are restored exactly by undo and re-applied by redo",
-      "test_file": "test_undo.cpp", "test_symbol": "test_attributes_and_links" },
-
-    { "id": "undo.world", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_attributes_and_links"
+    },
+    {
+      "id": "undo.world",
+      "area": "undo",
+      "phase": "15",
       "description": "World settings (sun, fog) participate in the same undo history",
-      "test_file": "test_undo.cpp", "test_symbol": "test_world_undo" },
-
-    { "id": "undo.scene", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_world_undo"
+    },
+    {
+      "id": "undo.scene",
+      "area": "undo",
+      "phase": "15",
       "description": "Scene objects and the active camera are restored by undo",
-      "test_file": "test_undo.cpp", "test_symbol": "test_scene_undo" },
-
-    { "id": "undo.mesh_data", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_scene_undo"
+    },
+    {
+      "id": "undo.mesh_data",
+      "area": "undo",
+      "phase": "15",
       "description": "Imported mesh vertices survive an undo round trip bit-identically while being shared between snapshots",
-      "test_file": "test_undo.cpp", "test_symbol": "test_mesh_vertices_survive" },
-
-    { "id": "undo.branching", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_mesh_vertices_survive"
+    },
+    {
+      "id": "undo.branching",
+      "area": "undo",
+      "phase": "15",
       "description": "A new edit discards the redo branch",
-      "test_file": "test_undo.cpp", "test_symbol": "test_redo_branch_truncation" },
-
-    { "id": "undo.history_jump", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_redo_branch_truncation"
+    },
+    {
+      "id": "undo.history_jump",
+      "area": "undo",
+      "phase": "15",
       "description": "Named history list with jump-to-any-point",
-      "test_file": "test_undo.cpp", "test_symbol": "test_history_and_jump" },
-
-    { "id": "undo.cap", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_history_and_jump"
+    },
+    {
+      "id": "undo.cap",
+      "area": "undo",
+      "phase": "15",
       "description": "History cap trims oldest steps without corrupting the position",
-      "test_file": "test_undo.cpp", "test_symbol": "test_stack_overflow_is_stable" },
-
-    { "id": "undo.determinism", "area": "undo", "phase": "15",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_stack_overflow_is_stable"
+    },
+    {
+      "id": "undo.determinism",
+      "area": "undo",
+      "phase": "15",
       "description": "Terrain after an undo recomputes bit-identically to before the edit",
-      "test_file": "test_undo.cpp", "test_symbol": "test_undo_is_deterministic" },
-
-    { "id": "planets.scene", "area": "planets", "phase": "17",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_undo_is_deterministic"
+    },
+    {
+      "id": "planets.scene",
+      "area": "planets",
+      "phase": "17",
       "description": "Multiple planets coexist with auto-placement, each with surface layers; ground-plane layers are separate; all undoable",
-      "test_file": "test_undo.cpp", "test_symbol": "test_planets_in_scene" },
-
-    { "id": "planets.persistence", "area": "planets", "phase": "17",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_planets_in_scene"
+    },
+    {
+      "id": "planets.persistence",
+      "area": "planets",
+      "phase": "17",
       "description": "Planets and infinite terrain layers survive save/load with parenting intact",
-      "test_file": "test_undo.cpp", "test_symbol": "test_planet_persistence" },
-
-    { "id": "regression.node_census", "area": "meta", "phase": "18",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_planet_persistence"
+    },
+    {
+      "id": "regression.node_census",
+      "area": "meta",
+      "phase": "18",
       "description": "No node type may ever be removed or change category",
-      "test_file": "test_regression.cpp", "test_symbol": "check_node_census" },
-
-    { "id": "regression.attr_census", "area": "meta", "phase": "18",
+      "test_file": "test_regression.cpp",
+      "test_symbol": "check_node_census"
+    },
+    {
+      "id": "regression.attr_census",
+      "area": "meta",
+      "phase": "18",
       "description": "No node attribute may be removed or change type",
-      "test_file": "test_regression.cpp", "test_symbol": "check_attr_census" },
-
-    { "id": "regression.goldens", "area": "meta", "phase": "18",
+      "test_file": "test_regression.cpp",
+      "test_symbol": "check_attr_census"
+    },
+    {
+      "id": "regression.goldens",
+      "area": "meta",
+      "phase": "18",
       "description": "Committed projects re-evaluate to the same bits",
-      "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },
-
-    { "id": "regression.manifest", "area": "meta", "phase": "18",
+      "test_file": "test_regression.cpp",
+      "test_symbol": "check_golden_projects"
+    },
+    {
+      "id": "regression.manifest",
+      "area": "meta",
+      "phase": "18",
       "description": "Every manifest feature names a test that still exists",
-      "test_file": "test_regression.cpp", "test_symbol": "check_feature_manifest" },
-
-    { "id": "field.domain", "area": "framework", "phase": "P0.1",
+      "test_file": "test_regression.cpp",
+      "test_symbol": "check_feature_manifest"
+    },
+    {
+      "id": "field.domain",
+      "area": "framework",
+      "phase": "P0.1",
       "description": "Field domain: per-point evaluation with no resolution, standard inputs, deterministic, type-permissive, LOD-aware",
-      "test_file": "test_engine.cpp", "test_symbol": "test_field_domain" },
-
-    { "id": "field.bridges", "area": "framework", "phase": "P0.1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_field_domain"
+    },
+    {
+      "id": "field.bridges",
+      "area": "framework",
+      "phase": "P0.1",
       "description": "Rasterize and Sample bridge the field and raster domains: a field can be eroded, and a buffer can drive a shader",
-      "test_file": "test_engine.cpp", "test_symbol": "test_field_bridges" },
-
-    { "id": "field.glsl", "area": "framework", "phase": "P0.2",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_field_bridges"
+    },
+    {
+      "id": "field.glsl",
+      "area": "framework",
+      "phase": "P0.2",
       "description": "Field graphs compile to GLSL: shared nodes emitted once, samplers declared, unsupported nodes rejected loudly. Every field node must have an emitter or the contract suite fails.",
-      "test_file": "test_engine.cpp", "test_symbol": "test_field_glsl" },
-
-    { "id": "framework.bypass", "area": "framework", "phase": "P0.3",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_field_glsl"
+    },
+    {
+      "id": "framework.bypass",
+      "area": "framework",
+      "phase": "P0.3",
       "description": "Any node can be bypassed: the graph is evaluated as though it were not there, through chains, in both domains, and it survives save/load",
-      "test_file": "test_engine.cpp", "test_symbol": "test_bypass" },
-
-    { "id": "framework.metanodes", "area": "framework", "phase": "P0.3",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_bypass"
+    },
+    {
+      "id": "framework.metanodes",
+      "area": "framework",
+      "phase": "P0.3",
       "description": "Grouping a selection into a MetaNode does not change what the graph computes, and ungrouping restores it exactly",
-      "test_file": "test_engine.cpp", "test_symbol": "test_metanodes" },
-
-    { "id": "framework.published_params", "area": "framework", "phase": "P0.3",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_metanodes"
+    },
+    {
+      "id": "framework.published_params",
+      "area": "framework",
+      "phase": "P0.3",
       "description": "MetaNode parameters can be published with their real type and range, drive the inner graph, and survive save/load",
-      "test_file": "test_engine.cpp", "test_symbol": "test_metanode_published" },
-
-    { "id": "framework.universal_blend", "area": "framework", "phase": "P0.3",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_metanode_published"
+    },
+    {
+      "id": "framework.universal_blend",
+      "area": "framework",
+      "phase": "P0.3",
       "description": "Any terrain-transforming node can have its effect confined by a blend mask, provided by the graph rather than per node; unconnected it is a no-op",
-      "test_file": "test_engine.cpp", "test_symbol": "test_universal_blend" },
-
-    { "id": "framework.node_library", "area": "framework", "phase": "P0.4",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_universal_blend"
+    },
+    {
+      "id": "framework.node_library",
+      "area": "framework",
+      "phase": "P0.4",
       "description": "A MetaNode can be saved to a personal library and dropped into any project as a reusable node, keeping its inner graph, exposed parameters and their tuned values",
-      "test_file": "test_undo.cpp", "test_symbol": "test_node_library_roundtrip" },
-
-    { "id": "framework.node_list", "area": "framework", "phase": "P0.4",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_node_library_roundtrip"
+    },
+    {
+      "id": "framework.node_list",
+      "area": "framework",
+      "phase": "P0.4",
       "description": "A Node List view of the same graph, rooted at the terrain result with inputs indented beneath, per-row bypass, and unreachable nodes listed separately",
-      "test_file": "test_engine.cpp", "test_symbol": "test_bypass" },
-
-    { "id": "framework.animation_hooks", "area": "framework", "phase": "P0.4",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_bypass"
+    },
+    {
+      "id": "framework.animation_hooks",
+      "area": "framework",
+      "phase": "P0.4",
       "description": "Every parameter can carry an animation track; scene time drives them, they survive save/load, reach the field domain, and cost nothing when unused",
-      "test_file": "test_engine.cpp", "test_symbol": "test_animation_hooks" },
-
-    { "id": "terrain.redirect", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_animation_hooks"
+    },
+    {
+      "id": "terrain.redirect",
+      "area": "terrain",
+      "phase": "P1",
       "description": "Redirect shader: any vector field moves where any other field is evaluated, giving warp, flow and domain distortion on anything, on CPU and GPU alike",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "terrain.displacement", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "terrain.displacement",
+      "area": "terrain",
+      "phase": "P1",
       "description": "Displacement shader family: along normal / up / vector / fixed direction, depth in real units or relative, smoothing, quality boost and displace-outwards-only, with both a displaced height and a 3D offset output",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "terrain.compute_normal", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "terrain.compute_normal",
+      "area": "terrain",
+      "phase": "P1",
       "description": "Compute Normal recovers the surface direction after displacement by central differences, so downstream nodes see the displaced shape rather than the flat plane underneath",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "terrain.zones", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "terrain.zones",
+      "area": "terrain",
+      "phase": "P1",
       "description": "Zones confine one field to a sphere or box region with a smooth fade, and expose the region itself as a mask output",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "framework.texcoord", "area": "framework", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "framework.texcoord",
+      "area": "framework",
+      "phase": "P1",
       "description": "Texture coordinates as a field input, with plane choice, scale, rotation and offset",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "framework.glsl_scoped", "area": "framework", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "framework.glsl_scoped",
+      "area": "framework",
+      "phase": "P1",
       "description": "The transpiler re-emits a subtree under a second evaluation point, so warped and finite-differenced graphs are correct on the GPU instead of silently reusing the un-redirected value; generated variables are always declared before use",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "framework.glsl_conversions", "area": "framework", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "framework.glsl_conversions",
+      "area": "framework",
+      "phase": "P1",
       "description": "The GPU mirrors FieldValue's permissive conversions exactly: a number broadcasts to a vector, a vector read as a number is its length, a colour is its luminance",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "terrain.flow_accumulation", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "terrain.flow_accumulation",
+      "area": "terrain",
+      "phase": "P1",
       "description": "D8 flow accumulation: how much water passes through each point, computed over the whole surface with a deterministic total ordering",
-      "test_file": "test_engine.cpp", "test_symbol": "test_analysis" },
-
-    { "id": "terrain.wetness_index", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_analysis"
+    },
+    {
+      "id": "terrain.wetness_index",
+      "area": "terrain",
+      "phase": "P1",
       "description": "Topographic wetness index ln(a/tan b) — high in flat hollows fed from above, low on steep ground, finite even on perfectly flat terrain",
-      "test_file": "test_engine.cpp", "test_symbol": "test_analysis" },
-
-    { "id": "terrain.resample", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_analysis"
+    },
+    {
+      "id": "terrain.resample",
+      "area": "terrain",
+      "phase": "P1",
       "description": "Terrain resolution operations: half, quarter, double or custom sampling with smooth or nearest interpolation, changing detail without changing buffer size",
-      "test_file": "test_engine.cpp", "test_symbol": "test_analysis" },
-
-    { "id": "terrain.gpu_displacement", "area": "terrain", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_analysis"
+    },
+    {
+      "id": "terrain.gpu_displacement",
+      "area": "terrain",
+      "phase": "P1",
       "description": "A TerrainDisplacement node compiles its field graph to GLSL and the viewport evaluates it per vertex, with normals following the displaced surface; a graph that fails to link keeps the previous program instead of blanking the viewport",
-      "test_file": "test_engine.cpp", "test_symbol": "test_displacement" },
-
-    { "id": "studio.graph_view_recovery", "area": "studio", "phase": "P1",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement"
+    },
+    {
+      "id": "studio.graph_view_recovery",
+      "area": "studio",
+      "phase": "P1",
       "description": "A node-editor view file with non-finite or absurd values is discarded rather than loaded, because one made the application spin behind a black window on every launch, permanently",
-      "test_file": "test_undo.cpp", "test_symbol": "test_graph_view_sanity" },
-
-    { "id": "material.distribution", "area": "material", "phase": "P2",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_graph_view_sanity"
+    },
+    {
+      "id": "material.distribution",
+      "area": "material",
+      "phase": "P2",
       "description": "Environment-sensitive distribution: where a material belongs by altitude, steepness and facing, each with a soft band, combined multiplicatively, and read after displacement so it describes the displaced surface",
-      "test_file": "test_engine.cpp", "test_symbol": "test_field_materials" },
-
-    { "id": "material.color_mix", "area": "material", "phase": "P2",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_field_materials"
+    },
+    {
+      "id": "material.color_mix",
+      "area": "material",
+      "phase": "P2",
       "description": "Colour blending in the field domain — mix, add, multiply, screen, overlay, darken, lighten — with the factor meaning the same thing in every mode",
-      "test_file": "test_engine.cpp", "test_symbol": "test_field_materials" },
-
-    { "id": "material.gpu_surface", "area": "material", "phase": "P2",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_field_materials"
+    },
+    {
+      "id": "material.gpu_surface",
+      "area": "material",
+      "phase": "P2",
       "description": "A TerrainSurface node shades the viewport terrain per pixel from a colour field, sharing one shader program with the displacement — the prelude is emitted once per stage and stripped from every function after the first",
-      "test_file": "test_engine.cpp", "test_symbol": "test_field_glsl" },
-
-    { "id": "ai.color_attrs", "area": "ai", "phase": "P2",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_field_glsl"
+    },
+    {
+      "id": "ai.color_attrs",
+      "area": "ai",
+      "phase": "P2",
       "description": "The assistant, the Python API and MCP can set colour and gradient parameters; an rgb triple sets a colour, a single number is a grey, and gradient stops are sorted",
-      "test_file": "test_engine.cpp", "test_symbol": "test_ai_spec" },
-
-    { "id": "meta.goldens_link", "area": "meta", "phase": "P2",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_ai_spec"
+    },
+    {
+      "id": "meta.goldens_link",
+      "area": "meta",
+      "phase": "P2",
       "description": "Every link in a golden project must actually connect, so a golden cannot silently lock a graph with half its links dropped by a wrong port name",
-      "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },
-
-    { "id": "meta.goldens_vary", "area": "meta", "phase": "P1",
+      "test_file": "test_regression.cpp",
+      "test_symbol": "check_golden_projects"
+    },
+    {
+      "id": "meta.goldens_vary",
+      "area": "meta",
+      "phase": "P1",
       "description": "Every golden project must produce varying output, so a golden cannot silently lock a flat buffer",
-      "test_file": "test_regression.cpp", "test_symbol": "check_golden_projects" },
-
-    { "id": "field.converters", "area": "engine", "phase": "26",
+      "test_file": "test_regression.cpp",
+      "test_symbol": "check_golden_projects"
+    },
+    {
+      "id": "field.converters",
+      "area": "engine",
+      "phase": "26",
       "description": "Field type converters: colour/vector/texcoord split and combine, FieldToNumber/Color/Vector/TexCoord adapters with explicit lane and plane choices, HSV in both directions, FieldColorAdjust; FieldVectorOp gains a full vector output; every converter mirrors FieldValue's conversion rules and has a GLSL twin",
-      "test_file": "test_nodes_convert.cpp", "test_symbol": "test_converters_follow_the_rules" },
-
-    { "id": "field.every_output_transpiles", "area": "engine", "phase": "26",
+      "test_file": "test_nodes_convert.cpp",
+      "test_symbol": "test_converters_follow_the_rules"
+    },
+    {
+      "id": "field.every_output_transpiles",
+      "area": "engine",
+      "phase": "26",
       "description": "Every field output port of every node (not only the first) has a GLSL emitter that produces its own expression; secondary outputs cannot silently fall back to the primary on the GPU",
-      "test_file": "test_nodes_convert.cpp", "test_symbol": "test_every_field_output_transpiles" },
-
-    { "id": "nodes.component_families", "area": "engine", "phase": "26",
+      "test_file": "test_nodes_convert.cpp",
+      "test_symbol": "test_every_field_output_transpiles"
+    },
+    {
+      "id": "nodes.component_families",
+      "area": "engine",
+      "phase": "26",
       "description": "Node families for every major component with their own workspace: Light (LightSource + planned area/sky/gel/volumetric/flare), Camera (SceneCamera, CameraPath + planned), Animation (Oscillator, TimeRemap, AnimationSequence + planned), Scene (ImportObject, Primitive, Planet, InfiniteTerrain + planned), Cloud (planned P5 set), Render (RenderOutput, RenderPasses, RenderBackdrop, PostProcess + planned); planned nodes carry their roadmap phase as attributes and are configuration nodes in the contract",
-      "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" },
-
-    { "id": "render.editor_state", "area": "studio", "phase": "26",
+      "test_file": "test_nodes.cpp",
+      "test_symbol": "test_all_nodes_contract"
+    },
+    {
+      "id": "render.editor_state",
+      "area": "studio",
+      "phase": "26",
       "description": "Render editor state saved with the project and covered by undo: backdrop dome (file, 7 mappings, rotation, exposure, tint, blend, haze, sun flag), pass mask, beauty format, render defaults, post-processing; scene objects remember the graph node that drives them, remapped through the node id map on load",
-      "test_file": "test_undo_render.cpp", "test_symbol": "test_settings_roundtrip" },
-
-    { "id": "render.hdr_io", "area": "studio", "phase": "26",
+      "test_file": "test_undo_render.cpp",
+      "test_symbol": "test_settings_roundtrip"
+    },
+    {
+      "id": "render.hdr_io",
+      "area": "studio",
+      "phase": "26",
       "description": "True HDR image files: OpenEXR scanline read (NONE/RLE/ZIPS/ZIP, HALF/FLOAT/UINT) and write (FLOAT, uncompressed), Radiance .hdr read/write, LDR formats loaded as linear light; backs the backdrop dome and the render passes",
-      "test_file": "test_render_hdr.cpp", "test_symbol": "test_exr_roundtrip" },
-
-    { "id": "install.one_click", "area": "packaging", "phase": "27",
+      "test_file": "test_render_hdr.cpp",
+      "test_symbol": "test_exr_roundtrip"
+    },
+    {
+      "id": "install.one_click",
+      "area": "packaging",
+      "phase": "27",
       "description": "One-click installers: install.bat (Windows, winget), install.command (macOS, Homebrew), scripts/install.sh (Linux, apt/dnf/pacman) each check the toolchain, fetch dependencies, build, and install per user with shortcuts; POSIX twins of get_deps/build/test/start",
-      "test_file": "test_packaging.py", "test_symbol": "test_both_dependency_fetchers_agree" },
-
-    { "id": "install.packages", "area": "packaging", "phase": "27",
+      "test_file": "test_packaging.py",
+      "test_symbol": "test_both_dependency_fetchers_agree"
+    },
+    {
+      "id": "install.packages",
+      "area": "packaging",
+      "phase": "27",
       "description": "Distributable packages: Inno Setup .exe and portable .zip for Windows (per-user, no elevation, .gpxt association, clean uninstall), .app bundle and .dmg for macOS (ad-hoc signed, icns generated with sips/iconutil); binaries stripped for shipping with the debug symbols kept beside them",
-      "test_file": "test_packaging.py", "test_symbol": "test_windows_staging_lists_directories_that_exist" },
-
-    { "id": "platform.posix", "area": "studio", "phase": "27",
+      "test_file": "test_packaging.py",
+      "test_symbol": "test_windows_staging_lists_directories_that_exist"
+    },
+    {
+      "id": "platform.posix",
+      "area": "studio",
+      "phase": "27",
       "description": "macOS and Linux support: OpenGL 4.1 core context and #version 410 shaders on Apple, POSIX file dialogs (osascript/zenity/kdialog), signal-based crash reports with backtrace, BSD-socket Ollama client with chunked decoding, fork/exec render process control, pipe-based console capture, per-user data directory for preferences, layout and node-editor views",
-      "test_file": "test_packaging.py", "test_symbol": "test_macos_bundle_carries_what_the_app_looks_for" },
-
-    { "id": "nodes.contract", "area": "meta", "phase": "18",
+      "test_file": "test_packaging.py",
+      "test_symbol": "test_macos_bundle_carries_what_the_app_looks_for"
+    },
+    {
+      "id": "nodes.contract",
+      "area": "meta",
+      "phase": "18",
       "description": "Every registered node satisfies the universal contract: ports typed, attributes labelled and in range, deterministic, finite, serializable",
-      "test_file": "test_nodes.cpp", "test_symbol": "test_all_nodes_contract" }
+      "test_file": "test_nodes.cpp",
+      "test_symbol": "test_all_nodes_contract"
+    },
+    {
+      "id": "planet.realistic_terrain",
+      "area": "engine",
+      "phase": "27",
+      "description": "Realistic terrain layer (type 3): eroded ridged mountains in upland belts, eroded hills, terraced plateaus, carved valleys with wetness, lowland lakes below the water level; CPU heightf with float octaves, mirrored in PL_FN and checked by planet_gpu_verify",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_planet_math"
+    },
+    {
+      "id": "planet.sphere_place",
+      "area": "engine",
+      "phase": "27",
+      "description": "Stable tile-on-sphere placement (gpx::planet::sphere_place / pl_sphere_place): keeps terrain height at 1e12-radius planets, wraps the tile with heights shrinking on sub-tile planets; radius range 0.1 mm to 1e12 m in UI and API",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_planet_math"
+    },
+    {
+      "id": "planet.placement",
+      "area": "studio",
+      "phase": "27",
+      "description": "Terrain tile placed onto the planet surface at upload (studio/planet_place.cpp): planet relief shows through flat ground, is levelled under features (flatten), feathered footprints and border, holes become water-filled basins; cached relief, place_* settings persisted and scriptable",
+      "test_file": "test_planet_place.cpp",
+      "test_symbol": "test_planet_place_run"
+    }
   ]
 }
-
-
-
-
-
-

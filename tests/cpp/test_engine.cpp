@@ -865,6 +865,134 @@ static void test_planet_math() {
   Layer L3[1] = {L[0]};
   L3[0].coverage = 0.f;
   CHECK(height(d1, L3, 1) == 0.f, "coverage 0 = no contribution");
+
+  // the float-octave path is the int path when the count is whole: the
+  // GLSL mirror has always taken a float, so the two had to be one function
+  CHECK(pl_fbmf(0.3f, 0.7f, 1.9f, 42, 5.f, 1) == pl_fbm(0.3f, 0.7f, 1.9f, 42, 5, 1),
+        "pl_fbmf at a whole octave count is pl_fbm exactly");
+
+  // the analytic gradient of the value noise matches finite differences
+  {
+    float g[3];
+    float x = 1.37f, y = -0.61f, z = 2.19f, e = 1e-3f;
+    float n = pl_vnoise_d(x, y, z, 11, g);
+    CHECK(std::fabs(n - pl_vnoise(x, y, z, 11)) < 1e-6f,
+          "pl_vnoise_d value equals pl_vnoise");
+    float gx = (pl_vnoise(x + e, y, z, 11) - pl_vnoise(x - e, y, z, 11)) / (2 * e);
+    float gy = (pl_vnoise(x, y + e, z, 11) - pl_vnoise(x, y - e, z, 11)) / (2 * e);
+    float gz = (pl_vnoise(x, y, z + e, 11) - pl_vnoise(x, y, z - e, 11)) / (2 * e);
+    CHECK(std::fabs(g[0] - gx) < 2e-3f && std::fabs(g[1] - gy) < 2e-3f &&
+              std::fabs(g[2] - gz) < 2e-3f,
+          "pl_vnoise_d gradient matches finite differences");
+  }
+
+  // ---- the realistic landscape (layer type 3) ----------------------------
+  // It has to read as terrain, not as noise: real relief, a large share of
+  // gentle ground (fields, plateaus, valley floors) next to steep ground,
+  // water below the ground level somewhere (lakes and sea), wetness that
+  // marks the valleys, continuity, determinism, and detail that grows with
+  // the octave budget rather than changing the broad shape.
+  {
+    Layer T;
+    T.type = 3;
+    T.seed = 5;
+    T.frequency = 1.5f;
+    T.octaves = 12;
+    const int N = 160;
+    std::vector<float> hm((size_t)N * N), wm((size_t)N * N);
+    float mn = 1e9f, mx = -1e9f;
+    double wet_sum = 0;
+    for (int y = 0; y < N; ++y)
+      for (int x = 0; x < N; ++x) {
+        float d[3] = {x / float(N - 1), 0.37f, y / float(N - 1)};
+        float w = 0.f;
+        float h = heightf(d, &T, 1, 9.f, &w);
+        CHECK(std::isfinite(h) && h >= -0.5f && h <= 0.5f, "realistic height finite and in budget");
+        if (!std::isfinite(h)) { y = N; break; }
+        hm[(size_t)y * N + x] = h;
+        wm[(size_t)y * N + x] = w;
+        mn = std::min(mn, h);
+        mx = std::max(mx, h);
+        wet_sum += w;
+      }
+    CHECK(mx - mn > 0.25f, "realistic terrain has real relief");
+    CHECK(mn < -0.02f, "some ground lies below the sea/lake level");
+    CHECK(wet_sum / (N * N) > 0.01, "valleys and lakes exist (wetness)");
+    // slope census over the tile: a landscape has both flats and steeps
+    int gentle = 0, steep = 0, total = 0;
+    const float texel = 1.f / (N - 1);
+    for (int y = 1; y + 1 < N; ++y)
+      for (int x = 1; x + 1 < N; ++x) {
+        float dx = (hm[(size_t)y * N + x + 1] - hm[(size_t)y * N + x - 1]) / (2 * texel);
+        float dy = (hm[(size_t)(y + 1) * N + x] - hm[(size_t)(y - 1) * N + x]) / (2 * texel);
+        float slope = std::sqrt(dx * dx + dy * dy) * 1.2f * 0.22f; // world rise/run
+        if (slope < 0.08f) ++gentle;
+        if (slope > 0.35f) ++steep;
+        ++total;
+      }
+    CHECK(gentle > total / 5, "at least a fifth of the land is gentle (fields, plateaus, floors)");
+    CHECK(steep > total / 50, "and some of it is steep (ridges, cliffs)");
+    // determinism and seed sensitivity
+    float d0[3] = {0.31f, 0.37f, 0.62f};
+    CHECK(heightf(d0, &T, 1, 9.f) == heightf(d0, &T, 1, 9.f), "realistic terrain is deterministic");
+    Layer T2 = T;
+    T2.seed = 6;
+    CHECK(std::fabs(heightf(d0, &T, 1, 9.f) - heightf(d0, &T2, 1, 9.f)) > 1e-4f,
+          "a different seed is a different landscape");
+    // continuity: neighbouring points, neighbouring heights
+    float worst2 = 0.f;
+    for (int i = 0; i < 300; ++i) {
+      float u = 0.05f + 0.9f * (i / 300.f), v = 0.37f;
+      float a[3] = {u, 0.37f, v}, b[3] = {u + 0.002f, 0.37f, v};
+      worst2 = std::max(worst2, std::fabs(heightf(a, &T, 1, 9.f) - heightf(b, &T, 1, 9.f)));
+    }
+    CHECK(worst2 < 0.05f, "realistic terrain is continuous");
+    // octaves add detail, not shape: the broad version is the fine version
+    // low-passed, so their difference is small compared with the relief
+    double diff = 0;
+    for (int y = 0; y < N; y += 4)
+      for (int x = 0; x < N; x += 4) {
+        float d[3] = {x / float(N - 1), 0.37f, y / float(N - 1)};
+        diff += std::fabs(heightf(d, &T, 1, 2.5f) - hm[(size_t)y * N + x]);
+      }
+    diff /= (N / 4) * (N / 4);
+    CHECK(diff < 0.08, "fewer octaves keep the broad shape (mean difference small)");
+    // the layer's own octave cap is honoured
+    Layer T3 = T;
+    T3.octaves = 3;
+    CHECK(heightf(d0, &T3, 1, 9.f) == heightf(d0, &T, 1, 3.f), "layer octaves cap the budget");
+  }
+
+  // ---- the tile on its planet ------------------------------------------
+  {
+    // Earth-ish: the drop at the tile corner is r^2/2R, the height survives
+    float p[3];
+    sphere_place(0.5f, 0.5f, 0.1f, 1275.f, p);
+    CHECK(std::fabs(p[0] - 0.5f) < 1e-6f && std::fabs(p[1] - 0.1f) < 1e-6f &&
+              std::fabs(p[2] - 0.5f) < 1e-6f,
+          "tile centre sits at its own height");
+    sphere_place(1.f, 0.5f, 0.f, 1275.f, p);
+    CHECK(std::fabs(p[1] - (-0.25f / (2.f * 1275.f))) < 1e-7f, "corner drops by r^2/2R");
+    // a giant planet: the old c + d*(R+h) lost h entirely here
+    sphere_place(0.75f, 0.5f, 0.1f, 1e9f, p);
+    CHECK(std::fabs(p[1] - 0.1f) < 1e-4f, "a 1e9-radius planet keeps the terrain height");
+    CHECK(std::fabs(p[0] - 0.75f) < 1e-4f, "and its lateral position");
+    sphere_place(0.75f, 0.5f, 0.1f, 1e12f, p);
+    CHECK(std::isfinite(p[0]) && std::isfinite(p[1]) && std::fabs(p[1] - 0.1f) < 1e-4f,
+          "a 1e12-radius planet is finite and keeps its height");
+    // a tiny planet: the tile wraps the globe once, heights shrink with it
+    float R = 2e-8f; // 0.1 mm at a 5 km tile
+    sphere_place(0.5f, 0.5f, 0.2f, R, p);
+    CHECK(std::fabs(p[1] - 0.2f * sphere_height_scale(R)) < 1e-9f,
+          "a wrapped tile's heights scale with the globe");
+    float a[3], b[3];
+    sphere_place(0.f, 0.5f, 0.f, R, a);
+    sphere_place(1.f, 0.5f, 0.f, R, b);
+    CHECK(std::fabs(a[0] - b[0]) < 1e-9f && std::fabs(a[1] - b[1]) < 1e-9f,
+          "the tile's two ends meet on the far side of a wrapped globe");
+    sphere_place(0.3f, 0.7f, 0.05f, 0.f, p);
+    CHECK(p[0] == 0.3f && p[1] == 0.05f && p[2] == 0.7f, "radius 0 is a flat world");
+  }
 }
 
 // ---------------------------------------------------------- field domain

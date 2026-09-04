@@ -363,10 +363,12 @@ static void test_blue_noise() {
 }
 
 int test_render_hdr_run(); // test_render_hdr.cpp
+int test_planet_place_run(); // test_planet_place.cpp
 
 int main() {
   std::printf("renderer maths tests\n");
   g_failures += test_render_hdr_run();
+  g_failures += test_planet_place_run();
   test_blue_noise();
   test_frustum_extraction();
   test_bounds_cover_every_texel();

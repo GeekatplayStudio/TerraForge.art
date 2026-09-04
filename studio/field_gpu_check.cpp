@@ -211,6 +211,7 @@ FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port) 
 // Runs the check over a set of representative graphs and returns a report.
 // Called from the API so it can be exercised against the live app.
 void field_gpu_verify_converters(std::string &out); // field_gpu_check_convert.cpp
+std::string planet_gpu_verify();                      // planet_gpu_check.cpp
 
 std::string field_gpu_verify_all(App &a) {
   std::string out;
@@ -468,6 +469,8 @@ std::string field_gpu_verify_all(App &a) {
     }
   }
   (void)a;
+  // the planet maths, hand-mirrored in planet_shaders.cpp
+  out += planet_gpu_verify();
   return out;
 }
 

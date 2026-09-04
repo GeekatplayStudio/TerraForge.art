@@ -144,7 +144,8 @@ bool renderer_init() {
     std::string terr;
     rebuild_terrain_program(terr);
   }
-  prog_water = link_prog(VS_WATER, fs_water.c_str());
+  std::string vs_water = inject_sky(VS_WATER);
+  prog_water = link_prog(vs_water.c_str(), fs_water.c_str());
   prog_sky = link_prog(VS_SKY, fs_sky.c_str());
   prog_lines = link_prog(VS_LINES, FS_LINES);
   prog_bg = link_prog(VS_BG, FS_BG);

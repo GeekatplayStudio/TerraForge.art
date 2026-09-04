@@ -220,11 +220,18 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.tex_height = tex_height;
     inf.tex_albedo = (has_albedo && RS.use_albedo && textured) ? tex_albedo : 0;
     inf.height_scale = RS.height_scale;
-    inf.base_height = g_terrain_mean * RS.height_scale;
+    extern bool g_terrain_base_set;
+    inf.base_height =
+        (g_terrain_base_set ? g_terrain_base : g_terrain_mean) * RS.height_scale;
     inf.planet_radius = RS.planet_radius;
-    inf.fog_type = atmosphere ? RS.fog_type : 0;
-    inf.fog_density = RS.fog_density;
-    inf.fog_color = RS.fog_color;
+    inf.water_level = (RS.show_water && show_water_obj)
+                          ? RS.water_level * RS.height_scale
+                          : -1e9f;
+    inf.water_deep = RS.water_deep_color;
+    inf.water_shallow = RS.water_shallow_color;
+    inf.water_clarity = RS.water_clarity;
+    inf.latitude = std::fabs(RS.latitude) / 90.f;
+    inf.atmosphere = atmosphere;
     inf.textured = textured;
     infinite_draw(inf);
   }

@@ -39,10 +39,9 @@ vec3 gpx_sphere_dir(vec2 a){
   float cl = cos(a.y);
   return vec3(sin(a.x) * cl, cos(a.x) * cl, sin(a.y));
 }
+PL_SPHERE_PLACEHOLDER
 vec3 gpx_sphere_place(vec2 uv, float h){
-  if (u_planet_radius <= 0.0) return vec3(uv.x, h, uv.y);
-  vec3 c = vec3(0.5, -u_planet_radius, 0.5);
-  return c + gpx_sphere_dir(gpx_sphere_angles(uv)) * (u_planet_radius + h);
+  return pl_sphere_place(uv, h, u_planet_radius);
 }
 void terrain_place(vec2 uv){
   float h = texture(u_height, uv).r * u_hscale;

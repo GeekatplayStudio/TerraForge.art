@@ -54,6 +54,10 @@ extern const int SHADOW_RES;
 
 // ------------------------------------------------------------ terrain data
 extern float g_terrain_mean;   // mean tile height, for the infinite surround
+// The level the tile was placed at (studio/planet_place.cpp), heightmap
+// units: the surround's relief is built on it, so the two meet. Set with the
+// heightmap; NaN means "use the mean", the pre-placement behaviour.
+extern float g_terrain_base;
 extern int hm_w;
 extern bool has_albedo;
 extern gpx::Heightmap cpu_height; // normalized copy, for picking

@@ -8,6 +8,8 @@
 #include "app.hpp"
 #include "ai_assist.hpp"
 #include "icons.hpp"
+#include "planet_place.hpp"
+#include "prop_lengths.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "undo.hpp"
@@ -22,62 +24,6 @@
 namespace studio {
 
 namespace {
-
-// ---------------------------------------------------------- metric lengths
-// The unit a length is shown in follows its magnitude, the way a person would
-// say it: centimetres for a pebble, metres for a building, kilometres for a
-// mountain range. Imperial does the same with inches, feet and miles.
-struct LenUnit {
-  const char *suffix;
-  float per_m;   // display value = metres * per_m
-  int decimals;
-};
-
-LenUnit pick_unit(float metres) {
-  float m = std::fabs(metres);
-  if (render_settings().units == 1) { // imperial
-    if (m < 0.3048f) return {"in", 39.37008f, 2};
-    if (m < 1609.344f) return {"ft", 3.280840f, m < 30.f ? 2 : 1};
-    return {"mi", 1.f / 1609.344f, 3};
-  }
-  if (m < 1.f) return {"cm", 100.f, 1};
-  if (m < 1000.f) return {"m", 1.f, m < 10.f ? 2 : 1};
-  return {"km", 0.001f, 3};
-}
-
-// `v` is in world units; `world_scale` converts it to world units of length
-// (height_scale for altitudes, 1 for everything else).
-bool drag_length(const char *label, float *v, float world_scale = 1.f,
-                 float lo_m = -1e7f, float hi_m = 1e7f) {
-  const float tile = render_settings().terrain_size_m;
-  const float k = tile * (world_scale != 0.f ? world_scale : 1.f);
-  float metres = *v * k;
-  LenUnit u = pick_unit(metres);
-  float shown = metres * u.per_m;
-  char fmt[24];
-  std::snprintf(fmt, sizeof fmt, "%%.%df %s", u.decimals, u.suffix);
-  float speed = std::fmax(std::fabs(shown) * 0.01f, 0.01f);
-  bool ch = ImGui::DragFloat(label, &shown, speed, lo_m * u.per_m,
-                             hi_m * u.per_m, fmt);
-  if (ch && k != 0.f) *v = (shown / u.per_m) / k;
-  return ch;
-}
-
-// A read-only length, for things the user cannot drag here.
-void text_length(const char *label, float metres) {
-  LenUnit u = pick_unit(metres);
-  ImGui::TextDisabled("%s: %.*f %s", label, u.decimals, metres * u.per_m,
-                      u.suffix);
-}
-
-// A slider with its name above it rather than beside it. A trailing label is
-// the first thing to be clipped when the panel is narrow or the font is
-// large, and this panel is often both.
-void labeled_scalar(const char *label, const char *id, float *v, float mn,
-                    float mx) {
-  ImGui::TextUnformatted(label);
-  scalar_float(id, v, mn, mx);
-}
 
 // ------------------------------------------------------------- transform
 // Position, rotation and size, in the same block for every object that has
@@ -140,6 +86,7 @@ void transform_ui(App &a, SceneObject &o) {
 void object_properties_ui(App &a) {
   SceneState &sc = scene();
   RenderSettings &rs = render_settings();
+  const float hs = rs.height_scale;
   if (sc.selected < 0 || sc.selected >= (int)sc.objects.size()) {
     ImGui::TextDisabled("nothing selected");
     return;
@@ -197,6 +144,59 @@ void object_properties_ui(App &a) {
       ImGui::SeparatorText("Surface");
       labeled_scalar("Roughness", "ro", &rs.mat_roughness, 0.02f, 1.f);
       labeled_scalar("Reflection", "rf", &rs.mat_reflection, 0.f, 1.f);
+      if (prop_filter_match("Placement")) {
+        // How the tile sits on the planet (studio/planet_place.cpp). The
+        // numbers here are what a user can reason about: a length for the
+        // feather, a length for what counts as a feature, and how much of
+        // the planet survives underneath.
+        ImGui::SeparatorText("Placement on planet");
+        studio::Checkbox("Place on planet surface", &rs.place_on_planet);
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("The planet's own landscape shows through where\n"
+                            "this tile is flat, and is levelled under\n"
+                            "whatever the graph builds; the joins are\n"
+                            "feathered so nothing steps. Off: the tile is\n"
+                            "shown exactly as the graph made it.");
+        if (rs.place_on_planet) {
+          drag_length("Edge blend", &rs.place_edge, 1.f, 0.f,
+                      0.5f * rs.terrain_size_m);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("How far a feature's footprint, and the tile's\n"
+                              "own border, fade into the planet.");
+          labeled_scalar("Flatten beneath", "pf", &rs.place_flatten, 0.f, 1.f);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("1: the planet is levelled under a feature, so\n"
+                              "a mountain stands on its own ground. 0: the\n"
+                              "feature is added on top of the planet's relief.");
+          drag_length("Feature threshold", &rs.place_presence, hs, 0.f,
+                      rs.height_scale * rs.terrain_size_m);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Anything this far above or below the tile's\n"
+                              "ground level counts as a feature - a hole\n"
+                              "dug deeper than this becomes a basin, and the\n"
+                              "water fills it where it reaches below the\n"
+                              "water level.");
+          drag_length("Ground level", &rs.place_ground, hs, -hs * rs.terrain_size_m,
+                      hs * rs.terrain_size_m);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("The planet's ground level: the altitude its\n"
+                              "relief is built around, and the level this\n"
+                              "tile's own ground is settled to. The water\n"
+                              "level (Water object) decides how much of it\n"
+                              "is sea.");
+          const PlaceResult &pr = planet_place_last();
+          if (pr.placed) {
+            text_length("Tile ground level",
+                        pr.tile_ground * hs * rs.terrain_size_m);
+            ImGui::TextDisabled("%.0f%% of the tile is feature, the rest is\n"
+                                "the planet showing through.",
+                                pr.coverage * 100.f);
+          } else {
+            ImGui::TextDisabled("No planet surface layers: nothing to place\n"
+                                "the tile on.");
+          }
+        }
+      }
       break;
     case SceneObject::Water:
       ImGui::SeparatorText("Level");
@@ -318,154 +318,12 @@ void object_properties_ui(App &a) {
         ImGui::TextDisabled("%s", o.path.c_str());
       }
       break;
-    case SceneObject::Planet: {
-      PlanetData &P = o.planet;
-      RenderSettings &rsn = render_settings();
-      float km = rsn.terrain_size_m / 1000.f; // world unit -> km
-      ImGui::SeparatorText("Body");
-      (void)km;
-      drag_length("Radius", &P.radius, 1.f, 1.f, 1e9f);
-      text_length("Circumference", P.radius * 6.2831853f *
-                                       render_settings().terrain_size_m);
-      ImGui::DragFloat("Relief", &P.relief, 0.001f, 0.f, 1.f, "%.3f");
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Maximum mountain height as a fraction of the\n"
-                          "radius. Earth is about 0.0014; go higher for\n"
-                          "dramatic fantasy worlds.");
-      int seed = (int)P.seed;
-      if (ImGui::DragInt("Seed", &seed, 1, 1, 1 << 24)) P.seed = (uint32_t)seed;
-      ImGui::SliderFloat("Rotation", &P.spin_deg, -180.f, 180.f, "%.0f\xC2\xB0");
-      ImGui::SeparatorText("Position");
-      drag_length("X", &o.pos[0]);
-      drag_length("Y", &o.pos[1]);
-      drag_length("Z", &o.pos[2]);
-      ImGui::TextDisabled("Distances between worlds, in real units.");
-      ImGui::SeparatorText("Ocean & climate");
-      ImGui::SliderFloat("Sea level", &P.sea_level, 0.f, 1.f);
-      ImGui::SliderFloat("Snow line", &P.snow_line, 0.f, 1.2f);
-      ImGui::ColorEdit3("Water", P.water_color);
-      ImGui::ColorEdit3("Rock (low)", P.rock_low);
-      ImGui::ColorEdit3("Rock (high)", P.rock_high);
-      ImGui::SeparatorText("Atmosphere");
-      ImGui::SliderFloat("Density", &P.atmo_density, 0.f, 2.f);
-      ImGui::ColorEdit3("Tint", P.atmo_color);
-      // The shape of a planet's surface is its stack of displacement layers,
-      // so they are edited here rather than only in the Objects tree: this is
-      // the panel you are already in when you decide the world is too smooth.
-      ImGui::SeparatorText("Surface displacement");
-      const char *STYLE[3] = {"rolling hills", "ridged mountains",
-                              "billow dunes"};
-      std::vector<int> ls = scene_surface_layers(sc.selected);
-      for (int idx : ls) {
-        SceneObject &SL = sc.objects[idx];
-        ImGui::PushID(idx);
-        if (ImGui::Selectable(SL.name.c_str())) {
-          sc.selected = idx;
-          a.scene_selection_serial++;
-        }
-        if (ImGui::IsItemHovered())
-          ImGui::SetTooltip("Click to edit this layer's relief and coverage.");
-        ImGui::SameLine();
-        ImGui::TextDisabled("%s, x%.2f",
-                            STYLE[std::clamp(SL.surf.layer.type, 0, 2)],
-                            SL.surf.layer.amplitude);
-        ImGui::PopID();
-      }
-      if (ls.empty())
-        ImGui::TextDisabled("No displacement: a smooth ball.");
-      if (ImGui::Button("+ add displacement layer", ImVec2(-1, 0))) {
-        undo_push(a, "Add displacement layer");
-        int idx = scene_add_infinite_surface(sc.selected);
-        sc.selected = idx;
-        a.scene_selection_serial++;
-        return; // `o` and `P` are references into a vector that just grew
-      }
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Layers stack: a broad ridged layer for the\n"
-                          "continents, a finer one for the foothills, a\n"
-                          "third at low coverage for dune fields.");
-      ImGui::SeparatorText("Surface graph");
-      ImGui::TextDisabled("A field graph, transpiled to GPU code and evaluated\n"
-                          "on the sphere itself - it holds up all the way down\n"
-                          "to a walk on the surface.");
-      surface_graph_picker(a, &P.surface_node);
-      ImGui::TextDisabled("Surface colour is the rock and water above; the\n"
-                          "snow line and sea level decide where each shows.");
-      ImGui::TextDisabled("It is all generated on the GPU from these numbers\n"
-                          "alone - a planet costs no memory or textures, so\n"
-                          "add as many worlds and layers as you like.");
-    } break;
-    case SceneObject::InfiniteSurface: {
-      gpx::planet::Layer &L = o.surf.layer;
-      bool on_planet = o.parent >= 0 && o.parent < (int)sc.objects.size() &&
-                       sc.objects[o.parent].type == SceneObject::Planet;
-      ImGui::TextDisabled(on_planet
-                              ? "Shapes the surface of %s."
-                              : "Extends the home terrain to the horizon.%s",
-                          on_planet ? sc.objects[o.parent].name.c_str() : "");
-      if (!on_planet) {
-        // The home planet: the sphere the terrain tile lies on. Its radius
-        // is a real length from one metre up; small enough and the tile
-        // wraps the whole globe, so this is also how a globe is made from
-        // a heightmap.
-        RenderSettings &rs = render_settings();
-        ImGui::SeparatorText("Home planet");
-        bool flat = rs.planet_radius <= 0.f;
-        if (studio::Checkbox("Flat world", &flat))
-          rs.planet_radius = flat ? 0.f : 1275.f;
-        if (!flat) {
-          drag_length("Radius", &rs.planet_radius, 1.f, 1.f, 1e9f);
-          if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Earth is about 6 371 km. Below the tile's own\n"
-                              "circumference the tile wraps the globe\n"
-                              "completely - a 1 m planet from the heightmap.");
-          float circ_m = rs.planet_radius * 6.2831853f * rs.terrain_size_m;
-          text_length("Circumference", circ_m);
-          if (rs.planet_radius * 6.2831853f < 1.f)
-            ImGui::TextDisabled("The tile wraps the whole planet; the\n"
-                                "surround below is not drawn.");
-        }
-      }
-      ImGui::SeparatorText("Relief");
-      int type = L.type;
-      if (ImGui::Combo("Style", &type,
-                       "Rolling hills\0Ridged mountains\0Billow dunes\0"))
-        L.type = type;
-      ImGui::DragFloat("Feature scale", &L.frequency, 0.1f, 0.2f, 200.f, "%.1f");
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("How many features fit across the world.\n"
-                          "Low = continents, high = hills.");
-      ImGui::SliderFloat("Amplitude", &L.amplitude, 0.f, 2.f);
-      int seed = (int)L.seed;
-      if (ImGui::DragInt("Seed", &seed, 1, 1, 1 << 24)) L.seed = (uint32_t)seed;
-      ImGui::SeparatorText("Coverage");
-      ImGui::SliderFloat("Coverage", &L.coverage, 0.f, 1.f);
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Fraction of the world this layer occupies.\n"
-                          "1 covers everything; lower values confine it to\n"
-                          "procedurally chosen regions (continents, ranges).");
-      ImGui::DragFloat("Region size", &L.mask_scale, 0.05f, 0.2f, 12.f, "%.2f");
-      ImGui::SeparatorText("Surface graph");
-      ImGui::TextDisabled("These layers are parameters, and there are shapes\n"
-                          "no parameter can make. A field graph can: it is\n"
-                          "transpiled to GPU code and evaluated on the\n"
-                          "surface at every scale.");
-      if (on_planet) {
-        // the graph belongs to the planet the layer shapes
-        surface_graph_picker(a, &sc.objects[o.parent].planet.surface_node);
-      } else {
-        // the home planet's surround: named on its first root layer
-        std::vector<int> roots = scene_surface_layers(-1);
-        int owner = roots.empty() ? sc.selected : roots[0];
-        surface_graph_picker(a, &sc.objects[owner].surf.surface_node);
-      }
-      if (!on_planet) {
-        ImGui::SeparatorText("Ground plane");
-        ImGui::SliderFloat("Height scale", &o.surf.height_scale, 0.f, 3.f);
-        ImGui::TextDisabled("Blends seamlessly out of the terrain tile's\n"
-                            "edges and continues to the horizon.");
-      }
-    } break;
+    case SceneObject::Planet:
+      object_properties_planet_ui(a, o);
+      break;
+    case SceneObject::InfiniteSurface:
+      object_properties_surface_ui(a, o);
+      break;
   }
 }
 

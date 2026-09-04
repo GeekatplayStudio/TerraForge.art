@@ -105,7 +105,13 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_b(act, "frustum_cull", rs.frustum_cull);
   // surface shape
   n += take_f(act, "height_scale", rs.height_scale, 0.f, 8.f);
-  n += take_f(act, "planet_radius", rs.planet_radius, 0.f, 1e7f);
+  n += take_f(act, "planet_radius", rs.planet_radius, 0.f, 1e12f);
+  // placing the tile on the planet (studio/planet_place.cpp)
+  n += take_b(act, "place_on_planet", rs.place_on_planet);
+  n += take_f(act, "place_edge", rs.place_edge, 0.f, 0.5f);
+  n += take_f(act, "place_flatten", rs.place_flatten, 0.f, 1.f);
+  n += take_f(act, "place_presence", rs.place_presence, 0.001f, 1.f);
+  n += take_f(act, "place_ground", rs.place_ground, -1.f, 2.f);
   n += take_f(act, "fractal_detail", rs.fractal_detail, 0.f, 1.f);
   n += take_f(act, "fractal_scale", rs.fractal_scale, 0.1f, 4096.f);
   n += take_f(act, "field_displacement", rs.field_displacement, -8.f, 8.f);

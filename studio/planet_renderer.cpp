@@ -1,5 +1,7 @@
 #include "console.hpp"
 #include "planet_renderer.hpp"
+#include "render_settings.hpp"
+#include "renderer_shaders.hpp"
 #include "scene.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/planet_math.hpp"
@@ -17,6 +19,8 @@ namespace studio {
 
 // The GLSL lives in planet_shaders.cpp; these are its exports.
 extern const char *PL_FN;
+extern const char *PL_PALETTE;
+extern const char *PL_SPHERE_FN;
 extern const char *PL_FIELD_STUB;
 extern const char *VS_PLANET;
 extern const char *FS_PLANET;
@@ -94,11 +98,20 @@ static std::string pl_inject(const char *src, const std::string &glsl) {
                        : gpx::field_glsl_strip_prelude(glsl);
   body += PL_FN;
   std::string s(src);
-  size_t p;
-  while ((p = s.find("PL_FN_PLACEHOLDER")) != std::string::npos)
-    s.replace(p, strlen("PL_FN_PLACEHOLDER"), body);
+  auto sub = [&](const char *tag, const std::string &with) {
+    size_t p;
+    while ((p = s.find(tag)) != std::string::npos) s.replace(p, strlen(tag), with);
+  };
+  sub("PL_FN_PLACEHOLDER", body);
+  sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);
+  sub("PL_SPHERE_PLACEHOLDER", PL_SPHERE_FN);
+  sub("FOG_FN_PLACEHOLDER", FOG_FN);
   return s;
 }
+
+// renderer_backdrop.cpp: the fog uniforms FOG_FN reads, the same call every
+// other fogged program makes
+void upload_fog_uniforms(unsigned prog, const RenderSettings &RS, bool atmosphere);
 
 // Link and say so when it fails. The built-in shaders are known good; a
 // generated one is written by the user's graph and can genuinely fail, and an
@@ -303,7 +316,8 @@ static int upload_layers(GLuint prog, int planet_idx, float amp_scale,
     la[n][3] = L.mask_scale;
     lb[n][0] = (float)L.seed;
     lb[n][1] = (float)L.type;
-    lb[n][2] = lb[n][3] = 0.f;
+    lb[n][2] = (float)std::clamp(L.octaves, 1, 12); // the layer's own cap
+    lb[n][3] = 0.f;
     ++n;
   }
   glUniform4fv(glGetUniformLocation(prog, "u_la"), 6, &la[0][0]);
@@ -440,13 +454,18 @@ void infinite_draw(const InfiniteFrame &f) {
   puni1(prog_inf, "u_sat", f.saturation);
   puni1(prog_inf, "u_hscale", f.height_scale);
   puni1(prog_inf, "u_curve", f.planet_radius);
-  punii(prog_inf, "u_fog_type", f.fog_type);
-  puni1(prog_inf, "u_fogd", f.fog_density);
-  puni3(prog_inf, "u_fog_color", f.fog_color);
+  upload_fog_uniforms(prog_inf, render_settings(), f.atmosphere);
+  punii(prog_inf, "u_object_id", 1);
   // the surround's relief budget follows the tile's own height scale
   float amp = f.height_scale * 1.2f;
   puni1(prog_inf, "u_amp", amp);
   puni1(prog_inf, "u_base", f.base_height);
+  puni1(prog_inf, "u_wl", f.water_level);
+  puni3(prog_inf, "u_wdeep", f.water_deep);
+  puni3(prog_inf, "u_wshallow", f.water_shallow);
+  puni1(prog_inf, "u_wclarity", f.water_clarity);
+  puni1(prog_inf, "u_lat", f.latitude);
+  puni1(prog_inf, "u_snow_line", 0.62f);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, f.tex_height);
   punii(prog_inf, "u_height", 0);
@@ -458,30 +477,6 @@ void infinite_draw(const InfiniteFrame &f) {
                 sp.glsl.empty() ? 0.f : sp.strength);
   glBindVertexArray(inf_vao);
   glDrawElements(GL_TRIANGLES, inf_count, GL_UNSIGNED_INT, nullptr);
-}
-
-int planet_pick(const float ro[3], const float rd[3], float &t_out) {
-  SceneState &sc = scene();
-  int best = -1;
-  float best_t = 1e30f;
-  for (int idx : scene_planet_indices()) {
-    const SceneObject &o = sc.objects[idx];
-    if (!sc.object_visible(o)) continue;
-    float r = o.planet.radius * (1.f + o.planet.relief * 0.5f);
-    float oc[3] = {ro[0] - o.pos[0], ro[1] - o.pos[1], ro[2] - o.pos[2]};
-    float b = oc[0] * rd[0] + oc[1] * rd[1] + oc[2] * rd[2];
-    float c = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - r * r;
-    float disc = b * b - c;
-    if (disc < 0) continue;
-    float t = -b - std::sqrt(disc);
-    if (t < 0) t = -b + std::sqrt(disc);
-    if (t > 0 && t < best_t) {
-      best_t = t;
-      best = idx;
-    }
-  }
-  t_out = best_t;
-  return best;
 }
 
 } // namespace studio

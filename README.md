@@ -271,12 +271,29 @@ wanted his students to have.
   with a fresh seed every click.
 
 ### Planets and infinite terrains
+- **A new scene is already a landscape.** The home planet's surface is the
+  *Realistic terrain* layer: eroded ridged mountains in upland belts, rolling
+  hills, terraced plateaus, a network of carved valleys and lowland lakes,
+  with the sea at the water level - and the same altitude/slope/wetness
+  palette shades the tile, the ground beyond it and every planet, so
+  beaches, fields, forest belts, rock, scree and snow land where they belong.
+  Three more layer styles (hills, ridged, dunes) stack with it, and a field
+  graph can shape the surface further.
+- **Terrain is placed onto the planet, not laid over it.** Whatever the
+  graph builds - a stamped mountain, a normalised range, a hole - is settled
+  to the planet's ground level; the planet's relief shows through wherever
+  the tile is flat, is levelled underneath the tile's features (or kept
+  beneath them: *Flatten beneath*), and every join is feathered. A hole dug
+  below the water level fills with water. Terrain ▸ Placement on planet.
 - **The home planet is a sphere:** the terrain tile lies on a planet whose
-  radius is a real length from 1 m up (Objects ▸ Planet surface, or the
-  Atmosphere tab). Large radii give the curved horizon; below the tile's own
-  circumference the tile wraps the whole globe, equirectangular — a 1 m
+  radius is a real length from a tenth of a millimetre to a billion
+  kilometres (Objects ▸ Planet surface, or the Atmosphere tab). Large radii
+  give the curved horizon; below the tile's own circumference the tile wraps
+  the whole globe, equirectangular, its heights shrinking with it - a 1 m
   planet made from the heightmap, with the same nodes, materials and
-  erosion as any terrain.
+  erosion as any terrain. Single-precision positions resolve a globe down
+  to about a millionth of the tile width (1 cm at the default 5 km tile);
+  for anything smaller, shrink the tile (Terrain ▸ Across) with it.
 - **Every world its own graph:** each planet (and the home surround) names
   the `SurfaceDisplacement` node whose field graph displaces it, as a
   Terragen planet has its own terrain network. "New graph for this world" in

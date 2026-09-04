@@ -38,6 +38,12 @@ std::string inject_sky(const char *src) {
     if (p != std::string::npos) s.replace(p, strlen(tag), body);
   };
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
+  {
+    extern const char *PL_PALETTE;   // planet_shaders.cpp
+    extern const char *PL_SPHERE_FN; // planet_shaders.cpp
+    sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);
+    sub("PL_SPHERE_PLACEHOLDER", PL_SPHERE_FN);
+  }
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
   // The vertex and fragment stages are separate translation units, so each

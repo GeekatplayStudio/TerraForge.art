@@ -35,6 +35,13 @@ Camera CAM;
 GLuint prog_terrain = 0, prog_water = 0, prog_sky = 0, prog_depth = 0;
 // mean height of the uploaded tile, so the infinite surround can meet it
 float g_terrain_mean = 0.f;
+float g_terrain_base = 0.f;
+bool g_terrain_base_set = false;
+
+void renderer_set_terrain_base(float ground) {
+  g_terrain_base = ground;
+  g_terrain_base_set = true;
+}
 GLuint prog_lines = 0, prog_bg = 0, prog_mesh = 0, prog_gizmo = 0;
 GLuint prog_matprev = 0;
 GLuint matprev_fbo = 0, matprev_tex = 0, matprev_depth = 0;

@@ -336,6 +336,36 @@ belongs to; do not fake a field node with a 1×1 buffer.
 5. Planets draw between the sky and the terrain with depth writes **off**
    and a far-plane depth clamp in the vertex shader, so they are never
    clipped however far the camera zooms out.
+6. **The terrain tile is placed onto the planet, not laid over it**
+   (`studio/planet_place.cpp`, run at upload time, before
+   `renderer_set_terrain`). The planet's relief shows through wherever the
+   tile is flat at its own ground level, is levelled under anything the tile
+   builds (`place_flatten`), and every join - a feature's footprint, the
+   tile's border - is feathered. Picking, shadows, culling bounds and the
+   overlays all see the placed map: what you click is what you see.
+7. **The planet has its own ground level** (`place_ground`, heightmap
+   units); the tile's ground (the median of its border) is *settled* to it.
+   Never derive the surround's base from the tile's own level again: a
+   normalised mountain whose rim sits at 0.6 lifted the whole world 600 m
+   and put snow on every plain.
+8. **The surround's relief and the placed tile are the same function.** The
+   CPU composites with `gpx::planet::heightf` at `1.2 x relief + ground`
+   and the surround shader draws `pl_height * 1.2 * hscale + ground * hscale`;
+   `planet_gpu_verify` (run by `verify_field_gpu`) measures the two against
+   each other, currently 2e-6. Change one side, run it.
+9. **Sphere placement never subtracts R from something of size R.**
+   `gpx::planet::sphere_place` / `pl_sphere_place` build the drop from
+   `2R sin^2(a/2)` terms and the reach from `s * sinc(a)`; `c + d*(R+h)`
+   lost the terrain height entirely past a few thousand tile radii. A tile
+   wrapped onto a sub-tile globe shrinks its heights by the square of the
+   wrap ratio. The floor is float precision at the tile's position: a globe
+   below ~1e-6 of the tile width (1 cm at 5 km) vanishes into the 6e-8
+   rounding of a vertex at x = 0.5, camera positions included. Going lower
+   means tile-centred vertex maths plus a double-precision camera, not a
+   smaller near plane.
+10. **The surround fogs with `FOG_FN`, like everything else.** A distance
+    fog of its own painted it pale right up to the tile's border, which read
+    as a cliff around the tile.
 
 ## Undo
 

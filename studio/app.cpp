@@ -4,6 +4,7 @@
 #include "autosave.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
+#include "planet_place.hpp"
 #include "planet_renderer.hpp"
 #include "scene.hpp"
 #include "gpx/field_glsl.hpp"
@@ -16,6 +17,48 @@
 #include <imgui_internal.h>
 
 namespace studio {
+
+// ---------------------------------------------------------- placement
+// The tile the graph last produced and the albedo that went with it, so a
+// change to the planet's layers or the placement settings can re-place it
+// without re-evaluating the graph.
+static std::shared_ptr<gpx::Heightmap> g_last_tile;
+static const gpx::TextureRGBA *g_last_albedo = nullptr;
+static uint64_t g_place_key = 0;
+
+static uint64_t placement_key() {
+  const RenderSettings &rs = render_settings();
+  uint64_t h = 1469598103934665603ull;
+  auto mix = [&](const void *p, size_t n) {
+    const unsigned char *b = (const unsigned char *)p;
+    for (size_t i = 0; i < n; ++i) h = (h ^ b[i]) * 1099511628211ull;
+  };
+  for (const gpx::planet::Layer &L : planet_home_layers()) mix(&L, sizeof L);
+  PlaceSettings ps{rs.place_on_planet, rs.place_edge, rs.place_flatten,
+                   rs.place_presence, rs.place_ground};
+  mix(&ps, sizeof ps);
+  return h;
+}
+
+// Composite the tile onto the planet and hand the result to the renderer.
+// Everything downstream - picking, shadows, culling bounds, overlays, the
+// surround's base level - sees the placed map, so what you click is what you
+// see. Caller holds graph_mtx.
+static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> &hm,
+                                  const gpx::TextureRGBA *albedo) {
+  (void)a;
+  const RenderSettings &rs = render_settings();
+  PlaceSettings ps{rs.place_on_planet, rs.place_edge, rs.place_flatten,
+                   rs.place_presence, rs.place_ground};
+  PlaceResult pr;
+  auto placed = std::make_shared<gpx::Heightmap>(
+      planet_place_tile(*hm, planet_home_layers(), ps, &pr));
+  planet_place_set_last(pr);
+  renderer_set_terrain_base(pr.ground);
+  renderer_set_terrain(*placed, albedo);
+  app_set_overlay_terrain(placed);
+  g_place_key = placement_key();
+}
 
 
 
@@ -353,14 +396,26 @@ void run_main() {
           }
         }
         if (ph && ph->hmap && !ph->hmap->empty()) {
-          renderer_set_terrain(*ph->hmap, albedo);
-          app_set_overlay_terrain(ph->hmap);
+          g_last_tile = ph->hmap;
+          g_last_albedo = albedo;
+          upload_placed_terrain(a, ph->hmap, albedo);
         }
         else if (pt && pt->tex) {
           // texture-only node: keep last heightmap, update albedo
         }
       }
       a.uploaded_serial = a.eval_serial;
+    }
+    // The placement also changes when the planet's layers or the placement
+    // settings do, with no evaluation in between; re-place the last tile.
+    {
+      uint64_t key = placement_key();
+      if (key != g_place_key && g_last_tile && a.uploaded_serial == a.eval_serial &&
+          !a.eval.running.load()) {
+        std::lock_guard<std::mutex> lk(a.graph_mtx);
+        g_place_key = key;
+        upload_placed_terrain(a, g_last_tile, g_last_albedo);
+      }
     }
 
     app_service_camera_anim(a);

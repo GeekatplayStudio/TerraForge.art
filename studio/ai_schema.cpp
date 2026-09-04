@@ -92,11 +92,23 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"set_planet","name":"Mars", ...same fields...}
 - {"op":"set_viewport","planet_radius":1275}   (the HOME planet the terrain
    tile lies on, in tile units: 1275 = Earth at a 5 km tile, 0.0002 = a 1 m
-   globe made from the heightmap, 0 = flat world)
-- {"op":"add_infinite_terrain","planet":"Mars","style":"mountains"|"hills"|"dunes",
+   globe made from the heightmap, 2e-8 = a 0.1 mm globe, 1e12 = a giant,
+   0 = flat world)
+- {"op":"set_viewport","place_on_planet":true,"place_edge":0.1,
+   "place_flatten":1.0,"place_presence":0.04,"place_ground":0.14}
+   (how the terrain tile sits on the planet: the planet's relief shows
+    through where the tile is flat, is levelled under the tile's features
+    (flatten 1) or kept beneath them (0), feathered over place_edge of the
+    tile; a feature is anything further than place_presence from the tile's
+    ground level, so a hole dug below ground becomes a basin the water fills;
+    place_ground is the planet's own ground level in heightmap units (water
+    is at water_level, 0.08 by default), and the tile's ground settles to it)
+- {"op":"add_infinite_terrain","planet":"Mars","style":"terrain"|"mountains"|"hills"|"dunes",
    "scale":5,"amplitude":1.0,"coverage":0.5,"seed":7}
    (omit "planet" to extend the home ground plane to the horizon instead;
-    layers stack, so add several with different styles and coverages)
+    layers stack, so add several with different styles and coverages;
+    "terrain" is the realistic landscape: eroded ridges, hills, plateaus,
+    valleys and lowland lakes in one layer - what a new scene starts with)
 The world is a unit tile: terrain spans x 0..1, z 0..1.)";
       break;
     default:

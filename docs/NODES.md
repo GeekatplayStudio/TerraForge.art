@@ -3789,7 +3789,7 @@ An endless procedural terrain layer: on the ground plane or shaping a planet
 | Scene object | text |  |
 | Parent planet | text | Name of the Planet object this layer shapes. Empty: extends the home ground plane to the horizon. |
 | Seed | seed |  |
-| Landscape | choice: Rolling hills / Ridged mountains / Billow dunes |  |
+| Landscape | choice: Rolling hills / Ridged mountains / Billow dunes / Realistic terrain |  |
 | Feature scale | float, 0.1 to 64, default 3 |  |
 | Amplitude | float, 0 to 4, default 1 |  |
 | Coverage | float, 0 to 1, default 1 | Fraction of the surface the layer occupies. |

@@ -67,9 +67,14 @@ struct InfiniteFrame {
   // absolute altitude happens to be.
   float base_height;
   float planet_radius;    // curvature (0 = flat)
-  int fog_type;
-  float fog_density;
-  const float *fog_color;
+  // the water: the surround flattens to this level and shades it as water,
+  // with the tile's own colours; -1e9 when water is off
+  float water_level;      // world units
+  const float *water_deep;
+  const float *water_shallow;
+  float water_clarity;
+  float latitude;         // |latitude| / 90, for the snow line
+  bool atmosphere;        // the view's atmosphere toggle: fog on or off
   bool textured = true; // the view's shading mode, as for the terrain tile
 };
 void infinite_draw(const InfiniteFrame &f);

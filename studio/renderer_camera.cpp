@@ -45,8 +45,8 @@ bool camera_object_input(float dx, float dy, float wheel, bool rotating,
     yaw += dx * 0.01f;
     pitch = std::clamp(pitch + dy * 0.01f, -1.55f, 1.55f);
   }
-  if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.12f), 0.0004f, 400.f);
-  if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 0.0004f, 400.f);
+  if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.12f), 1e-8f, 400.f);
+  if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 1e-8f, 400.f);
   if (panning) {
     // pan moves eye and target together, across the view plane
     float s = dist * 0.0015f;
@@ -68,7 +68,7 @@ void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
   if (camera_object_input(dx, dy, wheel, rotating, panning, dolly)) return;
   if (dolly)
     CAM.dist = std::fmin(
-        std::fmax(CAM.dist * (1.f + dy * 0.005f), 0.0004f), 100000.f);
+        std::fmax(CAM.dist * (1.f + dy * 0.005f), 1e-8f), 100000.f);
   renderer_handle_input(dx, dy, wheel, rotating, panning);
 }
 
@@ -113,7 +113,7 @@ void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
   // zoom range spans a grain of sand to a whole planetary neighbourhood
   if (wheel != 0)
     CAM.dist = std::fmin(
-        std::fmax(CAM.dist * (1.f - wheel * 0.12f), 0.0004f), 100000.f);
+        std::fmax(CAM.dist * (1.f - wheel * 0.12f), 1e-8f), 100000.f);
 }
 
 
@@ -256,7 +256,9 @@ void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
   float aspect = w / float(h);
   g_last_fovy = fovy_rad;
   float cam_d = std::sqrt((eye[0]-target[0])*(eye[0]-target[0]) + (eye[1]-target[1])*(eye[1]-target[1]) + (eye[2]-target[2])*(eye[2]-target[2]));
-  float znear = std::clamp(cam_d * 0.002f, 0.00002f, 0.5f);
+  // the near plane follows the zoom all the way down: a sub-millimetre
+  // planet is 2e-8 tile units across and has to be walkable too
+  float znear = std::clamp(cam_d * 0.002f, 1e-11f, 0.5f);
   // the far plane follows the zoom so pulling out reveals the whole planetary
   // neighborhood; planets themselves render as a depth-write-free sky layer,
   // so they are never clipped by it regardless

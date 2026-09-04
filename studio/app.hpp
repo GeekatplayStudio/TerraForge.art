@@ -225,6 +225,9 @@ struct SceneObject;
 void camera_properties_ui(App &a, SceneObject &obj);
 // the SurfaceDisplacement picker + "Edit graph" buttons (panel_properties_object_surface.cpp)
 void surface_graph_picker(App &a, unsigned long long *node);
+// panel_properties_object_planet.cpp: the Planet and InfiniteSurface pages
+void object_properties_planet_ui(App &a, SceneObject &o);
+void object_properties_surface_ui(App &a, SceneObject &o);
 void camera_apply_film();
 void studio_api_tick(App &a); // scripting / MCP bridge
 void apply_scene_nodes(App &a);
@@ -251,6 +254,9 @@ bool renderer_init();
 void renderer_shutdown();
 // uploads heightmap + optional albedo of the viewed node
 void renderer_set_terrain(const gpx::Heightmap &h, const gpx::TextureRGBA *albedo);
+// The level the tile was placed at (studio/planet_place.cpp), heightmap
+// units; the infinite surround builds its relief on it so the two meet.
+void renderer_set_terrain_base(float ground);
 // world-space x,y,z triplets ticked into every 3D view (empty clears)
 void renderer_set_points_overlay(const std::vector<float> &xyz);
 // renders to an FBO sized (w,h), returns color texture id

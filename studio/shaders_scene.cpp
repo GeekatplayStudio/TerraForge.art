@@ -31,14 +31,20 @@ void main(){
 const char *const FS_DEPTH = R"GLSL(#version 430 core
 void main(){})GLSL";
 
+// The water lies on the same sphere as the tile (PL_SPHERE_PLACEHOLDER is
+// spliced by inject_sky): on an Earth-size planet it curves with the
+// terrain, and on a globe smaller than the tile it is a shell at sea level
+// rather than a flat plane cutting through the marble.
 const char *const VS_WATER = R"GLSL(#version 430 core
 layout(location=0) in vec2 in_uv;
 uniform mat4 u_mvp;
 uniform float u_level;
+uniform float u_planet_radius;
+PL_SPHERE_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
 void main(){
-  vec3 p = vec3(in_uv.x, u_level, in_uv.y);
+  vec3 p = pl_sphere_place(in_uv, u_level, u_planet_radius);
   v_uv = in_uv; v_world = p;
   gl_Position = u_mvp * vec4(p,1.0);
 })GLSL";

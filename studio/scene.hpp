@@ -182,6 +182,10 @@ std::vector<int> scene_planet_indices();
 // the infinite layers that apply to `planet_idx` (-1 = home ground plane),
 // visible ones only, outliner order
 std::vector<int> scene_surface_layers(int planet_idx);
+// The home planet's root layers as the shaders and the tile placement
+// receive them: visible only, amplitude weighted by the ground-plane height
+// scale, at most gpx::planet::MAX_LAYERS.
+std::vector<gpx::planet::Layer> planet_home_layers();
 
 // ---- cameras ----
 // creates a camera under the "Cameras" group, inheriting every property

@@ -30,6 +30,10 @@ uniform vec4 u_light_dir[8]; // spot axis xyz + cos(half cone); w<-1 = point
 uniform float u_roughness, u_metallic, u_specular, u_reflection;
 uniform float u_translucency, u_transparency, u_normal_strength;
 uniform float u_planet_radius; // the sphere the tile lies on, 0 = flat
+// the built-in palette's frame: the water level in world units, the site's
+// |latitude|/90 for the snow line, and where the snow starts (0..1 of the
+// height range) - the same numbers the horizon surround shades with
+uniform float u_water_level, u_lat, u_snow_line;
 // sculpt brush cursor: xy = terrain uv, z = radius (<=0 hides), w = erase flag
 uniform vec4 u_brush;
 // cloud shadows
@@ -59,6 +63,7 @@ GPX_ROUGH_PLACEHOLDER
 GPX_BUMP_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 FOG_FN_PLACEHOLDER
+PL_PALETTE_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -166,6 +171,10 @@ float cloud_shadow(vec3 world){
 
 void main(){
   vec3 N = get_normal(v_uv);
+  // steepness in the tile's own frame, before the planet rotation below: on
+  // a globe smaller than the tile world-up is not local-up, and the palette
+  // would paint every slope of a wrapped marble as rock
+  float slope_local = 1.0 - N.y;
   // the normal was built in the flat tile's frame; on a planet that frame is
   // rotated to the sphere's local east/up/north at this point
   if (u_planet_radius > 0.0){
@@ -203,12 +212,12 @@ void main(){
   } else if (u_has_albedo == 1) {
     albedo = pow(texture(u_albedo, v_uv).rgb, vec3(2.2));
   } else {
-    float slope = 1.0 - N.y;
-    vec3 rock = vec3(0.30,0.27,0.25), grass = vec3(0.13,0.20,0.08);
-    vec3 snow = vec3(0.90,0.91,0.95), dirt = vec3(0.24,0.19,0.14);
-    albedo = mix(grass, dirt, smoothstep(0.05,0.25,slope));
-    albedo = mix(albedo, rock, smoothstep(0.18,0.45,slope));
-    albedo = mix(albedo, snow, smoothstep(0.62,0.72,h)*(1.0-smoothstep(0.25,0.5,slope)));
+    // No material: the landscape palette the horizon surround uses, on the
+    // same altitude scale, so the tile and the ground beyond it are one
+    // surface. Altitude is measured from the water, not from zero.
+    float t = (h * u_hscale - u_water_level) / max(u_hscale - u_water_level, 0.02);
+    float var = gp_detail(v_uv, 5.0, 2, 0.5);
+    albedo = pl_palette(t, slope_local, u_lat, 0.0, u_snow_line, var);
   }
   float rough = clamp(u_roughness * (u_has_rough == 1 ?
                       texture(u_rough_map, v_uv).r * 2.0 : 1.0), 0.03, 1.0);

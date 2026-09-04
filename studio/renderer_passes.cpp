@@ -200,6 +200,10 @@ void pass_terrain(const FrameCtx &F) {
     glUniform4f(glGetUniformLocation(PT, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
     uni1(PT, "u_planet_radius", RS.planet_radius);
+    uni1(PT, "u_water_level", RS.show_water ? RS.water_level * RS.height_scale
+                                            : 0.f);
+    uni1(PT, "u_lat", std::fabs(RS.latitude) / 90.f);
+    uni1(PT, "u_snow_line", 0.62f);
     unii(PT, "u_shadows", (shadows_ok && vc.display != 0) ? 1 : 0);
     unii(PT, "u_quality", cinematic ? 1 : 0);
     uni1(PT, "u_shadow_soft", RS.shadow_softness);
@@ -340,6 +344,7 @@ void pass_water(const FrameCtx &F) {
     glUniformMatrix4fv(glGetUniformLocation(prog_water, "u_mvp"), 1, GL_FALSE, mvp);
     uni1(prog_water, "u_hscale", RS.height_scale);
     uni1(prog_water, "u_level", RS.water_level * RS.height_scale);
+    uni1(prog_water, "u_planet_radius", RS.planet_radius);
     uni3(prog_water, "u_sun", sun);
     uni3(prog_water, "u_sun_color", RS.sun_color);
     uni3(prog_water, "u_cam", view_eye);

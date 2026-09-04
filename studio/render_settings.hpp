@@ -187,6 +187,14 @@ struct RenderSettings {
   // than on an infinite plane, because that is what makes distance read
   // correctly (Terragen guide p5); set it to 0 for true infinite flatness.
   float planet_radius = 1275.f;
+  // Placing the terrain tile on that planet (studio/planet_place.cpp): the
+  // planet's relief shows through where the tile is flat, is levelled under
+  // the tile's features, and everything is feathered so nothing steps.
+  bool place_on_planet = true;
+  float place_edge = 0.10f;     // feather width, fraction of the tile side
+  float place_flatten = 1.f;    // 1 levels the planet under a feature, 0 adds
+  float place_presence = 0.04f; // relief (heightmap units) that counts as one
+  float place_ground = 0.14f;   // the planet's ground level, heightmap units
 
   // terrain / global
   float height_scale = 0.22f;

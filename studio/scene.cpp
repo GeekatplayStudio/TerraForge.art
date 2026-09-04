@@ -38,15 +38,19 @@ void scene_init_builtins() {
   // (Terragen 2 guide, p5.)
   //
   // So a new scene starts on a planet: the tile continues past its own edges
-  // to a curved horizon, and the ground under you is flat until you displace
-  // it — which is what the terrain graph is for.
+  // to a curved horizon, and the ground is the planet's own surface - the
+  // realistic layer: eroded ridges, hills, plateaus, valleys and lowland
+  // lakes, with the sea at the water level. The tile is placed onto it
+  // (studio/planet_place.cpp): flat where the graph says nothing, so the
+  // landscape shows through, and levelled under whatever the graph builds.
   int gnd = scene_add_infinite_surface(-1, "Planet surface");
   if (gnd >= 0 && gnd < (int)s.objects.size()) {
     InfiniteSurfaceData &d = s.objects[gnd].surf;
-    // Flat by default. The layer exists to carry the ground to the horizon,
-    // not to invent scenery the user did not ask for.
-    d.layer.amplitude = 0.f;
+    d.layer.type = 3;
+    d.layer.amplitude = 1.f;
     d.layer.frequency = 1.5f;
+    d.layer.octaves = 12;
+    d.layer.coverage = 1.f;
     d.height_scale = 1.f;
   }
 }
@@ -120,7 +124,7 @@ int scene_add_infinite_surface(int parent, const std::string &name) {
                      std::to_string(siblings + 1)
                : name;
   o.surf.layer.seed = 1u + (uint32_t)(s.objects.size() * 31 + siblings * 7);
-  o.surf.layer.type = siblings == 0 ? 1 : (siblings % 3); // vary the stack
+  o.surf.layer.type = siblings == 0 ? 3 : (siblings % 3); // vary the stack
   o.surf.layer.frequency = 3.f + siblings * 2.5f;
   o.surf.layer.amplitude = siblings == 0 ? 1.f : 0.5f;
   o.surf.layer.coverage = siblings == 0 ? 1.f : 0.6f;
@@ -138,6 +142,18 @@ std::vector<int> scene_surface_layers(int planet_idx) {
                 s.objects[o.parent].type != SceneObject::Planet;
     if ((planet_idx < 0 && root) || (planet_idx >= 0 && o.parent == planet_idx))
       if (s.object_visible(o)) out.push_back(i);
+  }
+  return out;
+}
+
+std::vector<gpx::planet::Layer> planet_home_layers() {
+  std::vector<gpx::planet::Layer> out;
+  SceneState &sc = scene();
+  for (int idx : scene_surface_layers(-1)) {
+    if ((int)out.size() >= gpx::planet::MAX_LAYERS) break;
+    gpx::planet::Layer L = sc.objects[idx].surf.layer;
+    L.amplitude *= sc.objects[idx].surf.height_scale;
+    out.push_back(L);
   }
   return out;
 }

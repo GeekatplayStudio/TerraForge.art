@@ -133,9 +133,9 @@ static void section_planet(RenderSettings &rs) {
       rs.planet_radius = flat ? 0.f : 1275.f;
     if (!flat) {
       float m = rs.planet_radius * rs.terrain_size_m;
-      if (ImGui::SliderFloat("Planet radius", &m, 1.f, 1e8f, "%.0f m",
+      if (ImGui::SliderFloat("Planet radius", &m, 1e-4f, 1e12f, "%.4g m",
                              ImGuiSliderFlags_Logarithmic))
-        rs.planet_radius = std::max(m, 1.f) / rs.terrain_size_m;
+        rs.planet_radius = std::max(m, 1e-4f) / rs.terrain_size_m;
       if (ImGui::IsItemHovered())
         ImGui::SetTooltip("The sphere the terrain lies on. Earth is about\n"
                           "6 371 000 m. Below the tile's own circumference\n"

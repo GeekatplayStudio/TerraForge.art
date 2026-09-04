@@ -193,6 +193,8 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       if (style == "hills") L.type = 0;
       else if (style == "mountains" || style == "ridged") L.type = 1;
       else if (style == "dunes" || style == "billow") L.type = 2;
+      else if (style == "terrain" || style == "realistic" ||
+               style == "landscape") L.type = 3;
       if (act.contains("scale")) L.frequency = act["scale"].get<float>();
       if (act.contains("amplitude")) L.amplitude = act["amplitude"].get<float>();
       if (act.contains("coverage")) L.coverage = act["coverage"].get<float>();

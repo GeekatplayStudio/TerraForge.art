@@ -112,6 +112,11 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"tess_max", 'f', &rs.tess_max},
       {"frustum_cull", 'b', &rs.frustum_cull},
       {"planet_radius", 'f', &rs.planet_radius},
+      {"place_on_planet", 'b', &rs.place_on_planet},
+      {"place_edge", 'f', &rs.place_edge},
+      {"place_flatten", 'f', &rs.place_flatten},
+      {"place_presence", 'f', &rs.place_presence},
+      {"place_ground", 'f', &rs.place_ground},
       // global
       {"height_scale", 'f', &rs.height_scale},
       {"exposure", 'f', &rs.exposure},

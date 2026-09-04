@@ -245,6 +245,11 @@ set(STUDIO_SOURCES
     studio/shaders_terrain.cpp
     studio/shaders_terrain_frag.cpp
     studio/terrain_cull.cpp
+    studio/planet_place.cpp
+    studio/panel_properties_object_planet.cpp
+    studio/planet_pick.cpp
+    studio/planet_shaders_common.cpp
+    studio/planet_gpu_check.cpp
     studio/gpu_timer.cpp
     studio/blue_noise.cpp
     studio/shaders_scene.cpp
@@ -423,8 +428,9 @@ target_link_libraries(node_tests PRIVATE
 # Renderer maths that needs no GL context: per-patch visibility, and the
 # packing helpers that follow it.
 add_executable(render_tests tests/cpp/test_render.cpp tests/cpp/test_render_hdr.cpp
+                            tests/cpp/test_planet_place.cpp
                             studio/terrain_cull.cpp studio/blue_noise.cpp
-                            studio/hdr_image.cpp)
+                            studio/hdr_image.cpp studio/planet_place.cpp)
 target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)

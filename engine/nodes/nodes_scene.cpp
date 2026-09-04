@@ -100,7 +100,8 @@ REGISTER_NODE(
           "home ground plane to the horizon.";
       add_seed(n.attrs, "seed", "Seed", 1, "Layer");
       add_choice(n.attrs, "type", "Landscape",
-                 {"Rolling hills", "Ridged mountains", "Billow dunes"}, 1, "Layer");
+                 {"Rolling hills", "Ridged mountains", "Billow dunes",
+                  "Realistic terrain"}, 1, "Layer");
       add_float(n.attrs, "frequency", "Feature scale", 3.f, 0.1f, 64.f, "Layer", true);
       add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 4.f, "Layer");
       add_float(n.attrs, "coverage", "Coverage", 1.f, 0.f, 1.f, "Layer").tooltip =
