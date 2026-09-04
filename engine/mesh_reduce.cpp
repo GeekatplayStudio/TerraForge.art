@@ -1,11 +1,13 @@
 // Geekatplay TerraForge - polygon reduction by quadric edge collapse, with
 // the surface deviation measured rather than estimated.
 //
-// Meshwright reduces with QuadriFlow, MeshLab or fast-simplification; all
-// three are GPL or bring a heavy toolchain, so this is our own quadric
-// collapse (Garland & Heckbert): each vertex carries the sum of the squared
-// distances to the planes of its faces, an edge costs what collapsing it adds
-// to that sum, and the cheapest edge goes first.
+// Meshwright reduces with QuadriFlow (MIT), MeshLab (GPL-3) or
+// fast-simplification (MIT). This is our own quadric collapse (Garland &
+// Heckbert) so the module needs no dependency at all: each vertex carries the
+// sum of the squared distances to the planes of its faces, an edge costs what
+// collapsing it adds to that sum, and the cheapest edge goes first. It does
+// not do what QuadriFlow does - rebuilding the surface as clean quads - and
+// QuadriFlow's licence would allow adding it.
 //
 // Vue calls the same operation Decimate (p306) and shows the resulting face
 // count; we also report how far the result actually moved from the original.
