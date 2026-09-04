@@ -78,6 +78,21 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"show_panel","panel":"Material Editor","visible":true}
    (Library, Nodes, Properties, Viewport, Toolbar, Console, Timeline,
    Preview, Material Editor)
+- {"op":"import_mesh","path":"C:/models/part.stl"}
+   (OBJ, STL, PLY or OFF; the file's own coordinates are kept and the object
+   is sized by its transform, then analysed straight away)
+- {"op":"mesh_analyse"}
+   (the selected mesh: 11 checks, a 0-100 readiness score and a verdict,
+   each issue with a count, a severity and where it is on the model)
+- {"op":"mesh_repair","fill_holes":true,"drop_small_shells":false,"passes":3}
+   (cleanup, winding, inside-out, hole filling - repeated until the mesh
+   stops changing, then measured against a fresh analysis; undoable)
+- {"op":"mesh_reduce","faces":5000}  or  {"op":"mesh_reduce","fraction":0.25}
+   (quadric decimation; reports the worst deviation it measured)
+- {"op":"mesh_split"}
+   (every disconnected shell becomes its own object)
+- {"op":"mesh_export","path":"out.stl","ascii":false,"apply_transform":false}
+   (STL, OBJ, PLY or OFF; says so when the file is not a closed solid)
 - {"op":"arrange_views","count":4}
    (the viewport area becomes 1..8 cells; nothing else on screen moves)
 - {"op":"add_view"} / {"op":"add_view","split":true,"vertical":false}

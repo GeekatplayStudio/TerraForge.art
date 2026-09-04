@@ -293,6 +293,8 @@ void tools_objects(App &a) {
     a.scene_selection_serial++;
   }
   tool_sep();
+  mesh_tool_buttons(a); // import, analyse and repair (panel_mesh.cpp)
+  tool_sep();
   ImGui::TextDisabled("%d objects", (int)sc.objects.size());
 }
 

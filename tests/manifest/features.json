@@ -809,6 +809,46 @@
       "description": "Viewports are a set of up to 8 windows rather than a count of 1-6: add, close, split right/down and arrange 1-8 cells without rebuilding the layout, each view closable from its own tab, the last one never closable; arrange_views/add_view/close_view ops",
       "test_file": "test_layout.cpp",
       "test_symbol": "test_never_zero_viewports"
+    },
+    {
+      "id": "mesh.analysis",
+      "area": "engine",
+      "phase": "29",
+      "description": "Mesh diagnosis ported from Meshwright (MIT): 11 checks - open holes and boundary loops, non-manifold edges, face winding, inside-out normals, degenerate and duplicate faces, duplicate and unused vertices, slivers, separate shells, unusual scale - each with a count, a severity and sampled locations, plus volume, area, Euler number, genus, bounds and a 0-100 readiness score with a verdict",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_healthy_cube"
+    },
+    {
+      "id": "mesh.repair",
+      "area": "engine",
+      "phase": "29",
+      "description": "Staged mesh repair: junk geometry, welding, winding, inside-out flip and hole filling by boundary loop, repeated until the mesh stops changing then re-analysed from scratch, with a before/after table; small-shell removal is opt-in and never deletes every shell",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_hole_is_found_and_closed"
+    },
+    {
+      "id": "mesh.reduce",
+      "area": "engine",
+      "phase": "29",
+      "description": "Quadric edge-collapse decimation to a triangle target (Vue's Decimate, p306), with the worst surface deviation measured against the original by point-to-triangle distance rather than estimated",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_reduce"
+    },
+    {
+      "id": "mesh.io",
+      "area": "engine",
+      "phase": "29",
+      "description": "Mesh file formats written by hand with no dependency: OBJ, STL (binary and ascii), PLY (ascii and binary little-endian) and OFF, read and written, polygons fanned to triangles on load",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_file_round_trip"
+    },
+    {
+      "id": "mesh.tools_panel",
+      "area": "studio",
+      "phase": "29",
+      "description": "Mesh Tools panel and the Objects tool row: import, analyse, repair, reduce, split into shells and export, with issue locations marked in the viewport, a file-units selector, a measured repair report and an export that warns when the mesh is not a closed solid; import_mesh/mesh_analyse/mesh_repair/mesh_reduce/mesh_split/mesh_export ops and MCP tools",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_solidity_warns"
     }
   ]
 }

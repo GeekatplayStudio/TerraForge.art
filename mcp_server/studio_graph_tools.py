@@ -100,6 +100,55 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "opacity, blend mode and environment constraints.",
         "params": {"panel": "str", "visible": "bool"},
     },
+    "studio_import_mesh": {
+        "description": "Import a mesh file (OBJ, STL, PLY or OFF) as a scene "
+                       "object and analyse it immediately. The file's own "
+                       "coordinates are kept - the object is placed and sized "
+                       "by its transform - so measurements stay true to the "
+                       "file.",
+        "params": {"path": "str"},
+    },
+    "studio_mesh_analyse": {
+        "description": "Diagnose the selected mesh object: open holes, "
+                       "boundary edges, non-manifold edges, face winding, "
+                       "inside-out normals, degenerate and duplicate faces, "
+                       "duplicate and unused vertices, sliver triangles, "
+                       "separate shells and unusual scale - with a 0-100 "
+                       "readiness score, a verdict, and a location for each "
+                       "issue. Volume, area, genus and size come with it.",
+        "params": {},
+    },
+    "studio_mesh_repair": {
+        "description": "Repair the selected mesh: remove degenerate and "
+                       "duplicate geometry, weld split vertices, unify "
+                       "winding, turn an inside-out mesh outward, and fill "
+                       "holes - repeated until the mesh stops changing, then "
+                       "re-analysed so the report is measured on the result "
+                       "rather than predicted. Undoable.",
+        "params": {"fill_holes": "bool", "drop_small_shells": "bool",
+                   "passes": "int", "max_hole_edges": "int"},
+    },
+    "studio_mesh_reduce": {
+        "description": "Reduce the selected mesh to a triangle count by "
+                       "quadric edge collapse, reporting the largest surface "
+                       "deviation it measured. Give faces (an absolute "
+                       "target) or fraction (0-1).",
+        "params": {"faces": "int", "fraction": "float"},
+    },
+    "studio_mesh_split": {
+        "description": "Split the selected mesh into one object per "
+                       "disconnected shell, so a multi-part model can be "
+                       "checked and printed piece by piece.",
+        "params": {},
+    },
+    "studio_mesh_export": {
+        "description": "Write the selected mesh to STL, OBJ, PLY or OFF. "
+                       "Says on the status line when the file is not a closed "
+                       "solid - an open surface slices as a single-wall shell "
+                       "with no infill. apply_transform writes it where it "
+                       "sits in the world.",
+        "params": {"path": "str", "ascii": "bool", "apply_transform": "bool"},
+    },
     "studio_arrange_views": {
         "description": "Rearrange the 3D viewport area into 1-8 cells "
                        "(2 side by side, quad 2x2, 3x2 and so on). Only the "
@@ -321,6 +370,12 @@ _SIMPLE = {
     "studio_set_workspace": "set_workspace",
     "studio_show_panel": "show_panel",
     "studio_set_viewport": "set_viewport",
+    "studio_import_mesh": "import_mesh",
+    "studio_mesh_analyse": "mesh_analyse",
+    "studio_mesh_repair": "mesh_repair",
+    "studio_mesh_reduce": "mesh_reduce",
+    "studio_mesh_split": "mesh_split",
+    "studio_mesh_export": "mesh_export",
     "studio_arrange_views": "arrange_views",
     "studio_add_view": "add_view",
     "studio_close_view": "close_view",

@@ -217,6 +217,38 @@ wanted his students to have.
   goes can say that the grass is rougher than the rock and has a finer grain.
   An unconnected channel leaves that part of the shading alone.
 
+### Meshes: import, analyse, repair, reduce, export
+- **Bring a model in:** OBJ, STL (binary and ascii), PLY and OFF, read and
+  written by hand with no dependency. The file's own coordinates are kept
+  and the object is placed and sized by its transform, so a millimetre in
+  the file is still a millimetre in the report.
+- **Know what is wrong with it.** Eleven checks, each with a count, a
+  severity and *where it is on the model*: open holes and their boundary
+  loops, non-manifold edges, inconsistent winding, inside-out normals,
+  degenerate and duplicate triangles, duplicate and unused vertices, sliver
+  triangles, separate shells, unusual scale - with volume, surface area,
+  Euler number, genus and size, a **0-100 readiness score** and a verdict.
+  Click an issue and the spots are marked in the viewport.
+- **Repair, measured.** Junk geometry, welding, winding, the inside-out
+  flip and hole filling, repeated until the mesh stops changing - then
+  **re-analysed from scratch**, so the before/after table is measured on
+  the repaired mesh rather than predicted from the operations that ran.
+  Undoable like everything else.
+- **Reduce** by quadric edge collapse to a triangle target (Vue's Decimate),
+  reporting the largest surface deviation it *measured* against the
+  original, in millimetres and as a fraction of the model.
+- **Split** a multi-part model into one object per shell; **export** to STL,
+  OBJ, PLY or OFF - and it says on the way out when the mesh is not a closed
+  solid, because an open surface slices as a single-wall shell with no
+  infill however the slicer is set.
+- Objects ▸ *import mesh · analyse · repair · mesh tools*, or the whole set
+  from a script: `import_mesh`, `mesh_analyse`, `mesh_repair`,
+  `mesh_reduce`, `mesh_split`, `mesh_export`.
+- This is [Meshwright](https://github.com/GeekatplayStudio/Meshwright)
+  (Geekatplay Studio, MIT) ported from Python to C++ and rebuilt in the
+  studio's own UI. Its GPL-licensed optional engines - MeshLab, MeshFix -
+  are deliberately not part of it; the stages here are written from scratch.
+
 ### Points, paths and scattering
 - **A third domain: point clouds.** ScatterPoints (random, jittered grid, or
   spaced), relaxation, mask filtering, merging, shuffling, values sampled

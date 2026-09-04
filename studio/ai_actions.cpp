@@ -309,6 +309,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       // without the lock — waiting on a running evaluation to change the
       // exposure would be a stall for nothing.
       int r = ai_layout_op(a, op, act, err);
+      if (r < 0) r = ai_mesh_op(a, op, act, err);
       if (r < 0) r = ai_view_op(a, op, act, err);
       if (r < 0) {
         // node-level graph editing lives in ai_ops_graph.cpp; -1 means it did

@@ -54,6 +54,27 @@ each one was a bug we already paid for. Do not regress them.
     soon as a fifth viewport existed - two features resizing one FBO every
     frame.
 
+## Mesh module
+
+1. **An imported file's coordinates are never rewritten.** `scene_import_mesh`
+   places and sizes an object with its transform, never by moving vertices:
+   the whole value of a diagnosis is that a millimetre in the file is still a
+   millimetre in the report. What one file unit *means* is a user statement
+   (the panel's file-units selector), not something we infer and bake in.
+2. **A repair stage counts as a fix only if the diagnosis changed.** Every
+   operation in `engine/mesh_cleanup.cpp` returns how much it changed, and
+   `mesh_repair` re-analyses the result from scratch rather than predicting
+   it from the operations that ran. "Repaired ✓" with nothing behind it is
+   the thing this module exists to replace.
+3. **Never delete the user's whole model.** `mesh_drop_small_shells` refuses
+   when every shell is small, and hole filling skips loops longer than
+   `max_hole_edges` - a huge ring is a missing part, not a hole, and fanning
+   it makes a lid.
+4. **No GPL geometry libraries, ever** (the licence forbids it: see `LICENSE`).
+   Meshwright's optional MeshLab/MeshFix/QuadriFlow stages cannot ship here.
+   Where a stage is missing, the report says what is left over rather than
+   pretending.
+
 ## Performance rules
 
 1. **Never upload a GPU texture per frame.** Uploads are versioned

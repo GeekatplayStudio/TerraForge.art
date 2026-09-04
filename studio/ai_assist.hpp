@@ -35,6 +35,11 @@ int ai_graph_op(App &a, const std::string &op, const nlohmann::json &act,
 int ai_layout_op(App &a, const std::string &op, const nlohmann::json &act,
                  std::string &err);
 
+// Mesh diagnosis and repair (mesh_ops.cpp): import_mesh, mesh_analyse,
+// mesh_repair, mesh_reduce, mesh_export. Same return convention.
+int ai_mesh_op(App &a, const std::string &op, const nlohmann::json &act,
+               std::string &err);
+
 // Viewport and surface quality (ai_ops_view.cpp): subdivision, per-patch
 // culling, height scale, planetary radius, fractal relief, displacement
 // strength, shadows, exposure. Same return convention as ai_graph_op.

@@ -91,6 +91,7 @@ struct App {
   bool show_timeline = false;
   bool show_preview = true;
   bool show_material_editor = false;
+  bool show_mesh_tools = false;
   // animation transport
   float anim_start = 0.f, anim_end = 10.f;
   bool anim_playing = false, anim_loop = true;
@@ -195,6 +196,8 @@ void graph_focus_node(App &a, uint64_t node);
 // panels
 void draw_toolbar(App &a);       // row 1: the classic text menus
 void draw_workspace_bar(App &a); // row 2: which workflow
+void draw_panel_mesh(App &a);    // Mesh Tools: analyse, repair, reduce
+void mesh_tool_buttons(App &a);  // the same, on the Objects tool row
 void draw_tool_bar(App &a);      // row 3: the tools for that workflow
 void draw_global_tools(App &a);  // left column: tools common to every workflow
 void draw_panel_graph(App &a);

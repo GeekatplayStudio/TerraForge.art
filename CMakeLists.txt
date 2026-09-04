@@ -122,6 +122,12 @@ set(ENGINE_SOURCES
     engine/heightmap.cpp
     engine/attribute.cpp
     engine/animation.cpp
+    engine/mesh_analysis.cpp
+    engine/mesh_cleanup.cpp
+    engine/mesh_io.cpp
+    engine/mesh_reduce.cpp
+    engine/mesh_repair.cpp
+    engine/mesh_topology.cpp
     engine/node_graph.cpp
     engine/node_graph_eval.cpp
     engine/field_glsl_emitters_convert.cpp
@@ -208,6 +214,9 @@ set(STUDIO_SOURCES
     studio/app_eval.cpp
     studio/app_services.cpp
     studio/layout.cpp
+    studio/mesh_object.cpp
+    studio/mesh_ops.cpp
+    studio/panel_mesh.cpp
     studio/layout_record.cpp
     studio/layout_store.cpp
     studio/theme.cpp
@@ -438,6 +447,12 @@ target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# The mesh module: diagnosis, repair, reduction and the file formats, all of
+# it free of GL and of the node graph, so it tests in a console.
+add_executable(mesh_tests tests/cpp/test_mesh.cpp)
+target_link_libraries(mesh_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 # Saved window layouts: the record round-trip and the name sanitiser, with
 # no ImGui and no GL in the link (layout_record.cpp is the half without a UI).
 add_executable(layout_tests tests/cpp/test_layout.cpp studio/layout_record.cpp
@@ -468,6 +483,7 @@ add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
 add_test(NAME RenderTests COMMAND render_tests)
 add_test(NAME LayoutTests COMMAND layout_tests)
+add_test(NAME MeshTests COMMAND mesh_tests)
 
 
 
