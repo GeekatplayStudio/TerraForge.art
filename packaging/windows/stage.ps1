@@ -113,7 +113,8 @@ CopyTree "scripts" -Optional            # crash resolvers, fuzzer
 # five of them, and someone who opens the folder looking for the node reference
 # should see it, not a directory to go into.
 foreach ($doc in @("docs\NODES.md", "docs\DEVELOPER_GUIDE.md", "docs\INSTALL.md",
-                   "README.md", "LICENSE", "LICENSE.txt", "requirements.txt")) {
+                   "README.md", "LICENSE", "LICENSE.txt", "COMMERCIAL.md",
+                   "THIRD-PARTY-NOTICES.md", "requirements.txt")) {
     $src = Join-Path $Root $doc
     if (Test-Path $src) { Copy-Item $src (Join-Path $Destination (Split-Path $doc -Leaf)) -Force }
 }

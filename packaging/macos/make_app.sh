@@ -100,7 +100,7 @@ for tree in orchestrator mcp_server examples; do
   [ -d "$root/$tree" ] && cp -R "$root/$tree" "$app/Contents/Resources/"
 done
 cp -R "$root/studio/resources" "$app/Contents/Resources/resources"
-for doc in README.md LICENSE requirements.txt docs/NODES.md docs/INSTALL.md; do
+for doc in README.md LICENSE COMMERCIAL.md THIRD-PARTY-NOTICES.md requirements.txt docs/NODES.md docs/INSTALL.md; do
   [ -f "$root/$doc" ] && cp "$root/$doc" "$app/Contents/Resources/"
 done
 find "$app" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true

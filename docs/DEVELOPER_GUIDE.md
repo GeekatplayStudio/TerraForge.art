@@ -7,9 +7,19 @@ that keep it fast, deterministic and pleasant to use. Read this first, then
 paid for — then [PROJECT_REFERENCE_MAP.md](../PROJECT_REFERENCE_MAP.md)
 for the file-by-file map, and then the code.
 
-TerraForge is 100 % open source (see [LICENSE](../LICENSE)). Contributions
-of any size are welcome: a node, a fix, a benchmark, a screenshot of
-something that looks wrong.
+TerraForge's source is public, readable and forkable, and it is free for
+noncommercial use under the [PolyForm Noncommercial License 1.0.0](../LICENSE);
+commercial use needs a paid licence ([COMMERCIAL.md](../COMMERCIAL.md)). That
+one restriction is why we call it *source-available* rather than open source.
+Contributions of any size are welcome: a node, a fix, a benchmark, a
+screenshot of something that looks wrong. By contributing you agree that your
+contribution ships under the same terms, including the commercial licence
+Geekatplay Studio grants to paying users.
+
+No GPL or LGPL code may be added — copyleft requires granting downstream
+users commercial freedom that this licence does not grant. Permissive only
+(MIT, BSD, Apache-2.0, zlib, MPL-2.0, CC0), listed in
+[THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) in the same commit.
 
 ---
 

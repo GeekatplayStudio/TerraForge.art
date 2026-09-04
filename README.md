@@ -568,8 +568,25 @@ same action schema, so a change is undoable no matter which one made it.
 
 ## License
 
-Copyright © Geekatplay Studio. All rights reserved.
+Copyright © Geekatplay Studio.
 
-Third-party dependencies are fetched at build time and remain under their own
-licenses (Dear ImGui, GLFW, GLM, imgui-node-editor, GLAD, miniz,
-nlohmann/json, stb). Downloaded material libraries are CC0.
+TerraForge is **free for noncommercial use** under the
+[PolyForm Noncommercial License 1.0.0](LICENSE) — use it, modify it, share
+it, fork it. Students, hobbyists, teachers, schools, nonprofits, public
+research and government bodies are free by name in the licence.
+
+**Commercial use needs a paid licence.** Client work, production, selling
+what you make, or use inside a for-profit company — see
+[COMMERCIAL.md](COMMERCIAL.md) for where the line sits and how to get one.
+
+**Whatever you make with it is yours.** The licence covers the software, not
+your terrains, renders, exports or scenes.
+
+The source is public, readable and forkable, so TerraForge is
+*source-available* rather than open source in the formal sense — the one
+restriction is commercial use.
+
+Third-party dependencies keep their own permissive licences (Dear ImGui,
+GLFW, GLM, imgui-node-editor, glad, miniz, nlohmann/json, stb) — see
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Downloaded material
+libraries are CC0.

@@ -8,9 +8,10 @@ for Facebook, X and group posts.
 
 ## Long (README)
 
-**Geekatplay TerraForge** is a free, open-source, node-based studio for
-building 3D terrains, planets and the environments around them — the kind of
-work people do in Terragen, Vue, Gaea or World Machine — as a single native
+**Geekatplay TerraForge** is a node-based studio — free for noncommercial use,
+source in the open — for building 3D terrains, planets and the environments
+around them — the kind of work people do in Terragen, Vue, Gaea or World
+Machine — as a single native
 C++ application with no web stack, no cloud account and nothing that phones
 home.
 
@@ -80,9 +81,10 @@ https://github.com/GeekatplayStudio/TerraForge.art
 
 ## Medium (forums / Reddit / Discord)
 
-I've been building **Geekatplay TerraForge**, a free open-source node-based
-terrain and environment studio — think Terragen/Vue/Gaea territory, as one
-native C++ app, no cloud, no account.
+I've been building **Geekatplay TerraForge**, a node-based terrain and
+environment studio, free for noncommercial use with the source in the open —
+think Terragen/Vue/Gaea territory, as one native C++ app, no cloud, no
+account.
 
 What's in it now: ~180 nodes over two domains (heightmap/texture/points for
 erosion and masks, plus resolution-independent "field" functions that
@@ -117,9 +119,10 @@ wrong. Repo: https://github.com/GeekatplayStudio/TerraForge.art
 
 ## Short (Facebook / X / groups)
 
-Geekatplay TerraForge — a free, open-source node-based terrain & planet
-studio (Terragen/Vue-style), native C++, no cloud. Deterministic erosion
-that also outputs material masks, Vue-class fractals, planets from 1 m to
+Geekatplay TerraForge — a node-based terrain & planet studio
+(Terragen/Vue-style), native C++, no cloud, free for noncommercial use.
+Deterministic erosion that also outputs material masks, Vue-class fractals,
+planets from 1 m to
 Earth, PBR materials, clouds, cameras, scattering, timeline. Fast PBR
 viewport + final renders in Mitsuba 3, Cycles or LuxCore. Local-AI
 assistant in every panel and a full API/MCP so scripts and agents can build

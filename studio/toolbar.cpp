@@ -410,6 +410,12 @@ static void about_dialog() {
     ImGui::TextDisabled("%d node types registered",
                         (int)gpx::NodeRegistry::instance().all().size());
     ImGui::Spacing();
+    // the licence belongs where a user can find it without the repository:
+    // free for noncommercial work, paid for production
+    ImGui::TextDisabled("Free for noncommercial use");
+    ImGui::TextDisabled("PolyForm Noncommercial 1.0.0 \xC2\xB7 see LICENSE");
+    ImGui::TextDisabled("Commercial licence: COMMERCIAL.md");
+    ImGui::Spacing();
     if (ImGui::Button("Close", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
     ImGui::EndPopup();
   }
