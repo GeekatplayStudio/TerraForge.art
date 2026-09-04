@@ -5,11 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TerraForge — node-based 3D terrain and environment studio</title>
 <meta name="description" content="TerraForge builds photoreal landscapes from a node graph: simulated erosion, photoscanned materials placed by that erosion, volumetric sky, water and path-traced rendering. Native C++, real-time OpenGL, Windows and macOS.">
-<link rel="icon" href="images/hero.jpg">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="images/icon_256.png">
+<link rel="apple-touch-icon" href="images/icon_256.png">
+<meta name="theme-color" content="#16171a">
 <meta property="og:title" content="TerraForge — node-based 3D terrain studio">
 <meta property="og:description" content="Photoreal landscapes from a node graph. Erosion decides where the rock, scree, soil, grass and snow go.">
+<!-- A relative og:image works when the page is opened directly and for most
+     scrapers on a plain host; scripts/make_site.py rewrites these to absolute
+     URLs when it is given --base-url, which is what social cards need. -->
 <meta property="og:image" content="images/hero.jpg">
 <meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   /* Same visual language as the application: flat, zero rounding, dark grey
      with a dim orange accent. A marketing page that looks nothing like the
@@ -94,9 +101,19 @@
   footer { padding: 42px 0 64px; color: var(--dim); font-size: 14px; }
   footer a { color: var(--dim); text-decoration: underline; }
 
-  @media (max-width: 640px) {
+  @media (max-width: 760px) {
     header nav { display: none; }
     section { padding: 48px 0; }
+    /* On a narrow screen the hero copy is taller than a 16:9 image, so
+       overlaying it clips the headline at the top and spills the paragraph
+       over the bottom edge. Below this width the two simply stack. */
+    /* keeps .wrap's 24px side gutters - a bare `padding: 26px 0` here is what
+       first pushed the headline flush against the screen edge */
+    .hero .copy { position: static; padding: 26px 24px 40px; }
+    .hero .shade { display: none; }
+    .hero img { aspect-ratio: 3/2; }
+    .hero h1 { font-size: 34px; }
+    .hero p { font-size: 16px; }
   }
 </style>
 </head>
