@@ -152,6 +152,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_erosion_slope.cpp
     engine/nodes/nodes_erosion_wind.cpp
     engine/nodes/nodes_erosion_layers.cpp
+    engine/nodes/nodes_material_layers.cpp
     engine/nodes/nodes_operators.cpp
     engine/nodes/nodes_masks.cpp
     engine/nodes/nodes_points.cpp
@@ -257,6 +258,8 @@ set(STUDIO_SOURCES
     studio/panel_environment.cpp
     studio/panel_ai.cpp
     studio/panel_materials.cpp
+    studio/panel_material_editor.cpp
+    studio/material_stack_ops.cpp
     studio/panel_scene.cpp
     studio/panel_console.cpp
     studio/panel_timeline.cpp
@@ -388,6 +391,8 @@ target_link_libraries(engine_tests PRIVATE
 add_executable(undo_tests
     tests/cpp/test_undo.cpp
     tests/cpp/test_undo_render.cpp
+    tests/cpp/test_material_stack_ops.cpp
+    studio/material_stack_ops.cpp
     studio/undo.cpp
     studio/project_io.cpp
     studio/node_library.cpp

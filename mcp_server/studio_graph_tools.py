@@ -91,6 +91,15 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "offers.",
         "params": {"workspace": "int|str"},
     },
+    "studio_show_panel": {
+        "description": "Open or close one of the studio's dockable panels: "
+                       "Library, Nodes, Properties, Viewport, Toolbar, "
+                       "Console, Timeline, Preview, or Material Editor. The "
+                       "Material Editor shows the selected object's material "
+                       "as a layer stack, top layer first, with each layer's "
+                       "opacity, blend mode and environment constraints.",
+        "params": {"panel": "str", "visible": "bool"},
+    },
     "studio_set_viewport": {
         "description": "How the terrain surface is drawn: adaptive "
                        "subdivision (tessellation, tess_pixels, tess_min, "
@@ -265,6 +274,7 @@ _SIMPLE = {
     "studio_view_node": "view_node",
     "studio_select_node": "select_node",
     "studio_set_workspace": "set_workspace",
+    "studio_show_panel": "show_panel",
     "studio_set_viewport": "set_viewport",
     "studio_capture": "capture",
     "studio_evaluate": "evaluate",

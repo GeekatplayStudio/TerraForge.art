@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 230 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 232 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -26,7 +26,7 @@ Every node in Geekatplay TerraForge — 230 across 31 categories. Generated from
 | [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 14 |
-| [Material](#material) | 20 |
+| [Material](#material) | 22 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
@@ -2487,6 +2487,32 @@ Solid color material (procedural function + color)
 | Green | float, 0 to 1, default 0.45 |  |
 | Blue | float, 0 to 1, default 0.4 |  |
 
+### FractalColor
+
+A fractal through a colour map: RGBA texture out, and the same pattern as a mask
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| warp | in (optional) | heightmap |
+| mask | in (optional) | heightmap |
+| texture | out | texture |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Seed | seed |  |
+| Base noise | choice: Perlin / Value / Cellular / Cell edges / Grainy |  |
+| Wavelength | float, 0.005 to 2, default 0.25 | Size of the largest feature, in tile widths. |
+| Iterations | int, 1 to 16, default 8 |  |
+| Roughness | float, 0 to 2, default 1 | 1 keeps the same detail at every scale. Lower is smoother, higher is grittier. |
+| Gain | float, 0.2 to 6, default 1 |  |
+| Distortion | float, 0 to 1, default 0 | Smears the sampling position with a low-frequency noise, which breaks up the lattice the noise sits on. |
+| Shape | choice: Plain / Ridges / Billows / Ridge mix / Billow/ridge mix |  |
+| Warp by input | float, 0 to 2, default 0.3 | How far the warp input displaces the sample position. |
+| Bias | float, 0.01 to 0.99, default 0.5 | Moves the midpoint of the pattern: below 0.5 the colour map's left end takes more of the surface. |
+| Gain | float, 0.01 to 0.99, default 0.5 | Pushes values away from the middle. High values give hard-edged patches rather than a smooth wash. |
+| Colour map | gradient | Colour and alpha both come from here. A stop's alpha becomes the texture's alpha, so one fractal can decide a layer's look and its presence at the same time. |
+
 ### GradientMap
 
 Recolor a texture through a gradient by luminance
@@ -2533,6 +2559,48 @@ Grayscale mask or heightmap as a texture channel
 | Normalize | toggle, default on |  |
 | Scale | float, 0 to 2, default 1 |  |
 | Offset | float, -1 to 1, default 0 |  |
+
+### MaterialLayer
+
+One layer of a material stack: its own maps, its own mask, and its own reaction to altitude, slope and orientation
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| below albedo | in (optional) | texture |
+| below normal | in (optional) | texture |
+| below rough | in (optional) | texture |
+| albedo | in (optional) | texture |
+| normal | in (optional) | texture |
+| roughness | in (optional) | texture |
+| mask | in (optional) | heightmap |
+| terrain | in (optional) | heightmap |
+| albedo | out | texture |
+| normal | out | texture |
+| roughness | out | texture |
+| presence | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text |  |
+| Visible | toggle, default on |  |
+| Opacity | float, 0 to 1, default 1 | Overall presence of the layer, within whatever the environment constraints below already allow. It cannot put the layer anywhere they exclude. |
+| Blend | choice: Normal / Cover / Colour only / Add / Multiply | Normal: ordinary alpha-over. Cover: colour switches without a ramp, only the normal transitions, so the layer reads as sitting on top. Colour only: takes colour from here, everything else from below. |
+| Invert mask | toggle, default off |  |
+| Roughness | float, 0 to 1, default 0.8 | Used where this layer has no roughness map connected. |
+| Add to normals below | float, 0 to 1, default 1 | 1: this layer's relief adds to the layer beneath, the way lichen sits on rock. 0: it replaces it, the way snow flattens what it covers. |
+| By altitude | toggle, default off |  |
+| Altitude band | range | As a fraction of the terrain's own height range. |
+| Fade | float, 0 to 0.5, default 0.08 |  |
+| By slope | toggle, default off |  |
+| Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
+| Fade | float, 0 to 45, default 6 |  |
+| By orientation | toggle, default off |  |
+| Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards, in degrees. 0 is north. North faces hold snow; south faces dry out. |
+| Arc | float, 5 to 180, default 60 | How far either side of that direction still counts. |
+| Fade | float, 0 to 90, default 20 |  |
+| Tiling | float, 0.05 to 64, default 1 | How many times this layer's own maps repeat across the terrain. Does not affect the mask or the constraints. |
+| Offset | x/y pair |  |
+| Rotation | float, -180 to 180, default 0 |  |
 
 ### MaterialOutput
 

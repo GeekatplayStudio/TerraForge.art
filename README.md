@@ -47,6 +47,8 @@ one-click installer to building it yourself.
 generated from the registry itself.
 **[Developer guide](docs/DEVELOPER_GUIDE.md)** — goals, roadmap, architecture
 and how we work, for anyone who wants to join.
+**[Layered materials](docs/MATERIAL_LAYERS.md)** — how a material stacks,
+what decides where each layer shows, and what was taken from Vue.
 **[Community posts](docs/COMMUNITY_POSTS.md)** — the project in three lengths.
 
 ## Who is building it

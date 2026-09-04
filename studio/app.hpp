@@ -90,6 +90,7 @@ struct App {
   bool show_console = true;
   bool show_timeline = false;
   bool show_preview = true;
+  bool show_material_editor = false;
   // animation transport
   float anim_start = 0.f, anim_end = 10.f;
   bool anim_playing = false, anim_loop = true;
@@ -208,6 +209,11 @@ void render_cancel();
 // own atmosphere/cloud/water/shadow switches and quality, independent of
 // what the working viewports are showing - plus the final engine's result.
 void draw_panel_preview(App &a);
+// The layer stack of the selected object's material, shown the
+// way an image editor shows layers. A second view of the same
+// MaterialLayer nodes, not a separate store.
+void draw_panel_material_editor(App &a);
+bool draw_attribute(gpx::Attribute &at);
 void draw_panel_timeline(App &a);
 void scene_rebuild_scatter_instances(App &a);
 // per-frame services (app_services.cpp)

@@ -137,6 +137,7 @@ void run_main() {
     draw_console(a);
     draw_panel_timeline(a);
     if (a.show_properties) draw_panel_properties(a);
+    draw_panel_material_editor(a);
     // apply material maps from the graph to the renderer
     {
       std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);

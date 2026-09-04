@@ -3182,6 +3182,145 @@ static void test_material_stack() {
   CHECK(p[1] > 0.95f, "and takes it almost entirely");
 }
 
+// A layer stack is only worth having if a layer can be absent. These check the
+// three ways it decides that - opacity, a mask, and the terrain's own shape -
+// and that what is underneath shows through where it is.
+static void test_material_layers() {
+  std::printf("material layers...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+
+  // a ramp terrain: height rises with y, so altitude and slope are known
+  gpx::Node *ter = g.add_node("Constant");
+  ter->attrs.find("value")->f = 0.f;
+  CHECK(g.evaluate(), "seed graph evaluates");
+  {
+    gpx::Heightmap *h = ter->port("output", gpx::PortDir::Out)->hmap.get();
+    for (int y = 0; y < h->h; ++y)
+      for (int x = 0; x < h->w; ++x) h->at(x, y) = y / float(h->h - 1);
+  }
+
+  gpx::Node *red = g.add_node("FlatColor");
+  red->attrs.find("r")->f = 1.f;
+  red->attrs.find("g")->f = 0.f;
+  red->attrs.find("b")->f = 0.f;
+  gpx::Node *grn = g.add_node("FlatColor");
+  grn->attrs.find("r")->f = 0.f;
+  grn->attrs.find("g")->f = 1.f;
+  grn->attrs.find("b")->f = 0.f;
+
+  gpx::Node *base = g.add_node("MaterialLayer");
+  gpx::Node *top = g.add_node("MaterialLayer");
+  g.add_link(red->id, "texture", base->id, "albedo");
+  g.add_link(base->id, "albedo", top->id, "below albedo");
+  g.add_link(base->id, "roughness", top->id, "below rough");
+  g.add_link(grn->id, "texture", top->id, "albedo");
+  // deliberately not linking the terrain yet: the ramp above would be
+  // recomputed away by Constant on the next evaluate
+
+  CHECK(g.evaluate(), "layer chain evaluates");
+  const gpx::TextureRGBA *out = top->port("albedo", gpx::PortDir::Out)->tex.get();
+  CHECK(out && !out->empty(), "the stack produces an albedo");
+  CHECK(out->px(5, 5)[1] > 0.99f && out->px(5, 5)[0] < 0.01f,
+        "a fully present top layer hides the one below it");
+
+  // opacity is a straight alpha-over, so half of each
+  top->attrs.find("opacity")->f = 0.5f;
+  g.mark_dirty(top->id);
+  g.evaluate();
+  out = top->port("albedo", gpx::PortDir::Out)->tex.get();
+  CHECK(std::fabs(out->px(5, 5)[0] - 0.5f) < 1e-3f &&
+            std::fabs(out->px(5, 5)[1] - 0.5f) < 1e-3f,
+        "opacity mixes the layer with what is below");
+
+  // invisible means the layer contributes nothing at all
+  top->attrs.find("opacity")->f = 1.f;
+  top->attrs.find("enabled")->b = false;
+  g.mark_dirty(top->id);
+  g.evaluate();
+  out = top->port("albedo", gpx::PortDir::Out)->tex.get();
+  CHECK(out->px(5, 5)[0] > 0.99f && out->px(5, 5)[1] < 0.01f,
+        "a hidden layer falls through to the one below");
+  const gpx::Heightmap *pz = top->port("presence", gpx::PortDir::Out)->hmap.get();
+  CHECK(pz && pz->at(5, 5) == 0.f, "and reports zero presence");
+  top->attrs.find("enabled")->b = true;
+
+  // altitude: keep the top layer to the upper half of the ramp. The terrain
+  // is wired last so its ramp survives into the layer's evaluation.
+  gpx::Node *ramp = g.add_node("Noise");
+  g.add_link(ramp->id, "output", top->id, "terrain");
+  g.evaluate();
+  {
+    gpx::Heightmap *h = ramp->port("output", gpx::PortDir::Out)->hmap.get();
+    for (int y = 0; y < h->h; ++y)
+      for (int x = 0; x < h->w; ++x) h->at(x, y) = y / float(h->h - 1);
+    ramp->dirty = false; // hold the ramp; only the layer needs recomputing
+  }
+  top->attrs.find("use_altitude")->b = true;
+  top->attrs.find("altitude")->v2[0] = 0.6f; // band low
+  top->attrs.find("altitude")->v2[1] = 1.f;  // band high
+  top->attrs.find("altitude_fuzz")->f = 0.f;
+  top->dirty = true;
+  g.evaluate();
+  out = top->port("albedo", gpx::PortDir::Out)->tex.get();
+  int lo = out->h / 8, hi = out->h * 7 / 8;
+  CHECK(out->px(5, lo)[0] > 0.9f, "below the altitude band the layer is absent");
+  CHECK(out->px(5, hi)[1] > 0.9f, "inside it the layer shows");
+}
+
+// Vue's procedural colour: a fractal, a filter, then a colour map that hands
+// back colour and alpha together. The alpha is the half that makes it useful
+// as a layer mask, so it has to actually vary.
+static void test_fractal_color() {
+  std::printf("fractal colour...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+  gpx::Node *fc = g.add_node("FractalColor");
+  CHECK(g.evaluate(), "fractal colour evaluates");
+  const gpx::TextureRGBA *t = fc->port("texture", gpx::PortDir::Out)->tex.get();
+  const gpx::Heightmap *m = fc->port("mask", gpx::PortDir::Out)->hmap.get();
+  CHECK(t && !t->empty() && m && !m->empty(), "texture and mask produced");
+
+  float mn = 1e30f, mx = -1e30f;
+  bool finite = true;
+  for (int y = 0; y < t->h; ++y)
+    for (int x = 0; x < t->w; ++x) {
+      const float *p = t->px(x, y);
+      for (int c = 0; c < 3; ++c) {
+        finite = finite && std::isfinite(p[c]);
+        mn = std::min(mn, p[c]);
+        mx = std::max(mx, p[c]);
+      }
+    }
+  CHECK(finite, "every colour is finite");
+  CHECK(mx - mn > 0.05f, "the gradient actually varies across the fractal");
+
+  // the mask output must be the gradient's alpha, not a second pattern
+  bool same = true;
+  for (int y = 0; y < t->h && same; y += 7)
+    for (int x = 0; x < t->w && same; x += 7)
+      same = std::fabs(t->px(x, y)[3] - m->at(x, y)) < 1e-6f;
+  CHECK(same, "the mask output is the colour map's alpha");
+
+  // a gradient whose alpha ramps gives a mask that ramps with it
+  gpx::Attribute *ga = fc->attrs.find("gradient");
+  ga->stops = {{0.f, 0.1f, 0.1f, 0.1f, 0.f}, {1.f, 0.9f, 0.9f, 0.9f, 1.f}};
+  fc->dirty = true;
+  g.evaluate();
+  m = fc->port("mask", gpx::PortDir::Out)->hmap.get();
+  float amn = 1e30f, amx = -1e30f;
+  for (float v : m->v) { amn = std::min(amn, v); amx = std::max(amx, v); }
+  CHECK(amn < 0.3f && amx > 0.7f,
+        "an alpha ramp in the colour map reaches both ends of the mask");
+
+  // determinism: the same seed must give the same image
+  std::vector<float> keep = m->v;
+  fc->dirty = true;
+  g.evaluate();
+  CHECK(fc->port("mask", gpx::PortDir::Out)->hmap->v == keep,
+        "fractal colour is bit-identical across computes");
+}
+
 static void test_quilt() {
   std::printf("quilting...\n");
   gpx::Graph g;
@@ -4365,6 +4504,8 @@ int main() {
   test_buffer_budget();
   test_erosion_layers();
   test_material_stack();
+  test_material_layers();
+  test_fractal_color();
   test_vue_fractals();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");

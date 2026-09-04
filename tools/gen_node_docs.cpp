@@ -83,7 +83,10 @@ int main() {
     if (n) by_cat[n->category].push_back(n);
   }
 
-  std::ofstream f("docs/NODES.md");
+  // Binary, so the newline stays LF on every platform. Text mode on Windows
+  // turns each one into CRLF, and because .gitattributes leaves this file
+  // alone that shows up as an 8000-line diff for a two-node change.
+  std::ofstream f("docs/NODES.md", std::ios::binary);
   if (!f) {
     std::fprintf(stderr, "cannot write docs/NODES.md (run from the repo root)\n");
     return 1;

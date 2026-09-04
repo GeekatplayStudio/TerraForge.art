@@ -4,10 +4,44 @@
 // branch, or a colour graph renders differently on the GPU for no visible
 // reason (AGENTS.md, node framework rule 9).
 #pragma once
+#include "attribute.hpp"
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace gpx {
+
+// A colour gradient sampled at t. Stops are assumed sorted by t (add_gradient
+// sorts them); outside the first and last stop the end colour is held. The
+// alpha channel travels with the colour, which is what lets one fractal decide
+// both what a material layer looks like and where it is present at all.
+inline void eval_gradient(const std::vector<GradientStop> &stops, float t,
+                          float *rgba) {
+  if (stops.empty()) {
+    rgba[0] = rgba[1] = rgba[2] = t;
+    rgba[3] = 1.f;
+    return;
+  }
+  if (t <= stops.front().t) {
+    const GradientStop &s = stops.front();
+    rgba[0] = s.r; rgba[1] = s.g; rgba[2] = s.b; rgba[3] = s.a;
+    return;
+  }
+  for (size_t i = 0; i + 1 < stops.size(); ++i) {
+    const GradientStop &a = stops[i], &b = stops[i + 1];
+    if (t <= b.t) {
+      float f = (t - a.t) / std::max(b.t - a.t, 1e-6f);
+      rgba[0] = a.r + (b.r - a.r) * f;
+      rgba[1] = a.g + (b.g - a.g) * f;
+      rgba[2] = a.b + (b.b - a.b) * f;
+      rgba[3] = a.a + (b.a - a.a) * f;
+      return;
+    }
+  }
+  const GradientStop &s = stops.back();
+  rgba[0] = s.r; rgba[1] = s.g; rgba[2] = s.b; rgba[3] = s.a;
+}
+
 
 inline float luminance_rgb(const float *c) {
   return 0.299f * c[0] + 0.587f * c[1] + 0.114f * c[2];

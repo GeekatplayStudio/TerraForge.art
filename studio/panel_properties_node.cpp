@@ -124,7 +124,9 @@ static bool scalar_int(const char *id, int *v, int mn, int mx) {
   return changed;
 }
 
-static bool draw_attribute(gpx::Attribute &at) {
+// Also used by the Material Editor, which shows one layer's settings
+// with the same widgets the Properties editor uses for any node.
+bool draw_attribute(gpx::Attribute &at) {
   bool changed = false;
   ImGui::PushID(at.key.c_str());
   const float label_w = 130.f;

@@ -3,34 +3,9 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
+#include "gpx/color_math.hpp"
 
 namespace gpx {
-
-static void eval_gradient(const std::vector<GradientStop> &stops, float t, float *rgba) {
-  if (stops.empty()) {
-    rgba[0] = rgba[1] = rgba[2] = t;
-    rgba[3] = 1;
-    return;
-  }
-  if (t <= stops.front().t) {
-    const auto &s = stops.front();
-    rgba[0] = s.r; rgba[1] = s.g; rgba[2] = s.b; rgba[3] = s.a;
-    return;
-  }
-  for (size_t i = 0; i + 1 < stops.size(); ++i) {
-    const auto &a = stops[i], &b = stops[i + 1];
-    if (t <= b.t) {
-      float f = (t - a.t) / std::max(b.t - a.t, 1e-6f);
-      rgba[0] = a.r + (b.r - a.r) * f;
-      rgba[1] = a.g + (b.g - a.g) * f;
-      rgba[2] = a.b + (b.b - a.b) * f;
-      rgba[3] = a.a + (b.a - a.a) * f;
-      return;
-    }
-  }
-  const auto &s = stops.back();
-  rgba[0] = s.r; rgba[1] = s.g; rgba[2] = s.b; rgba[3] = s.a;
-}
 
 REGISTER_NODE(
     ColorizeGradient, "Texture", "Map height to a color gradient",

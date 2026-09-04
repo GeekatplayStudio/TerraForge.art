@@ -67,6 +67,32 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  // Open or close one of the dockable panels by name. The Window menu does
+  // the same thing; having it as an op means a script, the assistant or a
+  // test can put a panel in front of the user without asking them to go
+  // hunting through a menu.
+  if (op == "show_panel") {
+    std::string want = act.value("panel", std::string());
+    for (auto &c : want) c = (char)tolower(c);
+    const bool on = act.value("visible", true);
+    struct Row { const char *key; bool *flag; };
+    const Row rows[] = {
+        {"library", &a.show_library},   {"nodes", &a.show_nodelist},
+        {"properties", &a.show_properties}, {"viewport", &a.show_viewport},
+        {"toolbar", &a.show_toolbar},   {"console", &a.show_console},
+        {"timeline", &a.show_timeline}, {"preview", &a.show_preview},
+        {"material editor", &a.show_material_editor},
+    };
+    for (const Row &r : rows)
+      if (want == r.key) {
+        *r.flag = on;
+        a.status = std::string(on ? "opened " : "closed ") + r.key;
+        return 1;
+      }
+    err = "show_panel: no panel called '" + want + "'";
+    return 0;
+  }
+
   if (op != "set_viewport") return -1;
   RenderSettings &rs = render_settings();
   int n = 0;
