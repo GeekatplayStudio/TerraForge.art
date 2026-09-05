@@ -31,6 +31,10 @@ extern float g_last_fovy; // camera_matrices writes; the planet pass reads
 
 // ------------------------------------------------------------ GL resources
 extern GLuint prog_terrain, prog_water, prog_sky, prog_depth;
+extern GLuint prog_depth_mesh;
+// renderer_shadow_meshes.cpp: meshes in the shadow map, and the key that
+// says whether any of them moved
+unsigned long long mesh_shadow_key();
 extern GLuint prog_lines, prog_bg, prog_mesh, prog_gizmo;
 extern GLuint prog_matprev;
 extern GLuint matprev_fbo, matprev_tex, matprev_depth;
@@ -203,6 +207,7 @@ struct FrameCtx {
 // gathers the scene's visible point lights into `prog`'s u_light uniforms
 void upload_scene_lights(unsigned prog, float hscale);
 void pass_shadow(const FrameCtx &F);
+void pass_shadow_meshes(const FrameCtx &F); // renderer_shadow_meshes.cpp
 void pass_sky(const FrameCtx &F);
 void pass_terrain(const FrameCtx &F);
 void pass_water(const FrameCtx &F);

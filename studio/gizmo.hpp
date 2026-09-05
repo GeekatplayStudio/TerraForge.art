@@ -33,7 +33,7 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
                   ImVec2 origin, int w, int h, bool view_hovered);
 
 // The deformer swatches and the Gizmos switch on the tool row (gizmo_tools.cpp).
-void gizmo_deform_tools(App &a, float h);
+void gizmo_deform_tools(App &a);
 
 // Paint it. Call late, so it lands over everything else in the view.
 void gizmo_draw(App &a, int slot, const RenderSettings::ViewConfig &vc,

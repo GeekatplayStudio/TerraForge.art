@@ -1,6 +1,7 @@
 // Geekatplay Studio — entry point: window, GL, ImGui docking shell
 #include "app.hpp"
 #include "prefs.hpp"
+#include "i18n.hpp"
 #include "console.hpp"
 #include "crash_log.hpp"
 #include "paths.hpp"
@@ -89,6 +90,7 @@ int main(int argc, char **argv) {
       studio::settings_path("geekatplay_studio_layout.ini").string();
   io.IniFilename = ini_path.c_str();
   studio::prefs_load();
+  studio::i18n_init(); // the interface language, from the preferences
   // The platform's own interface font, falling back to the built-in one.
   ImFont *ui_font = nullptr;
   if (std::string font = studio::ui_font_path(); !font.empty())

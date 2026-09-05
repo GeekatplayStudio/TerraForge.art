@@ -203,6 +203,30 @@ in both the Terrain and Materials workspaces.)";
       break;
   }
   s += R"(
+Animation (docs/ANIMATION.md). Nothing moves unless it has a key. A track is
+addressed by "object"+"prop" (pos, rot, scale, scl, color, visible,
+deform.twist/bend/shear/taper, light.intensity/radius/cone, cam.eye/target/
+focal_mm/aperture..., planet.*, surf.*; "comp":"x"|"y"|"z" for one axis), by
+"world" (sun_azimuth, sun_altitude, sun_intensity, sun_color, hour, exposure,
+fog_density, fog_level, water_level, cloud_coverage, cloud_wind_dir...), by
+"node"+"attr", or by "track" id from keys. Times: "frame" (or "time" seconds).
+- {"op":"set_key","object":"Rock","prop":"pos","frame":0,"value":[0.5,0.05,0.5]}
+- {"op":"set_key","object":"Rock","prop":"rot","comp":"y","frame":48,"value":180,"ease":"easy"}
+- {"op":"set_key","world":"sun_altitude","frame":0,"value":5,"interp":"linear"}
+- {"op":"set_key","node":"Noise","attr":"seed","frame":24,"value":3,"interp":"step"}
+- {"op":"remove_key",...same address...,"frame":48}   {"op":"remove_animation",...}
+- {"op":"keys"}  (every track and its keys, in the state's "reply")
+- {"op":"set_frame","frame":12}  {"op":"play"}  {"op":"play","playing":false}  {"op":"stop"}
+- {"op":"set_range","fps":30,"start":0,"end":120,"loop":"loop"|"once"|"pingpong","autokey":true}
+- {"op":"set_extrapolation","object":"Windmill","prop":"rot","mode":"cycle"|"cycle_offset"|"pingpong"|"linear"|"constant"}
+- {"op":"set_ease","object":"Rock","prop":"pos","ease":"easy"|"in"|"out"|"linear"|"hold"}
+- {"op":"set_expression","object":"Buoy","prop":"pos","comp":"y","expr":"value + sin(t*2)*0.02"}
+- {"op":"add_modifier","world":"sun_intensity","type":"noise"|"oscillator"|"offset"|"limit"|"smooth","amplitude":0.2,"frequency":1}
+- {"op":"bake"|"simplify"|"snap_keys"|"mirror_keys"|"retime", ...address..., "factor":2}
+- {"op":"add_marker","frame":60,"name":"impact"}  {"op":"key_transform"}
+- {"op":"playblast","dir":"D:/out/blast","width":1280,"height":720}
+- {"op":"render_sequence","dir":"D:/out/shot","fps":30,"width":1920,"height":1080}
+
 Available in every domain:
 - {"op":"undo","steps":1}   (revert the last change, including your own)
 - {"op":"redo","steps":1}

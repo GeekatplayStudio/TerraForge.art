@@ -9,6 +9,7 @@
 #include "app.hpp"
 #include "gpx/mesh_engines.hpp"
 #include "gpx/mesh_io.hpp"
+#include "i18n.hpp"
 #include "icons.hpp"
 #include "mesh_object.hpp"
 #include "panel_float.hpp"
@@ -43,9 +44,9 @@ ImVec4 severity_color(int sev) {
 }
 
 const char *severity_word(int sev) {
-  return sev == gpx::MESH_CRITICAL ? "critical"
-         : sev == gpx::MESH_WARNING ? "warning"
-                                    : "note";
+  return sev == gpx::MESH_CRITICAL ? tr("critical")
+         : sev == gpx::MESH_WARNING ? tr("warning")
+                                    : tr("note");
 }
 
 // A length in the units the user reads elsewhere in the application.
@@ -99,7 +100,7 @@ void draw_stats(const gpx::MeshStats &s, float unit_mm) {
   auto row = [&](const char *k, const std::string &v) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::TextDisabled("%s", k);
+    ImGui::TextDisabled("%s", tr(k));
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(v.c_str());
   };
@@ -107,8 +108,8 @@ void draw_stats(const gpx::MeshStats &s, float unit_mm) {
   row("Vertices", std::to_string(s.vertices));
   row("Edges", std::to_string(s.edges));
   row("Shells", std::to_string(s.shells));
-  row("Closed solid", s.watertight ? "yes" : "no");
-  row("Winding", s.winding_consistent ? "consistent" : "mixed");
+  row("Closed solid", s.watertight ? tr("yes") : tr("no"));
+  row("Winding", s.winding_consistent ? tr("consistent") : tr("mixed"));
   if (s.has_genus) row("Genus", std::to_string(s.genus));
   char dim[96];
   std::snprintf(dim, sizeof dim, "%s x %s x %s",
@@ -132,10 +133,10 @@ void draw_issues(App &a, const SceneObject &o) {
   MeshToolsState &st = mesh_tools();
   if (st.report.issues.empty()) {
     ImGui::TextColored(ImVec4(0.40f, 0.78f, 0.45f, 1.f),
-                       "No problems found. This mesh is ready to slice.");
+                       "%s", tr("No problems found. This mesh is ready to slice."));
     return;
   }
-  ImGui::TextDisabled("Click an issue to mark it in the viewport.");
+  ImGui::TextDisabled("%s", tr("Click an issue to mark it in the viewport."));
   for (int i = 0; i < (int)st.report.issues.size(); ++i) {
     const gpx::MeshIssue &is = st.report.issues[(size_t)i];
     ImGui::PushID(i);
@@ -151,7 +152,7 @@ void draw_issues(App &a, const SceneObject &o) {
       ImGui::Indent(14.f);
       ImGui::TextWrapped("%s", is.detail.c_str());
       if (is.total)
-        ImGui::TextDisabled("%zu location(s), spread over %s", is.total,
+        ImGui::TextDisabled(tr("%zu location(s), spread over %s"), is.total,
                             mm_text(is.extent * mesh_unit_mm(o)).c_str());
       ImGui::Unindent(14.f);
     }
@@ -163,9 +164,9 @@ void draw_issues(App &a, const SceneObject &o) {
 void draw_repair_report() {
   MeshToolsState &st = mesh_tools();
   if (!st.has_repair) return;
-  ImGui::SeparatorText("What the repair did");
+  ImGui::SeparatorText(tr("What the repair did"));
   if (st.repair.fixes.empty()) {
-    ImGui::TextDisabled("Nothing needed changing.");
+    ImGui::TextDisabled("%s", tr("Nothing needed changing."));
   } else {
     for (const std::string &f : st.repair.fixes)
       ImGui::BulletText("%s", f.c_str());
@@ -173,14 +174,14 @@ void draw_repair_report() {
   // A stage that could not run is said out loud, or the table above would
   // imply that everything possible was tried.
   for (const std::string &n : st.repair.notes)
-    ImGui::TextWrapped("Not done: %s", n.c_str());
+    ImGui::TextWrapped(tr("Not done: %s"), n.c_str());
   if (st.repair.changes.empty()) return;
   if (ImGui::BeginTable("##meshdiff", 3,
                         ImGuiTableFlags_SizingStretchProp |
                             ImGuiTableFlags_RowBg)) {
-    ImGui::TableSetupColumn("Measure");
-    ImGui::TableSetupColumn("Before");
-    ImGui::TableSetupColumn("After");
+    ImGui::TableSetupColumn(tr("Measure"));
+    ImGui::TableSetupColumn(tr("Before"));
+    ImGui::TableSetupColumn(tr("After"));
     ImGui::TableHeadersRow();
     for (const gpx::MeshChange &c : st.repair.changes) {
       ImGui::TableNextRow();
@@ -188,7 +189,7 @@ void draw_repair_report() {
       ImGui::TextUnformatted(c.label.c_str());
       ImGui::TableNextColumn();
       if (c.boolean)
-        ImGui::TextUnformatted(c.before != 0 ? "yes" : "no");
+        ImGui::TextUnformatted(c.before != 0 ? tr("yes") : tr("no"));
       else
         ImGui::Text("%g", c.before);
       ImGui::TableNextColumn();
@@ -196,14 +197,14 @@ void draw_repair_report() {
                             c.improved ? ImVec4(0.40f, 0.78f, 0.45f, 1.f)
                                        : ImVec4(0.87f, 0.62f, 0.24f, 1.f));
       if (c.boolean)
-        ImGui::TextUnformatted(c.after != 0 ? "yes" : "no");
+        ImGui::TextUnformatted(c.after != 0 ? tr("yes") : tr("no"));
       else
         ImGui::Text("%g", c.after);
       ImGui::PopStyleColor();
     }
     ImGui::EndTable();
   }
-  ImGui::TextDisabled("Measured on the repaired mesh, not predicted.");
+  ImGui::TextDisabled("%s", tr("Measured on the repaired mesh, not predicted."));
 }
 
 } // namespace
@@ -222,21 +223,21 @@ void draw_panel_mesh(App &a) {
   panel_float_controls(a, "Mesh Tools");
   MeshToolsState &st = mesh_tools();
 
-  if (ImGui::Button("Import mesh...")) {
+  if (ImGui::Button(tr("Import mesh..."))) {
     std::string p = dialog_open_file(MESH_FILTER, "obj");
     if (!p.empty()) run(a, "import_mesh", {{"path", p}});
   }
   ImGui::SameLine();
-  ImGui::TextDisabled("OBJ, STL, PLY, OFF");
+  ImGui::TextDisabled("%s", tr("OBJ, STL, PLY, OFF"));
 
   std::string err;
   SceneObject *o = mesh_selected_object(a, err);
   if (!o) {
     ImGui::Separator();
     ImGui::TextWrapped("%s", err.c_str());
-    ImGui::TextDisabled(
-        "Import a model, or pick one in the Objects tree, and this panel "
-        "reports what is wrong with it and repairs it.");
+    ImGui::TextDisabled("%s",
+        tr("Import a model, or pick one in the Objects tree, and this panel "
+        "reports what is wrong with it and repairs it."));
     ImGui::End();
     return;
   }
@@ -248,7 +249,7 @@ void draw_panel_mesh(App &a) {
 
   ImGui::Separator();
   ImGui::Text("%s", o->name.c_str());
-  ImGui::TextDisabled("%d triangles", o->vert_count / 3);
+  ImGui::TextDisabled(tr("%d triangles"), o->vert_count / 3);
 
   // What the file's numbers mean. STL says nothing about units and every
   // slicer reads it as millimetres; a file that meant centimetres, metres or
@@ -260,9 +261,9 @@ void draw_panel_mesh(App &a) {
   for (int i = 0; i < 4; ++i)
     if (st.unit_mm == UNIT_MM[i]) unit = i;
   ImGui::SetNextItemWidth(160);
-  if (ImGui::BeginCombo("File units", UNIT_LABEL[unit])) {
+  if (ImGui::BeginCombo(tr("File units"), tr(UNIT_LABEL[unit]))) {
     for (int i = 0; i < 4; ++i)
-      if (ImGui::Selectable(UNIT_LABEL[i], unit == i)) {
+      if (ImGui::Selectable(tr(UNIT_LABEL[i]), unit == i)) {
         st.unit_mm = UNIT_MM[i];
         if (st.has_report) {
           gpx::TriMesh m = mesh_from_object(*o);
@@ -272,17 +273,17 @@ void draw_panel_mesh(App &a) {
     ImGui::EndCombo();
   }
 
-  if (ImGui::Button("Analyse", ImVec2(110, 0)))
+  if (ImGui::Button(tr("Analyse"), ImVec2(110, 0)))
     run(a, "mesh_analyse", nlohmann::json::object());
   ImGui::SameLine();
-  if (ImGui::Button("Repair", ImVec2(110, 0)))
+  if (ImGui::Button(tr("Repair"), ImVec2(110, 0)))
     run(a, "mesh_repair", nlohmann::json::object());
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "Cleanup, orientation and hole filling, repeated until the mesh\n"
-        "stops changing - then measured against a fresh analysis. Undoable.");
+    ImGui::SetTooltip("%s",
+        tr("Cleanup, orientation and hole filling, repeated until the mesh\n"
+        "stops changing - then measured against a fresh analysis. Undoable."));
   ImGui::SameLine();
-  if (ImGui::Button("Export...", ImVec2(110, 0))) {
+  if (ImGui::Button(tr("Export..."), ImVec2(110, 0))) {
     std::string p = dialog_save_file(
         "STL (*.stl)\0*.stl\0OBJ (*.obj)\0*.obj\0PLY (*.ply)\0*.ply\0"
         "OFF (*.off)\0*.off\0",
@@ -302,50 +303,50 @@ void draw_panel_mesh(App &a) {
     ImGui::TextUnformatted(st.report.verdict.c_str());
     ImGui::Spacing();
     draw_stats(st.report.stats, mesh_unit_mm(*o));
-    ImGui::SeparatorText("Issues");
+    ImGui::SeparatorText(tr("Issues"));
     draw_issues(a, *o);
     highlight_issue(a, *o);
   } else {
     ImGui::Separator();
-    ImGui::TextDisabled("Press Analyse to measure this mesh.");
+    ImGui::TextDisabled("%s", tr("Press Analyse to measure this mesh."));
   }
 
   draw_repair_report();
 
-  ImGui::SeparatorText("Rebuild as a solid");
+  ImGui::SeparatorText(tr("Rebuild as a solid"));
   ImGui::BeginDisabled(!gpx::mesh_engines().solidify);
-  if (ImGui::Button("Solidify", ImVec2(110, 0)))
+  if (ImGui::Button(tr("Solidify"), ImVec2(110, 0)))
     run(a, "mesh_solidify", nlohmann::json::object());
   ImGui::EndDisabled();
-  ImGui::TextWrapped("Engines: %s", gpx::mesh_engines_text().c_str());
+  ImGui::TextWrapped(tr("Engines: %s"), gpx::mesh_engines_text().c_str());
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "Rebuilds the surface as a solid that is manifold by construction,\n"
+    ImGui::SetTooltip("%s",
+        tr("Rebuilds the surface as a solid that is manifold by construction,\n"
         "and unions overlapping shells into one piece.\n"
-        "Repair runs this by itself when its own stages cannot close it.");
+        "Repair runs this by itself when its own stages cannot close it."));
 
-  ImGui::SeparatorText("Reduce");
+  ImGui::SeparatorText(tr("Reduce"));
   static int target = 5000;
   // The buttons go under the field rather than beside it: at the panel's
   // default width the second one was off the edge and could not be pressed.
   ImGui::SetNextItemWidth(140);
-  ImGui::InputInt("Target triangles", &target);
+  ImGui::InputInt(tr("Target triangles"), &target);
   target = std::clamp(target, 4, 20000000);
-  if (ImGui::Button("Reduce", ImVec2(110, 0)))
+  if (ImGui::Button(tr("Reduce"), ImVec2(110, 0)))
     run(a, "mesh_reduce", {{"faces", target}});
   ImGui::SameLine();
   ImGui::BeginDisabled(!gpx::mesh_engines().retopo);
-  if (ImGui::Button("Rebuild as quads", ImVec2(150, 0)))
+  if (ImGui::Button(tr("Rebuild as quads"), ImVec2(150, 0)))
     run(a, "mesh_retopo", {{"faces", target / 2}});
   ImGui::EndDisabled();
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-    ImGui::SetTooltip(
-        "Reduce thins the triangles it was given.\n"
+    ImGui::SetTooltip("%s",
+        tr("Reduce thins the triangles it was given.\n"
         "Quads rebuilds the surface as evenly sized, curvature-aligned\n"
         "quads - better for a sculpt or a scan, and the only one of the\n"
-        "two that changes the topology.");
+        "two that changes the topology."));
   if (st.has_reduce)
-    ImGui::TextDisabled("%zu -> %zu triangles, worst deviation %s (%.2f%%)",
+    ImGui::TextDisabled(tr("%zu -> %zu triangles, worst deviation %s (%.2f%%)"),
                         st.reduce.faces_before, st.reduce.faces_after,
                         mm_text(st.reduce.max_deviation * mesh_unit_mm(*o)).c_str(),
                         st.reduce.deviation_frac * 100.0);
@@ -361,27 +362,27 @@ void draw_panel_mesh(App &a) {
 // creating a cube and importing a model to fix are the same kind of act, and
 // they belong in the same place.
 void mesh_tool_buttons(App &a) {
-  if (ImGui::SmallButton("import mesh")) {
+  if (ImGui::SmallButton(tr("import mesh"))) {
     std::string p = dialog_open_file(MESH_FILTER, "obj");
     if (!p.empty()) run(a, "import_mesh", {{"path", p}});
   }
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Import OBJ, STL, PLY or OFF and analyse it");
+    ImGui::SetTooltip("%s", tr("Import OBJ, STL, PLY or OFF and analyse it"));
   ImGui::SameLine();
   std::string err;
   bool have = mesh_selected_object(a, err) != nullptr;
   ImGui::BeginDisabled(!have);
-  if (ImGui::SmallButton("analyse"))
+  if (ImGui::SmallButton(tr("analyse")))
     run(a, "mesh_analyse", nlohmann::json::object());
   ImGui::SameLine();
-  if (ImGui::SmallButton("repair"))
+  if (ImGui::SmallButton(tr("repair")))
     run(a, "mesh_repair", nlohmann::json::object());
   ImGui::EndDisabled();
   ImGui::SameLine();
-  if (ImGui::SmallButton("mesh tools")) a.show_mesh_tools = true;
+  if (ImGui::SmallButton(tr("mesh tools"))) a.show_mesh_tools = true;
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Open the Mesh Tools panel: issues with locations,\n"
-                      "a measured repair report, reduction and export");
+    ImGui::SetTooltip("%s", tr("Open the Mesh Tools panel: issues with locations,\n"
+                      "a measured repair report, reduction and export"));
 }
 
 } // namespace studio

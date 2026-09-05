@@ -94,6 +94,15 @@ void Graph::apply_animation() {
   for (auto &n : nodes) {
     bool changed = false;
     for (Attribute &a : n->attrs.items) {
+      // component tracks: vectors, ranges and colours
+      for (size_t c = 0; c < a.anim_v.size() && c < 4; ++c) {
+        if (a.anim_v[c].empty()) continue;
+        float cv = a.anim_v[c].sample(time);
+        float *slot = nullptr;
+        if ((a.type == AttrType::Vec2 || a.type == AttrType::Range) && c < 2) slot = &a.v2[c];
+        else if (a.type == AttrType::Color) slot = &a.col[c];
+        if (slot && *slot != cv) { *slot = cv; changed = true; }
+      }
       if (a.anim.empty()) continue;
       float v = a.anim.sample(time);
       switch (a.type) {
@@ -113,7 +122,7 @@ void Graph::apply_animation() {
           uint32_t sv = (uint32_t)std::max(0.f, v);
           if (a.seed != sv) { a.seed = sv; changed = true; }
         } break;
-        default: break; // vectors, colours and gradients animate in P7
+        default: break; // vectors and colours use anim_v above; gradients are not animated
       }
     }
     if (changed) mark_dirty(n->id);

@@ -26,6 +26,7 @@
 
 namespace studio {
 struct SceneObject;
+struct SceneState;
 
 using GraphIdMap = std::map<uint64_t, uint64_t>; // file node id -> live id
 
@@ -34,6 +35,15 @@ using GraphIdMap = std::map<uint64_t, uint64_t>; // file node id -> live id
 // An object's placement, deformers and gizmo switch (scene_io_object.cpp).
 void object_transform_to_json(nlohmann::json &jo, const SceneObject &o);
 void object_transform_from_json(const nlohmann::json &jo, SceneObject &o);
+// The visibility dots and enable switch, with the pre-dots "visible" flag.
+void object_visibility_to_json(nlohmann::json &jo, const SceneObject &o);
+void object_visibility_from_json(const nlohmann::json &jo, SceneObject &o);
+// The layer list with its colours (scene_io_object.cpp).
+nlohmann::json layers_to_json(const SceneState &sc);
+void layers_from_json(const nlohmann::json &arr, SceneState &sc);
+// The timeline settings and the world's tracks (scene_io_anim.cpp).
+void scene_anim_to_json(nlohmann::json &j, const SceneState &sc);
+void scene_anim_from_json(const nlohmann::json &j, SceneState &sc);
 nlohmann::json scene_to_json();
 // Rebuilds the scene from that. Meshes are re-imported from their recorded
 // file path; one that has gone missing keeps its object (so the transform and

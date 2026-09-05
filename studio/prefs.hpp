@@ -41,6 +41,12 @@ struct Prefs {
   // 2 = 100 %): the live picture is the most expensive thing on screen.
   int preview_fps = 10;
   int preview_quality = 1;
+  // Toolbar icon size as an index into the palette ladder (0 small 18 px,
+  // 1 medium 26 px, 2 large 36 px) — Cinema 4D's three palette sizes.
+  int icon_size = 0;
+  // Interface language: "en" (built in) or the code of a file in
+  // resources/lang ("de", "fr"). Applied at startup and from Settings.
+  std::string language = "en";
 };
 
 Prefs &prefs();

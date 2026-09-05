@@ -152,7 +152,7 @@ bool renderer_init() {
   prog_lines = link_prog(VS_LINES, FS_LINES);
   prog_bg = link_prog(VS_BG, FS_BG);
   std::string fs_mesh = inject_sky(FS_MESH); // fog and the pass writer
-  prog_mesh = link_prog(VS_MESH, fs_mesh.c_str());
+  prog_mesh = link_prog(inject_sky(VS_MESH).c_str(), fs_mesh.c_str());
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
   prog_matprev = link_prog(VS_MATPREV, inject_sky(FS_MATPREV).c_str());
   make_preview_shapes();
@@ -312,6 +312,8 @@ void renderer_shutdown() {
   delete_program(prog_water);
   delete_program(prog_sky);
   delete_program(prog_depth);
+  if (prog_depth_mesh) delete_program(prog_depth_mesh);
+  prog_depth_mesh = 0;
   delete_program(prog_lines);
   delete_program(prog_bg);
   delete_program(prog_mesh);

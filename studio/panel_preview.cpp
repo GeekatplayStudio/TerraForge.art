@@ -7,6 +7,7 @@
 // a node shows up here at once — and, on request, the final engine's
 // progressive result in the same frame, at the camera's aspect ratio.
 #include "app.hpp"
+#include "i18n.hpp"
 #include "perf.hpp"
 #include "panel_float.hpp"
 #include "prefs.hpp"
@@ -62,30 +63,31 @@ void draw_panel_preview(App &a) {
   if (cam_index >= (int)sc.objects.size() ||
       (cam_index >= 0 && sc.objects[cam_index].type != SceneObject::Camera))
     cam_index = -1;
-  std::string label = P.camera == -2 ? "Active camera"
-                      : P.camera == -1 ? "Viewport"
+  std::string label = P.camera == -2 ? tr("Active camera")
+                      : P.camera == -1 ? tr("Viewport")
                                        : sc.objects[cam_index < 0 ? 0 : cam_index].name;
-  if (P.camera >= 0 && cam_index < 0) label = "Viewport";
+  if (P.camera >= 0 && cam_index < 0) label = tr("Viewport");
   ImGui::SetNextItemWidth(150);
   if (ImGui::BeginCombo("##pvcam", label.c_str())) {
-    if (ImGui::Selectable("Active camera", P.camera == -2)) P.camera = -2;
-    if (ImGui::Selectable("Viewport (free orbit)", P.camera == -1)) P.camera = -1;
+    if (ImGui::Selectable(tr("Active camera"), P.camera == -2)) P.camera = -2;
+    if (ImGui::Selectable(tr("Viewport (free orbit)"), P.camera == -1)) P.camera = -1;
     for (int i : cams)
       if (ImGui::Selectable(sc.objects[i].name.c_str(), P.camera == i)) P.camera = i;
     ImGui::EndCombo();
   }
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Whose view to show. The active camera follows\n"
-                      "whatever camera is active for rendering.");
+    ImGui::SetTooltip("%s", tr("Whose view to show. The active camera follows\n"
+                      "whatever camera is active for rendering."));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(72);
   P.quality = std::min(prefs().preview_quality, perf_quality().preview_quality_cap);
-  if (ImGui::Combo("##pvq", &P.quality, "25%\0" "50%\0" "100%\0")) {
+  static const char *const KQ[] = {"25%", "50%", "100%"};
+  if (ImGui::Combo("##pvq", &P.quality, tr_combo(KQ, 3).c_str())) {
     prefs().preview_quality = P.quality;
     prefs_save();
   }
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Render scale of the live view: lower is faster.");
+    ImGui::SetTooltip("%s", tr("Render scale of the live view: lower is faster."));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(78);
   {
@@ -95,32 +97,32 @@ void draw_panel_preview(App &a) {
     int cur = 3;
     for (int i = 0; i < 6; ++i)
       if (RATES[i] == prefs().preview_fps) cur = i;
-    if (ImGui::Combo("##pvfps", &cur, "1 fps\0" "2 fps\0" "5 fps\0" "10 fps\0"
-                                      "20 fps\0" "30 fps\0")) {
+    static const char *const KF[] = {"1 fps", "2 fps", "5 fps", "10 fps", "20 fps", "30 fps"};
+    if (ImGui::Combo("##pvfps", &cur, tr_combo(KF, 6).c_str())) {
       prefs().preview_fps = RATES[cur];
       prefs_save();
     }
     if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Refresh rate of the live view. Changes to the graph\n"
-                        "or the camera redraw it immediately anyway.");
+      ImGui::SetTooltip("%s", tr("Refresh rate of the live view. Changes to the graph\n"
+                        "or the camera redraw it immediately anyway."));
   }
   ImGui::SameLine();
-  studio::Checkbox("live", &P.live);
+  studio::Checkbox(tr("live"), &P.live);
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Keep redrawing at the rate chosen; off, only Refresh.");
+    ImGui::SetTooltip("%s", tr("Keep redrawing at the rate chosen; off, only Refresh."));
   if (!P.live) {
     ImGui::SameLine();
-    if (ImGui::SmallButton("Refresh")) P.refresh = true;
+    if (ImGui::SmallButton(tr("Refresh"))) P.refresh = true;
   }
 
   // ---- what to include, independently of the working views
-  studio::Checkbox("sky", &P.atmosphere);
+  studio::Checkbox(tr("sky"), &P.atmosphere);
   ImGui::SameLine();
-  studio::Checkbox("clouds", &P.clouds);
+  studio::Checkbox(tr("clouds"), &P.clouds);
   ImGui::SameLine();
-  studio::Checkbox("water", &P.water);
+  studio::Checkbox(tr("water"), &P.water);
   ImGui::SameLine();
-  studio::Checkbox("shadows", &P.shadows);
+  studio::Checkbox(tr("shadows"), &P.shadows);
 
   // ---- the final engine
   const bool have_cam = cam_index >= 0;
@@ -131,7 +133,7 @@ void draw_panel_preview(App &a) {
   unsigned final_tex = render_live_texture(rw, rh, busy, line);
   {
     char btn[96];
-    std::snprintf(btn, sizeof btn, "Render with %s", render_engine_label(engine));
+    std::snprintf(btn, sizeof btn, tr("Render with %s"), tr(render_engine_label(engine)));
     if (!have_cam) ImGui::BeginDisabled();
     if (ImGui::Button(btn)) {
       a.request_camera_render = cam_index;
@@ -139,23 +141,23 @@ void draw_panel_preview(App &a) {
     }
     if (!have_cam) ImGui::EndDisabled();
     if (ImGui::IsItemHovered())
-      ImGui::SetTooltip(have_cam ? "The camera's own render settings (Render tab):\n"
+      ImGui::SetTooltip("%s", have_cam ? tr("The camera's own render settings (Render tab):\n"
                                    "engine, size, samples. The result refines\n"
-                                   "here pass by pass."
-                                 : "Add a camera first (Objects panel).");
+                                   "here pass by pass.")
+                                 : tr("Add a camera first (Objects panel)."));
     if (busy) {
       ImGui::SameLine();
-      if (ImGui::SmallButton("Cancel")) render_cancel();
+      if (ImGui::SmallButton(tr("Cancel"))) render_cancel();
     }
     if (final_tex) {
       ImGui::SameLine();
-      if (ImGui::RadioButton("live", !P.show_final)) P.show_final = false;
+      if (ImGui::RadioButton((std::string(tr("live")) + "##rlive").c_str(), !P.show_final)) P.show_final = false;
       ImGui::SameLine();
-      if (ImGui::RadioButton("final", P.show_final)) P.show_final = true;
+      if (ImGui::RadioButton(tr("final"), P.show_final)) P.show_final = true;
     }
     if (busy || (P.show_final && !line.empty())) {
       ImGui::SameLine();
-      ImGui::TextDisabled("%s", line.empty() ? "starting..." : line.c_str());
+      ImGui::TextDisabled("%s", line.empty() ? tr("starting...") : line.c_str());
     }
   }
 

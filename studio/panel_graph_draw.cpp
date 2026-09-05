@@ -4,6 +4,7 @@
 // the editor interaction stays there.
 #include "panel_graph_internal.hpp"
 #include "console.hpp"
+#include "i18n.hpp"
 #include "theme_colors.hpp"
 #include "undo.hpp"
 #include "gpx/port_catalog.hpp"
@@ -66,7 +67,7 @@ void draw_node(App &a, const App::NodeView &n) {
     else { out_label_w = std::max(out_label_w, tw); ++out_n; }
   }
   float head_w = ImGui::CalcTextSize(n.type.c_str()).x + CHEVRON_W + 4.f;
-  if (!n.enabled) head_w += 6.f + ImGui::CalcTextSize("bypassed").x;
+  if (!n.enabled) head_w += 6.f + ImGui::CalcTextSize(tr("bypassed")).x;
   const unsigned prev_tex = collapse == 0 ? previews_get(n.id) : 0;
   const float ports_w = (in_n ? dot_col + in_label_w : 0.f) +
                         (in_n && out_n ? COL_GAP : 0.f) +
@@ -87,7 +88,7 @@ void draw_node(App &a, const App::NodeView &n) {
   if (!n.enabled) {
     ImGui::SameLine(0, 6);
     ImGui::PushStyleColor(ImGuiCol_Text, theme::accent());
-    ImGui::TextUnformatted("bypassed");
+    ImGui::TextUnformatted(tr("bypassed"));
     ImGui::PopStyleColor();
   }
   // the collapse toggle: a chevron at the header's right, cycling the three
@@ -101,9 +102,9 @@ void draw_node(App &a, const App::NodeView &n) {
     ImGui::PopID();
     const bool hot = ImGui::IsItemHovered();
     if (hot)
-      ImGui::SetTooltip("%s", collapse == 0 ? "Compact: hide the preview"
-                              : collapse == 1 ? "Collapse to the title bar"
-                                              : "Expand");
+      ImGui::SetTooltip("%s", collapse == 0 ? tr("Compact: hide the preview")
+                              : collapse == 1 ? tr("Collapse to the title bar")
+                                              : tr("Expand"));
     ImVec2 cc(c0.x + CHEVRON_W * 0.5f, head_pos.y + HEADER_H * 0.5f);
     ImU32 ccol = hot ? IM_COL32(255, 255, 255, 255)
                      : theme::fade(theme::text_on_header(), 0.75f);
@@ -282,7 +283,7 @@ void add_node_popup(App &a) {
     ImGui::SetKeyboardFocusHere();
   }
   ImGui::SetNextItemWidth(240);
-  ImGui::InputTextWithHint("##filter", "search nodes...", filter, sizeof filter);
+  ImGui::InputTextWithHint("##filter", tr("search nodes..."), filter, sizeof filter);
   const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
 
   auto place = [&](const gpx::NodeDef *d) {
@@ -344,16 +345,16 @@ void add_node_popup(App &a) {
   };
   if (g_drag_create.active()) {
     const char *what = g_drag_create.type == gpx::DataType::Heightmap
-                           ? "heightmap"
+                           ? tr("heightmap")
                            : g_drag_create.type == gpx::DataType::Texture
-                                 ? "texture"
+                                 ? tr("texture")
                                  : g_drag_create.type == gpx::DataType::Points
-                                       ? "points"
-                                       : "field";
+                                       ? tr("points")
+                                       : tr("field");
     if (filtering)
-      ImGui::TextDisabled("nodes that accept a %s", what);
+      ImGui::TextDisabled(tr("nodes that accept a %s"), what);
     else
-      ImGui::TextDisabled("nothing accepts a %s - showing everything", what);
+      ImGui::TextDisabled(tr("nothing accepts a %s - showing everything"), what);
   }
 
   if (filter[0]) {
@@ -369,14 +370,14 @@ void add_node_popup(App &a) {
       if (lt.find(lf) == std::string::npos && lc.find(lf) == std::string::npos)
         continue;
       if (++shown > 40) {
-        ImGui::TextDisabled("...more, keep typing");
+        ImGui::TextDisabled("%s", tr("...more, keep typing"));
         break;
       }
       entry(d);
       ImGui::SameLine();
       ImGui::TextDisabled("%s", d->category.c_str());
     }
-    if (!shown) ImGui::TextDisabled("nothing matches");
+    if (!shown) ImGui::TextDisabled("%s", tr("nothing matches"));
     return;
   }
 

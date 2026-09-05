@@ -202,6 +202,44 @@ each one was a bug we already paid for. Do not regress them.
    deformer that touches it together - do not sample a channel texture in
    `FS_MESH` until that lands.
 
+## Animation
+
+1. **Nothing moves unless it has a key.** A property is animated when its
+   track has keys or an expression; `anim_unkey` drops a track that became
+   empty so the property is static again. Never add an "enable animation"
+   switch beside a track - the track's existence is the switch.
+2. **One property table.** Every animatable scene/world property is declared
+   once in `studio/anim_targets.cpp` (`OBJ_PROPS` / `WORLD_PROPS`) with a
+   path, label, group and component count; `anim_ptr`/`anim_world_ptr`
+   resolve the path to the live field. The Properties circle, the Timeline,
+   the expression lookup, the API and `anim_apply` all read that table. To
+   make a new field animatable, add a row and a `obj_ptr` case - nothing
+   else. `test_anim_scene.cpp` checks every row resolves.
+3. **Tracks live with what they animate.** `SceneObject::anim` (map by
+   path), `SceneState::world_anim`, `Attribute::anim` / `anim_v`. So undo
+   snapshots, duplicate, delete and the scene file carry them without any
+   side table. Track ids for the UI/API are strings
+   (`o:<index>:<key>`, `w:<key>`, `n:<node>:<attr>[:c]`) resolved fresh
+   each frame by `anim_resolve` - never cache a `gpx::Track *` across frames.
+4. **Time is seconds inside; frames are a display.** `gpx::Timeline` owns
+   fps, range and formatting. Keys snap to whole frames when
+   `Timeline::snap` is on; the ruler, the fields and the ops speak frames.
+5. **The engine's curve is deterministic and testable without a window**:
+   `engine/animation.cpp` (evaluation, tangents, extrapolation, modifiers,
+   text form), `anim_curve.cpp` (every editing operation the panels use),
+   `anim_expr.cpp` (the expression language). Panels must call `gpx::anim::*`
+   rather than editing `keys` by hand, so a gesture and an API op do the same
+   thing and `update_tangents()` is never forgotten. The old
+   `"interp;t,v;..."` text form must keep loading; the new form starts `K2;`.
+6. **Per-frame apply is the only writer.** `anim_service` (app.cpp, before
+   any drawing) advances the clock and calls `anim_apply`; a keyed property's
+   value is whatever the curve says at the current time, so with Autokey off
+   an edit snaps back - that is correct and matches every DCC. With Autokey
+   on, `anim_autokey` records the edit first (call it right after the widget,
+   guarded by `IsItemDeactivatedAfterEdit`).
+7. **Every key edit is one undo step per gesture**: push once on drag start
+   (`drag_started`), not per mouse move.
+
 ## Performance rules
 
 1. **Never upload a GPU texture per frame.** Uploads are versioned

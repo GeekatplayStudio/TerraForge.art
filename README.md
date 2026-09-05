@@ -95,9 +95,9 @@ wanted his students to have.
 - **Node List** — the same graph read as a tree from the result backwards,
   with per-row bypass, so a scene can be built and understood without
   untangling the network view.
-- **Animation-ready:** every parameter can carry a keyframe track (linear,
-  smooth or constant), sampled before evaluation. *The timeline UI is not
-  built yet.*
+- **Animation-ready:** every parameter carries a keyframe track (per-key
+  linear / smooth / hold / bezier, tangents, extrapolation, modifiers,
+  expressions), sampled before evaluation; see *Animation* below.
 
 ### Vue-class fractals
 - **`NoiseFractal`** — the manual's Simple / Grainy / Variable-Roughness /
@@ -580,15 +580,38 @@ wanted his students to have.
   for skyboxes and VR stills.
 
 ### Animation
-- **Timeline** (View menu): play/pause/stop, a loop range, a scrub bar, and
-  per-attribute keyframing on the selected node — key markers on miniature
-  track bars, constant/linear/smooth interpolation per track. Tracks save
-  with the project.
-- **PNG sequence capture**: the loop range becomes numbered frames through
-  the viewport engine, one animation frame per completed evaluation.
-- **Fly-throughs**: hand the sequence any path node and the camera rides it
-  at terrain height — a spline through scattered waypoints is a camera dolly.
-- Scattered meshes sway in the wind, each copy on its own phase.
+Everything is static until it has a key; the first key on a property is what
+animates it. See [docs/ANIMATION.md](docs/ANIMATION.md) for the full
+specification and manual.
+- **The animation circle** beside every property in the Properties panel
+  (Cinema 4D's): empty = static, ring = animated, filled = a key on this
+  frame. Click to key, Ctrl/Shift to add/remove, right-click for ease and
+  extrapolation. `K` keys the selected object's transform; **Autokey**
+  records every edit.
+- **Everything animates**: position, rotation, size, squeeze, colour,
+  visibility, the deformers, scatter, lights, camera optics, planets and
+  infinite-terrain layers, the sun, sky, fog, water and clouds, and every
+  node attribute in the graph (vectors and colours per component).
+- **Keys** have per-key interpolation (linear, smooth, hold, bezier),
+  auto-clamped / user / broken tangents, ease presets (Easy Ease on F9),
+  and five extrapolation modes — cycle, cycle with offset and ping-pong turn
+  two keys into a windmill or a swing.
+- **The Timeline**: transport with previous/next key, a frame field that
+  reads and writes frames, timecode or seconds, range, fps, loop mode,
+  preview range, markers; a track tree (object > group > axis) with key
+  glyphs per interpolation, box select, drag, retime handles, copy/paste,
+  mirror, snap; double-click a row to add a key.
+- **The Curve editor**: F-curves in axis colours, draggable tangents (Alt
+  breaks), speed and normalised views, Smooth / Flatten / Bake / Simplify,
+  a ghost of the curve while you drag.
+- **Modifiers and expressions**: noise, oscillator, offset, limit, smooth
+  stacked on any curve; or a one-line expression over `t`, `frame`, `value`
+  and other properties by name (`"Camera 1".cam.focal_mm`,
+  `world.sun_azimuth`).
+- **Playblast** captures the viewport per frame; **Render > Sequence**
+  renders the range; fly-throughs ride any path node. Every gesture is one
+  undo step; every operation is an API/MCP tool (`set_key`, `keys`,
+  `set_range`, `play`...).
 
 ### AI assistance
 Describe a landscape in plain language — or drop in a photograph — and a local

@@ -1,5 +1,6 @@
 ﻿// Geekatplay Studio — main loop, docking layout, background evaluation
 #include "app.hpp"
+#include "toolbar_internal.hpp"
 #include "perf.hpp"
 #include "ai_describe.hpp"
 #include "ai_jobs.hpp"
@@ -20,6 +21,7 @@
 #include <imgui_internal.h>
 
 namespace studio {
+void anim_service(App &a);
 
 
 
@@ -118,7 +120,8 @@ void run_main() {
                       ImGuiWindowFlags_NoScrollbar);
     draw_workspace_bar(a);
     ImGui::EndChild();
-    ImGui::BeginChild("##toolbar", ImVec2(0, 28), ImGuiChildFlags_None,
+    // the tool row is as tall as its palette buttons (Settings > Icon size)
+    ImGui::BeginChild("##toolbar", ImVec2(0, tool_size() + 6.f), ImGuiChildFlags_None,
                       ImGuiWindowFlags_NoScrollbar);
     draw_tool_bar(a);
     ImGui::EndChild();
@@ -240,7 +243,7 @@ void run_main() {
     perf_mark("api");
 
     app_service_upload(a);
-    app_service_camera_anim(a);
+    anim_service(a); // clock, keyed properties, camera pose tracks
     app_service_points_overlay(a);
     perf_mark("services");
 

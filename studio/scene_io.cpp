@@ -201,24 +201,21 @@ json scene_to_json() {
   SceneState &sc = scene();
   json j;
 
-  json layers = json::array();
-  for (const SceneLayer &l : sc.layers)
-    layers.push_back({{"name", l.name}, {"visible", l.visible}});
-  j["layers"] = layers;
+  j["layers"] = layers_to_json(sc); // scene_io_object.cpp
 
   json objs = json::array();
   for (const SceneObject &o : sc.objects) {
     json jo = {
         {"kind", kind_name(o.type)},
         {"name", o.name},
-        {"visible", o.visible},
         {"locked", o.locked},
         {"builtin", o.builtin},
         {"layer", o.layer},
         {"parent", o.parent},
         {"expanded", o.expanded},
     };
-    object_transform_to_json(jo, o); // scene_io_object.cpp
+    object_visibility_to_json(jo, o); // scene_io_object.cpp
+    object_transform_to_json(jo, o);
     if (o.driver_node) jo["driver_node"] = o.driver_node;
     if (o.type == SceneObject::Light) {
       jo["light_intensity"] = o.light_intensity;
@@ -304,6 +301,7 @@ json scene_to_json() {
     objs.push_back(std::move(jo));
   }
   j["objects"] = objs;
+  scene_anim_to_json(j, sc);
   j["selected"] = sc.selected;
   j["active_camera"] = scene_active_camera();
   j["last_used_camera"] = scene_last_used_camera();
@@ -314,20 +312,17 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
                      std::string &warnings) {
   SceneState &sc = scene();
 
-  sc.layers.clear();
-  for (const json &jl : j.value("layers", json::array()))
-    sc.layers.push_back({jl.value("name", std::string("Layer")),
-                         jl.value("visible", true)});
-  if (sc.layers.empty()) sc.layers.push_back({"Default", true});
+  layers_from_json(j.value("layers", json::array()), sc); // scene_io_object.cpp
 
   // The array is rebuilt verbatim, in file order, so every parent and layer
   // index in it still means what it meant when it was written.
   sc.objects.clear();
+  scene_anim_from_json(j, sc);
   for (const json &jo : j.value("objects", json::array())) {
     SceneObject o;
     if (!kind_from_name(jo.value("kind", std::string()), o.type)) continue;
     o.name = jo.value("name", std::string("object"));
-    o.visible = jo.value("visible", true);
+    object_visibility_from_json(jo, o); // scene_io_object.cpp
     o.locked = jo.value("locked", false);
     o.builtin = jo.value("builtin", false);
     o.layer = jo.value("layer", 0);
@@ -450,6 +445,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
   };
   sc.selected = clamp_idx(j.value("selected", 0));
   if (sc.selected < 0) sc.selected = 0;
+  sc.selection.clear();
   scene_active_camera() = clamp_idx(j.value("active_camera", -1));
   scene_last_used_camera() = clamp_idx(j.value("last_used_camera", -1));
 }

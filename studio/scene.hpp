@@ -3,6 +3,7 @@
 #include "gpx/animation.hpp"
 #include "gpx/planet_math.hpp"
 #include "gpx/deform.hpp"
+#include <map>
 #include <string>
 #include <vector>
 
@@ -103,6 +104,12 @@ struct SceneObject {
   // the Objects tree, so a placed camera or a tuned light cannot be nudged
   // by accident while working around it.
   bool locked = false;
+  // Cinema 4D's two visibility dots. Grey inherits the immediate parent's
+  // state, green shows the object even under a hidden parent, red hides it
+  // even under a visible one; grey at the root means visible.
+  int vis_viewport = 0;   // 0 inherit from parent, 1 on (beats a hidden parent), 2 off
+  int vis_render = 0;     // same three states for the render
+  bool enabled = true;    // green tick / red cross: the object contributes at all
   bool builtin = false;
   CameraData cam;        // valid when type == Camera
   // valid when type == Light: a point light; color is the shared color[3],
@@ -152,6 +159,11 @@ struct SceneObject {
   // transient, rebuilt after every evaluation: x,y,z,scale,cos,sin per copy
   std::vector<float> inst;
   unsigned long long inst_revision = 0; // transient, never serialized
+  // Animation: one track per keyed property component, keyed by the path
+  // studio/anim_targets.hpp defines ("pos.x", "light.intensity"...). Empty
+  // = the object is static. Copied with the object, so undo, duplicate and
+  // the scene file all carry it.
+  std::map<std::string, gpx::Track> anim;
 };
 
 // The object's model matrix (column-major, for OpenGL) and the matching
@@ -173,20 +185,40 @@ const char *scene_type_name(SceneObject::Type t);
 struct SceneLayer {
   std::string name;
   bool visible = true;
+  // the swatch in the Objects tree; scene_layer_default_color gives a new
+  // layer a distinct one by index
+  float color[3] = {0.55f, 0.55f, 0.55f};
 };
+void scene_layer_default_color(int index, float *rgb);
 
 struct SceneState {
   std::vector<SceneObject> objects;
+  // The document's clock settings and the tracks of the world (sun, sky,
+  // fog, water, clouds - RenderSettings fields, by anim_targets path).
+  gpx::Timeline timeline;
+  std::map<std::string, gpx::Track> world_anim;
   std::vector<SceneLayer> layers{{"Default", true}};
   int selected = 0;
+  // Multi-selection: every selected index. `selected` stays the primary
+  // (last-selected) object and is always treated as part of the selection,
+  // so code that only knows `selected` keeps working.
+  std::vector<int> selection;
 
-  bool object_visible(const SceneObject &o) const {
-    bool lv = o.layer >= 0 && o.layer < (int)layers.size()
-                  ? layers[o.layer].visible
-                  : true;
-    return o.visible && lv;
-  }
+  // C4D rule: walk up the parents; grey inherits, green/red override, grey
+  // at the root is visible. The layer's switch and `enabled` still apply,
+  // as does the old plain `visible` flag (scene.cpp).
+  bool object_visible(const SceneObject &o) const;
+  bool object_render_visible(const SceneObject &o) const;
 };
+
+// Moves objects[from] to array position `to` (an index in the resulting
+// array), under `new_parent` (an index in the array before the move, -1 for
+// the root), and fixes every index that pointed into the array: parents, the
+// selection, the active and last-used cameras. Refuses a move under itself
+// or one of its descendants. Returns the object's new index, or -1.
+int scene_move_object(int from, int to, int new_parent);
+// true when `node` is `root` or sits under it (bounded walk)
+bool scene_is_descendant(const SceneState &sc, int node, int root);
 
 SceneState &scene();
 void scene_init_builtins();

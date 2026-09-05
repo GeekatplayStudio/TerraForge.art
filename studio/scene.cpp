@@ -358,3 +358,93 @@ float scene_object_radius(const SceneObject &o) {
 }
 
 } // namespace studio
+
+// ------------------------------------------------------- tree bookkeeping
+namespace studio {
+
+void scene_layer_default_color(int index, float *rgb) {
+  // a small palette that stays legible on a dark ground; Default is grey
+  static const float P[][3] = {
+      {0.55f, 0.55f, 0.55f}, {0.85f, 0.55f, 0.20f}, {0.35f, 0.65f, 0.85f},
+      {0.45f, 0.75f, 0.40f}, {0.80f, 0.40f, 0.45f}, {0.70f, 0.55f, 0.85f},
+      {0.85f, 0.80f, 0.35f}, {0.35f, 0.75f, 0.70f}};
+  const int n = (int)(sizeof P / sizeof P[0]);
+  int k = index < 0 ? 0 : index % n;
+  for (int i = 0; i < 3; ++i) rgb[i] = P[k][i];
+}
+
+bool scene_is_descendant(const SceneState &sc, int node, int root) {
+  int guard = (int)sc.objects.size() + 1;
+  for (int i = node; i >= 0 && i < (int)sc.objects.size() && guard-- > 0;
+       i = sc.objects[i].parent)
+    if (i == root) return true;
+  return false;
+}
+
+// Walks up from `o`: the first non-grey ancestor (or the object itself)
+// decides; all grey up to the root means visible.
+static bool three_state_visible(const SceneState &sc, const SceneObject &o,
+                                bool render) {
+  const SceneObject *cur = &o;
+  int guard = (int)sc.objects.size() + 1;
+  while (cur && guard-- > 0) {
+    int st = render ? cur->vis_render : cur->vis_viewport;
+    if (st == 1) return true;
+    if (st == 2) return false;
+    cur = cur->parent >= 0 && cur->parent < (int)sc.objects.size()
+              ? &sc.objects[cur->parent]
+              : nullptr;
+  }
+  return true;
+}
+
+bool SceneState::object_visible(const SceneObject &o) const {
+  bool lv = o.layer >= 0 && o.layer < (int)layers.size()
+                ? layers[o.layer].visible
+                : true;
+  return o.visible && o.enabled && lv && three_state_visible(*this, o, false);
+}
+
+bool SceneState::object_render_visible(const SceneObject &o) const {
+  bool lv = o.layer >= 0 && o.layer < (int)layers.size()
+                ? layers[o.layer].visible
+                : true;
+  return o.visible && o.enabled && lv && three_state_visible(*this, o, true);
+}
+
+int scene_move_object(int from, int to, int new_parent) {
+  SceneState &sc = scene();
+  const int n = (int)sc.objects.size();
+  if (from < 0 || from >= n) return -1;
+  if (to < 0) to = 0;
+  if (to >= n) to = n - 1;
+  if (new_parent >= n) return -1;
+  if (new_parent >= 0 && scene_is_descendant(sc, new_parent, from)) return -1;
+
+  // the new order, as a list of old indices
+  std::vector<int> order;
+  order.reserve(n);
+  for (int i = 0; i < n; ++i)
+    if (i != from) order.push_back(i);
+  order.insert(order.begin() + to, from);
+  std::vector<int> map(n); // old index -> new index
+  for (int i = 0; i < n; ++i) map[order[i]] = i;
+
+  std::vector<SceneObject> next;
+  next.reserve(n);
+  for (int i = 0; i < n; ++i) next.push_back(std::move(sc.objects[order[i]]));
+  sc.objects = std::move(next);
+
+  auto fix = [&](int &v) {
+    if (v >= 0 && v < n) v = map[v];
+  };
+  for (SceneObject &o : sc.objects) fix(o.parent);
+  sc.objects[to].parent = new_parent >= 0 ? map[new_parent] : -1;
+  fix(sc.selected);
+  for (int &s : sc.selection) fix(s);
+  fix(scene_active_camera());
+  fix(scene_last_used_camera());
+  return to;
+}
+
+} // namespace studio

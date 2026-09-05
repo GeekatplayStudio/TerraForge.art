@@ -309,7 +309,8 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       // Viewport settings touch no graph state, so they are tried first and
       // without the lock — waiting on a running evaluation to change the
       // exposure would be a stall for nothing.
-      int r = ai_layout_op(a, op, act, err);
+      int r = ai_anim_op(a, op, act, err);
+      if (r < 0) r = ai_layout_op(a, op, act, err);
       if (r < 0) r = ai_mesh_op(a, op, act, err);
       if (r < 0) r = ai_material_op(a, op, act, err);
       if (r < 0) r = ai_asset_op(a, op, act, err);

@@ -9,6 +9,7 @@
 // the row. Nothing here deletes a file.
 #include "app.hpp"
 #include "asset_store.hpp"
+#include "i18n.hpp"
 #include "material_ui.hpp"
 #include <algorithm>
 #include <cstring>
@@ -72,29 +73,29 @@ namespace {
 void hover_card(const gpx::AssetRecord &r, unsigned tex) {
   ImGui::BeginTooltip();
   ImGui::TextUnformatted(r.name.c_str());
-  ImGui::TextDisabled("%s%s", r.kind.c_str(), r.trashed ? "  (in trash)" : "");
+  ImGui::TextDisabled("%s%s", r.kind.c_str(), r.trashed ? tr("  (in trash)") : "");
   if (tex) ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(192, 192), ImVec2(0, 1), ImVec2(1, 0));
   if (!r.tags.empty()) {
     std::string t;
     for (const std::string &s : r.tags) t += (t.empty() ? "" : ", ") + s;
-    ImGui::Text("tags: %s", t.c_str());
+    ImGui::Text(tr("tags: %s"), t.c_str());
   }
   if (!r.description.empty()) ImGui::TextWrapped("%s", r.description.c_str());
   ImGui::TextDisabled("%s", r.path.c_str());
-  ImGui::TextDisabled("double-click: open\nright-click: tag, note, trash");
+  ImGui::TextDisabled("%s", tr("double-click: open\nright-click: tag, note, trash"));
   ImGui::EndTooltip();
 }
 
 void context_menu(App &a, const gpx::AssetRecord &rec) {
   gpx::AssetIndex &ix = asset_index();
   const std::string id = rec.id;
-  if (ImGui::MenuItem("Open")) {
+  if (ImGui::MenuItem(tr("Open"))) {
     std::string err;
     if (!asset_open(a, id, err)) a.status = err;
   }
   ImGui::Separator();
   ImGui::SetNextItemWidth(160);
-  if (ImGui::InputTextWithHint("##tag", "add a tag", g_ui.tag, sizeof g_ui.tag,
+  if (ImGui::InputTextWithHint("##tag", tr("add a tag"), g_ui.tag, sizeof g_ui.tag,
                                ImGuiInputTextFlags_EnterReturnsTrue)) {
     ix.add_tag(id, g_ui.tag);
     g_ui.tag[0] = 0;
@@ -102,7 +103,7 @@ void context_menu(App &a, const gpx::AssetRecord &rec) {
     invalidate();
   }
   for (const std::string &t : std::vector<std::string>(rec.tags))
-    if (ImGui::MenuItem(("remove tag '" + t + "'").c_str())) {
+    if (ImGui::MenuItem((std::string(tr("remove tag")) + " '" + t + "'").c_str())) {
       ix.remove_tag(id, t);
       asset_save();
       invalidate();
@@ -110,19 +111,19 @@ void context_menu(App &a, const gpx::AssetRecord &rec) {
   ImGui::SetNextItemWidth(260);
   if (ImGui::IsWindowAppearing())
     std::strncpy(g_ui.note, rec.description.c_str(), sizeof g_ui.note - 1);
-  if (ImGui::InputTextWithHint("##note", "a note about it", g_ui.note, sizeof g_ui.note,
+  if (ImGui::InputTextWithHint("##note", tr("a note about it"), g_ui.note, sizeof g_ui.note,
                                ImGuiInputTextFlags_EnterReturnsTrue)) {
     ix.set_description(id, g_ui.note);
     asset_save();
     invalidate();
   }
   ImGui::Separator();
-  if (!rec.trashed && ImGui::MenuItem("Move to trash")) {
+  if (!rec.trashed && ImGui::MenuItem(tr("Move to trash"))) {
     ix.trash(id);
     asset_save();
     invalidate();
   }
-  if (rec.trashed && ImGui::MenuItem("Restore from trash")) {
+  if (rec.trashed && ImGui::MenuItem(tr("Restore from trash"))) {
     ix.restore(id);
     asset_save();
     invalidate();
@@ -131,12 +132,12 @@ void context_menu(App &a, const gpx::AssetRecord &rec) {
 
 void roots_popup() {
   gpx::AssetIndex &ix = asset_index();
-  ImGui::TextDisabled("Folders the index watches");
+  ImGui::TextDisabled("%s", tr("Folders the index watches"));
   for (size_t i = 0; i < ix.roots.size(); ++i) {
     ImGui::PushID((int)i);
     ImGui::Text("%-9s %s", ix.roots[i].kind.c_str(), ix.roots[i].path.c_str());
     ImGui::SameLine();
-    if (ImGui::SmallButton("remove")) {
+    if (ImGui::SmallButton(tr("remove"))) {
       asset_remove_root(ix.roots[i].path);
       invalidate();
       ImGui::PopID();
@@ -146,22 +147,22 @@ void roots_popup() {
   }
   ImGui::Separator();
   ImGui::SetNextItemWidth(360);
-  ImGui::InputTextWithHint("##root", "folder to add", g_ui.root_path, sizeof g_ui.root_path);
+  ImGui::InputTextWithHint("##root", tr("folder to add"), g_ui.root_path, sizeof g_ui.root_path);
   ImGui::SameLine();
   ImGui::SetNextItemWidth(100);
-  ImGui::Combo("##rkind", &g_ui.root_kind, KINDS + 1, (int)(sizeof KINDS / sizeof *KINDS) - 1);
+  ImGui::Combo("##rkind", &g_ui.root_kind, tr_combo(KINDS + 1, (int)(sizeof KINDS / sizeof *KINDS) - 1).c_str());
   ImGui::SameLine();
-  if (ImGui::Button("Add")) {
+  if (ImGui::Button(tr("Add"))) {
     std::string err;
     if (asset_add_root(g_ui.root_path, KINDS[g_ui.root_kind + 1], err)) g_ui.root_path[0] = 0;
     invalidate();
   }
-  if (ImGui::Button("Rescan all")) {
+  if (ImGui::Button(tr("Rescan all"))) {
     asset_rescan();
     invalidate();
   }
   ImGui::SameLine();
-  ImGui::TextDisabled("%zu assets, %s", ix.records.size(), asset_index_file().c_str());
+  ImGui::TextDisabled(tr("%zu assets, %s"), ix.records.size(), asset_index_file().c_str());
 }
 
 } // namespace
@@ -169,29 +170,29 @@ void roots_popup() {
 void draw_assets_tab(App &a, float cell) {
   gpx::AssetIndex &ix = asset_index();
   ImGui::SetNextItemWidth(220);
-  ImGui::InputTextWithHint("##q", "find by name, folder, tag or note...", g_ui.query,
+  ImGui::InputTextWithHint("##q", tr("find by name, folder, tag or note..."), g_ui.query,
                            sizeof g_ui.query);
   ImGui::SameLine();
   ImGui::SetNextItemWidth(90);
-  ImGui::Combo("##kind", &g_ui.kind, KINDS, (int)(sizeof KINDS / sizeof *KINDS));
+  ImGui::Combo("##kind", &g_ui.kind, tr_combo(KINDS, (int)(sizeof KINDS / sizeof *KINDS)).c_str());
   ImGui::SameLine();
-  ImGui::Checkbox("trash", &g_ui.show_trash);
+  ImGui::Checkbox(tr("trash"), &g_ui.show_trash);
   ImGui::SameLine();
-  if (ImGui::SmallButton("Rescan")) {
+  if (ImGui::SmallButton(tr("Rescan"))) {
     asset_rescan();
     invalidate();
   }
   ImGui::SameLine();
-  if (ImGui::SmallButton("Folders...")) ImGui::OpenPopup("##roots");
+  if (ImGui::SmallButton(tr("Folders..."))) ImGui::OpenPopup("##roots");
   if (ImGui::BeginPopup("##roots")) {
     roots_popup();
     ImGui::EndPopup();
   }
   refresh_hits();
   if (g_ui.hits.empty()) {
-    ImGui::TextDisabled(ix.records.empty()
-                            ? "Nothing indexed yet. Folders... adds a place to look."
-                            : "Nothing matches.");
+    ImGui::TextDisabled("%s", ix.records.empty()
+                            ? tr("Nothing indexed yet. Folders... adds a place to look.")
+                            : tr("Nothing matches."));
     return;
   }
   ImGui::SameLine();
@@ -214,7 +215,7 @@ void draw_assets_tab(App &a, float cell) {
       ImGui::ImageButton("##t", (ImTextureID)(intptr_t)tex, ImVec2(cell, cell),
                          ImVec2(0, 1), ImVec2(1, 0));
     else
-      ImGui::Button(r.kind.c_str(), ImVec2(cell + 8, cell + 8));
+      ImGui::Button(tr(r.kind.c_str()), ImVec2(cell + 8, cell + 8));
     if (r.trashed) ImGui::PopStyleVar();
     if (ImGui::IsItemHovered()) {
       hover_card(r, tex);

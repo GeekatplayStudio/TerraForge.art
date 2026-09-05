@@ -5,6 +5,7 @@
 #include "app.hpp"
 #include "panel_graph_internal.hpp"
 #include "console.hpp"
+#include "i18n.hpp"
 #include "undo.hpp"
 #include "gpx/port_catalog.hpp"
 #include "gpx/metanode.hpp"
@@ -251,7 +252,7 @@ void editor_context_menus(App &a, bool eval_running, bool can_edit, int domain,
     gpx::Node *n = can_edit ? a.graph.find_node(nid) : nullptr;
     const gpx::Port *port = n && pidx < n->ports.size() ? &n->ports[pidx] : nullptr;
     if (!port) {
-      ImGui::TextDisabled(can_edit ? "no such port" : "computing...");
+      ImGui::TextDisabled("%s", can_edit ? tr("no such port") : tr("computing..."));
     } else {
       int hits = 0;
       for (const gpx::Link &l : a.graph.links)
@@ -261,11 +262,11 @@ void editor_context_menus(App &a, bool eval_running, bool can_edit, int domain,
              l.from_port == port->name))
           ++hits;
       ImGui::TextDisabled("%s  (%s)", port->name.c_str(),
-                          port->dir == gpx::PortDir::In ? "input" : "output");
+                          port->dir == gpx::PortDir::In ? tr("input") : tr("output"));
       ImGui::Separator();
       if (hits == 0) {
-        ImGui::TextDisabled("nothing connected");
-      } else if (ImGui::MenuItem(hits == 1 ? "Disconnect" : "Disconnect all")) {
+        ImGui::TextDisabled("%s", tr("nothing connected"));
+      } else if (ImGui::MenuItem(hits == 1 ? tr("Disconnect") : tr("Disconnect all"))) {
         undo_push_locked(a, "Disconnect " + port->name);
         for (size_t k = a.graph.links.size(); k-- > 0;) {
           const gpx::Link &l = a.graph.links[k];
@@ -277,7 +278,7 @@ void editor_context_menus(App &a, bool eval_running, bool can_edit, int domain,
         }
         a.request_eval();
       }
-      if (hits > 1) ImGui::TextDisabled("%d links", hits);
+      if (hits > 1) ImGui::TextDisabled(tr("%d links"), hits);
     }
     ImGui::EndPopup();
   }
@@ -292,7 +293,7 @@ void editor_context_menus(App &a, bool eval_running, bool can_edit, int domain,
   }
   if (ImGui::BeginPopup("add_node")) {
     if (eval_running) {
-      ImGui::TextDisabled("computing...");
+      ImGui::TextDisabled("%s", tr("computing..."));
     } else {
       g_popup_domain = domain;
       g_popup_all = all;

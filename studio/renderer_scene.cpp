@@ -29,6 +29,8 @@
 namespace studio {
 
 
+void draw_motion_path(const float *mvp, float hscale);
+
 void build_light_mvp(const float *sun, float hscale, float *out) {
   float cx = 0.5f, cy = hscale * 0.5f, cz = 0.5f;
   float eye[3] = {cx + sun[0] * 2.f, cy + sun[1] * 2.f, cz + sun[2] * 2.f};
@@ -292,6 +294,13 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_mesh, "u_sun_color", RS.sun_color);
     uni3(prog_mesh, "u_cam", view_eye);
     uni1(prog_mesh, "u_hscale", RS.height_scale);
+    glUniformMatrix4fv(uniform_location(prog_mesh, "u_light_mvp"), 1, GL_FALSE, F.light_mvp);
+    unii(prog_mesh, "u_shadows", (F.shadows_ok && vc.display != 0) ? 1 : 0);
+    uni1(prog_mesh, "u_shadow_soft", RS.shadow_softness);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, shadow_tex);
+    unii(prog_mesh, "u_shadowmap", 2);
+    glActiveTexture(GL_TEXTURE0);
     upload_fog_uniforms(prog_mesh, RS, atmosphere);
     unii(prog_mesh, "u_aov", g_aov);
     unii(prog_mesh, "u_object_id", 3 + (int)(&o - sc.objects.data()));
@@ -455,6 +464,9 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       glDrawArrays(GL_LINES, 0, (int)(seg.size() / 3));
     }
   }
+
+  // the selected object's motion path (renderer_motion_path.cpp)
+  if (vc.outlines) draw_motion_path(mvp, RS.height_scale);
 
   // reference grid
   if (vc.grid) {

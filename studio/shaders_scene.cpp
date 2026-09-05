@@ -148,48 +148,10 @@ uniform float u_inst_time;
 uniform vec3 u_inst_base;             // the model matrix's own translation
 layout(location=2) in vec4 in_instance; // x,y,z,scale per copy
 layout(location=3) in vec4 in_instance_rot; // cos(yaw), sin(yaw), brightness
-// deformers in the object's own space: the GLSL twin of gpx/deform.hpp
-uniform int u_def_on, u_def_bend_axis;
-uniform vec3 u_def_twist, u_def_shear, u_bmin, u_bmax;
-uniform float u_def_bend, u_def_taper;
+DEFORM_FN_PLACEHOLDER
 out vec3 v_nrm;
 out float v_tint;
 out vec3 v_world;
-float def_frac(float x, float lo, float hi) { float d = hi - lo; return d > 1e-9 ? (x - lo) / d : 0.0; }
-vec3 def_rotate(vec3 p, int axis, float rad, vec3 pivot) {
-  int u = (axis + 1) % 3, v = (axis + 2) % 3;
-  float c = cos(rad), s = sin(rad);
-  float a = p[u] - pivot[u], b = p[v] - pivot[v];
-  p[u] = pivot[u] + a * c - b * s;
-  p[v] = pivot[v] + a * s + b * c;
-  return p;
-}
-vec3 deform(vec3 p) {
-  vec3 centre = (u_bmin + u_bmax) * 0.5;
-  float ty = def_frac(p.y, u_bmin.y, u_bmax.y);
-  float tx = def_frac(p.x, u_bmin.x, u_bmax.x);
-  if (u_def_taper != 0.0) {
-    float k = max(1.0 + u_def_taper * ty, 0.0);
-    p.x = centre.x + (p.x - centre.x) * k;
-    p.z = centre.z + (p.z - centre.z) * k;
-  }
-  p.x += u_def_shear.x * ty * (u_bmax.x - u_bmin.x);
-  p.z += u_def_shear.z * ty * (u_bmax.z - u_bmin.z);
-  p.y += u_def_shear.y * tx * (u_bmax.y - u_bmin.y);
-  for (int a = 0; a < 3; ++a)
-    if (u_def_twist[a] != 0.0) {
-      float t = def_frac(p[a], u_bmin[a], u_bmax[a]);
-      p = def_rotate(p, a, radians(u_def_twist[a]) * t, centre);
-    }
-  if (u_def_bend != 0.0) {
-    int up = u_def_bend_axis == 1 ? 0 : 1;
-    float t = def_frac(p[up], u_bmin[up], u_bmax[up]);
-    vec3 pivot = centre;
-    pivot[up] = u_bmin[up];
-    p = def_rotate(p, u_def_bend_axis, radians(u_def_bend) * t, pivot);
-  }
-  return p;
-}
 void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
@@ -246,6 +208,23 @@ uniform vec4 u_light_dir[8];
 uniform int u_selected;
 uniform vec3 u_cam;
 uniform float u_hscale;
+uniform sampler2DShadow u_shadowmap;
+uniform mat4 u_light_mvp;
+uniform int u_shadows;
+uniform float u_shadow_soft;
+float mesh_shadow(vec3 world, float ndl){
+  if (u_shadows == 0) return 1.0;
+  vec4 lp = u_light_mvp * vec4(world, 1.0);
+  vec3 pc = lp.xyz / lp.w * 0.5 + 0.5;
+  if (pc.x < 0.0 || pc.x > 1.0 || pc.y < 0.0 || pc.y > 1.0 || pc.z > 1.0) return 1.0;
+  float bias = 0.003 + 0.004 * (1.0 - ndl);
+  float texel = 1.0 / 2048.0 * u_shadow_soft;
+  float s = 0.0;
+  for (int dy = -1; dy <= 1; ++dy)
+    for (int dx = -1; dx <= 1; ++dx)
+      s += texture(u_shadowmap, vec3(pc.xy + vec2(dx, dy) * texel, pc.z - bias));
+  return s / 9.0;
+}
 FOG_FN_PLACEHOLDER
 MATERIAL_UNIFORMS_PLACEHOLDER
 const float PI = 3.14159265;
@@ -284,7 +263,8 @@ void main(){
   spec += mat_clearcoat(NdH, NdV, NdL);
   vec3 kd = (1.0 - F) * (1.0 - u_metallic);
   vec3 sun_c = u_sun_color * u_sun_intensity;
-  vec3 lit = (kd * albedo / PI + spec) * sun_c * NdL * (u_m_diffuse / 0.6);
+  float shadow = mesh_shadow(v_world, NdL);
+  vec3 lit = (kd * albedo / PI + spec) * sun_c * NdL * shadow * (u_m_diffuse / 0.6);
   vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
   lit += albedo * sky * (0.45 + 0.55 * N.y) * (u_m_ambient / 0.4);
   vec3 R = reflect(-V, N);
@@ -314,7 +294,7 @@ void main(){
   fog_terms(v_world, u_cam, dist, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
   if (u_aov != 0) {
     frag = aov_out(u_aov, dist, N, albedo, v_world, float(u_object_id),
-                   albedo * sun_c * NdL, 1.0, albedo * sky,
+                   albedo * sun_c * NdL * shadow, shadow, albedo * sky,
                    vec3(0.0), fog_f, fog_c, 0.0, col);
     return;
   }

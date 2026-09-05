@@ -27,11 +27,14 @@ void pass_shadow(const FrameCtx &F) {
     static unsigned long long revision = ~0ull;
     static GLuint program = 0;
     static float matrix[16] = {}, height = 0.f, strength = 0.f;
+    static unsigned long long meshes = 0;
     float wanted_strength = g_field_glsl.empty() ? 0.f : RS.field_displacement;
+    const unsigned long long mesh_key = mesh_shadow_key();
     if (revision == g_shadow_revision && program == prog_depth &&
         height == RS.height_scale && strength == wanted_strength &&
-        std::equal(matrix, matrix + 16, light_mvp)) return;
+        meshes == mesh_key && std::equal(matrix, matrix + 16, light_mvp)) return;
     revision = g_shadow_revision;
+    meshes = mesh_key;
     program = prog_depth;
     height = RS.height_scale;
     strength = wanted_strength;
@@ -53,6 +56,7 @@ void pass_shadow(const FrameCtx &F) {
     unii(prog_depth, "u_height", 0);
     glBindVertexArray(vao_grid);
     glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+    pass_shadow_meshes(F); // rocks, trees and their copies cast too
   }
 }
 

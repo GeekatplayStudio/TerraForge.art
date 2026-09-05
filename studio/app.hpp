@@ -94,6 +94,10 @@ struct App {
   bool show_toolbar = true;
   bool show_console = true;
   bool show_timeline = false;
+  bool show_curve_editor = false; // the Curve editor window (F-curves)
+  // A JSON document an op wants published with the next state ("reply"),
+  // e.g. the key list from `keys`. Cleared once written.
+  std::string api_reply;
   bool show_preview = true;
   bool show_material_editor = false;
   bool show_mesh_tools = false;

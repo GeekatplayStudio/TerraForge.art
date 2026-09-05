@@ -75,6 +75,12 @@ int ai_scene_op(App &a, const std::string &op, const nlohmann::json &act,
 // match). Defined in ai_ops_graph.cpp, shared with ai_ops_scene.cpp.
 gpx::Node *find_node(App &a, const nlohmann::json &act, const char *key);
 
+// Animation: set_key/remove_key/keys/set_time/set_frame/play/set_range/
+// set_extrapolation/set_ease/add_marker/bake/set_expression/add_modifier/
+// playblast (anim_ops.cpp). Same return convention as ai_graph_op.
+int ai_anim_op(App &a, const std::string &op, const nlohmann::json &act,
+               std::string &err);
+
 // The JSON action schema, for prompts, docs and the MCP tool description.
 std::string ai_action_schema(AiDomain domain);
 } // namespace studio

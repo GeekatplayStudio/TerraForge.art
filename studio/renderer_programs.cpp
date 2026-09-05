@@ -51,6 +51,10 @@ std::string inject_sky(const char *src) {
     sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);
     sub("PL_SPHERE_PLACEHOLDER", PL_SPHERE_FN);
   }
+  {
+    extern const char *const DEFORM_FN_GLSL; // shaders_scene.cpp
+    sub("DEFORM_FN_PLACEHOLDER", DEFORM_FN_GLSL);
+  }
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
   // The vertex and fragment stages are separate translation units, so each
@@ -181,6 +185,13 @@ bool rebuild_terrain_program(std::string &err) {
     prog_depth = d;
   } else {
     log_error("shader", "shadow pass: " + derr);
+  }
+  // meshes cast into the same map (renderer_shadow_meshes.cpp)
+  if (GLuint dm = link_checked(inject_sky(VS_DEPTH_MESH), FS_DEPTH, derr)) {
+    if (prog_depth_mesh) delete_program(prog_depth_mesh);
+    prog_depth_mesh = dm;
+  } else {
+    log_error("shader", "mesh shadow pass: " + derr);
   }
 
   // The tessellated program is an optimisation, not a requirement: if it does

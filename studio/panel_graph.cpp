@@ -5,6 +5,7 @@
 // and side pane, and each able to float out onto another screen. They all
 // edit the one graph.
 #include "app.hpp"
+#include "i18n.hpp"
 #include "panel_graph_internal.hpp"
 #include "paths.hpp"
 #include "console.hpp"
@@ -150,31 +151,31 @@ void draw_panel_graph(App &a) {
 // ----------------------------------------------------------- one editor
 static void editor_toolbar(App &a, GraphEditor &e, bool can_edit) {
   if (e.index == 0) {
-    ImGui::TextDisabled("%s nodes", workspace_name(a.workspace));
+    ImGui::TextDisabled(tr("%s nodes"), tr(workspace_name(a.workspace)));
   } else {
     ImGui::SetNextItemWidth(120);
-    ImGui::Combo("##dom", &e.domain,
-                 "Terrain\0Materials\0Atmosphere\0Render\0All domains\0");
+    static const char *const KD[] = {"Terrain", "Materials", "Atmosphere", "Render", "All domains"};
+    ImGui::Combo("##dom", &e.domain, tr_combo(KD, 5).c_str());
     if (ImGui::IsItemDeactivatedAfterEdit()) editors_save_prefs();
   }
   ImGui::SameLine();
   if (e.domain != 4) {
     if (e.index == 0) {
-      studio::Checkbox("show all domains", &a.graph_show_all_domains);
+      studio::Checkbox(tr("show all domains"), &a.graph_show_all_domains);
       e.show_all = a.graph_show_all_domains;
     } else {
-      studio::Checkbox("show all domains", &e.show_all);
+      studio::Checkbox(tr("show all domains"), &e.show_all);
     }
     ImGui::SameLine();
   }
-  studio::Checkbox("parameters", &e.show_props);
+  studio::Checkbox(tr("parameters"), &e.show_props);
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("The selected node's parameters in a pane on the right\n"
-                      "of this editor - the Properties panel, but here.");
+    ImGui::SetTooltip("%s", tr("The selected node's parameters in a pane on the right\n"
+                      "of this editor - the Properties panel, but here."));
   if (!can_edit) {
     ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.47f, 0.19f, 1.f));
-    ImGui::Text("computing %d/%d", a.eval.progress_done.load(),
+    ImGui::Text(tr("computing %d/%d"), a.eval.progress_done.load(),
                 a.eval.progress_total.load());
     ImGui::PopStyleColor();
   }

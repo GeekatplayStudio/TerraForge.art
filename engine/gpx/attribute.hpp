@@ -55,7 +55,15 @@ struct Attribute {
   // copying, serializing, undoing and publishing a parameter all carry its
   // animation with it automatically.
   Track anim;
-  bool animated() const { return !anim.empty(); }
+  // Vec2 / Range / Color: one track per component, allocated on first key
+  // (index 0..3). Scalars keep using `anim`.
+  std::vector<Track> anim_v;
+  bool animated() const {
+    if (!anim.empty()) return true;
+    for (const Track &t : anim_v) if (!t.empty()) return true;
+    return false;
+  }
+  Track &anim_comp(int c) { if ((int)anim_v.size() <= c) anim_v.resize((size_t)c + 1); return anim_v[(size_t)c]; }
 };
 
 // Ordered attribute container; preserves declaration order for UI.

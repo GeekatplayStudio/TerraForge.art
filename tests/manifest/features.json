@@ -1145,6 +1145,150 @@
       "description": "A mesh object (primitive or imported) assigned a MaterialOutput (Objects/Materials panel, or the assign_material op with an object name) is lit by the same GGX PBR pipeline the terrain uses - roughness, metallic, specular, reflection, clearcoat, translucency, emissive, ambient from the sky colours - through the shared MATERIAL_UNIFORMS_PLACEHOLDER/MATERIAL_FN_PLACEHOLDER snippets; an unassigned mesh keeps the old flat-lit look via MaterialParams defaults. Picture-mapped textures still need a UV channel on the mesh format, which this phase does not add - see AGENTS.md",
       "test_file": "test_engine.cpp",
       "test_symbol": "test_material_params"
+    },
+    {
+      "id": "ui.icons_c4d",
+      "area": "studio",
+      "phase": "36",
+      "description": "Cinema 4D-styled vector icon set: thin line glyphs with rounded joins on the 18 / 26 / 36 px palette ladder (prefs icon_size), pixel-snapped so the 18 px set is crisp, filled silhouettes for object types, visibility dots, transport and key marks, deformers; every id paints, stays in its box and is deterministic",
+      "test_file": "test_icons.cpp",
+      "test_symbol": "test_icons_all"
+    },
+    {
+      "id": "ui.object_manager",
+      "area": "studio",
+      "phase": "36",
+      "description": "The Objects panel as a Cinema 4D Object Manager: dotted hierarchy connectors, expander, type icon, inline rename (double-click, F2/Return, arrows move row to row while editing), the middle bar (layer colour swatch with a layer picker, the viewport and render dots that cycle grey/green/red, Ctrl-click for the children, paint by dragging across rows, the enable tick/cross with Alt-click for the subtree, a look-through button on cameras) and tag chips (material, driver node, scatter); selected / last-selected / child-of-selected / hidden row states, Ctrl and Shift multi-select, middle-click selects the subtree; search that filters without selecting, a type filter, a Show menu (flat, by layer, sort, tags, three row heights) and a path bar with Set As Root; drag to reorder or reparent with Ctrl to copy; a full context menu",
+      "test_file": "test_scene_tree.cpp",
+      "test_symbol": "test_move_object"
+    },
+    {
+      "id": "scene.visibility_states",
+      "area": "studio",
+      "phase": "36",
+      "description": "SceneObject::vis_viewport / vis_render (0 inherit, 1 on, 2 off) and enabled; object_visible / object_render_visible walk the parents with the C4D rule (grey inherits, green and red override in both directions, grey at the root is visible, layers and enabled still apply); a pre-dots file's visible=false loads as an explicit red dot; layers carry a colour",
+      "test_file": "test_scene_tree.cpp",
+      "test_symbol": "test_visibility_states"
+    },
+    {
+      "id": "scene.move_object",
+      "area": "studio",
+      "phase": "36",
+      "description": "scene_move_object(from, to, new_parent) moves an object in the array and fixes every index that pointed into it - parents, selected, the multi-selection, the active and last-used cameras - and refuses a move under itself or a descendant",
+      "test_file": "test_scene_tree.cpp",
+      "test_symbol": "test_move_object"
+    },
+    {
+      "id": "anim.engine",
+      "area": "engine",
+      "phase": "36",
+      "description": "Animation tracks: per-key interpolation (linear, smooth, hold, bezier with auto-clamped / user / broken tangents), five extrapolation modes (constant, linear, cycle, cycle with offset, ping-pong), a modifier stack (noise, oscillator, offset, limit, smooth) and expressions (t, frame, fps, value, functions, other properties by path); the old track text form still loads, the new K2 form round-trips byte-identically",
+      "test_file": "test_anim.cpp",
+      "test_symbol": "test_serialization"
+    },
+    {
+      "id": "anim.curve_ops",
+      "area": "engine",
+      "phase": "36",
+      "description": "Curve operations behind the Timeline and Curve editor: move (colliding keys merge), retime about a pivot, mirror, smooth, flatten, ease presets incl. Easy Ease, bake one key per frame, simplify (Ramer-Douglas-Peucker), snap to frames, copy/paste relative to the first key",
+      "test_file": "test_anim.cpp",
+      "test_symbol": "test_curve_ops"
+    },
+    {
+      "id": "anim.timeline_model",
+      "area": "engine",
+      "phase": "36",
+      "description": "The document timeline: frame rate, range, preview range, loop mode, autokey, snap, markers; time formatted and parsed as frames, SMPTE timecode or seconds",
+      "test_file": "test_anim.cpp",
+      "test_symbol": "test_timeline"
+    },
+    {
+      "id": "anim.properties",
+      "area": "studio",
+      "phase": "36",
+      "description": "Every property of every scene object (transform, squeeze, colour, visibility, deformers, scatter, light, camera optics, planet, infinite surface) and of the world (sun, sky, fog, water, clouds, terrain height) is animatable by path through one table; recording reads the live value, applying writes it back each frame, removing the last key makes the property static again; nothing moves unless it has a key",
+      "test_file": "test_anim_scene.cpp",
+      "test_symbol": "test_record_apply"
+    },
+    {
+      "id": "anim.scene_file",
+      "area": "studio",
+      "phase": "36",
+      "description": "Object tracks, world tracks, the timeline settings and markers live in the scene file (undo snapshots carry them); an old file without them loads static at 30 fps",
+      "test_file": "test_anim_scene.cpp",
+      "test_symbol": "test_scene_file"
+    },
+    {
+      "id": "anim.dope_sheet",
+      "area": "studio",
+      "phase": "36",
+      "description": "The Timeline: transport with previous/next key, frame field in the display mode, range/fps/loop/preview/autokey/every-frame/snap; ruler with ticks, preview band, draggable named markers, Ctrl-scrub snapping to keys; a track tree (owner > group > component, axis-coloured) with summary rows, key glyphs per interpolation, click/Ctrl/box select, drag with frame snapping, retime handles, copy/paste/duplicate/delete, ease and extrapolation menus, modifiers, double-click to add a key",
+      "test_file": "test_anim.cpp",
+      "test_symbol": "test_curve_ops"
+    },
+    {
+      "id": "anim.curve_editor",
+      "area": "studio",
+      "phase": "36",
+      "description": "The Curve editor: chosen tracks as value-against-time curves in axis colours, key and tangent-handle drags (Alt breaks a handle), speed (derivative) view, normalised view, ghost of the curve during a drag, Smooth/Flatten/Bake/Simplify tools, per-track expression field with live error, modifier rows",
+      "test_file": "test_anim.cpp",
+      "test_symbol": "test_expressions"
+    },
+    {
+      "id": "anim.circle",
+      "area": "studio",
+      "phase": "36",
+      "description": "The animation circle beside every keyable property row (empty static, ring animated, filled keyed here; click/Ctrl/Shift/Ctrl+Shift), Autokey on edits, the keyframe navigator, K keys the selection's transform, right-click menu with ease/extrapolation/show-curve",
+      "test_file": "test_anim_scene.cpp",
+      "test_symbol": "test_property_table"
+    },
+    {
+      "id": "anim.ops",
+      "area": "studio",
+      "phase": "36",
+      "description": "Animation through the action schema and MCP: set_key/remove_key/remove_track/keys (with a reply), set_frame/play/stop/set_range, set_extrapolation/set_ease/set_interp, bake/simplify/snap_keys/mirror_keys/retime, set_expression/add_modifier/clear_modifiers, add_marker/remove_marker, key_transform, playblast; tracks addressed by object+prop, world, node+attr or id",
+      "test_file": "test_anim_scene.cpp",
+      "test_symbol": "test_record_apply"
+    },
+    {
+      "id": "ui.toolbar_palette",
+      "area": "studio",
+      "phase": "36",
+      "description": "Tool rows as Cinema 4D command palettes: square icon buttons on the 18/26/36 px ladder (Settings > General > Icon size), 2 px apart with 1 px rules between groups; the global palette (undo/redo, recompute, sculpt, move/rotate/scale, twist/bend/skew/taper, gizmos), each workspace's row (toolbar_tools.cpp), the viewport header and the Timeline transport",
+      "test_file": "test_icons.cpp",
+      "test_symbol": "test_icons_all"
+    },
+    {
+      "id": "ui.i18n_languages",
+      "area": "studio",
+      "phase": "36",
+      "description": "Languages: English built in (tagged dictionary + identity tags regenerated by tools/i18n_scan.py), resources/lang/<code>.json files listed in Settings > General and chosen by the preferences; German and French ship; a missing tag falls back to English then to the tag, distinct missing tags are counted; a malformed file fails with a reason and leaves English active; every tag a shipped file translates must exist in English",
+      "test_file": "test_i18n.cpp",
+      "test_symbol": "test_language_files"
+    },
+    {
+      "id": "render.mesh_shadows",
+      "area": "studio",
+      "phase": "36",
+      "description": "Mesh objects and their scattered copies are drawn into the sun's shadow map with their deformers, so rocks and trees cast shadows on the terrain, and meshes sample the map so they receive the terrain's and each other's shadows; the map is redrawn only when a mesh actually moved (a field-wise key, never struct bytes)",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_deformers"
+    },
+    {
+      "id": "anim.motion_path",
+      "area": "studio",
+      "phase": "36",
+      "description": "The selected object's animated position drawn in the viewport as a path through the play range with a cross per key",
+      "test_file": "test_anim_scene.cpp",
+      "test_symbol": "test_record_apply"
+    },
+    {
+      "id": "api.object_transforms",
+      "area": "studio",
+      "phase": "36",
+      "description": "scene_state.json objects carry pos, rot, scale and an animated flag, and the state carries the timeline block and an op's reply, so a script can read back what an animation did",
+      "test_file": "test_api_coverage.py",
+      "test_symbol": "test_every_op_is_reachable_over_mcp"
     }
   ]
 }

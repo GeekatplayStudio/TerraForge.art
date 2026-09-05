@@ -53,6 +53,8 @@ void prefs_load() {
     p.idle_fps = j.value("idle_fps", p.idle_fps);
     p.preview_fps = j.value("preview_fps", p.preview_fps);
     p.preview_quality = j.value("preview_quality", p.preview_quality);
+    p.icon_size = std::clamp(j.value("icon_size", p.icon_size), 0, 2);
+    p.language = j.value("language", p.language);
   } catch (...) {
   }
 }
@@ -74,6 +76,8 @@ void prefs_save() {
   j["idle_fps"] = p.idle_fps;
   j["preview_fps"] = p.preview_fps;
   j["preview_quality"] = p.preview_quality;
+  j["icon_size"] = p.icon_size;
+  j["language"] = p.language;
   std::ofstream f(prefs_file());
   f << j.dump(2);
 }

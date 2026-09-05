@@ -2,6 +2,7 @@
 #include "panel_float.hpp"
 #include "app.hpp"
 #include "icons.hpp"
+#include "i18n.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <algorithm>
@@ -63,9 +64,9 @@ void panel_float_controls(App &a, const char *name) {
   char id[96];
   snprintf(id, sizeof id, "##float_%s", name);
   if (IconButton(docked ? Icon::Detach : Icon::Dock, id,
-                 docked ? "Float this window out of the main window\n"
-                          "(onto the second monitor when there is one)"
-                        : "Dock this window back into the main layout",
+                 docked ? tr("Float this window out of the main window\n"
+                          "(onto the second monitor when there is one)")
+                        : tr("Dock this window back into the main layout"),
                  false, bw))
     g_requests[name] = docked ? REQ_DETACH : REQ_DOCK;
   ImGui::PopStyleColor();

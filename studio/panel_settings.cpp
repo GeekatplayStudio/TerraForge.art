@@ -11,6 +11,7 @@
 #include "app.hpp"
 #include "asset_store.hpp"
 #include "config.hpp"
+#include "i18n.hpp"
 #include "perf.hpp"
 #include "prefs.hpp"
 #include "shortcuts.hpp"
@@ -45,6 +46,31 @@ void tab_general(App &a) {
   if (ImGui::SliderFloat("UI scale", &p.ui_scale, 0.7f, 2.f, "%.2f")) {
     ImGui::GetStyle().FontScaleMain = p.ui_scale;
     apply_theme();
+  }
+  {
+    // the interface language: English built in, plus every resources/lang
+    // file found at startup; a change applies on the spot and is remembered
+    int cur = i18n_language();
+    ImGui::SetNextItemWidth(220);
+    if (ImGui::BeginCombo(tr("Language"), i18n_language_name(cur))) {
+      for (int i = 0; i < i18n_language_count(); ++i)
+        if (ImGui::Selectable(i18n_language_name(i), i == cur)) {
+          std::string err;
+          if (i18n_select(i, &err)) { p.language = i18n_language_code(i); prefs_save(); }
+          else a.status = err;
+        }
+      ImGui::EndCombo();
+    }
+    if (cur != 0) ImGui::TextDisabled("%d %s, %d %s", i18n_active_count(), tr("translated"), i18n_english_count() - i18n_active_count(), tr("fall back to English"));
+    int missing = i18n_missing_count();
+    if (missing) ImGui::TextDisabled("%d %s", missing, tr("tags not in the English dictionary (run tools/i18n_scan.py)"));
+    // icon size: the palette ladder Cinema 4D uses, 18 / 26 / 36 px
+    const char *const sizes[] = {"Small (18 px)", "Medium (26 px)", "Large (36 px)"};
+    std::string list = tr_combo(sizes, 3);
+    ImGui::SetNextItemWidth(220);
+    int is = p.icon_size;
+    if (ImGui::Combo(tr("Icon size"), &is, list.c_str())) { p.icon_size = is; prefs_save(); }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Toolbar and viewport icons, and the Objects panel's row height."));
   }
   ImGui::SeparatorText("Performance");
   ImGui::SetNextItemWidth(220);

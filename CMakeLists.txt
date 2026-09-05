@@ -123,6 +123,8 @@ set(ENGINE_SOURCES
     engine/attribute.cpp
     engine/material_params.cpp
     engine/animation.cpp
+    engine/anim_curve.cpp
+    engine/anim_expr.cpp
     engine/asset_index.cpp
     engine/mesh_analysis.cpp
     engine/mesh_engines.cpp
@@ -326,6 +328,8 @@ set(STUDIO_SOURCES
     studio/theme.cpp
     studio/theme_colors.cpp
     studio/icons.cpp
+    studio/icons_glyphs.cpp
+    studio/icons_glyphs2.cpp
     studio/panel_graph.cpp
     studio/panel_graph_edit_ops.cpp
     studio/panel_graph_draw.cpp
@@ -347,6 +351,7 @@ set(STUDIO_SOURCES
     studio/gizmo_tools.cpp
     studio/gizmo_draw.cpp
     studio/toolbar_bars.cpp
+    studio/toolbar_tools.cpp
     studio/terrain_styles.cpp
     studio/undo.cpp
     studio/sculpt.cpp
@@ -374,6 +379,7 @@ set(STUDIO_SOURCES
     studio/gpu_timer.cpp
     studio/blue_noise.cpp
     studio/shaders_scene.cpp
+    studio/shaders_mesh_depth.cpp
     studio/shaders_sky.cpp
     studio/planet_renderer.cpp
     studio/planet_shaders.cpp
@@ -387,8 +393,20 @@ set(STUDIO_SOURCES
     studio/panel_material_editor.cpp
     studio/material_stack_ops.cpp
     studio/panel_scene.cpp
+    studio/panel_scene_row.cpp
+    studio/panel_scene_dnd.cpp
+    studio/panel_scene_menu.cpp
     studio/panel_console.cpp
     studio/panel_timeline.cpp
+    studio/panel_timeline_transport.cpp
+    studio/panel_timeline_keys.cpp
+    studio/panel_curve_editor.cpp
+    studio/anim_tracks.cpp
+    studio/anim_widgets.cpp
+    studio/anim_playback.cpp
+    studio/anim_ops.cpp
+    studio/renderer_motion_path.cpp
+    studio/renderer_shadow_meshes.cpp
     studio/console.cpp
     studio/crash_log.cpp
     studio/panel_float.cpp
@@ -400,6 +418,8 @@ set(STUDIO_SOURCES
     studio/scene_primitives.cpp
     studio/scene_io.cpp
     studio/scene_io_object.cpp
+    studio/scene_io_anim.cpp
+    studio/anim_targets.cpp
     studio/render_settings.cpp
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
@@ -418,6 +438,10 @@ set(STUDIO_SOURCES
     studio/ai_ops_view.cpp
     studio/studio_api.cpp
     studio/i18n.cpp
+    studio/i18n_en.cpp
+    studio/i18n_en_ui.cpp
+    studio/i18n_en_ui2.cpp
+    studio/i18n_startup.cpp
     studio/file_dialogs.cpp
     studio/prefs.cpp
     studio/paths.cpp
@@ -519,6 +543,8 @@ target_link_libraries(engine_tests PRIVATE
 add_executable(undo_tests
     tests/cpp/test_undo.cpp
     tests/cpp/test_undo_render.cpp
+    tests/cpp/test_scene_tree.cpp
+    tests/cpp/test_anim_scene.cpp
     tests/cpp/test_material_stack_ops.cpp
     tests/cpp/test_material_channel_ops.cpp
     studio/material_stack_ops.cpp
@@ -530,6 +556,8 @@ add_executable(undo_tests
     studio/scene_primitives.cpp
     studio/scene_io.cpp
     studio/scene_io_object.cpp
+    studio/scene_io_anim.cpp
+    studio/anim_targets.cpp
     studio/render_settings.cpp
     studio/autosave.cpp
     studio/console.cpp
@@ -547,6 +575,14 @@ target_link_libraries(regression_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
 # Universal node contract, applied to every node in the registry.
+add_executable(i18n_tests tests/cpp/test_i18n.cpp studio/i18n.cpp studio/i18n_en.cpp studio/i18n_en_ui.cpp studio/i18n_en_ui2.cpp)
+target_include_directories(i18n_tests PRIVATE studio)
+target_link_libraries(i18n_tests PRIVATE third_party_headers)
+
+add_executable(anim_tests tests/cpp/test_anim.cpp)
+target_link_libraries(anim_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(node_tests tests/cpp/test_nodes.cpp tests/cpp/test_nodes_convert.cpp)
 target_link_libraries(node_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -595,6 +631,13 @@ if(WIN32)
   target_link_libraries(config_tests PRIVATE crypt32)
 endif()
 
+# The icon set: every id paints something, stays inside its box at each
+# step of the 18 / 26 / 36 ladder, and draws the same vertices twice.
+add_executable(icon_tests tests/cpp/test_icons.cpp studio/icons.cpp
+    studio/icons_glyphs.cpp studio/icons_glyphs2.cpp studio/prefs.cpp studio/paths.cpp)
+target_include_directories(icon_tests PRIVATE studio engine)
+target_link_libraries(icon_tests PRIVATE imgui third_party_headers)
+
 # The AI services without a network: request builders and response parsers
 # on the providers' documented JSON, ComfyUI injection and inference, prompts.
 add_executable(ai_services_tests tests/cpp/test_ai_services.cpp
@@ -625,6 +668,8 @@ enable_testing()
 add_test(NAME PerfGuard COMMAND node_bench)
 add_test(NAME RegressionLock COMMAND regression_tests)
 add_test(NAME NodeContract COMMAND node_tests)
+add_test(NAME AnimTests COMMAND anim_tests)
+add_test(NAME I18nTests COMMAND i18n_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
@@ -633,6 +678,7 @@ add_test(NAME LayoutTests COMMAND layout_tests)
 add_test(NAME MeshTests COMMAND mesh_tests)
 add_test(NAME MaterialEditorTests COMMAND material_editor_tests)
 add_test(NAME ConfigTests COMMAND config_tests)
+add_test(NAME IconTests COMMAND icon_tests)
 add_test(NAME AiServiceTests COMMAND ai_services_tests)
 add_test(NAME AssetTests COMMAND asset_tests)
 

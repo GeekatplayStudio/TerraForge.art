@@ -35,6 +35,7 @@ namespace studio {
 Camera CAM;
 
 GLuint prog_terrain = 0, prog_water = 0, prog_sky = 0, prog_depth = 0;
+GLuint prog_depth_mesh = 0; // meshes into the sun's shadow map
 // mean height of the uploaded tile, so the infinite surround can meet it
 float g_terrain_mean = 0.f;
 float g_terrain_base = 0.f;

@@ -87,7 +87,11 @@ static void publish_state(App &a) {
                     {"type", (int)o.type},
                     {"parent", o.parent},
                     {"visible", o.visible},
-                    {"material_node", o.material_node}});
+                    {"material_node", o.material_node},
+                    {"pos", {o.pos[0], o.pos[1], o.pos[2]}},
+                    {"rot", {o.yaw, o.pitch, o.roll}},
+                    {"scale", o.scale},
+                    {"animated", !o.anim.empty()}});
   }
   j["objects"] = objs;
   j["selected"] = sc.selected;
@@ -196,6 +200,17 @@ static void publish_state(App &a) {
     // modification time to move
     // the last op's one-line result, so a script can read what it did
   j["status"] = a.status;
+  if (!a.api_reply.empty()) {
+    try { j["reply"] = json::parse(a.api_reply); } catch (...) { j["reply"] = a.api_reply; }
+    a.api_reply.clear();
+  }
+  {
+    const gpx::Timeline &tl = scene().timeline;
+    j["timeline"] = {{"fps", tl.fps}, {"start", tl.start}, {"end", tl.end}, {"time", a.graph.time},
+                     {"frame", tl.frame_of(a.graph.time)}, {"playing", a.anim_playing},
+                     {"preview", tl.preview}, {"preview_start", tl.preview_start}, {"preview_end", tl.preview_end},
+                     {"autokey", tl.autokey}, {"loop", (int)tl.loop}, {"markers", tl.markers.size()}};
+  }
   {
     const PerfStats &ps = perf_stats();
     j["frame_latency"] = {{"cpu_work_p95_ms", ps.work_p95_ms},

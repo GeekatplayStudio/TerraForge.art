@@ -17,6 +17,7 @@ implementation rather than three.
 from typing import Any, Dict, Optional
 
 from .studio_asset_tools import ASSET_TOOLS, ASSET_SIMPLE
+from .studio_anim_tools import ANIM_TOOLS, ANIM_SIMPLE
 
 GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
     "studio_get_graph": {
@@ -410,6 +411,9 @@ _SIMPLE = {
 # the Material Studio and the asset manager (studio_asset_tools.py)
 GRAPH_TOOLS.update(ASSET_TOOLS)
 _SIMPLE.update(ASSET_SIMPLE)
+# animation (studio_anim_tools.py)
+GRAPH_TOOLS.update(ANIM_TOOLS)
+_SIMPLE.update(ANIM_SIMPLE)
 
 
 def handle_graph_tool(tool: str, params: Dict[str, Any],

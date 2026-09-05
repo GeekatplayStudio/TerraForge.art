@@ -129,11 +129,28 @@ json attr_to_json(const Attribute &a) {
   }
   // animation rides along with the value it belongs to
   if (!a.anim.empty()) j["anim"] = track_to_string(a.anim);
+  {
+    bool any = false;
+    for (const Track &t : a.anim_v) any = any || !t.empty();
+    if (any) {
+      json v = json::array();
+      for (const Track &t : a.anim_v) v.push_back(track_to_string(t));
+      j["anim_v"] = v;
+    }
+  }
   return j;
 }
 
 void attr_from_json(Attribute &a, const json &j) {
   if (j.contains("anim")) track_from_string(a.anim, j["anim"].get<std::string>());
+  if (j.contains("anim_v") && j["anim_v"].is_array()) {
+    a.anim_v.clear();
+    for (const json &s : j["anim_v"]) {
+      Track t;
+      if (s.is_string()) track_from_string(t, s.get<std::string>());
+      a.anim_v.push_back(t);
+    }
+  }
   if (a.type == AttrType::Field) {
     field_from_json(a, j);
     return;

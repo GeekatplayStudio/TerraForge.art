@@ -5,6 +5,7 @@
 // this file shows a bare fraction of it: positions, sizes and altitudes are
 // converted to metres (or feet) and given a unit that reads well at the size
 // in question, so a 30 cm rock is "30 cm" and not "0.0003".
+#include "anim_widgets.hpp"
 #include "app.hpp"
 #include "gizmo.hpp"
 #include "ai_assist.hpp"
@@ -46,17 +47,26 @@ void transform_ui(App &a, SceneObject &o) {
   struct EndDisabledAtExit {
     ~EndDisabledAtExit() { ImGui::EndDisabled(); }
   } end_disabled_at_exit;
+  // the animation circle before each keyable row; an edit with Autokey on
+  // writes the key (anim_widgets.hpp)
+  auto circ = [&](const char *path, int comp) {
+    if (const AnimProp *p = anim_find_prop(o, path)) anim_circle(a, o, *p, comp);
+  };
+  auto autokey = [&](const char *path, int comp) {
+    if (ImGui::IsItemDeactivatedAfterEdit())
+      if (const AnimProp *p = anim_find_prop(o, path)) anim_autokey(a, o, *p, comp);
+  };
   if (prop_filter_match("Position")) {
     ImGui::SeparatorText("Position");
-    drag_length("X", &o.pos[0]);
-    drag_length("Altitude", &o.pos[1], hs);
-    drag_length("Z", &o.pos[2]);
+    circ("pos", 0); drag_length("X", &o.pos[0]); autokey("pos", 0);
+    circ("pos", 1); drag_length("Altitude", &o.pos[1], hs); autokey("pos", 1);
+    circ("pos", 2); drag_length("Z", &o.pos[2]); autokey("pos", 2);
   }
   if (prop_filter_match("Rotation")) {
     ImGui::SeparatorText("Rotation");
-    ImGui::DragFloat("Heading", &o.yaw, 0.5f, -180.f, 180.f, "%.1f°");
-    ImGui::DragFloat("Pitch", &o.pitch, 0.5f, -180.f, 180.f, "%.1f°");
-    ImGui::DragFloat("Bank", &o.roll, 0.5f, -180.f, 180.f, "%.1f°");
+    circ("rot", 0); ImGui::DragFloat("Heading", &o.yaw, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 0);
+    circ("rot", 1); ImGui::DragFloat("Pitch", &o.pitch, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 1);
+    circ("rot", 2); ImGui::DragFloat("Bank", &o.roll, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 2);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Heading turns about the vertical axis, pitch tips the\n"
                         "nose up and down, bank rolls it - applied in that\n"
@@ -64,10 +74,10 @@ void transform_ui(App &a, SceneObject &o) {
   }
   if (prop_filter_match("Size")) {
     ImGui::SeparatorText("Size");
-    drag_length("Size", &o.scale, 1.f, 0.0005f, 1e6f);
+    circ("scale", -1); drag_length("Size", &o.scale, 1.f, 0.0005f, 1e6f); autokey("scale", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The object's largest dimension, as a real length.");
-    ImGui::DragFloat3("Squeeze", o.scl, 0.005f, 0.01f, 20.f, "%.3f");
+    circ("scl", -1); ImGui::DragFloat3("Squeeze", o.scl, 0.005f, 0.01f, 20.f, "%.3f"); autokey("scl", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Scales X, Y and Z independently around the size\n"
                         "above: 1, 0.4, 1 flattens without shrinking.");
@@ -84,18 +94,18 @@ void transform_ui(App &a, SceneObject &o) {
     // gizmos drag: the same numbers, typed
     ImGui::SeparatorText("Deform");
     gpx::Deform &d = o.deform;
-    ImGui::DragFloat3("Twist", d.twist, 0.5f, -720.f, 720.f, "%.1f°");
+    circ("deform.twist", -1); ImGui::DragFloat3("Twist", d.twist, 0.5f, -720.f, 720.f, "%.1f°"); autokey("deform.twist", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Turns the far end about each axis; the base stays. Vue's Twist.");
-    ImGui::DragFloat("Bend", &d.bend, 0.5f, -180.f, 180.f, "%.1f°");
+    circ("deform.bend", -1); ImGui::DragFloat("Bend", &d.bend, 0.5f, -180.f, 180.f, "%.1f°"); autokey("deform.bend", -1);
     ImGui::SameLine();
     ImGui::SetNextItemWidth(60);
     ImGui::Combo("##bendaxis", &d.bend_axis, "X\0Y\0Z\0");
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("The axis the object curls around, from its base.");
-    ImGui::DragFloat3("Skew", d.shear, 0.005f, -4.f, 4.f, "%.3f");
+    circ("deform.shear", -1); ImGui::DragFloat3("Skew", d.shear, 0.005f, -4.f, 4.f, "%.3f"); autokey("deform.shear", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("X and Z slide the top sideways by that fraction of the width;\nY slides one side up.");
-    ImGui::DragFloat("Taper", &d.taper, 0.005f, -1.f, 3.f, "%.3f");
+    circ("deform.taper", -1); ImGui::DragFloat("Taper", &d.taper, 0.005f, -1.f, 3.f, "%.3f"); autokey("deform.taper", -1);
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("-1 brings the top to a point; 1 doubles it.");
     if (!d.identity() && ImGui::SmallButton("Reset deformations")) d = gpx::Deform();
   }
@@ -133,7 +143,9 @@ void object_properties_ui(App &a) {
                    : o.type == SceneObject::InfiniteSurface ? "Infinite terrain"
                                                    : "Mesh object";
   ImGui::TextDisabled("· %s", kind);
-  studio::Checkbox("Visible", &o.visible);
+  if (const AnimProp *vp = anim_find_prop(o, "visible")) anim_circle(a, o, *vp, -1);
+  if (studio::Checkbox("Visible", &o.visible))
+    if (const AnimProp *vp = anim_find_prop(o, "visible")) anim_autokey(a, o, *vp, -1);
   ImGui::Separator();
 
   if (o.type == SceneObject::Camera) {

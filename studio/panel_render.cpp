@@ -3,6 +3,7 @@
 // albedo and PBR material, then drives an external engine through the Python
 // layer so the render matches the preview.
 #include "app.hpp"
+#include "i18n.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
@@ -303,16 +304,16 @@ void draw_render_window(App &a) {
 
   bool busy = render_running.load();
   ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.47f, 0.19f, 1.f));
-  ImGui::TextUnformatted(busy ? (progress_line.empty() ? "starting renderer..."
+  ImGui::TextUnformatted(busy ? (progress_line.empty() ? tr("starting renderer...")
                                                        : progress_line.c_str())
-                              : (progress_line.empty() ? "idle"
+                              : (progress_line.empty() ? tr("idle")
                                                        : progress_line.c_str()));
   ImGui::PopStyleColor();
   ImGui::SameLine();
   if (busy) {
-    if (ImGui::SmallButton("Cancel")) render_cancel();
+    if (ImGui::SmallButton(tr("Cancel"))) render_cancel();
   } else if (!render_output.empty()) {
-    if (ImGui::SmallButton("Open file")) open_in_desktop(render_output);
+    if (ImGui::SmallButton(tr("Open file"))) open_in_desktop(render_output);
   }
 
   if (preview_tex && preview_w > 0) {
@@ -324,7 +325,7 @@ void draw_render_window(App &a) {
       ImGui::Image((ImTextureID)(intptr_t)preview_tex, size);
     }
   } else {
-    ImGui::TextDisabled("waiting for the first pass...");
+    ImGui::TextDisabled("%s", tr("waiting for the first pass..."));
   }
   ImGui::End();
 }
@@ -381,7 +382,7 @@ void render_properties_ui(App &a) {
     spp = assign->samples;
     snprintf(out_path, sizeof out_path, "%s", assign->output.c_str());
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.55f, 0.24f, 1.f));
-    ImGui::Text("Render settings of %s", sc.objects[cam].name.c_str());
+    ImGui::Text(tr("Render settings of %s"), sc.objects[cam].name.c_str());
     ImGui::PopStyleColor();
   } else {
     snprintf(out_path, sizeof out_path, "%s", rsg.render_path.c_str());
@@ -397,17 +398,16 @@ void render_properties_ui(App &a) {
     }
   };
 
-  ImGui::SeparatorText("Engine");
-  const char *items = "Mitsuba 3 (path tracer)\0Blender Cycles\0LuxCoreRender\0"
-                      "appleseed\0OpenGL viewport (instant)\0";
+  ImGui::SeparatorText(tr("Engine"));
+  static const char *const K[] = {"Mitsuba 3 (path tracer)", "Blender Cycles", "LuxCoreRender", "appleseed", "OpenGL viewport (instant)"};
   ImGui::SetNextItemWidth(-1);
-  if (ImGui::Combo("##engine", &engine, items)) commit();
-  ImGui::TextDisabled("install: %s", ENGINES[engine].install);
+  if (ImGui::Combo("##engine", &engine, tr_combo(K, 5).c_str())) commit();
+  ImGui::TextDisabled(tr("install: %s"), tr(ENGINES[engine].install));
   if (engine == 3)
-    ImGui::TextDisabled("appleseed has had no release since 2019; the adapter\n"
-                        "only detects an existing install.");
+    ImGui::TextDisabled("%s", tr("appleseed has had no release since 2019; the adapter\n"
+                        "only detects an existing install."));
   ImGui::BeginDisabled(probe_running.load());
-  if (ImGui::Button(probe_running.load() ? "detecting..." : "Detect installed engines")) {
+  if (ImGui::Button(probe_running.load() ? tr("detecting...") : tr("Detect installed engines"))) {
     probe_running.store(true);
     std::thread(run_probe, project_root().string()).detach();
   }
@@ -421,19 +421,19 @@ void render_properties_ui(App &a) {
     }
   }
 
-  ImGui::SeparatorText("Output");
+  ImGui::SeparatorText(tr("Output"));
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::InputInt("Width", &width)) commit();
+  if (ImGui::InputInt(tr("Width"), &width)) commit();
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::InputInt("Height", &height)) commit();
+  if (ImGui::InputInt(tr("Height"), &height)) commit();
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::SliderInt("Samples", &spp, 8, 1024)) commit();
+  if (ImGui::SliderInt(tr("Samples"), &spp, 8, 1024)) commit();
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("More samples = less noise, longer render.\n"
-                      "32 preview, 128 good, 512+ final.");
+    ImGui::SetTooltip("%s", tr("More samples = less noise, longer render.\n"
+                      "32 preview, 128 good, 512+ final."));
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::InputText("File", out_path, sizeof out_path)) commit();
-  if (ImGui::Button("choose file...")) {
+  if (ImGui::InputText(tr("File"), out_path, sizeof out_path)) commit();
+  if (ImGui::Button(tr("choose file..."))) {
     std::string p = dialog_save_file("PNG image\0*.png\0", "png", out_path);
     if (!p.empty()) {
       snprintf(out_path, sizeof out_path, "%s", p.c_str());
@@ -444,14 +444,14 @@ void render_properties_ui(App &a) {
   render_passes_ui(a);
   render_backdrop_ui(a);
 
-  ImGui::SeparatorText("Match with viewport");
-  ImGui::TextDisabled("The render uses the viewport's sky and volumetric\n"
+  ImGui::SeparatorText(tr("Match with viewport"));
+  ImGui::TextDisabled("%s", tr("The render uses the viewport's sky and volumetric\n"
                       "clouds as an HDR environment, the same PBR material,\n"
-                      "sun, water and height fog, and the same ACES exposure.");
+                      "sun, water and height fog, and the same ACES exposure."));
 
   bool busy = render_running.load();
   ImGui::BeginDisabled(busy);
-  if (ImGui::Button(busy ? "rendering..." : "Render", ImVec2(-1, 0))) {
+  if (ImGui::Button(busy ? tr("rendering...") : tr("Render"), ImVec2(-1, 0))) {
     width = std::clamp(width, 64, 8192);
     height = std::clamp(height, 64, 8192);
     if (engine == 4) {
@@ -487,7 +487,7 @@ void render_properties_ui(App &a) {
       ImGui::TextWrapped("%s", render_status.c_str());
       ImGui::PopStyleColor();
     }
-    if (!render_output.empty() && ImGui::Button("open image"))
+    if (!render_output.empty() && ImGui::Button(tr("open image")))
       open_in_desktop(render_output);
   }
 }
