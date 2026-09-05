@@ -45,6 +45,8 @@ static void test_config_json() {
   c.ai.image_provider = "stability";
   c.apps["blender"] = "C:/Blender/blender.exe";
   c.shortcuts["file.save"] = "Ctrl+Shift+S";
+  c.perf.governor = false;
+  c.perf.fps_primary = 45;
   std::string js = config_to_json(c, true);
   check(js.find("sk-test") == std::string::npos, "the key is not in the file in clear");
   check(js.find("cloud-secret") == std::string::npos, "nor the cloud key");
@@ -59,6 +61,7 @@ static void test_config_json() {
   check(back.ai.image_provider == "stability", "AI defaults come back");
   check(back.apps["blender"] == "C:/Blender/blender.exe", "application paths come back");
   check(back.shortcuts["file.save"] == "Ctrl+Shift+S", "shortcuts come back");
+  check(!back.perf.governor && back.perf.fps_primary == 45 && back.perf.fps_secondary == 20, "governor settings come back, with the default where unset");
   // mutations: garbage, and a file with nothing in it
   Config junk;
   check(!config_from_json(junk, "{not json", err) && !err.empty(), "garbage fails with a reason");

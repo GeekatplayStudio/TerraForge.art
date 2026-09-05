@@ -4,6 +4,7 @@
 // code path (ai_apply_actions).
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "perf.hpp"
 #include "console.hpp"
 #include "gpu_timer.hpp"
 #include "prefs.hpp"
@@ -183,6 +184,18 @@ static void publish_state(App &a) {
     // modification time to move
     // the last op's one-line result, so a script can read what it did
   j["status"] = a.status;
+  {
+    const PerfStats &ps = perf_stats();
+    j["perf"] = {{"fps", ps.fps}, {"potential_fps", ps.potential_fps}, {"work_ms", ps.work_ms},
+                 {"ui_ms", ps.ui_ms}, {"views_ms", ps.views_ms}, {"gpu_ms", ps.gpu_ms},
+                 {"previews_ms", ps.previews_ms}, {"api_ms", ps.api_ms}, {"upload_ms", ps.upload_ms},
+                 {"eval_ms", ps.eval_ms}, {"process_mb", ps.process_mb}, {"cpu_pct", ps.cpu_pct},
+                 {"vram_used_mb", ps.vram_used_mb}, {"governor_level", ps.governor_level},
+                 {"views_drawn", ps.views_drawn}, {"patches", ps.patches}};
+    json ph = json::object();
+    for (const auto &kv : perf_phases()) ph[kv.first] = kv.second;
+    j["perf"]["phases"] = ph;
+  }
   j["eval"] = {{"running", a.eval.running.load()},
                  {"serial", a.eval_serial},
                  {"done", a.eval.progress_done.load()},

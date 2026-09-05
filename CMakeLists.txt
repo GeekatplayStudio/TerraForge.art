@@ -300,6 +300,8 @@ set(STUDIO_SOURCES
     studio/material_channel_ops.cpp
     studio/config.cpp
     studio/shortcuts.cpp
+    studio/perf.cpp
+    studio/panel_statusbar.cpp
     studio/http_client.cpp
     studio/ai_prompts.cpp
     studio/ai_text_providers.cpp

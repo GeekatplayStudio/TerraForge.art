@@ -2,6 +2,7 @@
 // volumetric clouds, the terrain tile, water, and selection outlines. Each is
 // one verbatim block moved out of draw_scene (renderer_scene.cpp), sharing
 // the per-frame FrameCtx; proven pixel-identical under GPX_FREEZE_TIME.
+#include "perf.hpp"
 #include "renderer_internal.hpp"
 #include "app.hpp"
 #include "cloud_noise.hpp"
@@ -73,7 +74,8 @@ void pass_sky(const FrameCtx &F) {
     uni1(prog_sky, "u_fog_density", RS.fog_density);
     // clouds
     unii(prog_sky, "u_clouds", clouds_ok ? 1 : 0);
-    int steps = RS.cloud_quality == 0 ? 24 : (RS.cloud_quality == 2 ? 72 : 44);
+    const int cq = std::min(RS.cloud_quality, perf_quality().cloud_quality_cap);
+    int steps = cq == 0 ? 24 : (cq == 2 ? 72 : 44);
     if (cinematic) steps = (int)(steps * 1.5f);
     unii(prog_sky, "u_cl_steps", steps);
     unii(prog_sky, "u_cl_type", RS.cloud_type);
@@ -256,7 +258,7 @@ void pass_terrain(const FrameCtx &F) {
       // button does nothing" actually looked like.
       uni1(PT, "u_tess_px", wireframe ? 1e6f : RS.tess_pixels);
       uni1(PT, "u_tess_min", wireframe ? 1.f : RS.tess_min);
-      uni1(PT, "u_tess_max", wireframe ? 1.f : RS.tess_max);
+      uni1(PT, "u_tess_max", wireframe ? 1.f : std::max(1.f, RS.tess_max * perf_quality().tess_scale));
       // Per-patch frustum culling. Only trusted once the bounds have actually
       // been built from a heightmap: an unbound or empty bounds texture reads
       // as a zero-height patch everywhere, which would cull ground that is on

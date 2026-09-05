@@ -330,6 +330,17 @@ wanted his students to have.
   `set_material_type`, `save_material`, `asset_search`, `asset_tag`... — so
   the assistant, the Python API and MCP drive them the same way you do.
 
+### Health at a glance, and a governor
+- **A status bar** along the bottom: FPS shown and possible, where the frame
+  goes (interface, views, GPU), the last evaluation, process and system
+  memory, CPU, VRAM, the GPU, and what the governor is doing. Hover any
+  figure for the story; a script reads the same figures over the API.
+- **The performance governor** (Settings > General): set the frame rate the
+  main view must keep; when the work would drop below it, secondary views,
+  the preview panel, shadows, clouds and subdivision are lightened a step at
+  a time and given back once the frame is comfortable. Nothing it changes is
+  saved.
+
 ### Gizmos and deformers
 - **Every object has a gizmo in every view** — Move, Rotate, Scale — and a
   mesh also has **Twist**, **Bend**, **Skew** and **Taper** gadgets (`W E R`

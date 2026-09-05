@@ -1,5 +1,6 @@
 // Geekatplay TerraForge - the configuration manager. See config.hpp.
 #include "config.hpp"
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -155,6 +156,9 @@ std::string config_to_json(const Config &c, bool protect) {
              {"notify_on_finish", c.ai.notify_on_finish}};
   j["apps"] = c.apps;
   j["shortcuts"] = c.shortcuts;
+  j["perf"] = {{"governor", c.perf.governor},
+               {"fps_primary", c.perf.fps_primary},
+               {"fps_secondary", c.perf.fps_secondary}};
   return j.dump(1);
 }
 
@@ -205,6 +209,12 @@ bool config_from_json(Config &c, const std::string &text, std::string &err) {
   if (sc.is_object())
     for (auto &kv : sc.items())
       if (kv.value().is_string()) n.shortcuts[kv.key()] = kv.value().get<std::string>();
+  json pf = j.value("perf", json::object());
+  if (pf.is_object()) {
+    n.perf.governor = pf.value("governor", true);
+    n.perf.fps_primary = std::clamp(pf.value("fps_primary", 30), 5, 240);
+    n.perf.fps_secondary = std::clamp(pf.value("fps_secondary", 20), 1, 240);
+  }
   c = n;
   return true;
 }

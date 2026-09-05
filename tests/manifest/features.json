@@ -1081,6 +1081,30 @@
       "description": "Deformers and the per-object gizmo switch in the scene file, written only when set so older files and undeformed objects are unchanged; place_object sets the whole transform (heading, pitch, bank, squeeze) and the deformers by name",
       "test_file": "test_undo_render.cpp",
       "test_symbol": "test_scene_deform_round_trip"
+    },
+    {
+      "id": "perf.statusbar",
+      "area": "studio",
+      "phase": "34",
+      "description": "A narrow status bar along the bottom: the status line on the left and, right-aligned, FPS shown and possible, the frame's breakdown (CPU work, interface, views, GPU), the last evaluation with node and patch counts, process memory (peak) and free system memory, CPU share, VRAM used/total (NVIDIA/AMD extensions), the GPU name, and the governor's state; every figure has a tooltip; the same figures and every marked phase are in the API state file",
+      "test_file": "test_config.cpp",
+      "test_symbol": "test_config_json"
+    },
+    {
+      "id": "perf.governor",
+      "area": "studio",
+      "phase": "34",
+      "description": "The performance governor: thresholds in Settings (main and secondary view fps); it judges the work per frame, not the capped rate, and steps down after 0.7 s slow - secondary views' render scale and the preview panel first, then shadows and cloud quality in secondary views, then the main view's scale and the terrain subdivision - and steps up after 4 s comfortable, never two steps within a second; nothing it changes is saved",
+      "test_file": "test_config.cpp",
+      "test_symbol": "test_config_json"
+    },
+    {
+      "id": "perf.placement_key",
+      "area": "studio",
+      "phase": "34",
+      "description": "The tile is re-placed onto the planet only when the layers or placement settings change: the key hashes fields, not struct bytes - hashing a struct with padding made it differ every frame and cost 9 ms of re-placement and re-upload per frame; the UI snapshot is likewise rebuilt only on a change, a pointer press or a quarter second",
+      "test_file": "test_config.cpp",
+      "test_symbol": "test_config_json"
     }
   ]
 }

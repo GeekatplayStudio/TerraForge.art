@@ -102,6 +102,25 @@ each one was a bug we already paid for. Do not regress them.
    the generic "actions applied" when the batch said nothing, and
    `scene_state.json` carries `status`, so a script can read what an op did.
 
+## Performance
+
+1. **Never hash a struct's bytes for a change key.** `placement_key` did,
+   PlaceSettings has padding after a bool, and the key changed every frame:
+   the tile was re-placed and re-uploaded 9 ms a frame with nothing on
+   screen moving. Hash fields. The same rule for any "did it change" key.
+2. **Measure before optimising.** `perf_mark("name")` around a phase puts it
+   in the status bar's breakdown and in `scene_state.json` under
+   `perf.phases`; a script can read the figures with the app running. The
+   marks in app.cpp are the frame's map; keep them when moving code.
+3. **The governor judges work, not frame rate.** It reads
+   `potential_fps` (1000 / max(CPU work, GPU time)), so a frame sleeping to
+   the viewport rate is never "slow". It changes render scale, the preview
+   panel, shadows, cloud quality and subdivision through `perf_quality()`
+   at the read sites, never by writing RenderSettings, so nothing it does is
+   ever saved into a project.
+4. **The UI snapshot is rebuilt on change, not per frame** (eval serial,
+   layout serial, node count, a pointer button, or a quarter second).
+
 ## Objects, gizmos and deformers
 
 1. **One deformation function, two twins.** `gpx::deform_point` (engine/gpx/

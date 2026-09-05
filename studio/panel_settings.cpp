@@ -11,6 +11,7 @@
 #include "app.hpp"
 #include "asset_store.hpp"
 #include "config.hpp"
+#include "perf.hpp"
 #include "prefs.hpp"
 #include "shortcuts.hpp"
 #include <cstring>
@@ -64,8 +65,21 @@ void tab_general(App &a) {
     double freed = a.graph.released_bytes / (1024.0 * 1024.0);
     ImGui::TextDisabled("graph buffers: %.1f MB held, %.1f MB released so far", held, freed);
   }
-  ImGui::SeparatorText("Generated assets");
+  ImGui::SeparatorText("Performance governor");
   Config &c = config();
+  studio::Checkbox("Keep the viewport responsive (governor)", &c.perf.governor);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("When the work per frame would drop the main view below the threshold,\n"
+                      "secondary views, the preview panel, shadows, clouds and subdivision are\n"
+                      "lightened a step at a time, and given back once the frame is comfortable.\n"
+                      "Nothing it changes is written to the project.");
+  ImGui::SetNextItemWidth(220);
+  ImGui::SliderInt("Main view threshold", &c.perf.fps_primary, 5, 120, "%d fps");
+  ImGui::SetNextItemWidth(220);
+  ImGui::SliderInt("Secondary views threshold", &c.perf.fps_secondary, 1, 120, "%d fps");
+  ImGui::TextDisabled("now: %.0f fps possible, governor %s", perf_stats().potential_fps,
+                      perf_stats().governor_note.empty() ? "full" : perf_stats().governor_note.c_str());
+  ImGui::SeparatorText("Generated assets");
   studio::Checkbox("Notify when a generation finishes", &c.ai.notify_on_finish);
   ImGui::TextDisabled("textures: %s", config_output_dir("textures").c_str());
   ImGui::TextDisabled("skies:    %s", config_output_dir("skies").c_str());

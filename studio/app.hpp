@@ -203,6 +203,8 @@ void draw_toolbar(App &a);       // row 1: the classic text menus
 void draw_workspace_bar(App &a); // row 2: which workflow
 void draw_panel_mesh(App &a);    // Mesh Tools: analyse, repair, reduce
 void draw_panel_settings(App &a); // Settings: general, shortcuts, AI services, ComfyUI, apps, assets
+void draw_statusbar(App &a);      // the health bar along the bottom (panel_statusbar.cpp)
+float statusbar_height();
 void settings_open();
 void draw_panel_material_studio(App &a);  // panel_material_studio.cpp
 void draw_panel_material_browser(App &a); // panel_material_browser.cpp

@@ -24,6 +24,7 @@
 
 #include "stb_image_write.h" // implementation lives in the engine lib
 
+#include "perf.hpp"
 #include "renderer_internal.hpp"
 #include "renderer_shaders.hpp"
 
@@ -290,6 +291,15 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   static float time_acc = 0;
   if (slot == 0 && !freeze) time_acc += dt;
   if (w < 8 || h < 8) return fbo_color[slot];
+  // The governor's render scale: a lightened view draws into a smaller
+  // target and is stretched by the panel; every size below is the small one.
+  {
+    float sc = perf_render_scale(slot);
+    if (sc < 0.999f) {
+      w = std::max(8, (int)(w * sc));
+      h = std::max(8, (int)(h * sc));
+    }
+  }
   ensure_fbo(slot, w, h);
   float eye[3], mvp[16], inv_vp[16];
   // a view may look through a specific scene camera rather than the active
@@ -305,7 +315,9 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   // would be a second definition of where things are.
   std::memcpy(g_last_mvp[slot], mvp, sizeof mvp);
   g_last_mvp_valid[slot] = true;
+  perf_gpu_begin();
   draw_scene(slot, vc, w, h, time_acc, eye, mvp, inv_vp);
+  perf_gpu_end();
 
   // What the lens does to the finished picture. Nothing at all unless the
   // view's camera asks for it, in which case the pass returns its own target.

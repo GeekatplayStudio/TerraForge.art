@@ -7,6 +7,7 @@
 // a node shows up here at once — and, on request, the final engine's
 // progressive result in the same frame, at the camera's aspect ratio.
 #include "app.hpp"
+#include "perf.hpp"
 #include "panel_float.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
@@ -78,7 +79,7 @@ void draw_panel_preview(App &a) {
                       "whatever camera is active for rendering.");
   ImGui::SameLine();
   ImGui::SetNextItemWidth(72);
-  P.quality = prefs().preview_quality;
+  P.quality = std::min(prefs().preview_quality, perf_quality().preview_quality_cap);
   if (ImGui::Combo("##pvq", &P.quality, "25%\0" "50%\0" "100%\0")) {
     prefs().preview_quality = P.quality;
     prefs_save();
@@ -199,7 +200,7 @@ void draw_panel_preview(App &a) {
     const double now = ImGui::GetTime();
     bool changed = a.eval_serial != last_serial || eye[0] != last_eye[0] ||
                    eye[1] != last_eye[1] || eye[2] != last_eye[2];
-    bool due = now - last_draw >= 1.0 / std::max(prefs().preview_fps, 1);
+    bool due = now - last_draw >= 1.0 / std::max(std::min(prefs().preview_fps, perf_quality().preview_fps_cap), 1);
     if ((P.live && (due || changed)) || P.refresh || !P.last_tex) {
       last_draw = now;
       last_serial = a.eval_serial;

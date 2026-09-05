@@ -2,6 +2,7 @@
 // grid or tessellated), water, sky, clouds, meshes, planets, the surround,
 // shadows, outlines and the grid. Split from renderer.cpp for the 500-line
 // module rule; state lives in renderer_internal.hpp.
+#include "perf.hpp"
 #include "renderer_internal.hpp"
 #include "app.hpp"
 #include "console.hpp"
@@ -151,7 +152,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   // volumetric clouds are a ground-view effect; from high above they cost a
   // full raymarch for a few pixels
   bool clouds_ok = RS.clouds_on && view_eye[1] < 3.f && near_ground;
-  bool shadows_ok = RS.shadows && near_ground; // shadow texels vanish out there
+  bool shadows_ok = RS.shadows && near_ground && perf_shadows_for(slot); // shadow texels vanish out there; the governor may drop them
   bool heavy_maps = near_ground; // 4K material maps are wasted on a far tile
   // how far out of the atmosphere the camera is (0 ground .. 1 open space);
   // smooth, so the sky thins continuously as you pull back

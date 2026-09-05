@@ -46,8 +46,17 @@ struct AiDefaults {
   bool notify_on_finish = true;
 };
 
+// The performance governor (perf.hpp): thresholds under which the viewport
+// is kept responsive by lightening what costs the most.
+struct PerfConfig {
+  bool governor = true;
+  int fps_primary = 30;   // the main view must be able to run at this
+  int fps_secondary = 20; // other views, the preview: lightened first
+};
+
 struct Config {
   std::map<std::string, ServiceConfig> services; // keyed by provider id
+  PerfConfig perf;
   ComfyConfig comfy;
   AiDefaults ai;
   std::map<std::string, std::string> apps;      // external applications by name -> path

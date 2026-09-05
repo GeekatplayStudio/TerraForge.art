@@ -1,5 +1,6 @@
 ﻿// Geekatplay Studio — main loop, docking layout, background evaluation
 #include "app.hpp"
+#include "perf.hpp"
 #include "ai_describe.hpp"
 #include "ai_jobs.hpp"
 #include "console.hpp"
@@ -35,10 +36,25 @@ static uint64_t placement_key() {
     const unsigned char *b = (const unsigned char *)p;
     for (size_t i = 0; i < n; ++i) h = (h ^ b[i]) * 1099511628211ull;
   };
-  for (const gpx::planet::Layer &L : planet_home_layers()) mix(&L, sizeof L);
-  PlaceSettings ps{rs.place_on_planet, rs.place_edge, rs.place_flatten,
-                   rs.place_presence, rs.place_ground};
-  mix(&ps, sizeof ps);
+  // Field by field, never the struct's bytes: PlaceSettings has padding
+  // after its bool, and hashing indeterminate padding made the key change
+  // every frame - which re-placed the tile onto the planet and re-uploaded
+  // the terrain every frame, 9 ms of work for a picture that had not moved.
+  for (const gpx::planet::Layer &L : planet_home_layers()) {
+    mix(&L.seed, sizeof L.seed);
+    mix(&L.type, sizeof L.type);
+    mix(&L.frequency, sizeof L.frequency);
+    mix(&L.amplitude, sizeof L.amplitude);
+    mix(&L.octaves, sizeof L.octaves);
+    mix(&L.coverage, sizeof L.coverage);
+    mix(&L.mask_scale, sizeof L.mask_scale);
+  }
+  const unsigned char on = rs.place_on_planet ? 1 : 0;
+  mix(&on, 1);
+  mix(&rs.place_edge, sizeof rs.place_edge);
+  mix(&rs.place_flatten, sizeof rs.place_flatten);
+  mix(&rs.place_presence, sizeof rs.place_presence);
+  mix(&rs.place_ground, sizeof rs.place_ground);
   return h;
 }
 
@@ -80,6 +96,7 @@ void run_main() {
   autosave_session_begin(); // detects whether the last one ended cleanly
   App &a = app();
   renderer_init();
+  perf_init_gpu();
   scene_init_builtins();
   project_default_graph(a);
   a.request_eval();
@@ -116,6 +133,7 @@ void run_main() {
       }
       frame_t0 = glfwGetTime();
     }
+    perf_frame_begin(); // the work, sleep excluded
     glfwPollEvents();
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -183,19 +201,42 @@ void run_main() {
       a.request_layout_reset = false;
       first_frame = false;
     }
-    ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+    ImGui::DockSpace(dockspace_id, ImVec2(0, -statusbar_height()), ImGuiDockNodeFlags_None);
     a.dockspace_id = dockspace_id;
+    draw_statusbar(a); // health at a glance, along the bottom
     ImGui::End();
 
-    // keep the UI snapshot fresh whenever evaluation is not holding the lock
+    // Keep the UI snapshot fresh whenever evaluation is not holding the lock -
+    // but only when something could have changed it: an evaluation, a graph
+    // edit, a pointer button down (a node being dragged), or a quarter second
+    // gone by. Rebuilding every node view every frame was measurable on a
+    // big graph and bought nothing on a still one.
     {
-      std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
-      if (lk.owns_lock()) a.refresh_snapshot();
+      static uint64_t snap_eval = ~0ull, snap_layout = ~0ull;
+      static size_t snap_nodes = ~(size_t)0;
+      static double snap_t = 0;
+      double snow = glfwGetTime();
+      bool changed = snap_eval != a.eval_serial || snap_layout != a.graph_layout_serial ||
+                     snap_nodes != a.graph.nodes.size() || ImGui::IsAnyMouseDown() ||
+                     snow - snap_t > 0.25;
+      if (changed) {
+        std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+        if (lk.owns_lock()) {
+          a.refresh_snapshot();
+          snap_eval = a.eval_serial;
+          snap_layout = a.graph_layout_serial;
+          snap_nodes = a.graph.nodes.size();
+          snap_t = snow;
+        }
+      }
     }
+    perf_mark("host");
     if (a.show_library) draw_panel_library(a);
   if (a.show_nodelist) draw_panel_nodelist(a);
     if (a.show_viewport) draw_panel_viewport(a);
+    perf_mark("panels.left");
     draw_panel_graph(a);
+    perf_mark("graph");
     draw_console(a);
     draw_panel_timeline(a);
     if (a.show_properties) draw_panel_properties(a);
@@ -203,6 +244,7 @@ void run_main() {
     draw_panel_mesh(a);
     draw_panel_material_studio(a);
     draw_panel_material_browser(a);
+    perf_mark("panels.mid");
     draw_panel_settings(a);
     draw_panel_ai_generate(a);
     draw_panel_ai_describe(a);
@@ -238,16 +280,21 @@ void run_main() {
         }
       }
     }
+    perf_mark("material.maps");
     draw_panel_ai(a);
     draw_panel_scene(a); // Outliner
+    perf_mark("outliner");
     draw_panel_preview(a);
+    perf_mark("preview");
     app_service_sequence(a);
 
     render_service_requests(a);
     draw_render_window(a);
     autosave_recovery_dialog(a); // offers the last session back after a crash
     autosave_tick(a, glfwGetTime());
+    perf_mark("ui");
     studio_api_tick(a); // apply queued script/MCP actions, publish state
+    perf_mark("api");
 
     // upload fresh eval results to GPU (main thread only)
     if (a.uploaded_serial != a.eval_serial && !a.eval.running.load()) {
@@ -255,6 +302,7 @@ void run_main() {
       // skip thumbnail regeneration during interactive drags — keeps the
       // slider->viewport loop as tight as possible
       if (!a.eval_interactive.load()) previews_update(a);
+      perf_mark("previews");
       // Terragen-style: atmosphere/render nodes drive the renderer
       apply_scene_nodes(a);
 
@@ -445,8 +493,10 @@ void run_main() {
       }
     }
 
+    perf_mark("place");
     app_service_camera_anim(a);
     app_service_points_overlay(a);
+    perf_mark("services");
 
     // scatter instances: every Mesh object bound to a Points node gets its
     // copy list rebuilt when the evaluation moves
@@ -458,6 +508,9 @@ void run_main() {
       }
     }
 
+    perf_mark("upload");
+    perf_governor_tick(a);
+    perf_frame_end();
     ImGui::Render();
     int dw, dh;
     glfwGetFramebufferSize(a.window, &dw, &dh);
