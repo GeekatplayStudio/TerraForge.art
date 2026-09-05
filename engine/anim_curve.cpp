@@ -52,16 +52,6 @@ void set_ease(Track &t, const std::vector<int> &sel, Ease e) {
   t.update_tangents();
 }
 
-// Selection indices refer to positions that change when keys move; the
-// helper re-finds each selected key by identity after the sort.
-static std::vector<int> reselect(const Track &t, const std::vector<const Key *> &ptrs) {
-  std::vector<int> out;
-  for (const Key *p : ptrs)
-    for (size_t i = 0; i < t.keys.size(); ++i)
-      if (&t.keys[i] == p) { out.push_back((int)i); break; }
-  return out;
-}
-
 static std::vector<int> transform(Track &t, std::vector<int> &sel,
                                   const std::function<void(Key &)> &fn) {
   std::vector<Key> moved;
@@ -78,10 +68,7 @@ static std::vector<int> transform(Track &t, std::vector<int> &sel,
                               [&](const Key &r) { return std::fabs(r.time - m.time) <= KEY_EPS; }),
                rest.end());
   t.keys = rest;
-  size_t base = t.keys.size();
   t.keys.insert(t.keys.end(), moved.begin(), moved.end());
-  std::vector<const Key *> ptrs;
-  for (size_t i = base; i < t.keys.size(); ++i) ptrs.push_back(&t.keys[i]);
   std::sort(t.keys.begin(), t.keys.end(), [](const Key &a, const Key &b) { return a.time < b.time; });
   // pointers are invalid after the sort; re-find by (time, value) instead
   std::vector<int> out;
@@ -89,7 +76,6 @@ static std::vector<int> transform(Track &t, std::vector<int> &sel,
     for (size_t i = 0; i < t.keys.size(); ++i)
       if (std::fabs(t.keys[i].time - m.time) <= KEY_EPS && t.keys[i].value == m.value) { out.push_back((int)i); break; }
   }
-  (void)ptrs;
   t.update_tangents();
   return out;
 }
