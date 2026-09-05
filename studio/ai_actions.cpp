@@ -33,6 +33,7 @@ namespace studio {
 std::string field_gpu_verify_all(App &a);
 
 bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
+  renderer_invalidate_views();
   json j;
   try {
     size_t b = text.find('{'), e = text.rfind('}');

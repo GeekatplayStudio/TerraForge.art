@@ -9,7 +9,9 @@
 #include "console.hpp"
 #include "hdr_image.hpp"
 #include <cmath>
+#include <chrono>
 #include <filesystem>
+#include <future>
 #include <string>
 
 namespace studio {
@@ -22,57 +24,89 @@ std::filesystem::file_time_type g_bd_loaded_time;
 int g_bd_w = 0, g_bd_h = 0;
 std::string g_bd_status; // what the Render panel shows
 float g_bd_mean[3] = {0.f, 0.f, 0.f};
+bool g_bd_attempted = false;
+std::string g_bd_checked_path;
+std::chrono::steady_clock::time_point g_bd_next_check;
 
 // (Re)load when the setting names a different file, or the file changed on
 // disk - so an HDRI re-exported from another tool updates without a restart.
+struct DecodedBackdrop {
+  HdrImage image;
+  std::string path, error;
+  float mean[3] = {};
+};
+std::future<DecodedBackdrop> g_bd_pending;
+
 void backdrop_refresh(const RenderSettings::Backdrop &b) {
+  // The decoder owns its pixels. Only this context-owning thread creates or
+  // replaces GL textures, and an obsolete request never replaces a new path.
+  if (g_bd_pending.valid()) {
+    if (g_bd_pending.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+    DecodedBackdrop result;
+    try { result = g_bd_pending.get(); }
+    catch (const std::exception &e) { g_bd_status = e.what(); }
+    if (result.path == b.file && !result.path.empty()) {
+      if (!result.error.empty()) {
+        g_bd_status = result.error;
+        log_warn("backdrop", result.error);
+      } else {
+        const auto &img = result.image;
+        if (!g_bd_tex) glGenTextures(1, &g_bd_tex);
+        glBindTexture(GL_TEXTURE_2D, g_bd_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, img.w, img.h, 0, GL_RGB,
+                     GL_FLOAT, img.rgb.data());
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        g_bd_w = img.w;
+        g_bd_h = img.h;
+        std::copy(result.mean, result.mean + 3, g_bd_mean);
+        char buf[256];
+        snprintf(buf, sizeof buf, "%d x %d, mean %.2f %.2f %.2f", img.w, img.h,
+                 g_bd_mean[0], g_bd_mean[1], g_bd_mean[2]);
+        g_bd_status = buf;
+        renderer_invalidate_views();
+        log_info("backdrop", "loaded " + b.file + " (" + buf + ")");
+      }
+    }
+  }
   if (b.file.empty()) {
     if (g_bd_tex) { glDeleteTextures(1, &g_bd_tex); g_bd_tex = 0; }
     g_bd_loaded_path.clear();
+    g_bd_checked_path.clear();
+    g_bd_attempted = false;
     g_bd_status = b.enabled ? "no image chosen" : "";
     return;
   }
+  auto now = std::chrono::steady_clock::now();
+  if (b.file == g_bd_checked_path && now < g_bd_next_check) return;
+  g_bd_checked_path = b.file;
+  g_bd_next_check = now + std::chrono::milliseconds(500);
   std::error_code ec;
   auto mtime = std::filesystem::last_write_time(b.file, ec);
   if (ec) {
-    if (g_bd_loaded_path != b.file) g_bd_status = "file not found: " + b.file;
-    if (g_bd_tex) { glDeleteTextures(1, &g_bd_tex); g_bd_tex = 0; }
+    g_bd_status = "file not found: " + b.file;
     g_bd_loaded_path = b.file;
+    g_bd_attempted = false;
     return;
   }
-  if (g_bd_tex && b.file == g_bd_loaded_path && mtime == g_bd_loaded_time) return;
+  if (g_bd_attempted && b.file == g_bd_loaded_path && mtime == g_bd_loaded_time) return;
+  g_bd_attempted = true;
   g_bd_loaded_path = b.file;
   g_bd_loaded_time = mtime;
-  HdrImage img;
-  std::string err;
-  if (!hdr_image_load(b.file, img, err)) {
-    if (g_bd_tex) { glDeleteTextures(1, &g_bd_tex); g_bd_tex = 0; }
-    g_bd_status = err;
-    log_warn("backdrop", err);
-    return;
-  }
-  if (!g_bd_tex) glGenTextures(1, &g_bd_tex);
-  glBindTexture(GL_TEXTURE_2D, g_bd_tex);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, img.w, img.h, 0, GL_RGB, GL_FLOAT,
-               img.rgb.data());
-  glGenerateMipmap(GL_TEXTURE_2D);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  // wrap around the seam of a panorama, never across the poles
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  g_bd_w = img.w;
-  g_bd_h = img.h;
-  double sum[3] = {0, 0, 0};
-  for (size_t i = 0; i < img.rgb.size(); i += 3)
-    for (int c = 0; c < 3; ++c) sum[c] += img.rgb[i + c];
-  const double n = std::max<double>(1.0, img.rgb.size() / 3);
-  for (int c = 0; c < 3; ++c) g_bd_mean[c] = (float)(sum[c] / n);
-  char buf[256];
-  snprintf(buf, sizeof buf, "%d x %d, mean %.2f %.2f %.2f", img.w, img.h,
-           g_bd_mean[0], g_bd_mean[1], g_bd_mean[2]);
-  g_bd_status = buf;
-  log_info("backdrop", "loaded " + b.file + " (" + buf + ")");
+  g_bd_pending = std::async(std::launch::async, [path = b.file] {
+    DecodedBackdrop result;
+    result.path = path;
+    if (!hdr_image_load(path, result.image, result.error)) return result;
+    double sum[3] = {};
+    for (size_t i = 0; i < result.image.rgb.size(); i += 3)
+      for (int c = 0; c < 3; ++c) sum[c] += result.image.rgb[i + c];
+    double n = std::max<double>(1.0, result.image.rgb.size() / 3);
+    for (int c = 0; c < 3; ++c) result.mean[c] = (float)(sum[c] / n);
+    return result;
+  });
 }
 
 } // namespace

@@ -26,6 +26,7 @@
 
 #include "perf.hpp"
 #include "renderer_internal.hpp"
+#include "config.hpp"
 #include "renderer_shaders.hpp"
 
 namespace studio {
@@ -65,7 +66,7 @@ int grid_n = 512, index_count = 0;
 // subdivisions an edge reaches an effective 4096 across where the camera is
 // close, while a patch at the horizon costs two triangles.
 extern const int patch_n;
-const int patch_n = 65; // vertices per side, so 64 patches
+const int patch_n = TERRAIN_PATCHES_PER_EDGE + 1;
 GLuint vao_patch = 0, vbo_patch = 0, ibo_patch = 0;
 int patch_index_count = 0;
 GLuint prog_terrain_tess = 0;
@@ -215,7 +216,9 @@ std::string renderer_cull_status() {
   return buf;
 }
 
-static bool fbo_hdr[8] = {false};
+static bool fbo_hdr[SLOT_COUNT] = {false};
+static unsigned long long view_revision = 1;
+void renderer_invalidate_views() { ++view_revision; }
 void ensure_fbo(int slot, int w, int h, bool hdr) {
   if (w == fbo_w[slot] && h == fbo_h[slot] && fbo[slot] && fbo_hdr[slot] == hdr) return;
   fbo_hdr[slot] = hdr;
@@ -254,7 +257,7 @@ const float *renderer_last_mvp(int slot) {
 
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int h,
                             float dt) {
-  slot = std::clamp(slot, 0, 7);
+  slot = std::clamp(slot, 0, SLOT_COUNT - 1);
   // Relink here rather than where the graph changed: this is the main thread
   // with the context current, and doing it once before the first view means
   // all six views draw the same program in the same frame.
@@ -287,9 +290,12 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
     const char *e = std::getenv("GPX_FREEZE_TIME");
     return e && *e && *e != '0';
   }();
-  if (slot == 0 && !freeze) cloud_time += dt;
   static float time_acc = 0;
-  if (slot == 0 && !freeze) time_acc += dt;
+  static int clock_frame = -1;
+  if (clock_frame != ImGui::GetFrameCount()) {
+    clock_frame = ImGui::GetFrameCount();
+    if (!freeze) { cloud_time += dt; time_acc += dt; }
+  }
   if (w < 8 || h < 8) return fbo_color[slot];
   // The governor's render scale: a lightened view draws into a smaller
   // target and is stretched by the panel; every size below is the small one.
@@ -310,6 +316,32 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   else
     ortho_matrices(vc, w, h, render_settings().height_scale, eye, mvp, inv_vp);
   renderer_camera_override() = -2;
+  // Secondary working views retain their last texture between deadlines.
+  // Camera/configuration/resource changes bypass the cap immediately. Export
+  // and preview targets have their own scheduling and always render here.
+  struct ViewCache {
+    unsigned texture = 0;
+    int width = 0, height = 0;
+    double drawn_at = -1.;
+    unsigned long long revision = 0, terrain = 0;
+    RenderSettings::ViewConfig config;
+  };
+  static ViewCache cache[SLOT_COUNT];
+  auto &cached = cache[slot];
+  double now = ImGui::GetTime();
+  if (slot < RenderSettings::MAX_VIEWS && slot != app().view_focus &&
+      cached.texture && cached.width == w && cached.height == h &&
+      cached.revision == view_revision &&
+      cached.terrain == g_shadow_revision && cached.config == vc &&
+      g_last_mvp_valid[slot] && std::equal(mvp, mvp + 16, g_last_mvp[slot]) &&
+      now - cached.drawn_at < 1.0 / std::max(config().perf.fps_secondary, 1))
+    return cached.texture;
+  cached.drawn_at = now;
+  cached.revision = view_revision;
+  cached.terrain = g_shadow_revision;
+  cached.config = vc;
+  cached.width = w;
+  cached.height = h;
   // Kept for the transform gizmo, which has to project world points onto the
   // same pixels this frame drew them at. Deriving it a second time in the UI
   // would be a second definition of where things are.
@@ -317,7 +349,6 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   g_last_mvp_valid[slot] = true;
   perf_gpu_begin();
   draw_scene(slot, vc, w, h, time_acc, eye, mvp, inv_vp);
-  perf_gpu_end();
 
   // What the lens does to the finished picture. Nothing at all unless the
   // view's camera asks for it, in which case the pass returns its own target.
@@ -351,8 +382,13 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
     }
     for (int k = 0; k < 3; ++k) prev_eye[slot][k] = eye[k];
     have_prev[slot] = true;
-    return renderer_post_process(slot, w, h, optics);
+    unsigned result = renderer_post_process(slot, w, h, optics);
+    cached.texture = result;
+    perf_gpu_end();
+    return result;
   }
+  perf_gpu_end();
+  cached.texture = fbo_color[slot];
   return fbo_color[slot];
 }
 
@@ -386,11 +422,6 @@ bool mat_inverse(float *inv_out, const float *m) {
 }
 
 } // namespace studio
-
-
-
-
-
 
 
 

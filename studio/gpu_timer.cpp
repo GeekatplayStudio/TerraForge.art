@@ -21,13 +21,24 @@ GpuTimer::~GpuTimer() {
   // are destroyed; deleting queries then is not safe and not needed.
 }
 
-void GpuTimer::begin() {
-  if (open || g_query_open) return;
+bool GpuTimer::begin() {
+  if (open || g_query_open) return false;
+  if (issued[slot]) {
+    GLuint ready = 0;
+    glGetQueryObjectuiv(queries[slot], GL_QUERY_RESULT_AVAILABLE, &ready);
+    if (!ready) return false;
+    GLuint64 ns = 0;
+    glGetQueryObjectui64v(queries[slot], GL_QUERY_RESULT, &ns);
+    issued[slot] = false;
+    double ms = (double)ns / 1.0e6;
+    smoothed_ms = smoothed_ms <= 0.0 ? ms : smoothed_ms * 0.85 + ms * 0.15;
+  }
   if (!queries[slot]) glGenQueries(1, &queries[slot]);
-  if (!queries[slot]) return;
+  if (!queries[slot]) return false;
   glBeginQuery(GL_TIME_ELAPSED, queries[slot]);
   open = true;
   g_query_open = true;
+  return true;
 }
 
 void GpuTimer::end() {

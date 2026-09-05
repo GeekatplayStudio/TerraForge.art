@@ -146,8 +146,8 @@ uniform int u_inst_on;
 uniform float u_inst_sway;            // wind lean at the mesh's top
 uniform float u_inst_time;
 uniform vec3 u_inst_base;             // the model matrix's own translation
-uniform vec4 u_inst[256];             // x,y,z,scale per copy
-uniform vec4 u_inst_rot[256];         // cos(yaw), sin(yaw)
+layout(location=2) in vec4 in_instance; // x,y,z,scale per copy
+layout(location=3) in vec4 in_instance_rot; // cos(yaw), sin(yaw), brightness
 // deformers in the object's own space: the GLSL twin of gpx/deform.hpp
 uniform int u_def_on, u_def_bend_axis;
 uniform vec3 u_def_twist, u_def_shear, u_bmin, u_bmax;
@@ -205,8 +205,8 @@ void main(){
     pos = p0;
   }
   if (u_inst_on == 1) {
-    vec4 I = u_inst[gl_InstanceID];
-    vec4 R = u_inst_rot[gl_InstanceID];
+    vec4 I = in_instance;
+    vec4 R = in_instance_rot;
     vec2 r = R.xy;
     v_tint = R.z;
     pos = vec3(pos.x*r.x - pos.z*r.y, pos.y, pos.x*r.y + pos.z*r.x) * I.w;
@@ -237,8 +237,8 @@ in vec3 v_nrm;
 in float v_tint;
 in vec3 v_world;
 out vec4 frag;
-uniform vec3 u_color, u_sun, u_sun_color;
-uniform float u_exposure;
+uniform vec3 u_color, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
+uniform float u_exposure, u_sun_intensity, u_ambient;
 uniform int u_light_count;
 uniform vec4 u_lights[8];
 uniform vec3 u_light_col[8];
@@ -247,6 +247,9 @@ uniform int u_selected;
 uniform vec3 u_cam;
 uniform float u_hscale;
 FOG_FN_PLACEHOLDER
+MATERIAL_UNIFORMS_PLACEHOLDER
+const float PI = 3.14159265;
+MATERIAL_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -256,8 +259,40 @@ vec3 aces(vec3 x){
   return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
 }
 void main(){
-  float ndl = max(dot(normalize(v_nrm), u_sun), 0.0);
-  vec3 lit = u_sun_color * 1.8 * ndl + vec3(0.35,0.38,0.45);
+  // The object's own colour, tinted per material (Vue Color tab): no
+  // picture map yet — a mesh has no UVs — but every scalar property
+  // (roughness, metallic, specular, reflection, translucency, clearcoat,
+  // emissive) is the terrain's own PBR pipeline, shared through
+  // MATERIAL_*_PLACEHOLDER so one material means the same thing everywhere.
+  vec3 N = normalize(v_nrm);
+  vec3 albedo = mat_albedo(u_color * v_tint);
+  float rough = clamp(u_roughness, 0.03, 1.0);
+  vec3 V = normalize(u_cam - v_world);
+  vec3 L = normalize(u_sun);
+  vec3 H = normalize(L + V);
+  float NdL = mat_ndl(dot(N, L)), NdV = max(dot(N, V), 1e-4);
+  float NdH = max(dot(N, H), 0.0), VdH = max(dot(V, H), 0.0);
+  vec3 F0 = mat_f0(albedo);
+  float a = rough * rough, a2 = a * a;
+  float dnm = (NdH * NdH * (a2 - 1.0) + 1.0);
+  float D = a2 / max(PI * dnm * dnm, 1e-6);
+  float k = (rough + 1.0); k = k * k / 8.0;
+  float G = (NdL / (NdL * (1.0 - k) + k)) * (NdV / (NdV * (1.0 - k) + k));
+  vec3 F = F0 + (1.0 - F0) * pow(1.0 - VdH, 5.0);
+  vec3 spec = D * G * F / max(4.0 * NdL * NdV, 1e-4);
+  if (u_m_phong == 1) spec = F * mat_phong(NdH, rough);
+  spec += mat_clearcoat(NdH, NdV, NdL);
+  vec3 kd = (1.0 - F) * (1.0 - u_metallic);
+  vec3 sun_c = u_sun_color * u_sun_intensity;
+  vec3 lit = (kd * albedo / PI + spec) * sun_c * NdL * (u_m_diffuse / 0.6);
+  vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
+  lit += albedo * sky * (0.45 + 0.55 * N.y) * (u_m_ambient / 0.4);
+  vec3 R = reflect(-V, N);
+  vec3 refl = mix(u_sky_horizon, u_sky_zenith, clamp(R.y * 0.5 + 0.5, 0.0, 1.0));
+  vec3 reflection = refl * u_reflection * (1.0 - rough) * mat_fresnel(NdV, F0.g);
+  if (u_m_color_reflected == 1) reflection *= albedo;
+  lit += reflection + mat_translucent(albedo, V, L, sun_c) + u_m_luminous;
+  if (u_m_ignore_light == 1) lit = albedo + u_m_luminous;
   for (int li = 0; li < u_light_count; ++li) {
     vec3 ld = u_lights[li].xyz - v_world;
     float dist = length(ld);
@@ -270,17 +305,16 @@ void main(){
       cone = smoothstep(u_light_dir[li].w,
                         mix(u_light_dir[li].w, 1.0, 0.35), cd2);
     }
-    lit += u_light_col[li] * max(dot(normalize(v_nrm), l), 0.0) * att * cone;
+    lit += albedo * u_light_col[li] * max(dot(N, l), 0.0) * att * cone;
   }
-  vec3 col = u_color * v_tint * lit;
+  vec3 col = lit;
   // objects sit in the same air as the ground
   float dist = length(v_world - u_cam);
   float fog_f; vec3 fog_c;
   fog_terms(v_world, u_cam, dist, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
   if (u_aov != 0) {
-    vec3 alb = u_color * v_tint;
-    frag = aov_out(u_aov, dist, normalize(v_nrm), alb, v_world, float(u_object_id),
-                   alb * u_sun_color * 1.8 * ndl, 1.0, alb * vec3(0.35,0.38,0.45),
+    frag = aov_out(u_aov, dist, N, albedo, v_world, float(u_object_id),
+                   albedo * sun_c * NdL, 1.0, albedo * sky,
                    vec3(0.0), fog_f, fog_c, 0.0, col);
     return;
   }

@@ -22,6 +22,7 @@ struct Heightmap;
 }
 
 namespace studio {
+inline constexpr int TERRAIN_PATCHES_PER_EDGE = 64;
 
 // Six frustum planes as (a,b,c,d), inward-facing: a point is inside when
 // a*x + b*y + c*z + d >= 0 for all six. Order: left, right, bottom, top,

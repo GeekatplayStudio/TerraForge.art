@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - the optical pass: what the lens does to the picture
 // after the scene has been drawn.
 //
@@ -190,14 +191,14 @@ unsigned renderer_post_process(int slot, int w, int h, const LensOptics &o) {
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, fbo_color[slot]);
   unii(prog_post, "u_src", 0);
-  glUniform2f(glGetUniformLocation(prog_post, "u_texel"), 1.f / (float)w,
+  glUniform2f(uniform_location(prog_post, "u_texel"), 1.f / (float)w,
               1.f / (float)h);
   uni1(prog_post, "u_k1", o.k1);
   uni1(prog_post, "u_vignette", o.vignette);
   uni1(prog_post, "u_chromatic", o.chromatic);
   uni1(prog_post, "u_flare", o.flare);
-  glUniform2f(glGetUniformLocation(prog_post, "u_sun"), o.sun[0], o.sun[1]);
-  glUniform2f(glGetUniformLocation(prog_post, "u_blur"), o.blur[0], o.blur[1]);
+  glUniform2f(uniform_location(prog_post, "u_sun"), o.sun[0], o.sun[1]);
+  glUniform2f(uniform_location(prog_post, "u_blur"), o.blur[0], o.blur[1]);
   uni1(prog_post, "u_aspect", h > 0 ? (float)w / (float)h : 1.f);
   glBindVertexArray(vao_quad);
   glDrawArrays(GL_TRIANGLES, 0, 3);

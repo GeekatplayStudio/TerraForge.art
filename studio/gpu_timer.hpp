@@ -29,7 +29,7 @@ public:
   GpuTimer(const GpuTimer &) = delete;
   GpuTimer &operator=(const GpuTimer &) = delete;
 
-  void begin();
+  bool begin();
   void end();
   // Milliseconds of GPU time for this pass, smoothed over recent frames.
   // Zero until the first result comes back.
@@ -38,8 +38,9 @@ public:
 
   struct Scope {
     GpuTimer &t;
-    explicit Scope(GpuTimer &timer) : t(timer) { t.begin(); }
-    ~Scope() { t.end(); }
+    bool started;
+    explicit Scope(GpuTimer &timer) : t(timer), started(t.begin()) {}
+    ~Scope() { if (started) t.end(); }
   };
 
 private:

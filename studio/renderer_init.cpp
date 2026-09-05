@@ -1,7 +1,9 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - renderer resources: GL programs, grids, preview
 // meshes, terrain upload and material maps; init and shutdown. Split from
 // renderer.cpp for the 500-line module rule.
 #include "renderer_internal.hpp"
+#include "terrain_upload.hpp"
 #include "app.hpp"
 #include "console.hpp"
 #include "cloud_noise.hpp"
@@ -306,18 +308,20 @@ bool renderer_init() {
 
 
 void renderer_shutdown() {
-  glDeleteProgram(prog_terrain);
-  glDeleteProgram(prog_water);
-  glDeleteProgram(prog_sky);
-  glDeleteProgram(prog_depth);
-  glDeleteProgram(prog_lines);
-  glDeleteProgram(prog_bg);
-  glDeleteProgram(prog_mesh);
-  glDeleteProgram(prog_gizmo);
+  delete_program(prog_terrain);
+  delete_program(prog_water);
+  delete_program(prog_sky);
+  delete_program(prog_depth);
+  delete_program(prog_lines);
+  delete_program(prog_bg);
+  delete_program(prog_mesh);
+  delete_program(prog_gizmo);
 }
 
 
-void renderer_set_terrain(const gpx::Heightmap &h, const gpx::TextureRGBA *albedo) {
+void renderer_set_terrain_prepared(TerrainUpload &upload) {
+  ++g_shadow_revision;
+  renderer_invalidate_views();
   // Upload what the graph produced, at the height it produced it.
   //
   // This used to stretch every heightmap to fill 0..1, which quietly threw
@@ -330,22 +334,21 @@ void renderer_set_terrain(const gpx::Heightmap &h, const gpx::TextureRGBA *albed
   // Normalising is the graph's job and it is already exposed there, on by
   // default: TerrainOutput's "Remap to range" and every node's own output
   // block. The renderer's business is to show what it is handed.
-  gpx::Heightmap norm = h;
+  const gpx::Heightmap &norm = *upload.height;
+  const auto *albedo = upload.albedo.get();
   hm_w = norm.w;
   // the level the surrounding ground should settle to, so the two meet
-  double sum = 0;
-  for (float v : norm.v) sum += v;
-  g_terrain_mean = norm.v.empty() ? 0.f : (float)(sum / norm.v.size());
+  g_terrain_mean = upload.mean;
   glBindTexture(GL_TEXTURE_2D, tex_height);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, norm.w, norm.h, 0, GL_RED, GL_FLOAT,
                norm.v.data());
   // keep a CPU copy (downsampled) for picking
-  cpu_height = norm.w > 256 ? norm.resampled(256, 256) : norm;
+  cpu_height = std::move(upload.picking);
   // Bounds for per-patch culling. Built from the full-resolution map, not the
   // picking copy: a bound taken from a downsampled height can miss a spike and
   // cull a patch that is on screen, which reads as a hole in the terrain.
-  cpu_patch_bounds = patch_height_bounds(norm, patch_n - 1);
+  cpu_patch_bounds = std::move(upload.bounds);
   if (tex_patch_bounds) {
     glBindTexture(GL_TEXTURE_2D, tex_patch_bounds);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, patch_n - 1, patch_n - 1, 0, GL_RG,

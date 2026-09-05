@@ -186,6 +186,21 @@ each one was a bug we already paid for. Do not regress them.
    permitted, and are the two worth adding when the time comes.
    Where a stage is missing, the report says what is left over rather than
    pretending.
+5. **A mesh object's material is scalar-only until the mesh has UVs.**
+   `SceneObject::material_node` on a `Mesh` object is read in
+   `renderer_scene.cpp`'s mesh loop (`gpx::material_params_from` on the
+   assigned `MaterialOutput`'s attrs, uploaded with
+   `renderer_material_uniforms`) and the mesh fragment shader (`FS_MESH` in
+   `shaders_scene.cpp`) runs the same GGX pipeline as the terrain, through
+   the same `MATERIAL_UNIFORMS_PLACEHOLDER`/`MATERIAL_FN_PLACEHOLDER`
+   snippets - tint, roughness, metallic, specular, reflection, clearcoat,
+   translucency, emissive, ambient from the sky colours. What it cannot do
+   yet is sample a picture map: `gpx::TriMesh` and every loader (OBJ, STL,
+   PLY, OFF, GLTF) carry position and a per-face flat normal only, no UV
+   channel, and `SceneObject::verts` is interleaved pos(3)+normal(3). Adding
+   real texturing means extending that layout and every loader/exporter/
+   deformer that touches it together - do not sample a channel texture in
+   `FS_MESH` until that lands.
 
 ## Performance rules
 

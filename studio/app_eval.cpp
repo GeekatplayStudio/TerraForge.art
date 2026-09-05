@@ -12,6 +12,7 @@
 namespace studio {
 
 void App::refresh_snapshot() {
+  auto previous = std::move(node_views);
   node_views.clear();
   link_views.clear();
   node_views.reserve(graph.nodes.size());
@@ -27,7 +28,9 @@ void App::refresh_snapshot() {
     // looking at. Mirroring them here puts every one in the console, where it
     // can be read after the fact and copied. log_add collapses repeats, so a
     // node failing every frame is one line with a count.
-    if (!n->error.empty())
+    if (!n->error.empty() &&
+        (node_views.size() >= previous.size() || previous[node_views.size()].id != n->id ||
+         previous[node_views.size()].error != n->error))
       log_error("graph", n->type + ": " + n->error);
     v.pos_x = n->pos_x;
     v.pos_y = n->pos_y;
@@ -36,6 +39,7 @@ void App::refresh_snapshot() {
     v.collapse = n->ui_collapse;
     total += n->last_compute_ms;
     v.ports.reserve(n->ports.size());
+    size_t port_index = 0;
     for (const auto &p : n->ports) {
       PortView pv;
       pv.name = p.name;
@@ -55,15 +59,23 @@ void App::refresh_snapshot() {
                  p.field_eval) {
         // a field's value at the tile's centre: exact for constants, a
         // sample for everything else
-        gpx::FieldContext c = gpx::FieldContext::at(0.5f, 0.f, 0.5f);
-        gpx::FieldValue fv = p.field_eval(*n, c);
-        char buf[48];
-        if (fv.type == gpx::FieldType::Number)
-          std::snprintf(buf, sizeof buf, "%.3g", fv.number());
-        else
-          std::snprintf(buf, sizeof buf, "%.2f %.2f %.2f", fv.v[0], fv.v[1], fv.v[2]);
-        pv.value = buf;
+        const size_t ni = node_views.size();
+        bool cached = snapshot_eval_serial == eval_serial && ni < previous.size() &&
+                      previous[ni].id == n->id && port_index < previous[ni].ports.size() &&
+                      previous[ni].ports[port_index].name == p.name;
+        if (cached) pv.value = previous[ni].ports[port_index].value;
+        else {
+          gpx::FieldContext c = gpx::FieldContext::at(0.5f, 0.f, 0.5f);
+          gpx::FieldValue fv = p.field_eval(*n, c);
+          char buf[48];
+          if (fv.type == gpx::FieldType::Number)
+            std::snprintf(buf, sizeof buf, "%.3g", fv.number());
+          else
+            std::snprintf(buf, sizeof buf, "%.2f %.2f %.2f", fv.v[0], fv.v[1], fv.v[2]);
+          pv.value = buf;
+        }
       }
+      ++port_index;
       v.ports.push_back(std::move(pv));
       if (p.hmap) bytes += p.hmap->v.size() * sizeof(float);
       if (p.tex) bytes += p.tex->v.size() * sizeof(float);
@@ -75,17 +87,19 @@ void App::refresh_snapshot() {
   snapshot_resolution = graph.resolution;
   snapshot_bytes = bytes;
   snapshot_total_ms = total;
+  snapshot_eval_serial = eval_serial;
 }
 
 void eval_worker(App &a) {
   while (true) {
-    if (!a.eval.request.exchange(false)) {
-      if (a.eval.running.load() == false && a.window == nullptr) return;
-      if (glfwWindowShouldClose(a.window)) return;
-      std::this_thread::sleep_for(std::chrono::milliseconds(8));
-      continue;
+    {
+      std::unique_lock<std::mutex> lk(a.eval.wake_mtx);
+      a.eval.wake.wait(lk, [&] { return a.eval.stopping || a.eval.request.load(); });
+      if (a.eval.stopping) break;
+      a.eval.request.store(false);
+      a.eval.running.store(true);
     }
-    a.eval.running.store(true);
+    size_t node_count = 0;
     {
       std::lock_guard<std::mutex> lk(a.graph_mtx);
       a.graph.cancel.store(false);
@@ -128,11 +142,13 @@ void eval_worker(App &a) {
       }
       a.graph.resolution = full;
       a.graph.on_progress = nullptr;
+      node_count = a.graph.nodes.size();
+      a.eval_serial++;
     }
-    a.eval_serial++;
     log_fmt(LogLevel::Trace, "eval", "serial %llu done, %zu nodes",
-            (unsigned long long)a.eval_serial, a.graph.nodes.size());
+            (unsigned long long)a.eval_serial.load(), node_count);
     a.eval.running.store(false);
+    glfwPostEmptyEvent(); // wake an idle UI as soon as a result is ready
   }
   log_info("eval", "worker thread leaving");
 }

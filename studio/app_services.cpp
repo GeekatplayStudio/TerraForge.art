@@ -16,9 +16,11 @@ bool renderer_render_to_file(const std::string &path, int w, int h);
 // the last heightmap handed to the renderer, kept so overlays and
 // camera paths can sample real elevations without re-walking the graph
 static std::shared_ptr<gpx::Heightmap> g_overlay_terrain;
+static uint64_t g_overlay_revision = 0;
 
 void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm) {
   g_overlay_terrain = std::move(hm);
+  ++g_overlay_revision;
 }
 
 
@@ -26,11 +28,13 @@ void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm) {
 // Called when the evaluation moves, and again by the render exporter so a
 // scripted set_scatter -> render in one batch never ships an empty forest.
 void scene_rebuild_scatter_instances(App &a) {
+  static unsigned long long revision = 0;
   const gpx::Heightmap *hm = g_overlay_terrain && !g_overlay_terrain->empty()
                                  ? g_overlay_terrain.get()
                                  : nullptr;
   float hs = render_settings().height_scale;
   for (SceneObject &o : scene().objects) {
+    o.inst_revision = ++revision;
     if (o.type != SceneObject::Mesh || !o.scatter_node) {
       o.inst.clear();
       continue;
@@ -96,14 +100,18 @@ void app_service_camera_anim(App &a) {
 }
 
 void app_service_points_overlay(App &a) {
+    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+    if (!lk.owns_lock() || a.eval.running.load() || a.uploaded_serial != a.eval_serial) return;
     // points overlay: whenever the selection or the evaluation moves, hand
     // the renderer the selected node's point cloud (if it has one) with
     // heights sampled from the current terrain
     {
       static uint64_t last_sel = ~0ull, last_ser = ~0ull;
-      if (last_sel != a.selected_node || last_ser != a.eval_serial) {
+      static uint64_t last_terrain = ~0ull;
+      if (last_sel != a.selected_node || last_ser != a.uploaded_serial || last_terrain != g_overlay_revision) {
+        last_terrain = g_overlay_revision;
         last_sel = a.selected_node;
-        last_ser = a.eval_serial;
+        last_ser = a.uploaded_serial;
         std::vector<float> xyz;
         gpx::Node *sn = a.graph.find_node(a.selected_node);
         const gpx::PointCloud *pc = nullptr;
@@ -137,6 +145,16 @@ void app_service_points_overlay(App &a) {
         renderer_set_points_overlay(xyz);
       }
     }
+}
+
+void app_service_scatter(App &a) {
+  static uint64_t last_serial = ~0ull, last_terrain = ~0ull;
+  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  if (!lk.owns_lock() || a.eval.running.load() || a.uploaded_serial != a.eval_serial) return;
+  if (last_serial == a.uploaded_serial && last_terrain == g_overlay_revision) return;
+  scene_rebuild_scatter_instances(a);
+  last_serial = a.uploaded_serial;
+  last_terrain = g_overlay_revision;
 }
 
 void app_service_sequence(App &a) {

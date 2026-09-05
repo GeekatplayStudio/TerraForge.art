@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 #include "console.hpp"
 #include "planet_renderer.hpp"
 #include "render_settings.hpp"
@@ -59,13 +60,13 @@ static std::vector<int> g_lod_state;
 extern int g_aov; // renderer_aov.cpp: which render pass is being drawn
 
 static void puni3(GLuint p, const char *n, const float *v) {
-  glUniform3fv(glGetUniformLocation(p, n), 1, v);
+  glUniform3fv(uniform_location(p, n), 1, v);
 }
 static void puni1(GLuint p, const char *n, float v) {
-  glUniform1f(glGetUniformLocation(p, n), v);
+  glUniform1f(uniform_location(p, n), v);
 }
 static void punii(GLuint p, const char *n, int v) {
-  glUniform1i(glGetUniformLocation(p, n), v);
+  glUniform1i(uniform_location(p, n), v);
 }
 
 static GLuint pl_compile(GLenum type, const std::string &src) {
@@ -132,7 +133,7 @@ static GLuint pl_link_checked(const char *vs, const char *fs,
     char log[4096];
     glGetProgramInfoLog(p, sizeof log, nullptr, log);
     err = log;
-    glDeleteProgram(p);
+    delete_program(p);
     return 0;
   }
   return p;
@@ -155,8 +156,8 @@ void planet_field_programs_keep(const std::vector<unsigned long long> &live) {
       ++it;
       continue;
     }
-    if (it->second.planet) glDeleteProgram(it->second.planet);
-    if (it->second.inf) glDeleteProgram(it->second.inf);
+    if (it->second.planet) delete_program(it->second.planet);
+    if (it->second.inf) delete_program(it->second.inf);
     it = g_progs.erase(it);
   }
 }
@@ -178,15 +179,15 @@ static void pl_refresh_programs() {
     GLuint np = pl_link_checked(VS_PLANET, FS_PLANET, sp.want, err);
     GLuint ni = np ? pl_link_checked(VS_INF, FS_INF, sp.want, err) : 0;
     if (np && ni) {
-      if (sp.planet) glDeleteProgram(sp.planet);
-      if (sp.inf) glDeleteProgram(sp.inf);
+      if (sp.planet) delete_program(sp.planet);
+      if (sp.inf) delete_program(sp.inf);
       sp.planet = np;
       sp.inf = ni;
       sp.glsl = sp.want;
       sp.error.clear();
       continue;
     }
-    if (np) glDeleteProgram(np);
+    if (np) delete_program(np);
     sp.error = err.empty() ? "generated surface shader failed to link" : err;
     log_error("shader", "planet surface program: " + sp.error);
     if (g_field_error.empty()) g_field_error = sp.error;
@@ -201,7 +202,7 @@ static void pl_refresh_programs() {
         sp.planet = fp;
         sp.inf = fi;
       } else if (fp) {
-        glDeleteProgram(fp);
+        delete_program(fp);
       }
     }
   }
@@ -320,8 +321,8 @@ static int upload_layers(GLuint prog, int planet_idx, float amp_scale,
     lb[n][3] = 0.f;
     ++n;
   }
-  glUniform4fv(glGetUniformLocation(prog, "u_la"), 6, &la[0][0]);
-  glUniform4fv(glGetUniformLocation(prog, "u_lb"), 6, &lb[0][0]);
+  glUniform4fv(uniform_location(prog, "u_la"), 6, &la[0][0]);
+  glUniform4fv(uniform_location(prog, "u_lb"), 6, &lb[0][0]);
   punii(prog, "u_lcount", n);
   // the field is part of the surface definition, so it is uploaded with the
   // layers rather than somewhere a caller could forget
@@ -358,7 +359,7 @@ void planet_draw_all(const PlanetFrame &f) {
     if (prog == bound) return;
     bound = prog;
     glUseProgram(prog);
-    glUniformMatrix4fv(glGetUniformLocation(prog, "u_mvp"), 1, GL_FALSE, f.mvp);
+    glUniformMatrix4fv(uniform_location(prog, "u_mvp"), 1, GL_FALSE, f.mvp);
     puni3(prog, "u_cam", f.eye);
     puni3(prog, "u_sun", f.sun);
     puni1(prog, "u_sun_i", f.sun_intensity);
@@ -415,7 +416,7 @@ void planet_draw_all(const PlanetFrame &f) {
     punii(prog, "u_aov", g_aov);
     punii(prog, "u_object_id", 3 + idx); // scene objects count from 3
     float spin = P.spin_deg * 0.017453293f;
-    glUniform2f(glGetUniformLocation(prog, "u_spin"), std::cos(spin),
+    glUniform2f(uniform_location(prog, "u_spin"), std::cos(spin),
                 std::sin(spin));
     upload_layers(prog, idx, 1.f, sp.glsl.empty() ? 0.f : sp.strength);
     glBindVertexArray(sph_vao[lod]);
@@ -439,7 +440,7 @@ void infinite_draw(const InfiniteFrame &f) {
   GLuint prog_inf = sp.inf;
   if (!prog_inf) return;
   glUseProgram(prog_inf);
-  glUniformMatrix4fv(glGetUniformLocation(prog_inf, "u_mvp"), 1, GL_FALSE, f.mvp);
+  glUniformMatrix4fv(uniform_location(prog_inf, "u_mvp"), 1, GL_FALSE, f.mvp);
   punii(prog_inf, "u_aov", g_aov);
   punii(prog_inf, "u_textured", f.textured ? 1 : 0);
   puni3(prog_inf, "u_cam", f.eye);

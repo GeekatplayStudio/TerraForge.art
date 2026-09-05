@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge — the renderer's shared state and small helpers.
 //
 // renderer.cpp was 2121 lines because everything that touched a GL handle had
@@ -61,6 +62,7 @@ extern float g_terrain_mean;   // mean tile height, for the infinite surround
 // heightmap; NaN means "use the mean", the pre-placement behaviour.
 extern float g_terrain_base;
 extern int hm_w;
+inline unsigned long long g_shadow_revision = 0;
 extern bool has_albedo;
 extern gpx::Heightmap cpu_height; // normalized copy, for picking
 extern float g_brush[4];
@@ -107,13 +109,13 @@ extern bool g_last_mvp_valid[SLOT_COUNT];
 
 // ---------------------------------------------------------------- helpers
 inline void uni3(GLuint prog, const char *name, const float *v) {
-  glUniform3fv(glGetUniformLocation(prog, name), 1, v);
+  glUniform3fv(uniform_location(prog, name), 1, v);
 }
 inline void uni1(GLuint prog, const char *name, float v) {
-  glUniform1f(glGetUniformLocation(prog, name), v);
+  glUniform1f(uniform_location(prog, name), v);
 }
 inline void unii(GLuint prog, const char *name, int v) {
-  glUniform1i(glGetUniformLocation(prog, name), v);
+  glUniform1i(uniform_location(prog, name), v);
 }
 inline void mat_mul(float *o, const float *a, const float *b) {
   float r[16];

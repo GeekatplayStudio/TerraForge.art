@@ -2,6 +2,7 @@
 #pragma once
 #include "gpx/node_graph.hpp"
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -14,6 +15,9 @@ namespace studio {
 struct EvalState {
   std::atomic<bool> running{false};
   std::atomic<bool> request{false};  // re-eval wanted
+  bool stopping = false; // guarded by wake_mtx
+  std::mutex wake_mtx;
+  std::condition_variable wake;
   std::atomic<int> progress_done{0};
   std::atomic<int> progress_total{0};
   std::string current_node; // guarded by mutex below
@@ -30,7 +34,7 @@ struct App {
   uint64_t view_node = 0; // node shown in 3D viewport (0 = selected)
   std::string project_path;
   bool graph_changed_since_eval = true;
-  uint64_t eval_serial = 0;   // bumped when an eval finishes (upload triggers)
+  std::atomic<uint64_t> eval_serial{0}; // published by the evaluation worker
   uint64_t uploaded_serial = 0;
 
   EvalState eval;
@@ -67,6 +71,7 @@ struct App {
   int snapshot_resolution = 512;
   size_t snapshot_bytes = 0;
   double snapshot_total_ms = 0;
+  uint64_t snapshot_eval_serial = ~0ull;
   void refresh_snapshot(); // call only while holding graph_mtx
   // while a slider is being dragged, evaluate at a low resolution for
   // smooth realtime feedback; a full-res pass runs on release
@@ -131,11 +136,19 @@ struct App {
 
   void request_eval() {
     graph_changed_since_eval = true;
-    eval.request.store(true);
+    {
+      std::lock_guard<std::mutex> lk(eval.wake_mtx);
+      eval.request.store(true);
+    }
+    eval.wake.notify_one();
   }
 };
 
 App &app();
+void app_service_upload(App &a);
+// Capture on the UI thread while holding graph_mtx; the resulting document
+// owns its data and may be written by a background worker.
+std::string project_snapshot(App &a);
 
 // The workspaces. Each is one node editor domain, a tab on the workspace
 // bar, and a filter on the library; a node belongs to exactly one through its
@@ -301,7 +314,6 @@ unsigned previews_get(uint64_t node_id, int *w = nullptr, int *h = nullptr);
 bool renderer_init();
 void renderer_shutdown();
 // uploads heightmap + optional albedo of the viewed node
-void renderer_set_terrain(const gpx::Heightmap &h, const gpx::TextureRGBA *albedo);
 // The level the tile was placed at (studio/planet_place.cpp), heightmap
 // units; the infinite surround builds its relief on it so the two meet.
 void renderer_set_terrain_base(float ground);
@@ -328,5 +340,3 @@ bool graph_view_is_sane(const std::string &text);
 void discard_insane_graph_view(const std::string &path);
 
 } // namespace studio
-
-

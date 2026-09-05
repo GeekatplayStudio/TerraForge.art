@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <future>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -24,15 +25,26 @@ namespace fs = std::filesystem;
 namespace studio {
 
 static fs::path api_dir() {
-  const char *base = std::getenv("LOCALAPPDATA");
-  fs::path d = base ? fs::path(base) : fs::temp_directory_path();
-  d = d / "GeekatplayTerraForge" / "api";
-  std::error_code ec;
-  fs::create_directories(d, ec);
-  return d;
+  static const fs::path cached = [] {
+    const char *base = std::getenv("LOCALAPPDATA");
+    fs::path d = base ? fs::path(base) : fs::temp_directory_path();
+    d = d / "GeekatplayTerraForge" / "api";
+    std::error_code ec;
+    fs::create_directories(d, ec);
+    return d;
+  }();
+  return cached;
 }
 
 static void publish_state(App &a) {
+  // A single writer owns each complete document. If disk is slow, skip a
+  // telemetry sample instead of queuing stale snapshots or blocking a frame.
+  static std::future<void> writer;
+  if (writer.valid()) {
+    if (writer.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+    try { writer.get(); }
+    catch (const std::exception &e) { log_warn("api", e.what()); }
+  }
   RenderSettings &rs = render_settings();
   SceneState &sc = scene();
   json j;
@@ -186,6 +198,8 @@ static void publish_state(App &a) {
   j["status"] = a.status;
   {
     const PerfStats &ps = perf_stats();
+    j["frame_latency"] = {{"cpu_work_p95_ms", ps.work_p95_ms},
+                           {"cpu_work_p99_ms", ps.work_p99_ms}};
     j["perf"] = {{"fps", ps.fps}, {"potential_fps", ps.potential_fps}, {"work_ms", ps.work_ms},
                  {"ui_ms", ps.ui_ms}, {"views_ms", ps.views_ms}, {"gpu_ms", ps.gpu_ms},
                  {"previews_ms", ps.previews_ms}, {"api_ms", ps.api_ms}, {"upload_ms", ps.upload_ms},
@@ -197,19 +211,22 @@ static void publish_state(App &a) {
     j["perf"]["phases"] = ph;
   }
   j["eval"] = {{"running", a.eval.running.load()},
-                 {"serial", a.eval_serial},
+                 {"uploaded_serial", a.uploaded_serial},
+                 {"serial", a.eval_serial.load()},
                  {"done", a.eval.progress_done.load()},
                  {"total", a.eval.progress_total.load()}};
   }
 
-  fs::path tmp = api_dir() / "scene_state.json.tmp";
-  {
+  writer = std::async(std::launch::async, [j = std::move(j), dir = api_dir()] {
+    fs::path tmp = dir / "scene_state.json.tmp";
     std::ofstream f(tmp);
     if (!f) return;
     f << j.dump(2);
-  }
-  std::error_code ec;
-  fs::rename(tmp, api_dir() / "scene_state.json", ec);
+    f.close();
+    if (!f) return;
+    std::error_code ec;
+    fs::rename(tmp, dir / "scene_state.json", ec);
+  });
 }
 
 // Polls the API folder: applies any queued action document and republishes

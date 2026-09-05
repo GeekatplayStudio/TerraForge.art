@@ -35,11 +35,14 @@ int g_phase_count = 0;
 std::vector<std::pair<std::string, float>> g_phase_smooth;
 
 // GL timer queries: a ring of four, read one frame late
-GLuint g_queries[4] = {0, 0, 0, 0};
+GLuint g_queries[32] = {};
+GLuint g_query_ends[32] = {};
+bool g_query_issued[32] = {};
 int g_query_ix = 0;
 bool g_query_open = false;
 float g_gpu_frame_acc = 0.f;
 float g_views_cpu_acc = 0.f;
+int g_views_drawn = 0;
 clock_t_::time_point g_view_cpu_start;
 
 double g_sample_t = 0;
@@ -156,13 +159,14 @@ const PerfStats &perf_stats() { return g_stats; }
 const std::vector<std::pair<std::string, float>> &perf_phases() { return g_phase_smooth; }
 const PerfQuality &perf_quality() { return g_quality; }
 
-float perf_render_scale(int slot) { return slot == 0 ? g_quality.scale_primary : g_quality.scale_secondary; }
-bool perf_shadows_for(int slot) { return slot == 0 ? g_quality.shadows_primary : g_quality.shadows_secondary; }
+float perf_render_scale(int slot) { return slot == app().view_focus ? g_quality.scale_primary : g_quality.scale_secondary; }
+bool perf_shadows_for(int slot) { return slot == app().view_focus ? g_quality.shadows_primary : g_quality.shadows_secondary; }
 
 void perf_init_gpu() {
   const GLubyte *r = glGetString(GL_RENDERER);
   g_stats.gpu_name = r ? (const char *)r : "unknown GPU";
-  glGenQueries(4, g_queries);
+  glGenQueries(32, g_queries);
+  glGenQueries(32, g_query_ends);
   g_last_step = 0;
 }
 
@@ -170,13 +174,13 @@ void perf_init_gpu() {
 void perf_frame_begin() {
   auto now = clock_t_::now();
   if (g_have_last) {
-    float frame = std::chrono::duration<float, std::milli>(now - g_last_frame_end).count();
+    float frame = std::chrono::duration<float, std::milli>(now - g_frame_start).count();
     g_stats.frame_ms = smooth(g_stats.frame_ms, frame);
     g_stats.fps = g_stats.frame_ms > 0.01f ? 1000.f / g_stats.frame_ms : 0.f;
   }
   g_frame_start = g_phase_start = now;
   g_phase_count = 0;
-  g_stats.views_drawn = 0;
+  g_views_drawn = 0;
   g_gpu_frame_acc = 0.f;
   g_views_cpu_acc = 0.f;
 }
@@ -192,6 +196,16 @@ void perf_frame_end() {
   auto now = clock_t_::now();
   float work = std::chrono::duration<float, std::milli>(now - g_frame_start).count();
   g_stats.work_ms = smooth(g_stats.work_ms, work);
+  static float recent[240] = {};
+  static unsigned samples = 0;
+  recent[samples++ % 240] = work;
+  if (samples % 30 == 0) {
+    unsigned n = std::min(samples, 240u);
+    std::vector<float> sorted(recent, recent + n);
+    std::sort(sorted.begin(), sorted.end());
+    g_stats.work_p95_ms = sorted[(n - 1) * 95 / 100];
+    g_stats.work_p99_ms = sorted[(n - 1) * 99 / 100];
+  }
   auto phase = [&](const char *name) {
     for (int i = 0; i < g_phase_count; ++i)
       if (std::strcmp(g_phases[i].name, name) == 0) return g_phases[i].ms;
@@ -214,6 +228,7 @@ void perf_frame_end() {
   // interface = everything that is not the API, the upload path or the services
   g_stats.ui_ms = smooth(g_stats.ui_ms, std::max(0.f, work - phase("api") - phase("upload") - phase("previews") - phase("place") - phase("services")));
   g_stats.views_ms = smooth(g_stats.views_ms, g_views_cpu_acc);
+  g_stats.views_drawn = g_views_drawn;
   g_stats.previews_ms = smooth(g_stats.previews_ms, phase("previews"));
   g_stats.api_ms = smooth(g_stats.api_ms, phase("api"));
   g_stats.upload_ms = smooth(g_stats.upload_ms, phase("upload"));
@@ -227,27 +242,31 @@ void perf_frame_end() {
 // ------------------------------------------------------------------- gpu
 void perf_gpu_begin() {
   if (!g_queries[0] || g_query_open) return;
-  // read the query from four frames ago, if it is in
-  GLuint q = g_queries[g_query_ix];
-  GLint avail = 0;
-  glGetQueryObjectiv(q, GL_QUERY_RESULT_AVAILABLE, &avail);
-  if (avail) {
-    GLuint64 ns = 0;
-    glGetQueryObjectui64v(q, GL_QUERY_RESULT, &ns);
-    g_gpu_frame_acc += (float)(ns / 1.0e6);
-  }
-  glBeginQuery(GL_TIME_ELAPSED, q);
-  g_query_open = true;
+  // Timestamp pairs may enclose the pass timers' elapsed queries. Never
+  // overwrite an outstanding pair or wait for the GPU to finish it.
   g_view_cpu_start = clock_t_::now();
-  ++g_stats.views_drawn;
+  ++g_views_drawn;
+  GLuint q = g_queries[g_query_ix];
+  if (g_query_issued[g_query_ix]) {
+    GLint avail = 0;
+    glGetQueryObjectiv(g_query_ends[g_query_ix], GL_QUERY_RESULT_AVAILABLE, &avail);
+    if (!avail) return;
+    GLuint64 start = 0, end = 0;
+    glGetQueryObjectui64v(q, GL_QUERY_RESULT, &start);
+    glGetQueryObjectui64v(g_query_ends[g_query_ix], GL_QUERY_RESULT, &end);
+    g_gpu_frame_acc += (float)((end - start) / 1.0e6);
+  }
+  glQueryCounter(q, GL_TIMESTAMP);
+  g_query_open = true;
 }
 
 void perf_gpu_end() {
-  if (!g_query_open) return;
-  glEndQuery(GL_TIME_ELAPSED);
   g_views_cpu_acc += std::chrono::duration<float, std::milli>(clock_t_::now() - g_view_cpu_start).count();
+  if (!g_query_open) return;
+  glQueryCounter(g_query_ends[g_query_ix], GL_TIMESTAMP);
+  g_query_issued[g_query_ix] = true;
   g_query_open = false;
-  g_query_ix = (g_query_ix + 1) % 4;
+  g_query_ix = (g_query_ix + 1) % 32;
 }
 
 // -------------------------------------------------------------- governor

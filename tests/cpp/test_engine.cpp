@@ -17,6 +17,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
+#include <stdexcept>
+
+static void test_parallel_pool();
 
 static int g_failures = 0;
 // Overloaded rather than a bare printf: passing a std::string to "%s" is
@@ -4780,7 +4784,42 @@ static void test_path_carve() {
   }
 }
 
+static void test_parallel_pool() {
+  gpx::set_worker_count(4);
+  std::vector<int> hits(8192);
+  gpx::parallel_index(hits.size(), [&](size_t a, size_t b) {
+    for (size_t i = a; i < b; ++i) ++hits[i];
+    // A nested operation must complete even when every worker is occupied.
+    std::vector<int> nested(64);
+    gpx::parallel_rows(64, [&](int lo, int hi) {
+      for (int k = lo; k < hi; ++k) nested[k] = 1;
+    });
+    if (std::count(nested.begin(), nested.end(), 1) != 64)
+      throw std::runtime_error("nested pool lost work");
+  });
+  CHECK(std::count(hits.begin(), hits.end(), 1) == (int)hits.size(), "pool executes each item once");
+  bool caught = false;
+  try {
+    gpx::parallel_rows(256, [](int, int) { throw std::runtime_error("test"); });
+  } catch (const std::runtime_error &) { caught = true; }
+  CHECK(caught, "pool propagates exceptions to caller");
+  auto work = [] {
+    for (int round = 0; round < 20; ++round) {
+      std::vector<int> v(8192);
+      gpx::parallel_index(v.size(), [&](size_t lo, size_t hi) {
+        for (size_t i = lo; i < hi; ++i) v[i] = 1;
+      });
+      if (std::count(v.begin(), v.end(), 1) != (int)v.size()) std::abort();
+    }
+  };
+  std::thread concurrent(work);
+  work();
+  concurrent.join();
+  gpx::set_worker_count(0);
+}
+
 int main() {
+  test_parallel_pool();
   // unbuffered: if a test crashes, the last line printed tells us where
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   std::printf("=== Geekatplay Studio engine tests ===\n");
@@ -4851,7 +4890,6 @@ int main() {
   std::printf("%d FAILURES\n", g_failures);
   return 1;
 }
-
 
 
 

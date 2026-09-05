@@ -296,9 +296,9 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
   int w = (int)avail.x, h = (int)avail.y;
   if (w < 16 || h < 16) return;
   ImVec2 p0 = ImGui::GetCursorScreenPos();
-  unsigned tex = renderer_draw_view(slot, vc, w, h, ImGui::GetIO().DeltaTime);
-  ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2((float)w, (float)h), ImVec2(0, 1),
-               ImVec2(1, 0));
+  // Reserve the image's hit region before rendering so this frame's input
+  // affects this frame's picture. Picking uses the last displayed matrices.
+  ImGui::Dummy(ImVec2((float)w, (float)h));
 
   // The orientation gizmo is laid out before input is read: a drag that starts
   // on it must swing the view, not orbit the camera underneath it.
@@ -314,6 +314,7 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
   bool hovered_img = ImGui::IsItemHovered();
   bool xform_owns =
       gizmo_update(a, slot, vc, p0, w, h, hovered_img);
+  if (xform_owns) renderer_invalidate_views();
 
   if (hovered_img && !xform_owns) {
     ImGuiIO &io = ImGui::GetIO();
@@ -390,6 +391,10 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
   }
   view_options_popup(a, slot, vc, "view_ctx");
   ImDrawList *dl = ImGui::GetWindowDrawList();
+  unsigned tex = renderer_draw_view(slot, vc, w, h, ImGui::GetIO().DeltaTime);
+  dl->AddImage((ImTextureID)(intptr_t)tex, p0,
+               ImVec2(p0.x + w, p0.y + h), ImVec2(0, 1), ImVec2(1, 0));
+  orient_balls(vc, gizC, gizR, balls);
   // corner labels
   ImU32 sh = IM_COL32(0, 0, 0, 150), fg = IM_COL32(225, 222, 216, 210);
   std::string cam = CAMERA_NAMES[vc.camera & 3];
@@ -453,7 +458,5 @@ void draw_panel_viewport(App &a) {
 }
 
 } // namespace studio
-
-
 
 

@@ -284,6 +284,7 @@ endif()
 set(STUDIO_SOURCES
     studio/main.cpp
     studio/app.cpp
+    studio/app_upload.cpp
     studio/app_eval.cpp
     studio/app_services.cpp
     studio/layout.cpp
@@ -634,7 +635,6 @@ add_test(NAME MaterialEditorTests COMMAND material_editor_tests)
 add_test(NAME ConfigTests COMMAND config_tests)
 add_test(NAME AiServiceTests COMMAND ai_services_tests)
 add_test(NAME AssetTests COMMAND asset_tests)
-
 
 
 

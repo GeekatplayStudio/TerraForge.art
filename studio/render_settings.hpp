@@ -99,6 +99,7 @@ struct RenderSettings {
     // (or the free orbit when none is active), -1 the free orbit, >= 0 a
     // scene object index that is a camera
     int scene_camera = -2;
+    bool operator==(const ViewConfig &) const = default;
   };
   int viewport_layout = 0; // 0 = single, 1 = quad (persp/top/front/right)
   int viewport_engine = 0; // 0 rasterized PBR, 1 cinematic raymarch
@@ -285,6 +286,7 @@ int view_camera_index(const RenderSettings::ViewConfig &vc);
 
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w,
                             int h, float dt);
+void renderer_invalidate_views();
 void renderer_view_input(RenderSettings::ViewConfig &vc, float dx, float dy,
                          float wheel, bool rotating, bool panning, int view_w);
 float renderer_view_width_m(const RenderSettings::ViewConfig &vc);

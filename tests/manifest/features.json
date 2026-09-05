@@ -11,6 +11,38 @@
   ],
   "features": [
     {
+      "id": "perf.async_terrain",
+      "area": "studio",
+      "phase": "35",
+      "description": "Owned terrain snapshots prepare placement, picking and conservative patch bounds off-thread; pending requests coalesce and stale results cannot replace the latest terrain",
+      "test_file": "test_viewport_runtime.py",
+      "test_symbol": "test_viewport_latest_terrain"
+    },
+    {
+      "id": "perf.async_autosave",
+      "area": "studio",
+      "phase": "35",
+      "description": "Autosave snapshots with a nonblocking graph lock, writes a temporary file off-thread, atomically replaces the recovery slot, and flushes on shutdown",
+      "test_file": "test_undo.cpp",
+      "test_symbol": "test_autosave"
+    },
+    {
+      "id": "perf.persistent_workers",
+      "area": "engine",
+      "phase": "35",
+      "description": "Reusable workers preserve band boundaries, support nested and concurrent calls, and propagate exceptions without deadlock",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_parallel_pool"
+    },
+    {
+      "id": "perf.viewport_pipeline",
+      "area": "studio",
+      "phase": "35",
+      "description": "Input and ready uploads precede viewport draws; secondary images are reused between deadlines, shadows and instance streams are shared, GPU timestamp envelopes coexist with pass timers, and real-context captures preserve the image",
+      "test_file": "test_viewport_runtime.py",
+      "test_symbol": "test_viewport_render_pipeline"
+    },
+    {
       "id": "anim.timeline",
       "area": "studio",
       "phase": "23",
@@ -1105,6 +1137,14 @@
       "description": "The tile is re-placed onto the planet only when the layers or placement settings change: the key hashes fields, not struct bytes - hashing a struct with padding made it differ every frame and cost 9 ms of re-placement and re-upload per frame; the UI snapshot is likewise rebuilt only on a change, a pointer press or a quarter second",
       "test_file": "test_config.cpp",
       "test_symbol": "test_config_json"
+    },
+    {
+      "id": "mesh.material_shading",
+      "area": "studio",
+      "phase": "35",
+      "description": "A mesh object (primitive or imported) assigned a MaterialOutput (Objects/Materials panel, or the assign_material op with an object name) is lit by the same GGX PBR pipeline the terrain uses - roughness, metallic, specular, reflection, clearcoat, translucency, emissive, ambient from the sky colours - through the shared MATERIAL_UNIFORMS_PLACEHOLDER/MATERIAL_FN_PLACEHOLDER snippets; an unassigned mesh keeps the old flat-lit look via MaterialParams defaults. Picture-mapped textures still need a UV channel on the mesh format, which this phase does not add - see AGENTS.md",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_params"
     }
   ]
 }

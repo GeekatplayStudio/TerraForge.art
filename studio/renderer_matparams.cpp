@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - material properties on the GPU: the GLSL that
 // every lit shader shares, and the one call that uploads a MaterialParams.
 //
@@ -146,7 +147,7 @@ void renderer_material_uniforms(unsigned prog, const gpx::MaterialParams &m) {
   uni1(prog, "u_m_map_scale", 1.f / std::max(m.map_scale, 1e-3f));
   uni1(prog, "u_m_rotation", m.rotation);
   uni1(prog, "u_m_cycling", m.cycling);
-  glUniform2f(glGetUniformLocation(prog, "u_m_origin"), m.origin[0], m.origin[1]);
+  glUniform2f(uniform_location(prog, "u_m_origin"), m.origin[0], m.origin[1]);
   unii(prog, "u_m_turb_on", m.turbulence ? 1 : 0);
   unii(prog, "u_m_turb_complexity", m.turb_complexity);
   uni1(prog, "u_m_turb_amp", m.turb_amplitude);

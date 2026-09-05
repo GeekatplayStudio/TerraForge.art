@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - a preview of one particular material.
 //
 // renderer_material_preview() draws whatever material the terrain is wearing,
@@ -165,7 +166,7 @@ unsigned renderer_material_preview_of(const MaterialPreviewSpec &spec, int size,
   float cx2 = std::cos(tilt), sx2 = std::sin(tilt);
   float rot[9] = {cy2, sy2 * sx2, -sy2 * cx2, 0, cx2, sx2, sy2, -cy2 * sx2,
                   cy2 * cx2};
-  glUniformMatrix3fv(glGetUniformLocation(prog_matprev, "u_rot"), 1, GL_FALSE,
+  glUniformMatrix3fv(uniform_location(prog_matprev, "u_rot"), 1, GL_FALSE,
                      rot);
   glBindVertexArray(prev_vao[shape]);
   glDrawArrays(GL_TRIANGLES, 0, prev_verts[shape]);

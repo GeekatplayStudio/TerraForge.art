@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - the frame passes: shadow map, sky and
 // volumetric clouds, the terrain tile, water, and selection outlines. Each is
 // one verbatim block moved out of draw_scene (renderer_scene.cpp), sharing
@@ -23,12 +24,25 @@ void pass_shadow(const FrameCtx &F) {
   const float *light_mvp = F.light_mvp;
   bool shadows_ok = F.shadows_ok;
   if (shadows_ok) {
+    static unsigned long long revision = ~0ull;
+    static GLuint program = 0;
+    static float matrix[16] = {}, height = 0.f, strength = 0.f;
+    float wanted_strength = g_field_glsl.empty() ? 0.f : RS.field_displacement;
+    if (revision == g_shadow_revision && program == prog_depth &&
+        height == RS.height_scale && strength == wanted_strength &&
+        std::equal(matrix, matrix + 16, light_mvp)) return;
+    revision = g_shadow_revision;
+    program = prog_depth;
+    height = RS.height_scale;
+    strength = wanted_strength;
+    std::copy(light_mvp, light_mvp + 16, matrix);
+    GpuTimer::Scope timer(gpu_timer("shadow"));
     glBindFramebuffer(GL_FRAMEBUFFER, shadow_fbo);
     glViewport(0, 0, SHADOW_RES, SHADOW_RES);
     glClear(GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glUseProgram(prog_depth);
-    glUniformMatrix4fv(glGetUniformLocation(prog_depth, "u_light_mvp"), 1, GL_FALSE,
+    glUniformMatrix4fv(uniform_location(prog_depth, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);
     uni1(prog_depth, "u_hscale", RS.height_scale);
     uni1(prog_depth, "u_field_strength",
@@ -58,7 +72,7 @@ void pass_sky(const FrameCtx &F) {
   if (atmosphere && RS.background_mode == 0) {
     glUseProgram(prog_sky);
     glDepthMask(GL_FALSE);
-    glUniformMatrix4fv(glGetUniformLocation(prog_sky, "u_inv_vp"), 1, GL_FALSE,
+    glUniformMatrix4fv(uniform_location(prog_sky, "u_inv_vp"), 1, GL_FALSE,
                        inv_vp);
     uni3(prog_sky, "u_cam", view_eye);
     uni3(prog_sky, "u_sun", sun);
@@ -92,7 +106,7 @@ void pass_sky(const FrameCtx &F) {
     uni1(prog_sky, "u_cl_time", cloud_time);
     uni1(prog_sky, "u_cl_ambient", RS.cloud_ambient);
     uni1(prog_sky, "u_cl_anvil", RS.cloud_anvil);
-    glUniform2fv(glGetUniformLocation(prog_sky, "u_cl_wind"), 1, wind);
+    glUniform2fv(uniform_location(prog_sky, "u_cl_wind"), 1, wind);
     uni3(prog_sky, "u_cl_color", RS.cloud_color);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_3D, tex_cloud_shape);
@@ -155,8 +169,8 @@ void pass_terrain(const FrameCtx &F) {
     const GLuint PT = use_tess ? prog_terrain_tess : prog_terrain;
     glUseProgram(PT);
     upload_scene_lights(PT, RS.height_scale);
-    glUniformMatrix4fv(glGetUniformLocation(PT, "u_mvp"), 1, GL_FALSE, mvp);
-    glUniformMatrix4fv(glGetUniformLocation(PT, "u_light_mvp"), 1, GL_FALSE,
+    glUniformMatrix4fv(uniform_location(PT, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniformMatrix4fv(uniform_location(PT, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);
     uni1(PT, "u_hscale", RS.height_scale);
     uni3(PT, "u_sun", sun);
@@ -199,7 +213,7 @@ void pass_terrain(const FrameCtx &F) {
     unii(PT, "u_surf_bump_on", (!g_bump_glsl.empty() && textured) ? 1 : 0);
     uni1(PT, "u_surf_bump_strength", g_surf_bump_strength);
     uni1(PT, "u_surf_bump_scale", g_surf_bump_scale);
-    glUniform4f(glGetUniformLocation(PT, "u_brush"), g_brush[0],
+    glUniform4f(uniform_location(PT, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
     uni1(PT, "u_planet_radius", RS.planet_radius);
     uni1(PT, "u_water_level", RS.show_water ? RS.water_level * RS.height_scale
@@ -220,7 +234,7 @@ void pass_terrain(const FrameCtx &F) {
     uni1(PT, "u_cl_alt", RS.cloud_altitude);
     uni1(PT, "u_cl_thick", RS.cloud_thickness);
     uni1(PT, "u_cl_time", cloud_time);
-    glUniform2fv(glGetUniformLocation(PT, "u_cl_wind"), 1, wind);
+    glUniform2fv(uniform_location(PT, "u_cl_wind"), 1, wind);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_height);
     unii(PT, "u_height", 0);
@@ -250,7 +264,7 @@ void pass_terrain(const FrameCtx &F) {
     if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     if (use_tess) {
       float vp[2] = {(float)w, (float)h};
-      glUniform2fv(glGetUniformLocation(PT, "u_viewport"), 1, vp);
+      glUniform2fv(uniform_location(PT, "u_viewport"), 1, vp);
       // Wireframe subdivides to one quad per patch. At the shading levels
       // (8 to 32 an edge over 64x64 patches) the wires land within a pixel or
       // two of each other and the mode is indistinguishable from solid -
@@ -270,7 +284,7 @@ void pass_terrain(const FrameCtx &F) {
       unii(PT, "u_patch_bounds", 4);
       if (cull) {
         Frustum fr = frustum_from_mvp(mvp);
-        glUniform4fv(glGetUniformLocation(PT, "u_frustum"), 6, &fr.p[0][0]);
+        glUniform4fv(uniform_location(PT, "u_frustum"), 6, &fr.p[0][0]);
         float pad = cull_pad(RS.mat_displacement,
                              has_disp_map && RS.mat_displacement > 0,
                              RS.fractal_detail,
@@ -337,7 +351,7 @@ void pass_water(const FrameCtx &F) {
     backdrop_bind(prog_water);
     unii(prog_water, "u_aov", g_aov);
     unii(prog_water, "u_object_id", 2);
-    glUniformMatrix4fv(glGetUniformLocation(prog_water, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniformMatrix4fv(uniform_location(prog_water, "u_mvp"), 1, GL_FALSE, mvp);
     uni1(prog_water, "u_hscale", RS.height_scale);
     uni1(prog_water, "u_level", RS.water_level * RS.height_scale);
     uni1(prog_water, "u_planet_radius", RS.planet_radius);

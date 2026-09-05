@@ -541,6 +541,13 @@ wanted his students to have.
   covers the ridges) into albedo and per-layer roughness for `MaterialOutput`.
   `examples/macros/erosion_materials.json` builds the whole
   erosion → layers → material chain and assigns it to the terrain.
+- **Materials on objects:** any mesh (a primitive or an import) can be
+  assigned a `MaterialOutput` — from the Materials panel or
+  `{"op":"assign_material","node":"...","object":"..."}` — and is lit by the
+  same GGX PBR pipeline as the ground: tint, roughness, metallic, specular,
+  reflection, clearcoat, translucency and emissive. A mesh has no UV channel
+  yet, so this is scalar shading only — a picture-mapped texture on an
+  object is the next step, not this one.
 
 ### Scene and lighting
 - **Built-in primitives** — cube, sphere, plane, cylinder, cone — plus OBJ

@@ -952,23 +952,27 @@ static void test_autosave() {
   // (history state is unknown), second tick with no edits does not
   undo_push(a, "edit 1");
   autosave_tick(a, 1000.0, 120.0);
+  autosave_flush();
   CHECK(fs::exists(dir / "autosave_1.gpxt", ec), "first autosave written");
   CHECK(a.status == "user status", "the user's status line is untouched");
   CHECK(a.project_path == "user_project.gpxt",
         "and so is the project path - Save still goes to the user's file");
 
   autosave_tick(a, 2000.0, 120.0);
+  autosave_flush();
   CHECK(!fs::exists(dir / "autosave_2.gpxt", ec),
         "no edit since the last autosave means no new file");
 
   // an edit moves the history; the next interval writes the NEXT slot
   undo_push(a, "edit 2");
   autosave_tick(a, 3000.0, 120.0);
+  autosave_flush();
   CHECK(fs::exists(dir / "autosave_2.gpxt", ec), "rotates to the second slot");
 
   // inside the interval nothing happens even with edits pending
   undo_push(a, "edit 3");
   autosave_tick(a, 3001.0, 120.0);
+  autosave_flush();
   CHECK(!fs::exists(dir / "autosave_3.gpxt", ec),
         "the interval is respected");
 
@@ -1009,6 +1013,7 @@ static void test_autosave() {
   {
     undo_push(a, "edit while dialog is up");
     autosave_tick(a, 9000.0, 120.0);
+  autosave_flush();
     std::string path;
     CHECK(autosave_crash_recovery_available(path),
           "recovery still on offer after a tick");
@@ -1058,4 +1063,3 @@ int main() {
               g_failures);
   return g_failures ? 1 : 0;
 }
-

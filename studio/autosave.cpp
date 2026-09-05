@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <future>
 
 namespace fs = std::filesystem;
 
@@ -22,6 +23,9 @@ double g_last_save_time = -1e18;
 // every push, undo and redo, so "has it moved" is "is there anything new"
 int g_saved_history_count = -1;
 int g_saved_history_pos = -1;
+std::future<bool> g_save;
+int g_pending_count = -1, g_pending_pos = -1;
+std::string g_pending_path;
 
 std::string lock_path() { return autosave_dir() + "/session.lock"; }
 
@@ -49,6 +53,7 @@ std::string autosave_dir() {
 }
 
 void autosave_set_dir(const std::string &dir) {
+  autosave_flush();
   g_dir_override = dir;
   std::error_code ec;
   fs::create_directories(dir, ec);
@@ -72,6 +77,7 @@ void autosave_session_begin() {
 }
 
 void autosave_session_end() {
+  autosave_flush();
   std::error_code ec;
   fs::remove(lock_path(), ec);
 }
@@ -107,7 +113,22 @@ bool autosave_crash_recovery_available(std::string &path_out) {
   return true;
 }
 
+void autosave_flush() {
+  if (!g_save.valid()) return;
+  bool ok = false;
+  try { ok = g_save.get(); } catch (const std::exception &) {}
+  if (ok) {
+    g_saved_history_count = g_pending_count;
+    g_saved_history_pos = g_pending_pos;
+    log_trace("autosave", "saved " + g_pending_path);
+  } else log_warn("autosave", "could not write " + g_pending_path);
+}
+
 void autosave_tick(App &a, double now_seconds, double interval_s) {
+  if (g_save.valid()) {
+    if (g_save.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+    autosave_flush();
+  }
   // While "Restore last session?" is still on screen, write NOTHING. The
   // first tick of a fresh session fires immediately (the interval and the
   // history baseline both start unset), and writing the empty new session
@@ -120,24 +141,34 @@ void autosave_tick(App &a, double now_seconds, double interval_s) {
   history_state(count, pos);
   if (count == g_saved_history_count && pos == g_saved_history_pos)
     return; // nothing has happened since the last autosave
-  g_last_slot = autosave_next_slot(g_last_slot);
-  const std::string path = slot_path(g_last_slot);
-  // project_save updates a.status and a.project_path, which an automatic
-  // background save must not do - restore both
-  std::string status = a.status, project = a.project_path;
-  bool ok = project_save(a, path);
-  a.status = status;
-  a.project_path = project;
-  if (ok) {
+  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  if (!lk.owns_lock()) return; // evaluation never makes autosave stall the UI
+  std::string document;
+  try { document = project_snapshot(a); }
+  catch (const std::exception &e) {
     g_last_save_time = now_seconds;
-    g_saved_history_count = count;
-    g_saved_history_pos = pos;
-    log_trace("autosave", "saved " + path);
-  } else {
-    // do not hammer the disk with retries; wait a full interval and say so
-    g_last_save_time = now_seconds;
-    log_warn("autosave", "could not write " + path);
+    log_warn("autosave", e.what());
+    return;
   }
+  lk.unlock();
+  g_last_slot = autosave_next_slot(g_last_slot);
+  g_pending_path = slot_path(g_last_slot);
+  g_pending_count = count;
+  g_pending_pos = pos;
+  g_last_save_time = now_seconds;
+  g_save = std::async(std::launch::async,
+      [path = g_pending_path, document = std::move(document)] {
+        // Preserve the previous recovery file until a full replacement exists.
+        std::string tmp = path + ".tmp";
+        std::ofstream f(tmp, std::ios::binary);
+        if (!f) return false;
+        f << document;
+        f.close();
+        if (!f) return false;
+        std::error_code ec;
+        fs::rename(tmp, path, ec);
+        return !ec;
+      });
 }
 
 } // namespace studio

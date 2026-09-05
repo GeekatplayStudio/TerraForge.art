@@ -32,7 +32,10 @@ void item(const char *text, const char *tip, ImVec4 col = ImVec4(0.72f, 0.72f, 0
 
 } // namespace
 
-float statusbar_height() { return ImGui::GetFrameHeight() * 0.9f; }
+// The text below is aligned to frame padding, so reserve a complete frame.
+// Using a fraction of the frame height clips the bottom of glyphs, especially
+// when the UI font scale is above the default.
+float statusbar_height() { return ImGui::GetFrameHeight(); }
 
 void draw_statusbar(App &a) {
   const PerfStats &s = perf_stats();

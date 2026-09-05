@@ -343,8 +343,16 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
           if (id == n->id) { drawn = true; break; }
         if (!drawn) continue;
         ImVec2 p = ed::GetNodePosition(n->id);
-        n->pos_x = p.x;
-        n->pos_y = p.y;
+        if (n->pos_x != p.x || n->pos_y != p.y) {
+          n->pos_x = p.x;
+          n->pos_y = p.y;
+          for (auto &view : a.node_views)
+            if (view.id == n->id) {
+              view.pos_x = p.x;
+              view.pos_y = p.y;
+              break;
+            }
+        }
       }
     ed::NodeId sel[8];
     int count = ed::GetSelectedNodes(sel, 8);

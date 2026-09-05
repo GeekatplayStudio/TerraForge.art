@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - shader program management: compiling, linking,
 // splicing the generated field/surface GLSL into the terrain programs, and
 // the relink-on-change bookkeeping. Split from renderer.cpp for the 500-line
@@ -127,7 +128,7 @@ GLuint link_checked(const std::string &vs, const std::string &fs,
     char log[4096] = {0};
     glGetProgramInfoLog(p, sizeof log, nullptr, log);
     err = log;
-    glDeleteProgram(p);
+    delete_program(p);
     return 0;
   }
   return p;
@@ -158,7 +159,7 @@ GLuint link_checked_tess(const std::string &vs, const std::string &tcs,
     char log[4096] = {0};
     glGetProgramInfoLog(p, sizeof log, nullptr, log);
     err = log;
-    glDeleteProgram(p);
+    delete_program(p);
     return 0;
   }
   return p;
@@ -169,14 +170,14 @@ bool rebuild_terrain_program(std::string &err) {
   std::string fs = inject_sky(FS_TERRAIN_SRC);
   GLuint p = link_checked(inject_sky(terrain_vs_source().c_str()), fs, err);
   if (!p) return false;
-  if (prog_terrain) glDeleteProgram(prog_terrain);
+  if (prog_terrain) delete_program(prog_terrain);
   prog_terrain = p;
 
   // The shadow pass carries the same displacement, so the terrain does not
   // cast a shadow from where it used to be.
   std::string derr;
   if (GLuint d = link_checked(inject_sky(VS_DEPTH_SRC), FS_DEPTH, derr)) {
-    if (prog_depth) glDeleteProgram(prog_depth);
+    if (prog_depth) delete_program(prog_depth);
     prog_depth = d;
   } else {
     log_error("shader", "shadow pass: " + derr);
@@ -190,7 +191,7 @@ bool rebuild_terrain_program(std::string &err) {
                                inject_sky(terrain_tes_source().c_str()), fs,
                                terr);
   if (t) {
-    if (prog_terrain_tess) glDeleteProgram(prog_terrain_tess);
+    if (prog_terrain_tess) delete_program(prog_terrain_tess);
     prog_terrain_tess = t;
     tess_ok = true;
   } else {
@@ -242,6 +243,7 @@ void renderer_set_field_textures(
   static unsigned long long last_version = ~0ull;
   if (version == last_version && maps.size() == g_field_tex.size()) return;
   last_version = version;
+  ++g_shadow_revision;
 
   // The terrain pass already uses units 0-7, so these start at 8; more than a
   // handful of sampled buffers in one graph is not worth the units.

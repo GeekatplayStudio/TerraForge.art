@@ -124,18 +124,22 @@ static void bodies_from_json(const json &arr) {
   }
 }
 
+std::string project_snapshot(App &a) {
+  json j = json::parse(gpx::graph_to_json(a.graph));
+  j["scene_bodies"] = bodies_to_json();
+  j["scene"] = scene_to_json();
+  j["environment"] = environment_to_json();
+  return j.dump(1);
+}
+
 bool project_save(App &a, const std::string &path) {
   std::lock_guard<std::mutex> lk(a.graph_mtx);
   bool ok = false;
   try {
-    json j = json::parse(gpx::graph_to_json(a.graph));
-    // kept for anything older that still reads it; the full scene follows
-    j["scene_bodies"] = bodies_to_json();
-    j["scene"] = scene_to_json();
-    j["environment"] = environment_to_json();
+    std::string document = project_snapshot(a);
     std::ofstream f(path, std::ios::binary);
     if (f) {
-      f << j.dump(1);
+      f << document;
       ok = (bool)f;
     }
   } catch (const std::exception &) {

@@ -151,6 +151,7 @@ struct SceneObject {
   unsigned scatter_seed = 0;
   // transient, rebuilt after every evaluation: x,y,z,scale,cos,sin per copy
   std::vector<float> inst;
+  unsigned long long inst_revision = 0; // transient, never serialized
 };
 
 // The object's model matrix (column-major, for OpenGL) and the matching

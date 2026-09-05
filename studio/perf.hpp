@@ -24,6 +24,7 @@ struct PerfStats {
   // timing, exponentially smoothed
   float fps = 0.f;          // frames actually shown per second
   float work_ms = 0.f;      // CPU time spent per frame, sleep excluded
+  float work_p95_ms = 0.f, work_p99_ms = 0.f;
   float frame_ms = 0.f;     // wall time per frame, sleep included
   float ui_ms = 0.f, views_ms = 0.f, previews_ms = 0.f, api_ms = 0.f, upload_ms = 0.f;
   float gpu_ms = 0.f;       // GPU time inside the view draws

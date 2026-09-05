@@ -1,3 +1,4 @@
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - offline outputs: the material preview turntable,
 // the sky HDR export, and rendering a view to an image file. Split from
 // renderer.cpp for the 500-line module rule.
@@ -90,7 +91,7 @@ unsigned renderer_material_preview(int size, int shape, float spin) {
   float rot[9] = {cy2, sy2 * sx2, -sy2 * cx2,
                   0,   cx2,        sx2,
                   sy2, -cy2 * sx2, cy2 * cx2};
-  glUniformMatrix3fv(glGetUniformLocation(prog_matprev, "u_rot"), 1, GL_FALSE, rot);
+  glUniformMatrix3fv(uniform_location(prog_matprev, "u_rot"), 1, GL_FALSE, rot);
   glBindVertexArray(prev_vao[shape]);
   glDrawArrays(GL_TRIANGLES, 0, prev_verts[shape]);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -147,7 +148,7 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     float wr = RS.cloud_wind_dir * 0.017453293f;
     float wind[2] = {std::cos(wr) * RS.cloud_wind_speed,
                      std::sin(wr) * RS.cloud_wind_speed};
-    glUniform2fv(glGetUniformLocation(prog_sky, "u_cl_wind"), 1, wind);
+    glUniform2fv(uniform_location(prog_sky, "u_cl_wind"), 1, wind);
     uni3(prog_sky, "u_cl_color", RS.cloud_color);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_3D, tex_cloud_shape);

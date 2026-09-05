@@ -25,6 +25,8 @@ void autosave_set_dir(const std::string &dir);
 // the undo history has moved since the last autosave and `interval_s` has
 // passed, into autosave_1/2/3.gpxt in rotation.
 void autosave_tick(App &a, double now_seconds, double interval_s = 120.0);
+// Wait for a pending disk write on orderly shutdown (also used by tests).
+void autosave_flush();
 
 // Startup / shutdown bookkeeping around the lock file.
 void autosave_session_begin(); // write the lock (and remember if one existed)

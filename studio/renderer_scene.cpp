@@ -1,3 +1,6 @@
+#include <map>
+#include <set>
+#include "uniform_cache.hpp"
 // Geekatplay TerraForge - drawing one frame of the scene: terrain (fixed
 // grid or tessellated), water, sky, clouds, meshes, planets, the surround,
 // shadows, outlines and the grid. Split from renderer.cpp for the 500-line
@@ -68,8 +71,8 @@ void draw_box_outline(const float *mvp, float x0, float y0, float z0,
   glBindBuffer(GL_ARRAY_BUFFER, vbo_dyn);
   glBufferSubData(GL_ARRAY_BUFFER, 0, v.size() * 4, v.data());
   glUseProgram(prog_lines);
-  glUniformMatrix4fv(glGetUniformLocation(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
-  glUniform4fv(glGetUniformLocation(prog_lines, "u_color"), 1, rgba);
+  glUniformMatrix4fv(uniform_location(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
+  glUniform4fv(uniform_location(prog_lines, "u_color"), 1, rgba);
   glLineWidth(2.f);
   glDrawArrays(GL_LINES, 0, (int)(v.size() / 3));
   glLineWidth(1.f);
@@ -108,9 +111,9 @@ void upload_scene_lights(unsigned prog, float hscale) {
   }
   unii(prog, "u_light_count", count);
   if (count) {
-    glUniform4fv(glGetUniformLocation(prog, "u_lights"), count, pos4);
-    glUniform3fv(glGetUniformLocation(prog, "u_light_col"), count, col3);
-    glUniform4fv(glGetUniformLocation(prog, "u_light_dir"), count, dir4);
+    glUniform4fv(uniform_location(prog, "u_lights"), count, pos4);
+    glUniform3fv(uniform_location(prog, "u_light_col"), count, col3);
+    glUniform4fv(uniform_location(prog, "u_light_dir"), count, dir4);
   }
 }
 
@@ -145,7 +148,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   float tile_dx = view_eye[0] - 0.5f, tile_dz = view_eye[2] - 0.5f;
   float tile_dist = std::sqrt(tile_dx * tile_dx + view_eye[1] * view_eye[1] +
                               tile_dz * tile_dz);
-  static bool far_tier[8] = {false};
+  static bool far_tier[SLOT_COUNT] = {false};
   if (!far_tier[slot] && tile_dist > 9.f) far_tier[slot] = true;
   else if (far_tier[slot] && tile_dist < 7.f) far_tier[slot] = false;
   bool near_ground = !far_tier[slot];
@@ -237,6 +240,13 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     infinite_draw(inf);
   }
 
+  // Lighting is shared by every mesh in this view.
+  glUseProgram(prog_mesh);
+  upload_scene_lights(prog_mesh, RS.height_scale);
+  uni3(prog_mesh, "u_sky_zenith", RS.sky_zenith);
+  uni3(prog_mesh, "u_sky_horizon", RS.sky_horizon);
+  uni1(prog_mesh, "u_ambient", RS.ambient_intensity);
+  uni1(prog_mesh, "u_sun_intensity", RS.sun_intensity);
   // scene meshes
   for (SceneObject &o : sc.objects) {
     if (o.type != SceneObject::Mesh || !sc.object_visible(o)) continue;
@@ -259,15 +269,25 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     }
     bool is_sel = (&o - sc.objects.data()) == sc.selected;
     glUseProgram(prog_mesh);
-    upload_scene_lights(prog_mesh, RS.height_scale);
-    glUniformMatrix4fv(glGetUniformLocation(prog_mesh, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniformMatrix4fv(uniform_location(prog_mesh, "u_mvp"), 1, GL_FALSE, mvp);
     float model[16], nrm[9];
     scene_object_matrix(o, RS.height_scale, model, nrm);
-    glUniformMatrix4fv(glGetUniformLocation(prog_mesh, "u_model"), 1, GL_FALSE,
+    glUniformMatrix4fv(uniform_location(prog_mesh, "u_model"), 1, GL_FALSE,
                        model);
-    glUniformMatrix3fv(glGetUniformLocation(prog_mesh, "u_nrm"), 1, GL_FALSE,
+    glUniformMatrix3fv(uniform_location(prog_mesh, "u_nrm"), 1, GL_FALSE,
                        nrm);
     uni3(prog_mesh, "u_color", o.color);
+    // a MaterialOutput assigned to this object drives its shading (Vue
+    // Advanced Material Editor tabs); unassigned meshes get the defaults,
+    // which is the same look this shader always had.
+    {
+      gpx::MaterialParams mp;
+      if (o.material_node) {
+        if (gpx::Node *mn = app().graph.find_node(o.material_node))
+          mp = gpx::material_params_from(mn->attrs);
+      }
+      renderer_material_uniforms(prog_mesh, mp);
+    }
     uni3(prog_mesh, "u_sun", sun);
     uni3(prog_mesh, "u_sun_color", RS.sun_color);
     uni3(prog_mesh, "u_cam", view_eye);
@@ -290,35 +310,43 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_mesh, "u_bmax", o.bmax);
     glBindVertexArray(o.vao);
     if (!o.inst.empty()) {
-      // scattered copies: batches of 256 through the uniform arrays; the
-      // shader swaps each copy's translation in for the model's own
+      // A resident instance stream is shared by every view. Only an actual
+      // scatter rebuild uploads it; the shader retains the same transforms.
       unii(prog_mesh, "u_inst_on", 1);
       uni1(prog_mesh, "u_inst_sway", o.scatter_sway);
       uni1(prog_mesh, "u_inst_time", time_acc);
-      glUniform3f(glGetUniformLocation(prog_mesh, "u_inst_base"), model[12],
+      glUniform3f(uniform_location(prog_mesh, "u_inst_base"), model[12],
                   model[13], model[14]);
-      const size_t per = 8, batch = 256;
-      const size_t total = o.inst.size() / per;
-      std::vector<float> pos4(batch * 4), rot4(batch * 4);
-      for (size_t off = 0; off < total; off += batch) {
-        size_t nb = std::min(batch, total - off);
-        for (size_t i = 0; i < nb; ++i) {
-          const float *s = o.inst.data() + (off + i) * per;
-          pos4[i * 4 + 0] = s[0];
-          pos4[i * 4 + 1] = s[1];
-          pos4[i * 4 + 2] = s[2];
-          pos4[i * 4 + 3] = s[3];
-          rot4[i * 4 + 0] = s[4];
-          rot4[i * 4 + 1] = s[5];
-          rot4[i * 4 + 2] = s[6]; // per-copy brightness
-          rot4[i * 4 + 3] = 0.f;
+      struct InstanceBuffer { GLuint vbo = 0; unsigned long long revision = ~0ull; };
+      static std::map<GLuint, InstanceBuffer> buffers;
+      // Retire buffers whose owning mesh VAO is no longer in the scene.
+      static int cleanup_frame = -1;
+      if (cleanup_frame != ImGui::GetFrameCount()) {
+        cleanup_frame = ImGui::GetFrameCount();
+        std::set<GLuint> live;
+        for (const auto &mesh : sc.objects) if (mesh.vao) live.insert(mesh.vao);
+        for (auto it = buffers.begin(); it != buffers.end();) {
+          if (!live.count(it->first)) {
+            glDeleteBuffers(1, &it->second.vbo);
+            it = buffers.erase(it);
+          } else ++it;
         }
-        glUniform4fv(glGetUniformLocation(prog_mesh, "u_inst"), (int)nb,
-                     pos4.data());
-        glUniform4fv(glGetUniformLocation(prog_mesh, "u_inst_rot"), (int)nb,
-                     rot4.data());
-        glDrawArraysInstanced(GL_TRIANGLES, 0, o.vert_count, (int)nb);
       }
+      auto &buffer = buffers[o.vao];
+      if (!buffer.vbo) glGenBuffers(1, &buffer.vbo);
+      if (buffer.revision != o.inst_revision) {
+        glBindBuffer(GL_ARRAY_BUFFER, buffer.vbo);
+        glBufferData(GL_ARRAY_BUFFER, o.inst.size() * sizeof(float),
+                     o.inst.data(), GL_STATIC_DRAW);
+        for (unsigned k = 0; k < 2; ++k) {
+          glEnableVertexAttribArray(2 + k);
+          glVertexAttribPointer(2 + k, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                                (const void *)(uintptr_t)(k * 4 * sizeof(float)));
+          glVertexAttribDivisor(2 + k, 1);
+        }
+        buffer.revision = o.inst_revision;
+      }
+      glDrawArraysInstanced(GL_TRIANGLES, 0, o.vert_count, (int)(o.inst.size() / 8));
       unii(prog_mesh, "u_inst_on", 0);
     } else {
       unii(prog_mesh, "u_inst_on", 0);
@@ -333,8 +361,8 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
                      0.5f + sun[2] * gd};
     float radius = 0.055f;
     glUseProgram(prog_gizmo);
-    glUniformMatrix4fv(glGetUniformLocation(prog_gizmo, "u_mvp"), 1, GL_FALSE, mvp);
-    glUniform4f(glGetUniformLocation(prog_gizmo, "u_xform"), gpos[0], gpos[1],
+    glUniformMatrix4fv(uniform_location(prog_gizmo, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniform4f(uniform_location(prog_gizmo, "u_xform"), gpos[0], gpos[1],
                 gpos[2], radius);
     float sun_col[3] = {RS.sun_color[0] * 1.4f, RS.sun_color[1] * 1.3f,
                         RS.sun_color[2] * 0.9f};
@@ -348,8 +376,8 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   // scatter or a routed path is visible before anything stamps it
   if (!g_points_overlay.empty() && g_aov == 0) {
     glUseProgram(prog_lines);
-    glUniformMatrix4fv(glGetUniformLocation(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
-    glUniform4f(glGetUniformLocation(prog_lines, "u_color"), 1.f, 0.62f, 0.25f,
+    glUniformMatrix4fv(uniform_location(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniform4f(uniform_location(prog_lines, "u_color"), 1.f, 0.62f, 0.25f,
                 0.9f);
     glBindVertexArray(vao_dyn);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_dyn);
@@ -381,9 +409,9 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     const SceneObject &o = sc.objects[li];
     if (o.type != SceneObject::Light || !sc.object_visible(o)) continue;
     glUseProgram(prog_gizmo);
-    glUniformMatrix4fv(glGetUniformLocation(prog_gizmo, "u_mvp"), 1, GL_FALSE,
+    glUniformMatrix4fv(uniform_location(prog_gizmo, "u_mvp"), 1, GL_FALSE,
                        mvp);
-    glUniform4f(glGetUniformLocation(prog_gizmo, "u_xform"), o.pos[0],
+    glUniform4f(uniform_location(prog_gizmo, "u_xform"), o.pos[0],
                 o.pos[1] * RS.height_scale, o.pos[2], 0.012f);
     uni3(prog_gizmo, "u_color", o.color);
     unii(prog_gizmo, "u_selected", (int)li == sc.selected ? 1 : 0);
@@ -420,9 +448,9 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       glBindBuffer(GL_ARRAY_BUFFER, vbo_dyn);
       glBufferSubData(GL_ARRAY_BUFFER, 0, seg.size() * 4, seg.data());
       glUseProgram(prog_lines);
-      glUniformMatrix4fv(glGetUniformLocation(prog_lines, "u_mvp"), 1,
+      glUniformMatrix4fv(uniform_location(prog_lines, "u_mvp"), 1,
                          GL_FALSE, mvp);
-      glUniform4f(glGetUniformLocation(prog_lines, "u_color"), o.color[0],
+      glUniform4f(uniform_location(prog_lines, "u_color"), o.color[0],
                   o.color[1], o.color[2], 0.55f);
       glDrawArrays(GL_LINES, 0, (int)(seg.size() / 3));
     }
@@ -431,8 +459,8 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   // reference grid
   if (vc.grid) {
     glUseProgram(prog_lines);
-    glUniformMatrix4fv(glGetUniformLocation(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
-    glUniform4f(glGetUniformLocation(prog_lines, "u_color"), 0.7f, 0.7f, 0.72f, 0.35f);
+    glUniformMatrix4fv(uniform_location(prog_lines, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniform4f(uniform_location(prog_lines, "u_color"), 0.7f, 0.7f, 0.72f, 0.35f);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindVertexArray(vao_lines);
