@@ -23,6 +23,17 @@ Clone "https://github.com/g-truc/glm.git" "glm" $null
 # repair stage disabled and reported as unavailable.
 Clone "https://github.com/elalish/manifold.git" "manifold" "v3.5.2"
 
+# QuadriFlow: quad retopology (BSD-3), with Eigen (header-only, MPL-2.0)
+# and pcg32 (Apache-2.0, an empty submodule directory in the checkout).
+# patch_quadriflow.py then removes its Boost dependency - see the script.
+Clone "https://github.com/hjwdzh/QuadriFlow.git" "quadriflow" $null
+Clone "https://gitlab.com/libeigen/eigen.git" "eigen" "3.4.0"
+if (Test-Path "quadriflow") {
+    Remove-Item -Recurse -Force "quadriflow\3rd\pcg32" -ErrorAction SilentlyContinue
+    Clone "https://github.com/wjakob/pcg32.git" "quadriflow\3rd\pcg32" $null
+    python "$root\scripts\patch_quadriflow.py"
+}
+
 function Fetch($url, $file) {
     if (Test-Path $file) { Write-Host "$file already present" -ForegroundColor DarkGray; return }
     Write-Host "downloading $file..." -ForegroundColor Cyan

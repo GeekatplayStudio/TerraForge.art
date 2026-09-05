@@ -857,6 +857,14 @@
       "description": "Optional mesh engines behind engine/gpx/mesh_engines.hpp: Manifold v3.5.2 (Apache-2.0) gives guaranteed-manifold solid reconstruction and unions overlapping shells into one solid, running as repair stage 5 when our own stages cannot close the surface; a build without the engine disables the stage and says so in the repair notes rather than degrading silently",
       "test_file": "test_mesh.cpp",
       "test_symbol": "test_overlapping_shells"
+    },
+    {
+      "id": "mesh.retopo",
+      "area": "engine",
+      "phase": "29",
+      "description": "Quad retopology with QuadriFlow (BSD-3): rebuilds a surface as evenly sized, curvature-aligned quads rather than thinning the triangles it was given, triangulated on the way back; built without Boost by pointing QuadriFlow's library-backed max-flow solvers at its own dependency-free one (scripts/patch_quadriflow.py), so the only dependency is header-only Eigen",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_retopo"
     }
   ]
 }

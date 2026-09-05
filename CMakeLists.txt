@@ -222,6 +222,47 @@ if(TERRAFORGE_WITH_MANIFOLD AND EXISTS "${CMAKE_SOURCE_DIR}/external/manifold/CM
 else()
     message(STATUS "Mesh engines: none - run scripts/get_deps to add Manifold")
 endif()
+
+# QuadriFlow (BSD-3) rebuilds a surface as clean, curvature-aligned quads -
+# the one thing our quadric collapse cannot do. Its own CMake requires Boost
+# and Eigen; scripts/patch_quadriflow.py removes the Boost dependency by
+# pointing its two library-backed max-flow solvers at the one it ships itself
+# (see the script for what that costs), so all that is left is Eigen, which is
+# header-only. We compile its sources directly rather than use its CMake.
+option(TERRAFORGE_WITH_QUADRIFLOW "Build with the QuadriFlow retopology engine" ON)
+set(QF_DIR "${CMAKE_SOURCE_DIR}/external/quadriflow")
+if(TERRAFORGE_WITH_QUADRIFLOW AND EXISTS "${QF_DIR}/src/parametrizer.cpp"
+   AND EXISTS "${CMAKE_SOURCE_DIR}/external/eigen/Eigen")
+    add_library(quadriflow STATIC
+        ${QF_DIR}/src/adjacent-matrix.cpp
+        ${QF_DIR}/src/dedge.cpp
+        ${QF_DIR}/src/hierarchy.cpp
+        ${QF_DIR}/src/loader.cpp
+        ${QF_DIR}/src/localsat.cpp
+        ${QF_DIR}/src/merge-vertex.cpp
+        ${QF_DIR}/src/optimizer.cpp
+        ${QF_DIR}/src/parametrizer.cpp
+        ${QF_DIR}/src/parametrizer-flip.cpp
+        ${QF_DIR}/src/parametrizer-int.cpp
+        ${QF_DIR}/src/parametrizer-mesh.cpp
+        ${QF_DIR}/src/parametrizer-scale.cpp
+        ${QF_DIR}/src/parametrizer-sing.cpp
+        ${QF_DIR}/src/subdivide.cpp)
+    target_include_directories(quadriflow PUBLIC
+        ${QF_DIR}/src ${QF_DIR}/3rd "${CMAKE_SOURCE_DIR}/external/eigen")
+    # EIGEN_MPL2_ONLY keeps Eigen's LGPL corner (Sparse Cholesky) out of the
+    # build - the same thing QuadriFlow's own BUILD_FREE_LICENSE flag does.
+    # EIGEN_MPL2_ONLY keeps Eigen's LGPL corner (Sparse Cholesky) out of the
+    # build; M_PI needs asking for by name in a strict-standard build.
+    target_compile_definitions(quadriflow PUBLIC EIGEN_MPL2_ONLY _USE_MATH_DEFINES)
+    # Upstream is from 2019 and warns loudly on a 2026 compiler; its warnings
+    # are not ours to fix, and we do not want them drowning our own.
+    target_compile_options(quadriflow PRIVATE -w)
+    set_target_properties(quadriflow PROPERTIES CXX_STANDARD 14)
+    target_link_libraries(geekatplay_nodeterrain PUBLIC quadriflow)
+    target_compile_definitions(geekatplay_nodeterrain PUBLIC GPX_HAVE_QUADRIFLOW)
+    message(STATUS "Mesh engines: QuadriFlow (quad retopology)")
+endif()
 if(WIN32)
     # urlmon: URLDownloadToFileA, the PBR library downloader
     # (engine/nodes/nodes_pbr_library.cpp, guarded by #ifdef _WIN32)

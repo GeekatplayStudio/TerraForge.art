@@ -317,8 +317,7 @@ void draw_panel_mesh(App &a) {
   if (ImGui::Button("Solidify", ImVec2(110, 0)))
     run(a, "mesh_solidify", nlohmann::json::object());
   ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::TextDisabled("engines: %s", gpx::mesh_engines_text().c_str());
+  ImGui::TextWrapped("Engines: %s", gpx::mesh_engines_text().c_str());
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip(
         "Rebuilds the surface as a solid that is manifold by construction,\n"
@@ -327,11 +326,24 @@ void draw_panel_mesh(App &a) {
 
   ImGui::SeparatorText("Reduce");
   static int target = 5000;
+  // The buttons go under the field rather than beside it: at the panel's
+  // default width the second one was off the edge and could not be pressed.
   ImGui::SetNextItemWidth(140);
   ImGui::InputInt("Target triangles", &target);
   target = std::clamp(target, 4, 20000000);
+  if (ImGui::Button("Reduce", ImVec2(110, 0)))
+    run(a, "mesh_reduce", {{"faces", target}});
   ImGui::SameLine();
-  if (ImGui::Button("Reduce")) run(a, "mesh_reduce", {{"faces", target}});
+  ImGui::BeginDisabled(!gpx::mesh_engines().retopo);
+  if (ImGui::Button("Rebuild as quads", ImVec2(150, 0)))
+    run(a, "mesh_retopo", {{"faces", target / 2}});
+  ImGui::EndDisabled();
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    ImGui::SetTooltip(
+        "Reduce thins the triangles it was given.\n"
+        "Quads rebuilds the surface as evenly sized, curvature-aligned\n"
+        "quads - better for a sculpt or a scan, and the only one of the\n"
+        "two that changes the topology.");
   if (st.has_reduce)
     ImGui::TextDisabled("%zu -> %zu triangles, worst deviation %s (%.2f%%)",
                         st.reduce.faces_before, st.reduce.faces_after,

@@ -5,10 +5,19 @@
 // stage that did not run is reported as a stage that did not run.
 #include "gpx/mesh_engines.hpp"
 #include "gpx/mesh_report.hpp"
+#include <algorithm>
+#include <exception>
 #include <vector>
 
 #ifdef GPX_HAVE_MANIFOLD
 #include <manifold/manifold.h>
+#endif
+
+#ifdef GPX_HAVE_QUADRIFLOW
+// QuadriFlow warns loudly on a 2026 compiler and its headers are not ours to
+// fix; the library itself is built with warnings off in CMakeLists.
+#include <optimizer.hpp>
+#include <parametrizer.hpp>
 #endif
 
 namespace gpx {
@@ -27,11 +36,11 @@ MeshEngines mesh_engines() {
 std::string mesh_engines_text() {
   std::string s;
 #ifdef GPX_HAVE_MANIFOLD
-  s += "Manifold " GPX_MANIFOLD_VERSION " (solidify)";
+  s += "Manifold " GPX_MANIFOLD_VERSION;
 #endif
 #ifdef GPX_HAVE_QUADRIFLOW
   if (!s.empty()) s += ", ";
-  s += "QuadriFlow (quad retopology)";
+  s += "QuadriFlow";
 #endif
   return s.empty() ? std::string("none - built without the optional engines")
                    : s;
@@ -123,12 +132,89 @@ bool mesh_retopo(TriMesh &m, size_t target_faces, std::string &err) {
         "compiled in)";
   return false;
 #else
-  // Filled in when QuadriFlow is wired up; the seam exists so the caller,
-  // the panel and the op are already written against it.
-  (void)m;
-  (void)target_faces;
-  err = "quad retopology is not implemented yet";
-  return false;
+  if (m.face_count() < 4) {
+    err = "too few triangles to retopologise";
+    return false;
+  }
+  // QuadriFlow needs a clean triangle surface to reason about: a mesh whose
+  // vertices are split (every STL) has no adjacency at all, and it would
+  // rebuild the surface as unrelated islands.
+  TriMesh input = m;
+  {
+    float lo[3], hi[3];
+    if (mesh_bounds(input, lo, hi)) {
+      float span = std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]});
+      mesh_weld(input, span > 0.f ? span * 1e-6f : 1e-6f);
+    }
+    mesh_drop_degenerate(input);
+    mesh_drop_duplicate_faces(input);
+    mesh_drop_unreferenced(input);
+  }
+
+  qflow::Parametrizer field;
+  field.V.resize(3, (int)input.vert_count());
+  for (size_t i = 0; i < input.vert_count(); ++i)
+    for (int k = 0; k < 3; ++k)
+      field.V(k, (int)i) = input.v[i * 3 + (size_t)k];
+  field.F.resize(3, (int)input.face_count());
+  for (size_t i = 0; i < input.face_count(); ++i)
+    for (int k = 0; k < 3; ++k)
+      field.F(k, (int)i) = (int)input.f[i * 3 + (size_t)k];
+
+  // The same sequence QuadriFlow's own front end runs. It works in a
+  // normalised space and hands back the transform to undo, which is why the
+  // output is scaled and offset on the way out rather than trusted as-is.
+  try {
+    field.NormalizeMesh();
+    field.Initialize((int)target_faces);
+    qflow::Optimizer::optimize_orientations(field.hierarchy);
+    field.ComputeOrientationSingularities();
+    qflow::Optimizer::optimize_scale(field.hierarchy, field.rho,
+                                     field.flag_adaptive_scale);
+    field.flag_adaptive_scale = 1;
+    qflow::Optimizer::optimize_positions(field.hierarchy,
+                                         field.flag_adaptive_scale);
+    field.ComputePositionSingularities();
+    field.ComputeIndexMap();
+  } catch (const std::exception &e) {
+    err = std::string("quad retopology failed: ") + e.what();
+    return false;
+  } catch (...) {
+    err = "quad retopology failed";
+    return false;
+  }
+
+  if (field.O_compact.empty() || field.F_compact.empty()) {
+    err = "quad retopology produced no geometry";
+    return false;
+  }
+
+  TriMesh out;
+  out.v.reserve(field.O_compact.size() * 3);
+  for (const auto &p : field.O_compact) {
+    auto t = p * field.normalize_scale + field.normalize_offset;
+    out.v.push_back((float)t[0]);
+    out.v.push_back((float)t[1]);
+    out.v.push_back((float)t[2]);
+  }
+  // Quads become two triangles: our carrier is triangles, and every consumer
+  // downstream - the analysis, the renderer, every exporter - is too.
+  const uint32_t nv = (uint32_t)out.vert_count();
+  for (const auto &q : field.F_compact) {
+    uint32_t a = (uint32_t)q[0], b = (uint32_t)q[1], c = (uint32_t)q[2],
+             d = (uint32_t)q[3];
+    if (a >= nv || b >= nv || c >= nv || d >= nv) continue;
+    out.f.insert(out.f.end(), {a, b, c});
+    out.f.insert(out.f.end(), {a, c, d});
+  }
+  if (out.f.empty()) {
+    err = "quad retopology produced no usable faces";
+    return false;
+  }
+  mesh_drop_degenerate(out);
+  mesh_drop_unreferenced(out);
+  m = std::move(out);
+  return true;
 #endif
 }
 

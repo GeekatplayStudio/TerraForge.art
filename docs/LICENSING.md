@@ -71,6 +71,10 @@ that adds it.
 | nlohmann/json | 3.12.0 | MIT | SPDX header in `external/json.hpp` |
 | stb_image / stb_image_write | v2.30 | public domain or MIT | headers in `external/` |
 | miniz | 3.0.0 | MIT / public domain | `external/miniz/miniz.h` |
+| Manifold | v3.5.2 | Apache-2.0 | `external/manifold/LICENSE` |
+| QuadriFlow | commit 810b7a09 | BSD-3-Clause | `external/quadriflow/LICENSE.txt` |
+| Eigen (QuadriFlow only) | 3.4.0 | MPL-2.0, built `EIGEN_MPL2_ONLY` | `external/eigen/COPYING.MPL2` |
+| pcg32 (QuadriFlow only) | master | Apache-2.0 | header comment |
 | ambientCG material sets | downloaded on request | CC0 1.0 | ambientcg.com terms |
 
 All permissive. None impose obligations beyond carrying their notice, which
@@ -91,7 +95,7 @@ recorded in this repository. **It was wrong**, and it was corrected in commit
 | Library | Version / ref | Licence, as the file states it | Verdict |
 | :--- | :--- | :--- | :--- |
 | [**Manifold**](https://github.com/elalish/manifold) (`manifold3d`) | v3.5.2, released 2026-06-27 | **Apache License 2.0** (`LICENSE`, verified 2026-09-04) | **Usable** — adopted, see §5 |
-| [**QuadriFlow**](https://github.com/hjwdzh/QuadriFlow) | commit `810b7a0967c3`, 2019-12-07 (no tagged releases) | **BSD 3-Clause** in `LICENSE.txt`; the README calls it "MIT". Both are permissive, so the discrepancy does not change the verdict — treat the file as controlling and reproduce the BSD-3 notice | **Usable** — see §5 |
+| [**QuadriFlow**](https://github.com/hjwdzh/QuadriFlow) | commit `810b7a0967c3`, 2019-12-07 (no tagged releases) | **BSD 3-Clause** in `LICENSE.txt`; the README calls it "MIT". Both are permissive, so the discrepancy does not change the verdict — treat the file as controlling and reproduce the BSD-3 notice | **Usable** — adopted, see §5 |
 | [**fast-simplification**](https://github.com/pyvista/fast-simplification) | 0.1.7+ | **MIT** (`LICENSE`, verified 2026-09-04) | Usable; not needed, we have our own quadric collapse |
 | [**PyMeshLab / MeshLab**](https://github.com/cnr-isti-vclab/PyMeshLab) | 2023.12+ | **GPL-3.0** (`LICENSE`, verified 2026-09-04) | **Excluded** |
 | [**MeshFix**](https://github.com/MarcoAttene/MeshFix-V2.1) (`pymeshfix`) | 0.17+ | **GPL-3.0**, *and* dual-licensed: the author states commercial use requires an agreement with the authors and IMATI-GE/CNR | **Excluded** unless a commercial licence is bought — see §6 |
@@ -138,16 +142,31 @@ as a defect — are unioned into one solid, verified by a test that checks the
 result encloses the union's volume (1.875 for two unit cubes overlapping by
 half) rather than the sum of both.
 
-**QuadriFlow — not yet, and here is the precise blocker.** Its CMake calls
-`find_package(Eigen REQUIRED)` and `find_package(Boost REQUIRED)`
-unconditionally. Eigen is easy (header-only, MPL-2.0 with `EIGEN_MPL2_ONLY`,
-which `BUILD_FREE_LICENSE=ON` sets). Boost is not: QuadriFlow uses Boost's
-Boykov max-flow in `src/flow.hpp` and `src/post-solver.cpp`, and that path is
-not optional in the source. It bundles Lemon 1.3.1 (Boost Software License),
-whose min-cost-flow solver could replace it, but selecting it means patching
-upstream and then maintaining that patch. The licence is not the obstacle —
-the dependency weight is. The `mesh_retopo` seam exists and returns an honest
-"not compiled in", so this can be finished later without touching a caller.
+**QuadriFlow — done, and the Boost problem turned out to be smaller than it
+looked.** `flow.hpp` carries four max-flow solvers: Boykov (Boost.Graph),
+network simplex (Lemon), Gurobi (commercial) and `ECMaxFlowHelper`, which is
+QuadriFlow's own and needs nothing at all — and which the code already
+selects for small problems. `scripts/patch_quadriflow.py` removes the first
+two and aliases their names to the third, so the rest of QuadriFlow needs no
+edit. That leaves **Eigen** as the only dependency, header-only, built with
+`EIGEN_MPL2_ONLY` so its LGPL Sparse Cholesky corner never enters. Two
+further things the checkout needs: `3rd/pcg32` is an empty submodule
+directory (cloned separately, Apache-2.0), and `dedge.cpp` reaches for an
+MSVC intrinsic on any `_WIN32` build, which MinGW is not.
+
+**What the patch costs, stated plainly:** EC and Boykov both compute an exact
+maximum flow, and the maximum-flow *value* is unique, but a different optimal
+flow can give a slightly different quad layout on the same input, and EC is
+slower on large problems. Nothing is approximated; the layout is one valid
+solution rather than another.
+
+Measured on our own toolchain: a 1,600-triangle sphere rebuilt to 810
+triangles (405 quads, 407 vertices) with a worst radius error of 0.0067 —
+a rebuilt surface, not a thinned one, and still the same sphere.
+
+The upstream sources are **not** committed to this repository (`external/` is
+ignored); `scripts/get_deps` fetches and patches them, and the patch script
+is idempotent and readable.
 
 ### Options considered and rejected — so they are not re-litigated
 

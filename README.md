@@ -237,6 +237,14 @@ wanted his students to have.
 - **Reduce** by quadric edge collapse to a triangle target (Vue's Decimate),
   reporting the largest surface deviation it *measured* against the
   original, in millimetres and as a fraction of the model.
+- **Rebuild it as quads.** *Reduce* thins the triangles it was given;
+  **Rebuild as quads** replaces the surface with evenly sized,
+  curvature-aligned quads — the right tool for a sculpt or a scan, and the
+  only one of the two that changes the topology. A 768-triangle sphere comes
+  back as 164 quads, still watertight. Powered by
+  [QuadriFlow](https://github.com/hjwdzh/QuadriFlow) (BSD-3), built without
+  Boost by using its own dependency-free max-flow solver — the patch and what
+  it costs are in [docs/LICENSING.md](docs/LICENSING.md).
 - **Split** a multi-part model into one object per shell; **export** to STL,
   OBJ, PLY or OFF - and it says on the way out when the mesh is not a closed
   solid, because an open surface slices as a single-wall shell with no

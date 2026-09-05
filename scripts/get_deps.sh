@@ -52,6 +52,17 @@ clone https://github.com/g-truc/glm.git                 glm
 # itself unavailable rather than silently doing something weaker.
 clone https://github.com/elalish/manifold.git           manifold v3.5.2
 
+# QuadriFlow: quad retopology (BSD-3), with Eigen (header-only, MPL-2.0)
+# and pcg32 (Apache-2.0, an empty submodule directory in the checkout).
+# patch_quadriflow.py then removes its Boost dependency - see the script.
+clone https://github.com/hjwdzh/QuadriFlow.git          quadriflow
+clone https://gitlab.com/libeigen/eigen.git             eigen 3.4.0
+if [ -d quadriflow ]; then
+  rm -rf quadriflow/3rd/pcg32
+  clone https://github.com/wjakob/pcg32.git quadriflow/3rd/pcg32
+  "$PY" "$root/scripts/patch_quadriflow.py"
+fi
+
 fetch https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp json.hpp
 fetch https://raw.githubusercontent.com/nothings/stb/master/stb_image.h       stb_image.h
 fetch https://raw.githubusercontent.com/nothings/stb/master/stb_image_write.h stb_image_write.h

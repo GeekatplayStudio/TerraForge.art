@@ -25,6 +25,9 @@ installer and the packaged build.
 | [stb_image / stb_image_write](https://github.com/nothings/stb) | image loading and saving | public domain (or MIT) | headers in `external/` |
 | [miniz](https://github.com/richgel999/miniz) | zip and PNG compression | MIT / public domain | header in `external/miniz/` |
 | [Manifold](https://github.com/elalish/manifold) v3.5.2 | guaranteed-manifold solid reconstruction in the mesh module | Apache-2.0 | `external/manifold/LICENSE` |
+| [QuadriFlow](https://github.com/hjwdzh/QuadriFlow) | quad retopology in the mesh module | BSD-3-Clause | `external/quadriflow/LICENSE.txt` |
+| [Eigen](https://gitlab.com/libeigen/eigen) 3.4.0 | linear algebra, for QuadriFlow only | MPL-2.0 (built with `EIGEN_MPL2_ONLY`, which excludes its LGPL parts) | `external/eigen/COPYING.MPL2` |
+| [pcg32](https://github.com/wjakob/pcg32) | random numbers, for QuadriFlow only | Apache-2.0 | header in `external/quadriflow/3rd/pcg32/` |
 
 ## Downloaded content
 
@@ -32,9 +35,13 @@ Material libraries fetched from [ambientCG](https://ambientcg.com) are
 **CC0 1.0** (public domain dedication) and carry no obligations. They are
 downloaded at the user's request and are not redistributed with TerraForge.
 
-Manifold is **optional**: `scripts/get_deps` clones it, and the application
-builds and runs without it with that one repair stage disabled and reported
-as unavailable. Apache-2.0 requires its NOTICE and licence to travel with any
+QuadriFlow is patched on fetch by `scripts/patch_quadriflow.py` to build
+without Boost - the patch is ours, the code stays BSD-3, and the script
+says exactly what it changes and what that costs.
+
+Both engines are **optional**: `scripts/get_deps` clones them, and the
+application builds and runs without either, with that stage disabled and
+reported as unavailable. Apache-2.0 requires its NOTICE and licence to travel with any
 distribution that includes it, which this file and the installer payload do.
 
 ## What is deliberately absent

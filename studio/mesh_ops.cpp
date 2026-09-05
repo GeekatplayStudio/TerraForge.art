@@ -162,6 +162,27 @@ int ai_mesh_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  if (op == "mesh_retopo") {
+    SceneObject *o = mesh_selected_object(a, err);
+    if (!o) return 0;
+    gpx::TriMesh m = mesh_from_object(*o);
+    size_t before = m.face_count();
+    size_t target = (size_t)std::max(16, act.value("faces", 5000));
+    if (!gpx::mesh_retopo(m, target, err)) return 0;
+    undo_push(a, "retopologise mesh");
+    mesh_to_object(*o, m);
+    MeshToolsState &st = mesh_tools();
+    gpx::mesh_analyse(m, st.report, mesh_unit_mm(*o));
+    st.has_report = true;
+    st.object = scene().selected;
+    st.issue = -1;
+    st.note = "rebuilt as quads: " + std::to_string(before) + " -> " +
+              std::to_string(m.face_count()) + " triangles - " +
+              one_line(st.report);
+    a.status = "mesh: " + st.note;
+    return 1;
+  }
+
   if (op == "mesh_split") {
     SceneObject *o = mesh_selected_object(a, err);
     if (!o) return 0;

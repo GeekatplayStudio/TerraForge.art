@@ -444,7 +444,69 @@ static void test_overlapping_shells() {
   }
 }
 
+// Quad retopology: rebuilds the surface rather than thinning it, which is
+// the thing our own quadric collapse cannot do. As with solidify, the test
+// asserts the contract in both builds.
+static void test_retopo() {
+  // A sphere, dense enough to be worth rebuilding.
+  TriMesh s;
+  const int rings = 20, seg = 40;
+  for (int i = 0; i <= rings; ++i) {
+    double phi = 3.14159265358979 * i / rings;
+    for (int j = 0; j < seg; ++j) {
+      double th = 2 * 3.14159265358979 * j / seg;
+      s.v.push_back((float)(std::sin(phi) * std::cos(th)));
+      s.v.push_back((float)(std::cos(phi)));
+      s.v.push_back((float)(std::sin(phi) * std::sin(th)));
+    }
+  }
+  for (int i = 0; i < rings; ++i)
+    for (int j = 0; j < seg; ++j) {
+      uint32_t a = (uint32_t)(i * seg + j);
+      uint32_t b = (uint32_t)(i * seg + (j + 1) % seg);
+      uint32_t c = (uint32_t)((i + 1) * seg + j);
+      uint32_t d = (uint32_t)((i + 1) * seg + (j + 1) % seg);
+      s.f.insert(s.f.end(), {a, c, b});
+      s.f.insert(s.f.end(), {b, c, d});
+    }
+  const size_t before = s.face_count();
+  TriMesh work = s;
+  std::string err;
+  const bool ok = mesh_retopo(work, 400, err);
+  if (mesh_engines().retopo) {
+    check(ok, std::string("retopology runs: " + err).c_str());
+    if (ok) {
+      check(work.face_count() > 0 && work.face_count() < before,
+            "and returns fewer faces than it was given");
+      MeshReport r;
+      mesh_analyse(work, r);
+      check(r.stats.faces > 0, "the result has geometry");
+      // It must still be a sphere: every new vertex within a whisker of the
+      // unit radius it was rebuilt from.
+      double worst = 0;
+      for (size_t i = 0; i < work.vert_count(); ++i) {
+        const float *p = work.vert(i);
+        double rad = std::sqrt((double)p[0] * p[0] + (double)p[1] * p[1] +
+                               (double)p[2] * p[2]);
+        worst = std::max(worst, std::fabs(rad - 1.0));
+      }
+      check(worst < 0.05,
+            "and still describes the same sphere, not a different shape");
+      // Printed because the numbers are the point: a rebuilt surface, not a
+      // thinned one, and still the same sphere.
+      std::printf("  retopo: %zu triangles -> %zu (%zu vertices), "
+                  "worst radius error %.4f\n",
+                  before, work.face_count(), work.vert_count(), worst);
+    }
+  } else {
+    check(!ok, "without the engine, retopology refuses");
+    check(err.find("not compiled in") != std::string::npos,
+          "and says the engine is missing");
+  }
+}
+
 int main() {
+  test_retopo();
   test_overlapping_shells();
   test_healthy_cube();
   test_hole_is_found_and_closed();
