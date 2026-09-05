@@ -268,6 +268,33 @@ wanted his students to have.
   deliberately not part of it; see [docs/LICENSING.md](docs/LICENSING.md) for
   what was checked, when, and why.
 
+### The Materials workspace
+- **Arranged like a material editor, not a terrain screen.** Switch to
+  Materials and the screen becomes: the **Material Studio** on top — the
+  material being edited, its live preview and every one of its properties —
+  a thin **Material Browser** beneath it, and under those the node graph
+  that makes the material beside a scene view that shows it on the ground.
+  Every workspace now keeps its own arrangement and remembers what you did
+  to it.
+- **Six kinds of material**, read from the graph rather than stored:
+  *Simple* (channels fed directly), *PBR textures*, *Mixed* (two materials
+  through a mask), *Layered* (a stack with presence rules per layer),
+  **Distribution** — a layer whose presence also decides where objects
+  stand, so the ground and the population share one rule — and
+  **Effector**, a material that influences rather than colours: a typed
+  field (pressure, wind, light, heat, moisture) that systems arriving later
+  read by kind. Choose a type and the studio scaffolds the nodes it needs,
+  keeping what the material already had.
+- **A live preview per material** — sphere, cube or flat, three
+  backgrounds, a turntable — from a texture cache that re-uploads only when
+  the material actually changed, so a spinning preview costs nothing and a
+  browser page of thumbnails uploads each once.
+- **New / Save / Load** as Vue lays them out; a material changed since it
+  was opened is marked *modified* and the studio asks before switching away.
+- **The browser**: *Project* materials and the *Library*, thumbnails with a
+  hover card showing what each is made of; double-click opens, right-click
+  assigns or saves. Removing from the library moves to a trash folder.
+
 ### The lens, simulated
 - **One switch per camera.** Off, the lens is perfect. On, the picture goes
   through what that lens would actually do to it — in the viewport, in the

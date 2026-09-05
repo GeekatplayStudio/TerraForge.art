@@ -8,6 +8,7 @@
 // every save and loading always creates an independent copy.
 #include "app.hpp"
 #include "material_library.hpp"
+#include "material_ui.hpp"
 #include "ollama.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
@@ -25,36 +26,11 @@ namespace studio {
 
 std::string dialog_open_file(const char *filter, const char *def_ext);
 
-struct MatEntry {
-  uint64_t id;
-  std::string name;
-};
-
-static std::vector<MatEntry> collect_materials(App &a) {
-  std::vector<MatEntry> out;
-  for (auto &n : a.graph.nodes)
-    if (n->type == "MaterialOutput") {
-      std::string nm = n->attrs.get_s("name");
-      if (nm.empty()) nm = "Material";
-      out.push_back({n->id, nm + "  #" + std::to_string(n->id)});
-    }
-  return out;
-}
-
+// MatEntry, collect_materials and the channel rows live in material_ui.cpp,
+// shared with the Material Studio and the browser.
 static void channel_row(App &a, gpx::Node *mat, const char *port,
                         const char *human) {
-  gpx::Node *src = a.graph.upstream_node(*mat, port);
-  ImGui::TableNextRow();
-  ImGui::TableNextColumn();
-  ImGui::TextUnformatted(human);
-  ImGui::TableNextColumn();
-  if (src) {
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.75f, 0.45f, 1.f));
-    ImGui::Text("%s #%llu", src->type.c_str(), (unsigned long long)src->id);
-    ImGui::PopStyleColor();
-  } else {
-    ImGui::TextDisabled("not connected");
-  }
+  material_channel_row(a, mat, port, human);
 }
 
 // ---- AI material generation -------------------------------------------

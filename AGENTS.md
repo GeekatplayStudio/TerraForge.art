@@ -54,6 +54,31 @@ each one was a bug we already paid for. Do not regress them.
     soon as a fifth viewport existed - two features resizing one FBO every
     frame.
 
+## Workspaces and materials
+
+1. **Every workspace owns its arrangement.** `workspace_layout_switch`
+   (studio/layout_workspace.cpp) captures the arrangement being left into
+   `layouts/workspace-<name>.json` and restores the one being entered; the
+   Materials workspace has its own default (`build_materials_layout`) and the
+   rest share the default. A default builder must dock **every** window the
+   application can show - one it forgets floats at wherever it last was, over
+   the new arrangement (that is how the Node List covered the studio the
+   first time).
+2. **A material's type is read from its graph, never stored.**
+   `material_type_of` looks at what feeds the MaterialOutput; `material_set_type`
+   scaffolds nodes and keeps what was already connected. Change the graph and
+   the type follows; there is no second source of truth to drift.
+3. **The Material Studio's "modified" is a fingerprint** of
+   `material_to_json`, taken when opened or saved. Comparing text, not
+   tracking edits, so an edit made from the node editor, a script or undo
+   counts the same as one made in the studio.
+4. **The node-contract battery compares point clouds.** `snapshot()` in
+   tests/cpp/test_nodes.cpp appends every Points output. It did not until
+   2026-09-04, which left every scatter node invisible to the determinism and
+   seed checks; a DistributionLayer was the first node to fail for that
+   reason. A node whose seed only acts under a non-default setting is listed
+   in `seed_is_conditional` with the reason, not silently skipped.
+
 ## Mesh module
 
 1. **An imported file's coordinates are never rewritten.** `scene_import_mesh`

@@ -160,6 +160,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_erosion_wind.cpp
     engine/nodes/nodes_erosion_layers.cpp
     engine/nodes/nodes_material_layers.cpp
+    engine/nodes/nodes_material_types.cpp
     engine/nodes/nodes_operators.cpp
     engine/nodes/nodes_masks.cpp
     engine/nodes/nodes_points.cpp
@@ -287,6 +288,10 @@ set(STUDIO_SOURCES
     studio/panel_mesh.cpp
     studio/layout_record.cpp
     studio/layout_store.cpp
+    studio/layout_workspace.cpp
+    studio/panel_material_studio.cpp
+    studio/panel_material_browser.cpp
+    studio/material_ui.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
     studio/icons.cpp
@@ -317,6 +322,7 @@ set(STUDIO_SOURCES
     studio/renderer_scene.cpp
     studio/renderer_passes.cpp
     studio/renderer_post.cpp
+    studio/renderer_matprev.cpp
     studio/camera_optics.cpp
     studio/renderer_programs.cpp
     studio/renderer_init.cpp

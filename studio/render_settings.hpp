@@ -348,6 +348,21 @@ void renderer_set_film(const float tint[3], float saturation,
 // (0 sphere, 1 cube, 2 flat); spin = turntable angle in radians
 unsigned renderer_material_preview(int size, int shape = 0, float spin = 0.f);
 
+// A preview of one particular material, whichever material the terrain wears
+// (studio/renderer_matprev.cpp). Textures are cached per `key` and only
+// re-uploaded when `version` changes.
+struct MaterialPreviewSpec {
+  unsigned long long key = 0, version = 0;
+  const void *albedo = nullptr, *normal = nullptr, *rough = nullptr; // gpx::TextureRGBA*
+  float roughness = 0.85f, metallic = 0.f, specular = 0.35f, reflection = 0.25f;
+  int background = 0; // 0 dark, 1 grey, 2 light
+};
+unsigned renderer_material_preview_of(const MaterialPreviewSpec &spec, int size,
+                                      int shape, float spin);
+// The same, copied into a texture of its own that survives the next call.
+unsigned renderer_material_thumbnail(const MaterialPreviewSpec &spec, int size,
+                                     unsigned existing);
+
 // computes sun direction from settings (handles geographic mode)
 void compute_sun_dir(const RenderSettings &rs, float out_dir[3]);
 

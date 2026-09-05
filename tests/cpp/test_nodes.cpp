@@ -274,6 +274,16 @@ static std::vector<float> snapshot(gpx::Node *n) {
     if (p.dir != gpx::PortDir::Out) continue;
     if (p.hmap) out.insert(out.end(), p.hmap->v.begin(), p.hmap->v.end());
     if (p.tex) out.insert(out.end(), p.tex->v.begin(), p.tex->v.end());
+    // Point clouds too. They were left out, which made every scatter node
+    // invisible to the determinism and seed checks: a DistributionLayer
+    // whose only seeded output is its points passed "deterministic" without
+    // the points ever being compared, and failed "reacts to its seed"
+    // because only its pass-through channels were looked at.
+    if (p.pts) {
+      out.insert(out.end(), p.pts->x.begin(), p.pts->x.end());
+      out.insert(out.end(), p.pts->y.begin(), p.pts->y.end());
+      out.insert(out.end(), p.pts->v.begin(), p.pts->v.end());
+    }
     // include field outputs so determinism covers them too
     if (p.type == gpx::DataType::Field && p.field_eval)
       for (const gpx::FieldContext &ctx : field_probe_points()) {
@@ -375,7 +385,16 @@ static void check_eval_and_determinism(const std::string &type) {
   CHECK(first == second, "is deterministic across two evaluations");
 }
 
+// Nodes whose seed only acts under a setting the battery leaves at its
+// default. PointsFilter's seed picks which points a keep fraction below 1
+// drops; at the default keep of 1 nothing is dropped and the seed rightly
+// changes nothing. Listed with the reason, so the exemption is auditable.
+static bool seed_is_conditional(const std::string &type) {
+  return type == "PointsFilter";
+}
+
 static void check_seed_matters(const std::string &type) {
+  if (seed_is_conditional(type)) return;
   gpx::Graph g;
   g.resolution = RES;
   std::vector<gpx::Node *> feeders;

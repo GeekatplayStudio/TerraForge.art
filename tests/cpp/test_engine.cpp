@@ -3094,6 +3094,102 @@ static void test_basalt() {
   CHECK(finite, "basalt is finite");
 }
 
+// The two material types beyond colour (engine/nodes/nodes_material_types.cpp).
+// A DistributionLayer must put objects only where its presence says, and put
+// the same objects there every time; an EffectorLayer must publish exactly
+// the field its strength, falloff and invert describe.
+static void test_material_types() {
+  std::printf("material types...\n");
+  {
+    gpx::Graph g;
+    g.resolution = 64;
+    gpx::Node *noise = g.add_node("Noise");
+    gpx::Node *thr = g.add_node("Threshold");
+    gpx::Node *dist = g.add_node("DistributionLayer");
+    g.add_link(noise->id, "output", thr->id, "input");
+    g.add_link(thr->id, "mask", dist->id, "presence");
+    dist->attrs.find("count")->i = 400;
+    dist->attrs.find("threshold")->f = 0.5f;
+    CHECK(g.evaluate(), "distribution layer evaluates");
+    gpx::Port *pp = dist->port("points", gpx::PortDir::Out);
+    CHECK(pp && pp->pts && pp->pts->size() > 20, "the presence places objects");
+    const gpx::Heightmap *pres = out_of(thr, "mask");
+    CHECK(pres && !pres->empty(), "the presence passes through");
+    if (pp && pp->pts && pres) {
+      // every object stands where the presence is on, never where it is off
+      int off = 0;
+      for (size_t i = 0; i < pp->pts->size(); ++i) {
+        int ix = std::min((int)(pp->pts->x[i] * pres->w), pres->w - 1);
+        int iy = std::min((int)(pp->pts->y[i] * pres->h), pres->h - 1);
+        if (pres->v[(size_t)iy * pres->w + ix] < 0.5f) ++off;
+      }
+      CHECK(off == 0, "no object stands where the presence is below threshold");
+      // spacing holds
+      const float md = dist->attrs.find("min_dist")->f;
+      int close = 0;
+      for (size_t i = 0; i < pp->pts->size(); ++i)
+        for (size_t j = i + 1; j < pp->pts->size(); ++j) {
+          float dx = pp->pts->x[i] - pp->pts->x[j], dy = pp->pts->y[i] - pp->pts->y[j];
+          if (dx * dx + dy * dy < md * md * 0.999f) ++close;
+        }
+      CHECK(close == 0, "no two objects are closer than the spacing");
+      // the same settings give the same population, twice
+      std::vector<float> first = pp->pts->x;
+      g.mark_dirty(dist->id);
+      CHECK(g.evaluate(), "re-evaluates");
+      CHECK(pp->pts->x == first, "the population is deterministic");
+      // and a different seed gives a different one
+      dist->attrs.find("seed")->seed = 7u;
+      g.mark_dirty(dist->id);
+      g.evaluate();
+      CHECK(pp->pts->x != first, "a new seed is a new population");
+    }
+    // no presence at all distributes everywhere rather than nowhere
+    gpx::Graph g2;
+    g2.resolution = 32;
+    gpx::Node *d2 = g2.add_node("DistributionLayer");
+    d2->attrs.find("count")->i = 100;
+    CHECK(g2.evaluate(), "a distribution with no presence evaluates");
+    gpx::Port *p2 = d2->port("points", gpx::PortDir::Out);
+    CHECK(p2 && p2->pts && p2->pts->size() >= 50,
+          "with no presence connected, objects go everywhere");
+  }
+  {
+    gpx::Graph g;
+    g.resolution = 48;
+    gpx::Node *noise = g.add_node("Noise");
+    gpx::Node *eff = g.add_node("EffectorLayer");
+    g.add_link(noise->id, "output", eff->id, "mask");
+    eff->attrs.find("kind")->i = 1; // wind
+    eff->attrs.find("strength")->f = 2.f;
+    eff->attrs.find("falloff")->f = 2.f;
+    CHECK(g.evaluate(), "effector layer evaluates");
+    const gpx::Heightmap *in = out_of(noise);
+    const gpx::Heightmap *out = out_of(eff, "effector");
+    CHECK(in && out && out->v.size() == in->v.size(), "the field has the mask's size");
+    if (in && out && out->v.size() == in->v.size()) {
+      float worst = 0.f;
+      for (size_t i = 0; i < in->v.size(); ++i) {
+        float m = std::clamp(in->v[i], 0.f, 1.f);
+        float want = std::clamp(m * m * 2.f, 0.f, 4.f);
+        worst = std::max(worst, std::fabs(out->v[i] - want));
+      }
+      CHECK(worst < 1e-5f, "the field is mask^falloff * strength, exactly");
+    }
+    eff->attrs.find("invert")->b = true;
+    eff->attrs.find("falloff")->f = 1.f;
+    eff->attrs.find("strength")->f = 1.f;
+    g.mark_dirty(eff->id);
+    g.evaluate();
+    if (in && out && out->v.size() == in->v.size()) {
+      float worst = 0.f;
+      for (size_t i = 0; i < in->v.size(); ++i)
+        worst = std::max(worst, std::fabs(out->v[i] - (1.f - std::clamp(in->v[i], 0.f, 1.f))));
+      CHECK(worst < 1e-5f, "invert gives one minus the mask");
+    }
+  }
+}
+
 static void test_erosion_layers() {
   std::printf("erosion layers...\n");
   const char *layers[7] = {"snow",  "riverbed", "sediment", "bedrock",
@@ -4632,6 +4728,7 @@ int main() {
   test_buffer_budget();
   test_erosion_layers();
   test_material_stack();
+  test_material_types();
   test_material_layers();
   test_fractal_color();
   test_vue_fractals();

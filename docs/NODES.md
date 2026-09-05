@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 232 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 234 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -26,7 +26,7 @@ Every node in Geekatplay TerraForge — 232 across 31 categories. Generated from
 | [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 14 |
-| [Material](#material) | 22 |
+| [Material](#material) | 24 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
@@ -2471,6 +2471,45 @@ Convex/concave curvature map from height
 | :--- | :--- | :--- |
 | Feature scale | float, 0.002 to 0.1, default 0.01 |  |
 | Contrast | float, 0.1 to 6, default 1 |  |
+
+### DistributionLayer
+
+Distribution layer: the presence that shades also places objects
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| albedo | in (optional) | texture |
+| presence | in (optional) | heightmap |
+| albedo | out | texture |
+| presence | out | heightmap |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Instances | int, 1 to 50000, default 800 | How many objects the presence places at full presence. |
+| Min spacing | float, 0.001 to 0.3, default 0.015 |  |
+| Presence threshold | float, 0 to 1, default 0.15 | Presence below this places nothing at all. |
+| Seed | seed |  |
+| Instance size from | choice: Uniform / Presence / Power law | The point value: the same for all, following the presence (strong presence, big plant), or many small and a few large. |
+
+### EffectorLayer
+
+Effector layer: a typed influence field for other systems to read
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| albedo | in (optional) | texture |
+| mask | in (optional) | heightmap |
+| albedo | out | texture |
+| effector | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Effector kind | choice: Pressure / Wind / Light / Heat / Moisture / Custom | What this field means to the systems that read it. Pressure: trodden or loaded ground. Wind: local air movement. Light and Heat: exposure. Moisture: wetness. Custom: whatever a script assigns it. |
+| Strength | float, 0 to 4, default 1 |  |
+| Falloff | float, 0.1 to 6, default 1 | A power on the mask: above 1 the field concentrates where the mask is strongest, below 1 it spreads. |
+| Invert | toggle, default off |  |
+| Tint the material by the field | toggle, default off | Blends the field into the colour so it can be seen in the viewport while it is being painted. Off, the material's colour passes through untouched. |
 
 ### FlatColor
 

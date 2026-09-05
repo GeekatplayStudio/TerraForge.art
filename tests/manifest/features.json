@@ -873,6 +873,38 @@
       "description": "Optical simulation per camera (Vue's Advanced Camera Options, p333): one switch, then lens distortion that follows the focal length and sensor (barrel wide, pincushion long) or is dialled by hand, vignetting scaled from the aperture, lateral chromatic aberration, shutter-driven camera-motion blur and an optional lens flare that only appears while the sun is in frame - applied as a post pass to the viewport, the Preview panel and captured images, and skipped entirely when off",
       "test_file": "test_render.cpp",
       "test_symbol": "test_lens_distortion"
+    },
+    {
+      "id": "ui.workspace_layouts",
+      "area": "studio",
+      "phase": "30",
+      "description": "Every workspace keeps its own window arrangement (layouts/workspace-<name>), captured on leaving and restored on entering; the Materials workspace has its own default: Material Studio on top, Material Browser beneath, node graph and scene view below, Properties and Outliner on the right",
+      "test_file": "test_layout.cpp",
+      "test_symbol": "test_round_trip"
+    },
+    {
+      "id": "materials.studio",
+      "area": "studio",
+      "phase": "30",
+      "description": "Material Studio: one material with New/Load/Save, its type (Simple, PBR textures, Mixed, Layered, Distribution, Effector - read from the graph and set by scaffolding nodes), a live preview per material (sphere/cube/flat, three backgrounds, turntable) rendered from a per-material texture cache that re-uploads only when the material changed, every channel and surface property, the layer stack, and an unsaved-changes prompt when switching materials",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_types"
+    },
+    {
+      "id": "materials.browser",
+      "area": "studio",
+      "phase": "30",
+      "description": "Material Browser with Project and Library tabs: thumbnails, hover cards with a larger preview and what the material is made of, double-click to open in the studio, right-click to assign, save or move to the library trash (never delete)",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_types"
+    },
+    {
+      "id": "materials.distribution_effector",
+      "area": "engine",
+      "phase": "30",
+      "description": "Two material types beyond colour: DistributionLayer, whose presence mask also places objects (a deterministic hashed dart throw with spacing, threshold and size-from-presence, the EcoSystem-material idea), and EffectorLayer, a typed influence field (pressure, wind, light, heat, moisture, custom) with strength, falloff, invert and an optional tint so it can be seen while painted - published for systems that arrive later",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_types"
     }
   ]
 }

@@ -250,4 +250,56 @@ void build_default_layout(unsigned dockspace_id, unsigned view_mask) {
   ImGui::DockBuilderFinish(dockspace_id);
 }
 
+// The Materials workspace is arranged the way a material editor is, not the
+// way a terrain workspace is: the material being edited at the top - its
+// preview and every one of its properties - a thin browser of project and
+// library materials beneath it, and under those the two things you look at
+// while you work: the node graph that makes the material, and a scene view
+// that shows it on the terrain. Properties and the Outliner stay on the
+// right, so the rest of the application still reads the same.
+void build_materials_layout(unsigned dockspace_id, unsigned view_mask) {
+  ImGui::DockBuilderRemoveNode(dockspace_id);
+  ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+  ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->WorkSize);
+
+  ImGuiID main_id = dockspace_id;
+  ImGuiID right = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Right, 0.22f,
+                                              nullptr, &main_id);
+  ImGuiID right_bottom = ImGui::DockBuilderSplitNode(right, ImGuiDir_Down, 0.70f,
+                                                     nullptr, &right);
+  // Every window the application can show is placed, or it floats over the
+  // arrangement at wherever it last was - which is how the Node List ended
+  // up covering the studio's left edge the first time this ran.
+  ImGui::DockBuilderDockWindow("Outliner", right);
+  ImGui::DockBuilderDockWindow("Preview", right);
+  ImGui::DockBuilderDockWindow("Properties", right_bottom);
+  ImGui::DockBuilderDockWindow("Library", right_bottom);
+  ImGui::DockBuilderDockWindow("Node List", right_bottom);
+  ImGui::DockBuilderDockWindow("AI", right_bottom);
+  ImGui::DockBuilderDockWindow("Mesh Tools", right_bottom);
+  ImGui::DockBuilderDockWindow("Material Editor", right_bottom);
+
+  // top: the studio; below it the thin browser; bottom: graph | scene view
+  ImGuiID bottom = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.42f,
+                                               nullptr, &main_id);
+  ImGuiID browser = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.24f,
+                                                nullptr, &main_id);
+  ImGui::DockBuilderDockWindow("Material Studio", main_id);
+  ImGui::DockBuilderDockWindow("Material Browser", browser);
+  ImGuiID scene = ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Right, 0.5f,
+                                              nullptr, &bottom);
+  ImGui::DockBuilderDockWindow("Graph", bottom);
+  ImGui::DockBuilderDockWindow("###console", bottom); // tabbed under the graph
+  ImGui::DockBuilderDockWindow("Timeline", bottom);
+  // every open viewport goes into the scene cell, tabbed
+  bool any = false;
+  for (int i = 0; i < RenderSettings::MAX_VIEWS; ++i)
+    if (view_mask & (1u << i)) {
+      ImGui::DockBuilderDockWindow(view_window_name(i), scene);
+      any = true;
+    }
+  if (!any) ImGui::DockBuilderDockWindow(view_window_name(0), scene);
+  ImGui::DockBuilderFinish(dockspace_id);
+}
+
 } // namespace studio

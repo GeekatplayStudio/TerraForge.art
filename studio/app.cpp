@@ -62,6 +62,9 @@ static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> 
 
 
 
+// studio/layout_workspace.cpp
+void build_workspace_default_layout(App &a, unsigned dockspace_id);
+
 // studio/app_eval.cpp
 void eval_worker(App &a);
 
@@ -160,12 +163,21 @@ void run_main() {
     // no application keeps it. They are icons on the menu row now, where the
     // hand already is.
 
+    // Every path that changes the workspace - the bar, a node focus, a
+    // script - lands here, so the layout follows the workspace no matter who
+    // changed it.
+    static int last_workspace = -1;
+    if (last_workspace != a.workspace) {
+      if (last_workspace >= 0) workspace_layout_switch(a, last_workspace, a.workspace);
+      last_workspace = a.workspace;
+    }
+
     // version bumped whenever the default layout changes shape
     ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV8");
     if (first_frame || a.request_layout_reset) {
       if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr ||
           a.request_layout_reset)
-        build_default_layout(dockspace_id, prefs().view_mask);
+        build_workspace_default_layout(a, dockspace_id);
       a.request_layout_reset = false;
       first_frame = false;
     }
@@ -187,6 +199,8 @@ void run_main() {
     if (a.show_properties) draw_panel_properties(a);
     draw_panel_material_editor(a);
     draw_panel_mesh(a);
+    draw_panel_material_studio(a);
+    draw_panel_material_browser(a);
     // apply material maps from the graph to the renderer
     {
       std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
