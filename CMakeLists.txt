@@ -316,6 +316,8 @@ set(STUDIO_SOURCES
     studio/renderer_camera.cpp
     studio/renderer_scene.cpp
     studio/renderer_passes.cpp
+    studio/renderer_post.cpp
+    studio/camera_optics.cpp
     studio/renderer_programs.cpp
     studio/renderer_init.cpp
     studio/renderer_export.cpp
@@ -365,6 +367,7 @@ set(STUDIO_SOURCES
     studio/material_library.cpp
     studio/node_library.cpp
     studio/panel_camera.cpp
+    studio/panel_camera_optics.cpp
     studio/ai_assist.cpp
     studio/ai_actions.cpp
     studio/ai_actions_camera.cpp

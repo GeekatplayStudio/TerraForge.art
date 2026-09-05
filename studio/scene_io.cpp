@@ -252,6 +252,14 @@ json scene_to_json() {
           {"shutter", c.shutter},
           {"iso", c.iso},
           {"film", c.film},
+          {"optics", c.optics},
+          {"distortion_auto", c.distortion_auto},
+          {"distortion", c.distortion},
+          {"vignette", c.vignette},
+          {"chromatic", c.chromatic},
+          {"flare", c.flare},
+          {"flare_strength", c.flare_strength},
+          {"motion_blur", c.motion_blur},
           {"render",
            {{"engine", c.render.engine},
             {"width", c.render.width},
@@ -382,6 +390,14 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       c.shutter = jc.value("shutter", c.shutter);
       c.iso = jc.value("iso", c.iso);
       c.film = jc.value("film", c.film);
+      c.optics = jc.value("optics", c.optics);
+      c.distortion_auto = jc.value("distortion_auto", c.distortion_auto);
+      c.distortion = jc.value("distortion", c.distortion);
+      c.vignette = jc.value("vignette", c.vignette);
+      c.chromatic = jc.value("chromatic", c.chromatic);
+      c.flare = jc.value("flare", c.flare);
+      c.flare_strength = jc.value("flare_strength", c.flare_strength);
+      c.motion_blur = jc.value("motion_blur", c.motion_blur);
       if (jc.contains("render")) {
         const json &jr = jc["render"];
         c.render.engine = jr.value("engine", c.render.engine);

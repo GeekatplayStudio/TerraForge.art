@@ -247,7 +247,7 @@ float g_last_mvp[SLOT_COUNT][16];
 bool g_last_mvp_valid[SLOT_COUNT] = {false};
 
 const float *renderer_last_mvp(int slot) {
-  slot = std::clamp(slot, 0, 7);
+  slot = std::clamp(slot, 0, SLOT_COUNT - 1);
   return g_last_mvp_valid[slot] ? g_last_mvp[slot] : nullptr;
 }
 
@@ -306,6 +306,41 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   std::memcpy(g_last_mvp[slot], mvp, sizeof mvp);
   g_last_mvp_valid[slot] = true;
   draw_scene(slot, vc, w, h, time_acc, eye, mvp, inv_vp);
+
+  // What the lens does to the finished picture. Nothing at all unless the
+  // view's camera asks for it, in which case the pass returns its own target.
+  LensOptics optics = camera_optics_for_view(vc, mvp);
+  if (optics.on) {
+    // The camera's own movement this frame, in screen units, so the blur
+    // smears along what the camera actually did. Measured here because this
+    // is the only place that remembers where the eye was last time.
+    float amount = camera_motion_blur_amount(vc);
+    static float prev_eye[SLOT_COUNT][3] = {};
+    static bool have_prev[SLOT_COUNT] = {};
+    if (amount > 0.f && have_prev[slot]) {
+      // Project the previous eye through this frame's matrix: the distance it
+      // moved on screen is the length of the smear.
+      float d[3] = {eye[0] - prev_eye[slot][0], eye[1] - prev_eye[slot][1],
+                    eye[2] - prev_eye[slot][2]};
+      float len = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+      if (len > 1e-6f) {
+        // A screen-space direction from the world motion, scaled to a
+        // sensible maximum so a teleporting camera cannot smear the frame
+        // into mush.
+        float sx = mvp[0] * d[0] + mvp[4] * d[1] + mvp[8] * d[2];
+        float sy = mvp[1] * d[0] + mvp[5] * d[1] + mvp[9] * d[2];
+        float m = std::sqrt(sx * sx + sy * sy);
+        if (m > 1e-8f) {
+          float k = std::min(len * 6.f, 1.f) * amount * 0.04f;
+          optics.blur[0] = sx / m * k;
+          optics.blur[1] = -sy / m * k;
+        }
+      }
+    }
+    for (int k = 0; k < 3; ++k) prev_eye[slot][k] = eye[k];
+    have_prev[slot] = true;
+    return renderer_post_process(slot, w, h, optics);
+  }
   return fbo_color[slot];
 }
 

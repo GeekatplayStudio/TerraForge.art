@@ -162,6 +162,12 @@ bool ray_sphere(const float *ro, const float *rd, const float *c, float r,
 // framebuffers (renderer.cpp); hdr = RGBA32F colour for the render passes
 void ensure_fbo(int slot, int w, int h, bool hdr = false);
 
+// the optical pass (renderer_post.cpp): distortion, chromatic aberration,
+// motion blur, flare and vignette, applied to a finished view. Returns the
+// texture to show - the scene target itself when there is nothing to do.
+unsigned renderer_post_process(int slot, int w, int h, const LensOptics &o);
+bool optics_active(const LensOptics &o);
+
 // ---------------------------------------------------------- render passes
 // Which pass the scene is being drawn for: 0 the picture, 1..RENDER_PASS_COUNT
 // a RenderPass bit + 1, AOV_BEAUTY_LINEAR the shaded colour before tone

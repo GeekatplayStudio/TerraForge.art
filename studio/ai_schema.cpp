@@ -78,6 +78,14 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"show_panel","panel":"Material Editor","visible":true}
    (Library, Nodes, Properties, Viewport, Toolbar, Console, Timeline,
    Preview, Material Editor)
+- {"op":"set_camera","name":"Camera 1","optics":true,"vignette":1.0,
+   "chromatic":0.5,"flare":true,"flare_strength":0.7,"motion_blur":0.3,
+   "distortion":0.05}
+   (the optical simulation: distortion follows the focal length unless
+   "distortion" is given, vignetting follows the aperture scaled by the
+   amount, chromatic aberration and flare are off at 0/false. Setting any
+   of them turns the simulation on. It applies to the viewport, the Preview
+   panel and captured images alike)
 - {"op":"import_mesh","path":"C:/models/part.stl"}
    (OBJ, STL, PLY or OFF; the file's own coordinates are kept and the object
    is sized by its transform, then analysed straight away)

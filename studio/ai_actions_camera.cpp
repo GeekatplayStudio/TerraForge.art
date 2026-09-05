@@ -102,6 +102,37 @@ void apply_camera_fields(CameraData &cd, const json &j) {
   if (j.contains("film") && j["film"].is_string())
     cd.film = film_index(j["film"].get<std::string>());
 
+  // The optical simulation: one switch and the parts of a real lens under it.
+  // Setting any part on its own turns the simulation on, because a script
+  // asking for vignetting means it wants to see vignetting.
+  bool touched = false;
+  auto take = [&](const char *k, float &dst, float lo, float hi) {
+    if (!j.contains(k) || !j[k].is_number()) return;
+    dst = std::clamp(j[k].get<float>(), lo, hi);
+    touched = true;
+  };
+  take("vignette", cd.vignette, 0.f, 4.f);
+  take("chromatic", cd.chromatic, 0.f, 4.f);
+  take("flare_strength", cd.flare_strength, 0.f, 4.f);
+  take("motion_blur", cd.motion_blur, 0.f, 1.f);
+  if (j.contains("distortion") && j["distortion"].is_number()) {
+    cd.distortion = std::clamp(j["distortion"].get<float>(), -0.5f, 0.5f);
+    cd.distortion_auto = false;
+    touched = true;
+  }
+  if (j.contains("distortion_auto") && j["distortion_auto"].is_boolean()) {
+    cd.distortion_auto = j["distortion_auto"].get<bool>();
+    touched = true;
+  }
+  if (j.contains("flare") && j["flare"].is_boolean()) {
+    cd.flare = j["flare"].get<bool>();
+    touched = true;
+  }
+  if (j.contains("optics") && j["optics"].is_boolean())
+    cd.optics = j["optics"].get<bool>();
+  else if (touched)
+    cd.optics = true;
+
   float target[3];
   resolve_look_at(j, target);
   bool has_pos = read_vec3(j, "position", cd.eye) || read_vec3(j, "eye", cd.eye);

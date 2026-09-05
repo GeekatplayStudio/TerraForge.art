@@ -252,10 +252,32 @@ RenderSettings &render_settings();
 // the viewport windows; the rest are named so two features can never quietly
 // share one and fight over its size - which is what happened when the camera
 // thumbnail borrowed slot 4 and a fifth viewport existed.
+// What the lens does to a finished picture. Resolved per view from the
+// camera it looks through (studio/camera_optics.cpp) and applied by the
+// optical pass (studio/renderer_post.cpp). All zero = a perfect lens, and
+// then the pass is skipped entirely.
+struct LensOptics {
+  bool on = false;
+  float k1 = 0.f;        // radial distortion; + barrel, - pincushion
+  float vignette = 0.f;  // 0..1 corner falloff
+  float chromatic = 0.f; // lateral fringing
+  float flare = 0.f;     // 0..1
+  float sun[2] = {-1.f, -1.f}; // sun in screen space, negative when not in frame
+  float blur[2] = {0.f, 0.f};  // camera motion this frame, in uv units
+};
+
 constexpr int SLOT_PREVIEW = RenderSettings::MAX_VIEWS;    // Preview panel
 constexpr int SLOT_AOV = RenderSettings::MAX_VIEWS + 1;    // render passes
 constexpr int SLOT_CAMERA = RenderSettings::MAX_VIEWS + 2; // camera thumbnail
 constexpr int SLOT_COUNT = RenderSettings::MAX_VIEWS + 3;
+
+// The lens a view looks through, resolved from the camera it is using
+// (studio/camera_optics.cpp). `mvp` is this frame's matrix, used only to
+// place the sun for a flare; pass nullptr if there is none.
+LensOptics camera_optics_for_view(const RenderSettings::ViewConfig &vc,
+                                  const float *mvp);
+float camera_motion_blur_amount(const RenderSettings::ViewConfig &vc);
+int view_camera_index(const RenderSettings::ViewConfig &vc);
 
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w,
                             int h, float dt);

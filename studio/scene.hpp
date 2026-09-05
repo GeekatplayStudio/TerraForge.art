@@ -64,6 +64,26 @@ struct CameraData {
   float shutter = 1.f / 125.f;
   float iso = 100.f;
   int film = 0;           // index into gpx::cam::film_stocks
+
+  // ------------------------------------------------ optical simulation
+  // Off, the lens is perfect: no distortion, no falloff, no fringing. On,
+  // the picture is put through what a real lens of these settings would do
+  // to it. Every part is adjustable and the two that are matters of taste
+  // rather than physics - chromatic aberration and flare - are off until
+  // asked for. Vue calls this the Advanced Camera Options (p333).
+  bool optics = false;
+  // Distortion follows the focal length unless the user overrides it:
+  // wide lenses barrel, long lenses pincushion (gpx::cam::lens_distortion_k1).
+  bool distortion_auto = true;
+  float distortion = 0.f;      // k1 of r' = r(1 + k1 r^2); + barrel, - pincushion
+  float vignette = 1.f;        // scales the falloff the aperture implies
+  float chromatic = 0.f;       // 0 = none; lateral fringing, in pixels at the edge
+  bool flare = false;
+  float flare_strength = 0.4f;
+  // Shutter-driven motion blur along the camera's own movement. The viewport
+  // has no per-object motion, so this blurs what the camera did, not what
+  // moved in front of it - and the render engines get the shutter itself.
+  float motion_blur = 0.f;
   RenderAssign render;
 };
 

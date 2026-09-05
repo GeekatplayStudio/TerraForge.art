@@ -212,6 +212,16 @@ void camera_properties_ui(App &a, SceneObject &obj) {
                         f.tint[0], f.tint[1], f.tint[2], f.saturation, f.grain);
   }
 
+  // ---- the lens as a real lens, and copying it around ----
+  {
+    int idx = -1;
+    SceneState &sc2 = scene();
+    for (size_t i = 0; i < sc2.objects.size(); ++i)
+      if (&sc2.objects[i] == &obj) idx = (int)i;
+    changed |= camera_optics_ui(a, cd);
+    if (idx >= 0) camera_copy_ui(a, idx);
+  }
+
   // ---- transform ----
   if (prop_filter_match("Position transform")) {
     ImGui::SeparatorText("Transform");

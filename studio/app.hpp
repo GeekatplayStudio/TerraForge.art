@@ -252,6 +252,11 @@ void app_service_camera_anim(App &a);
 void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm);
 struct SceneObject;
 void camera_properties_ui(App &a, SceneObject &obj);
+// The optical simulation and the copy-to-other-cameras button, split out
+// into panel_camera_optics.cpp.
+struct CameraData;
+bool camera_optics_ui(App &a, CameraData &cd);
+bool camera_copy_ui(App &a, int this_index);
 // the SurfaceDisplacement picker + "Edit graph" buttons (panel_properties_object_surface.cpp)
 void surface_graph_picker(App &a, unsigned long long *node);
 // panel_properties_object_planet.cpp: the Planet and InfiniteSurface pages

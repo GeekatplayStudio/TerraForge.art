@@ -865,6 +865,14 @@
       "description": "Quad retopology with QuadriFlow (BSD-3): rebuilds a surface as evenly sized, curvature-aligned quads rather than thinning the triangles it was given, triangulated on the way back; built without Boost by pointing QuadriFlow's library-backed max-flow solvers at its own dependency-free one (scripts/patch_quadriflow.py), so the only dependency is header-only Eigen",
       "test_file": "test_mesh.cpp",
       "test_symbol": "test_retopo"
+    },
+    {
+      "id": "camera.optics",
+      "area": "studio",
+      "phase": "30",
+      "description": "Optical simulation per camera (Vue's Advanced Camera Options, p333): one switch, then lens distortion that follows the focal length and sensor (barrel wide, pincushion long) or is dialled by hand, vignetting scaled from the aperture, lateral chromatic aberration, shutter-driven camera-motion blur and an optional lens flare that only appears while the sun is in frame - applied as a post pass to the viewport, the Preview panel and captured images, and skipped entirely when off",
+      "test_file": "test_render.cpp",
+      "test_symbol": "test_lens_distortion"
     }
   ]
 }

@@ -204,8 +204,25 @@ bool renderer_render_to_file(const std::string &path, int w, int h) {
   float eye[3], mvp[16], inv_vp[16];
   camera_matrices(rw, rh, eye, mvp, inv_vp);
   draw_scene(5, vc, rw, rh, 0.f, eye, mvp, inv_vp);
+  // The lens applies to the file too. A capture that skipped it would be a
+  // picture of a scene the user is not looking at: the whole point of the
+  // optical simulation is that the viewport and the output agree.
+  LensOptics optics = camera_optics_for_view(vc, mvp);
+  GLuint read_fbo = fbo[5];
+  if (optics.on) {
+    unsigned tex = renderer_post_process(5, rw, rh, optics);
+    if (tex && tex != fbo_color[5]) {
+      // read from whichever target the pass wrote into
+      static GLuint grab = 0;
+      if (!grab) glGenFramebuffers(1, &grab);
+      glBindFramebuffer(GL_FRAMEBUFFER, grab);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_2D, tex, 0);
+      read_fbo = grab;
+    }
+  }
   std::vector<unsigned char> big((size_t)rw * rh * 4);
-  glBindFramebuffer(GL_FRAMEBUFFER, fbo[5]);
+  glBindFramebuffer(GL_FRAMEBUFFER, read_fbo);
   glReadPixels(0, 0, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, big.data());
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   std::vector<unsigned char> out((size_t)w * h * 4);

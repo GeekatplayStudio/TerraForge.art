@@ -84,4 +84,37 @@ inline const FilmStock *film_stocks(int *count) {
   return F;
 }
 
+// ------------------------------------------------------------------- lens
+// The distortion a real lens of this focal length has, as the k1 coefficient
+// of the usual radial model r' = r * (1 + k1*r^2). Positive is barrel (a wide
+// lens bows straight lines outward), negative is pincushion (a long lens bows
+// them inward).
+//
+// It is a model, not a measurement of any particular lens: distortion is a
+// design choice per lens and two 24 mm primes differ. What is reliably true
+// is the trend - wide angles barrel strongly, normal lenses are nearly
+// straight, telephotos pincushion mildly - and this reproduces that against
+// the focal length the user actually chose, normalised by the sensor so a
+// 24 mm lens on a crop sensor behaves like the wider field it really is.
+inline float lens_distortion_k1(float focal_mm, float sensor_w_mm) {
+  if (focal_mm <= 0.f) return 0.f;
+  // 35 mm on a 36 mm-wide sensor is the pivot: nearly rectilinear. The
+  // sensor enters because distortion grows with radius and a smaller sensor
+  // crops to the middle of the image circle, where the lens is straighter -
+  // so the same glass on a crop body shows less of it at the frame edge.
+  const float w = sensor_w_mm > 0.f ? sensor_w_mm : 36.f;
+  const float normal = 35.f * (w / 36.f);
+  float k = 0.06f * (normal / focal_mm - 1.f);
+  return k < -0.06f ? -0.06f : (k > 0.18f ? 0.18f : k);
+}
+
+// How much a lens of this aperture darkens its corners, 0..1, before the
+// user's own vignette amount scales it. Wide open vignettes; stopped down it
+// nearly disappears, which is why the effect follows the f-number.
+inline float lens_vignette(float f_number) {
+  if (f_number <= 0.f) return 0.f;
+  float v = 1.2f / f_number; // f/1.4 -> 0.86, f/8 -> 0.15, f/22 -> 0.05
+  return v > 1.f ? 1.f : v;
+}
+
 } // namespace gpx::cam

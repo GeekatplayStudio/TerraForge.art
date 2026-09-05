@@ -268,6 +268,28 @@ wanted his students to have.
   deliberately not part of it; see [docs/LICENSING.md](docs/LICENSING.md) for
   what was checked, when, and why.
 
+### The lens, simulated
+- **One switch per camera.** Off, the lens is perfect. On, the picture goes
+  through what that lens would actually do to it — in the viewport, in the
+  Preview panel and in every captured image, so what you see is what you get.
+- **Distortion follows the focal length.** A 14 mm barrels, a 35 mm is nearly
+  rectilinear, a 200 mm pincushions — derived from the focal length and the
+  sensor format, or dialled by hand. The frame is scaled to stay filled, as a
+  sensor crops what the lens delivers, so a long lens never draws black
+  corners.
+- **Vignetting follows the aperture** — f/2 falls off far more than f/16 —
+  scaled by an amount you set.
+- **Chromatic aberration** as real lateral fringing: the channels focus at
+  slightly different scales, so colour separates toward the corners and
+  vanishes in the middle. Off until asked for.
+- **Shutter blur**: how much of the camera's own movement the shutter smears
+  into the frame, scaled by the shutter speed. (The viewport blurs what the
+  camera did; the render engines get the shutter itself.)
+- **Lens flare**, optional: ghosts along the sun–centre axis and a halo, and
+  only while the sun is actually in frame.
+- **Copy settings** puts one camera's lens, exposure and film on every other
+  camera, leaving each shot where it stands.
+
 ### Points, paths and scattering
 - **A third domain: point clouds.** ScatterPoints (random, jittered grid, or
   spaced), relaxation, mask filtering, merging, shuffling, values sampled

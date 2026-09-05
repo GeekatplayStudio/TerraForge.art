@@ -6,6 +6,7 @@
 // the frustum must lie in a patch the culler kept.
 #include "blue_noise.hpp"
 #include "terrain_cull.hpp"
+#include "gpx/camera_math.hpp"
 #include "gpx/heightmap.hpp"
 #include <cmath>
 #include <cstdio>
@@ -365,8 +366,43 @@ static void test_blue_noise() {
 int test_render_hdr_run(); // test_render_hdr.cpp
 int test_planet_place_run(); // test_planet_place.cpp
 
+// ------------------------------------------------------------------ lens
+// The optical simulation's one piece of physics-shaped maths: what
+// distortion a lens of a given focal length has. It models a trend, not a
+// particular lens, so the test asserts the trend - and the sign, which was
+// wrong the first time and drew a black border round every wide-angle frame.
+static void test_lens_distortion() {
+  using gpx::cam::lens_distortion_k1;
+  const float full = 36.f; // full-frame sensor width
+  float wide = lens_distortion_k1(14.f, full);
+  float normal = lens_distortion_k1(35.f, full);
+  float tele = lens_distortion_k1(200.f, full);
+  CHECK(wide > 0.02f, "a 14 mm lens barrels");
+  CHECK(std::fabs(normal) < 0.005f, "a 35 mm lens is nearly rectilinear");
+  CHECK(tele < -0.01f, "a 200 mm lens pincushions");
+  CHECK(wide > normal && normal > tele,
+        "distortion falls monotonically as the lens gets longer");
+  CHECK(lens_distortion_k1(1.f, full) <= 0.18f, "barrel is clamped");
+  CHECK(lens_distortion_k1(4000.f, full) >= -0.06f, "pincushion is clamped");
+  CHECK(lens_distortion_k1(0.f, full) == 0.f, "a nonsense focal length is flat");
+  // Distortion belongs to the lens, and it grows with radius. A smaller
+  // sensor uses the middle of the image circle, where the lens is straighter,
+  // so the same glass shows LESS distortion at the frame edge - not more,
+  // which is what this assertion claimed until the model disagreed with it.
+  CHECK(lens_distortion_k1(24.f, 23.5f) < lens_distortion_k1(24.f, full),
+        "the same lens on a smaller sensor shows less distortion at the edge");
+
+  using gpx::cam::lens_vignette;
+  CHECK(lens_vignette(1.4f) > lens_vignette(8.f),
+        "a lens wide open vignettes more than one stopped down");
+  CHECK(lens_vignette(22.f) < 0.1f, "stopped right down it nearly vanishes");
+  CHECK(lens_vignette(1.0f) <= 1.f && lens_vignette(64.f) >= 0.f,
+        "the falloff stays within 0..1");
+}
+
 int main() {
   std::printf("renderer maths tests\n");
+  test_lens_distortion();
   g_failures += test_render_hdr_run();
   g_failures += test_planet_place_run();
   test_blue_noise();

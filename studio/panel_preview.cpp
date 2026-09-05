@@ -14,6 +14,7 @@
 #include "theme_colors.hpp"
 #include <imgui.h>
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -168,13 +169,22 @@ void draw_panel_preview(App &a) {
     const RenderAssign &r = sc.objects[cam_index].cam.render;
     if (r.width > 0 && r.height > 0) aspect = (float)r.width / (float)r.height;
   }
-  float w = avail.x, h = w / aspect;
+  // The picture lives in a child that can never grow a scrollbar. It used to
+  // sit directly in the window, and a picture sized from the available width
+  // is a feedback loop: one pixel too tall adds a scrollbar, the scrollbar
+  // takes width, the narrower picture no longer needs one - and the panel
+  // shrinks and unshrinks every frame. Whole pixels for the same reason: a
+  // fractional size resamples differently frame to frame and shimmers.
+  ImGui::BeginChild("##picture", avail, ImGuiChildFlags_None,
+                    ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoScrollWithMouse);
+  float w = std::floor(avail.x), h = std::floor(w / aspect);
   if (h > avail.y) {
-    h = avail.y;
-    w = h * aspect;
+    h = std::floor(avail.y);
+    w = std::floor(h * aspect);
   }
   ImVec2 pos = ImGui::GetCursorScreenPos();
-  pos.x += (avail.x - w) * 0.5f;
+  pos.x += std::floor((avail.x - w) * 0.5f);
   ImGui::SetCursorScreenPos(pos);
 
   if (P.show_final && final_tex) {
@@ -196,7 +206,10 @@ void draw_panel_preview(App &a) {
       for (int k = 0; k < 3; ++k) last_eye[k] = eye[k];
       P.refresh = false;
       const float q = P.quality == 0 ? 0.25f : P.quality == 1 ? 0.5f : 1.f;
-      int pw = std::max(16, (int)(w * q)), ph = std::max(16, (int)(h * q));
+      // Quantised to 8 pixels: a one-pixel change in the panel would
+      // otherwise reallocate the render target every single frame.
+      auto quant = [](float v) { return std::max(16, ((int)v / 8) * 8); };
+      int pw = quant(w * q), ph = quant(h * q);
       // this view's switches, without touching what the working views use
       P.vc.camera = 0;
       P.vc.display = 2;
@@ -220,6 +233,7 @@ void draw_panel_preview(App &a) {
   // a hairline frame, so the picture reads as a picture
   ImGui::GetWindowDrawList()->AddRect(pos, ImVec2(pos.x + w, pos.y + h),
                                       theme::fade(theme::text_dim(), 0.5f));
+  ImGui::EndChild();
   ImGui::End();
 }
 
