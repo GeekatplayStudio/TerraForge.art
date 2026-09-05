@@ -17,8 +17,11 @@ namespace studio {
 
 struct App;
 
-enum class GizmoMode { None = 0, Move, Rotate, Scale };
+enum class GizmoMode { None = 0, Move, Rotate, Scale, Twist, Bend, Skew, Taper };
+// Vue's Display > Gizmos > Show Gizmos: one switch over every view.
+bool &gizmo_visible();
 
+const char *gizmo_mode_name(GizmoMode m);
 // Which gadget the viewports show. Shared by every view, like the tool it is.
 GizmoMode &gizmo_mode();
 
@@ -28,6 +31,9 @@ GizmoMode &gizmo_mode();
 // select. `origin` is the top-left of the view image in screen coordinates.
 bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
                   ImVec2 origin, int w, int h, bool view_hovered);
+
+// The deformer swatches and the Gizmos switch on the tool row (gizmo_tools.cpp).
+void gizmo_deform_tools(App &a, float h);
 
 // Paint it. Call late, so it lands over everything else in the view.
 void gizmo_draw(App &a, int slot, const RenderSettings::ViewConfig &vc,

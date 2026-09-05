@@ -254,6 +254,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, (void *)12);
       glBindVertexArray(0);
       o.gpu_dirty = false;
+      scene_object_bounds(o);
     }
     bool is_sel = (&o - sc.objects.data()) == sc.selected;
     glUseProgram(prog_mesh);
@@ -277,6 +278,15 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     uni3(prog_mesh, "u_grade", g_grade);
     uni1(prog_mesh, "u_sat", g_saturation);
     unii(prog_mesh, "u_selected", is_sel ? 1 : 0);
+    // deformers, in the object's own space (gpx/deform.hpp is the CPU twin)
+    unii(prog_mesh, "u_def_on", o.deform.identity() ? 0 : 1);
+    uni3(prog_mesh, "u_def_twist", o.deform.twist);
+    uni1(prog_mesh, "u_def_bend", o.deform.bend);
+    unii(prog_mesh, "u_def_bend_axis", o.deform.bend_axis);
+    uni3(prog_mesh, "u_def_shear", o.deform.shear);
+    uni1(prog_mesh, "u_def_taper", o.deform.taper);
+    uni3(prog_mesh, "u_bmin", o.bmin);
+    uni3(prog_mesh, "u_bmax", o.bmax);
     glBindVertexArray(o.vao);
     if (!o.inst.empty()) {
       // scattered copies: batches of 256 through the uniform arrays; the

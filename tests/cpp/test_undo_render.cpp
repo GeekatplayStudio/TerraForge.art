@@ -79,6 +79,42 @@ static void test_settings_roundtrip() {
   }
 }
 
+static int test_scene_deform_round_trip() {
+  std::printf("  scene deform round-trip\n");
+  int fails = 0;
+  studio::SceneState &sc = studio::scene();
+  sc.objects.clear();
+  studio::SceneObject o;
+  o.type = studio::SceneObject::Mesh;
+  o.name = "twisted";
+  o.deform.twist[1] = 45.f;
+  o.deform.bend = 20.f;
+  o.deform.bend_axis = 2;
+  o.deform.shear[0] = 0.25f;
+  o.deform.taper = -0.3f;
+  o.show_gizmo = false;
+  sc.objects.push_back(o);
+  nlohmann::json j = studio::scene_to_json();
+  sc.objects.clear();
+  std::string warnings;
+  studio::scene_from_json(j, studio::GraphIdMap{}, warnings);
+  if (sc.objects.size() != 1) { std::printf("FAIL: object count\n"); return 1; }
+  const studio::SceneObject &b = sc.objects[0];
+  auto ck = [&](bool ok, const char *what) { if (!ok) { std::printf("FAIL: %s\n", what); ++fails; } };
+  ck(b.deform.twist[1] == 45.f && b.deform.bend == 20.f && b.deform.bend_axis == 2, "twist and bend round-trip");
+  ck(b.deform.shear[0] == 0.25f && b.deform.taper == -0.3f, "skew and taper round-trip");
+  ck(!b.show_gizmo, "the per-object gizmo switch round-trips");
+  // an undeformed object writes no deform keys, so old readers see nothing new
+  sc.objects.clear();
+  studio::SceneObject plain;
+  plain.type = studio::SceneObject::Mesh;
+  sc.objects.push_back(plain);
+  nlohmann::json j2 = studio::scene_to_json();
+  ck(j2.dump().find("twist") == std::string::npos, "an undeformed object writes no deform keys");
+  sc.objects.clear();
+  return fails;
+}
+
 static void test_driver_binding_roundtrip() {
   std::printf("node-driven object binding round-trip...\n");
   studio::SceneState &sc = studio::scene();
@@ -118,4 +154,4 @@ int run_all() {
 
 } // namespace render_editor_tests
 
-int test_undo_render_run() { return render_editor_tests::run_all(); }
+int test_undo_render_run() { return render_editor_tests::run_all() + render_editor_tests::test_scene_deform_round_trip(); }

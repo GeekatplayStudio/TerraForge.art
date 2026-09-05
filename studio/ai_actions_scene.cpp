@@ -6,6 +6,7 @@
 #include "ai_assist.hpp"
 #include "app.hpp"
 #include "scene.hpp"
+#include <algorithm>
 #include <json.hpp>
 #include <cmath>
 #include <fstream>
@@ -37,6 +38,16 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         read_vec3(act, "position", o.pos);
         if (act.contains("scale")) o.scale = act["scale"].get<float>();
         if (act.contains("rotation_deg")) o.yaw = act["rotation_deg"].get<float>();
+        if (act.contains("heading_deg")) o.yaw = act["heading_deg"].get<float>();
+        if (act.contains("pitch_deg")) o.pitch = act["pitch_deg"].get<float>();
+        if (act.contains("bank_deg")) o.roll = act["bank_deg"].get<float>();
+        read_vec3(act, "squeeze", o.scl);
+        read_vec3(act, "twist", o.deform.twist);
+        if (act.contains("bend")) o.deform.bend = act["bend"].get<float>();
+        if (act.contains("bend_axis")) o.deform.bend_axis = std::clamp(act["bend_axis"].get<int>(), 0, 2);
+        read_vec3(act, "skew", o.deform.shear);
+        if (act.contains("taper")) o.deform.taper = act["taper"].get<float>();
+        if (act.contains("show_gizmo")) o.show_gizmo = act["show_gizmo"].get<bool>();
         ++applied;
         break;
       }

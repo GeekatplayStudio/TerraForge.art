@@ -244,7 +244,9 @@ int ai_mesh_op(App &a, const std::string &op, const json &act,
       // what a print farm wants when several parts share a plate.
       float m16[16], n9[9];
       scene_object_matrix(*o, 1.f, m16, n9);
+      scene_object_bounds(*o);
       for (size_t i = 0; i < m.vert_count(); ++i) {
+        gpx::deform_point(o->deform, o->bmin, o->bmax, &m.v[i * 3]);
         float x = m.v[i * 3], y = m.v[i * 3 + 1], z = m.v[i * 3 + 2];
         m.v[i * 3] = m16[0] * x + m16[4] * y + m16[8] * z + m16[12];
         m.v[i * 3 + 1] = m16[1] * x + m16[5] * y + m16[9] * z + m16[13];

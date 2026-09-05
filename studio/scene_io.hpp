@@ -25,11 +25,15 @@
 #include <string>
 
 namespace studio {
+struct SceneObject;
 
 using GraphIdMap = std::map<uint64_t, uint64_t>; // file node id -> live id
 
 // The whole scene: objects (all of them, in order), layers, selection, the
 // active and last-used camera.
+// An object's placement, deformers and gizmo switch (scene_io_object.cpp).
+void object_transform_to_json(nlohmann::json &jo, const SceneObject &o);
+void object_transform_from_json(const nlohmann::json &jo, SceneObject &o);
 nlohmann::json scene_to_json();
 // Rebuilds the scene from that. Meshes are re-imported from their recorded
 // file path; one that has gone missing keeps its object (so the transform and

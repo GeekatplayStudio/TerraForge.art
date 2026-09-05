@@ -1057,6 +1057,30 @@
       "description": "Binary glTF read natively (geometry, node transforms, uint8/16/32 indices, every primitive welded) so the models the 3D services return import without a library; a non-GLB fails with a reason",
       "test_file": "test_mesh.cpp",
       "test_symbol": "test_glb_reader"
+    },
+    {
+      "id": "objects.deformers",
+      "area": "engine",
+      "phase": "33",
+      "description": "Object deformers in the object's own space (gpx/deform.hpp): twist about each axis growing along it (Vue's Twist), bend as a progressive rotation about an axis from the base, skew sliding the top by a fraction of the width, taper narrowing or widening the top; identity leaves points alone; deformed normals from two deformed tangents; the mesh vertex shader is the GLSL twin and the exports bake the same function",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_deformers"
+    },
+    {
+      "id": "objects.gizmo_modes",
+      "area": "studio",
+      "phase": "33",
+      "description": "Gizmo tools for every scene object: Move, Rotate, Scale, and for meshes Twist (dashed rings), Bend (half rings), Skew (diamonds), Taper (centre dial); shortcuts W E R T B K J; the tool's name beside the gadget; Vue's Show Gizmos switch (Ctrl+G, tool row and View menu) and a per-object switch in Properties; every number the gadgets drag is typed in the Properties Deform block with a reset",
+      "test_file": "test_undo_render.cpp",
+      "test_symbol": "test_scene_deform_round_trip"
+    },
+    {
+      "id": "objects.deform_persist",
+      "area": "studio",
+      "phase": "33",
+      "description": "Deformers and the per-object gizmo switch in the scene file, written only when set so older files and undeformed objects are unchanged; place_object sets the whole transform (heading, pitch, bank, squeeze) and the deformers by name",
+      "test_file": "test_undo_render.cpp",
+      "test_symbol": "test_scene_deform_round_trip"
     }
   ]
 }

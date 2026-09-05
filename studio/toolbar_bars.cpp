@@ -491,6 +491,7 @@ void draw_global_tools(App &a) {
   tool(Icon::Scale, "##gscl", GizmoMode::Scale,
        "Scale tool  (R)\n\nDrag an axis box to squeeze one axis, or\n"
        "the centre box to resize the whole object.");
+  gizmo_deform_tools(a, h); // twist, bend, skew, taper, and the Gizmos switch
   ImGui::SameLine(0, 10);
   if (IconButton(Icon::Node, "##console", "Show the console", a.show_console, h))
     a.show_console = !a.show_console;

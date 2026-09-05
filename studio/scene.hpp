@@ -2,6 +2,7 @@
 #pragma once
 #include "gpx/animation.hpp"
 #include "gpx/planet_math.hpp"
+#include "gpx/deform.hpp"
 #include <string>
 #include <vector>
 
@@ -129,6 +130,12 @@ struct SceneObject {
   float yaw = 0.f;   // heading, degrees
   float pitch = 0.f; // degrees
   float roll = 0.f;  // bank, degrees
+  // Deformers (gpx/deform.hpp): twist, bend, skew, taper in the object's own
+  // space, applied by the vertex shader and, identically, by the exports.
+  // Bounds are the mesh's own, kept when the vertices are uploaded.
+  gpx::Deform deform;
+  float bmin[3] = {-0.5f, -0.5f, -0.5f}, bmax[3] = {0.5f, 0.5f, 0.5f};
+  bool show_gizmo = true; // this object's gizmo, under the global switch
   float color[3] = {0.62f, 0.60f, 0.57f};
   std::vector<float> verts; // interleaved pos(3) + normal(3)
   unsigned vao = 0, vbo = 0;
@@ -149,6 +156,8 @@ struct SceneObject {
 // The object's model matrix (column-major, for OpenGL) and the matching
 // normal matrix. One definition, used by the renderer, by picking and by the
 // selection outline, so a transform can never mean two different things.
+// The mesh's own bounds, from its vertices; identity-sized when it has none.
+void scene_object_bounds(SceneObject &o);
 void scene_object_matrix(const SceneObject &o, float height_scale, float *m16,
                          float *n9);
 // Largest of the three axis scales - the radius picking and outlines use.

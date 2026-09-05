@@ -128,6 +128,10 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"asset_trash","id":"..."} / asset_restore  (moves, never deletes)
 - {"op":"asset_rescan"} / {"op":"asset_roots"} /
   {"op":"asset_add_root","path":"D:/models","kind":"mesh"} / asset_remove_root
+- {"op":"place_object","name":"rock","position":[x,y,z],"scale":0.1,"heading_deg":30,
+   "pitch_deg":0,"bank_deg":0,"squeeze":[1,0.5,1],"twist":[0,90,0],"bend":30,"bend_axis":0,
+   "skew":[0.2,0,0],"taper":-0.5,"show_gizmo":true}
+   (the whole transform and the deformers of a scene object, by name)
 - {"op":"import_mesh","path":"C:/models/part.stl"}
    (OBJ, STL, PLY or OFF; the file's own coordinates are kept and the object
    is sized by its transform, then analysed straight away)

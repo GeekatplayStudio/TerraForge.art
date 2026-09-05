@@ -341,6 +341,8 @@ set(STUDIO_SOURCES
     studio/autosave.cpp
     studio/autosave_ui.cpp
     studio/gizmo.cpp
+    studio/gizmo_tools.cpp
+    studio/gizmo_draw.cpp
     studio/toolbar_bars.cpp
     studio/terrain_styles.cpp
     studio/undo.cpp
@@ -394,6 +396,7 @@ set(STUDIO_SOURCES
     studio/scene.cpp
     studio/scene_primitives.cpp
     studio/scene_io.cpp
+    studio/scene_io_object.cpp
     studio/render_settings.cpp
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
@@ -523,6 +526,7 @@ add_executable(undo_tests
     studio/scene.cpp
     studio/scene_primitives.cpp
     studio/scene_io.cpp
+    studio/scene_io_object.cpp
     studio/render_settings.cpp
     studio/autosave.cpp
     studio/console.cpp

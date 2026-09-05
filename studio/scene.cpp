@@ -305,6 +305,22 @@ int scene_import_obj(const std::string &path, std::string &err) {
 // M = T * Ry(heading) * Rx(pitch) * Rz(bank) * S, column-major for OpenGL.
 // The normal matrix is R * S^-1, which is the inverse transpose of R*S given
 // that R is orthonormal - so squeezing an object no longer tilts its shading.
+void scene_object_bounds(SceneObject &o) {
+  if (o.vert_count <= 0 || o.verts.size() < 6) {
+    for (int i = 0; i < 3; ++i) { o.bmin[i] = -0.5f; o.bmax[i] = 0.5f; }
+    return;
+  }
+  for (int i = 0; i < 3; ++i) { o.bmin[i] = 1e30f; o.bmax[i] = -1e30f; }
+  for (int v = 0; v < o.vert_count; ++v)
+    for (int i = 0; i < 3; ++i) {
+      float x = o.verts[(size_t)v * 6 + i];
+      o.bmin[i] = std::min(o.bmin[i], x);
+      o.bmax[i] = std::max(o.bmax[i], x);
+    }
+  for (int i = 0; i < 3; ++i)
+    if (o.bmax[i] - o.bmin[i] < 1e-6f) { o.bmin[i] -= 0.5f; o.bmax[i] += 0.5f; }
+}
+
 void scene_object_matrix(const SceneObject &o, float height_scale, float *m16,
                          float *n9) {
   const float D2R = 0.017453292519943295f;

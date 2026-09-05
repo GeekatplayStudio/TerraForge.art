@@ -102,6 +102,21 @@ each one was a bug we already paid for. Do not regress them.
    the generic "actions applied" when the batch said nothing, and
    `scene_state.json` carries `status`, so a script can read what an op did.
 
+## Objects, gizmos and deformers
+
+1. **One deformation function, two twins.** `gpx::deform_point` (engine/gpx/
+   deform.hpp) is the CPU truth: the exports, the tests and any picking use
+   it; `deform()` in the mesh vertex shader (studio/shaders_scene.cpp) is
+   its line-for-line GLSL twin. Change one, change the other, and the test
+   in test_engine.cpp (`test_deformers`) pins the CPU side; the twist obeys
+   the right-hand rule (+X at the top goes to -Z about +Y).
+2. **Deform keys are written only when set.** scene_io_object.cpp writes
+   twist/bend/shear/taper only for a deformed object, so a file from an
+   older build and an undeformed object serialise unchanged.
+3. **A gizmo is gated three ways**: the global `gizmo_visible()` switch, the
+   object's `show_gizmo`, and the object's `locked`. Deform tools apply to
+   meshes only; `axis_mask` says what each object type offers.
+
 ## Configuration and AI services
 
 1. **Configuration is not preferences.** `config.json` (studio/config.cpp)

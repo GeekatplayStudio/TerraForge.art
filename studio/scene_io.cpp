@@ -217,14 +217,8 @@ json scene_to_json() {
         {"layer", o.layer},
         {"parent", o.parent},
         {"expanded", o.expanded},
-        {"pos", vec3_to_json(o.pos)},
-        {"scale", o.scale},
-        {"scl", vec3_to_json(o.scl)},
-        {"yaw", o.yaw},
-        {"pitch", o.pitch},
-        {"roll", o.roll},
-        {"color", vec3_to_json(o.color)},
     };
+    object_transform_to_json(jo, o); // scene_io_object.cpp
     if (o.driver_node) jo["driver_node"] = o.driver_node;
     if (o.type == SceneObject::Light) {
       jo["light_intensity"] = o.light_intensity;
@@ -339,13 +333,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     o.layer = jo.value("layer", 0);
     o.parent = jo.value("parent", -1);
     o.expanded = jo.value("expanded", true);
-    if (jo.contains("pos")) vec3_from_json(jo["pos"], o.pos);
-    o.scale = jo.value("scale", o.scale);
-    if (jo.contains("scl")) vec3_from_json(jo["scl"], o.scl);
-    o.yaw = jo.value("yaw", 0.f);
-    o.pitch = jo.value("pitch", 0.f);
-    o.roll = jo.value("roll", 0.f);
-    if (jo.contains("color")) vec3_from_json(jo["color"], o.color);
+    object_transform_from_json(jo, o); // scene_io_object.cpp
     o.driver_node = remap_id(jo.value("driver_node", 0ull), idmap);
 
     if (o.type == SceneObject::Light) {

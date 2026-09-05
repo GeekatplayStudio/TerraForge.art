@@ -330,6 +330,17 @@ wanted his students to have.
   `set_material_type`, `save_material`, `asset_search`, `asset_tag`... — so
   the assistant, the Python API and MCP drive them the same way you do.
 
+### Gizmos and deformers
+- **Every object has a gizmo in every view** — Move, Rotate, Scale — and a
+  mesh also has **Twist**, **Bend**, **Skew** and **Taper** gadgets (`W E R`
+  and `T B K J`): dashed rings twist about an axis, half rings curl the object
+  from its base, diamonds slide its top, the centre dial narrows it. Vue's
+  *Show Gizmos* switch (`Ctrl+G`) hides them all; each object has its own
+  switch too. Every number a gadget drags is in the object's Properties —
+  Position, Rotation, Size and the **Deform** block — and in the scene file.
+  The deformation is one function, in GLSL for the viewport and in C++ for
+  the exports and the tests, so what you see is what you export.
+
 ### AI as a tool
 - **Generate a tileable texture, a 360 skydome, an image or a 3D model** from
   a prompt — *AI* menu, or the Objects tool row. A local ComfyUI or Ollama,

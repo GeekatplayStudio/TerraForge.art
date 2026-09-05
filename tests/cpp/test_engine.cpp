@@ -5,6 +5,7 @@
 #include "gpx/field_glsl.hpp"
 #include "gpx/metanode.hpp"
 #include <vector>
+#include "gpx/deform.hpp"
 #include "gpx/material_params.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/parallel.hpp"
@@ -3102,6 +3103,58 @@ static void test_basalt() {
 // Every surface property a material carries (engine/material_params.cpp):
 // a fresh MaterialOutput reads as the defaults, an edit reads back clamped,
 // and the whole set survives the graph's JSON.
+// Object deformers (gpx/deform.hpp): identity leaves a point alone; a twist
+// turns the far end by its angle and the base not at all; a skew slides the
+// top by a fraction of the width; a taper narrows the top; a bend moves the
+// tip and keeps the base; the GLSL twin in shaders_scene.cpp does the same.
+static void test_deformers() {
+  std::printf("deformers...\n");
+  const float bmin[3] = {-1.f, 0.f, -1.f}, bmax[3] = {1.f, 2.f, 1.f};
+  gpx::Deform d;
+  float p[3] = {1.f, 2.f, 0.f};
+  gpx::deform_point(d, bmin, bmax, p);
+  CHECK(d.identity() && p[0] == 1.f && p[1] == 2.f && p[2] == 0.f, "identity leaves a point alone");
+  // twist about Y by 90 degrees: the top point on +X ends on +Z (about the centre)
+  d.twist[1] = 90.f;
+  float top[3] = {1.f, 2.f, 0.f}, base[3] = {1.f, 0.f, 0.f};
+  gpx::deform_point(d, bmin, bmax, top);
+  gpx::deform_point(d, bmin, bmax, base);
+  CHECK(std::fabs(top[0]) < 1e-4f && std::fabs(top[2] + 1.f) < 1e-4f, "a 90 degree twist turns the top a quarter turn (right-hand rule: +X to -Z)");
+  CHECK(std::fabs(base[0] - 1.f) < 1e-6f && std::fabs(base[2]) < 1e-6f, "and the base not at all");
+  d = gpx::Deform();
+  d.shear[0] = 0.5f;
+  float s[3] = {0.f, 2.f, 0.f}, s0[3] = {0.f, 0.f, 0.f};
+  gpx::deform_point(d, bmin, bmax, s);
+  gpx::deform_point(d, bmin, bmax, s0);
+  CHECK(std::fabs(s[0] - 1.f) < 1e-6f && s0[0] == 0.f, "skew 0.5 slides the top by half the width, the base stays");
+  d = gpx::Deform();
+  d.taper = -0.5f;
+  float t[3] = {1.f, 2.f, 1.f};
+  gpx::deform_point(d, bmin, bmax, t);
+  CHECK(std::fabs(t[0] - 0.5f) < 1e-6f && std::fabs(t[2] - 0.5f) < 1e-6f, "taper -0.5 halves the top's cross-section");
+  d = gpx::Deform();
+  d.taper = -1.f;
+  float pt[3] = {1.f, 2.f, 1.f};
+  gpx::deform_point(d, bmin, bmax, pt);
+  CHECK(std::fabs(pt[0]) < 1e-6f && std::fabs(pt[2]) < 1e-6f, "taper -1 brings the top to a point");
+  d = gpx::Deform();
+  d.bend = 90.f;
+  d.bend_axis = 0; // curl about X: the top moves toward -Z... the tip leaves the axis, the base stays
+  float tip[3] = {0.f, 2.f, 0.f}, foot[3] = {0.f, 0.f, 0.f};
+  gpx::deform_point(d, bmin, bmax, tip);
+  gpx::deform_point(d, bmin, bmax, foot);
+  CHECK(std::fabs(tip[2]) > 1.9f && std::fabs(tip[1]) < 1e-4f, "a 90 degree bend lays the tip over");
+  CHECK(foot[0] == 0.f && foot[1] == 0.f && foot[2] == 0.f, "the base of a bend does not move");
+  // a deformed normal stays unit length and follows the twist
+  d = gpx::Deform();
+  d.twist[1] = 90.f;
+  float n[3] = {1.f, 0.f, 0.f}, at[3] = {1.f, 2.f, 0.f};
+  gpx::deform_normal(d, bmin, bmax, at, n);
+  float nl = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+  CHECK(std::fabs(nl - 1.f) < 1e-3f, "a deformed normal is unit length");
+  CHECK(std::fabs(n[2]) > 0.9f, "and a twisted +X normal at the top points along +Z");
+}
+
 static void test_material_params() {
   std::printf("material params...\n");
   gpx::Graph g;
@@ -4787,6 +4840,7 @@ int main() {
   test_material_stack();
   test_material_types();
   test_material_params();
+  test_deformers();
   test_material_layers();
   test_fractal_color();
   test_vue_fractals();

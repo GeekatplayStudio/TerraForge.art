@@ -10,7 +10,7 @@
 // Everything it writes is a field the Properties transform block also edits,
 // so dragging and typing are two doors into the same numbers - and both go
 // through undo the same way, one entry per drag rather than one per frame.
-#include "gizmo.hpp"
+#include "gizmo_internal.hpp"
 #include "app.hpp"
 #include "icons.hpp"
 #include "scene.hpp"
@@ -21,32 +21,20 @@
 
 namespace studio {
 
-namespace {
+namespace gizmo_detail {
 
+extern const float HANDLE_PX;
 const float HANDLE_PX = 92.f;  // how long an axis reads on screen
 const float GRAB_PX = 8.f;     // how close the pointer must come to grab one
+extern const ImU32 AXIS_COL[3];
 const ImU32 AXIS_COL[3] = {IM_COL32(226, 92, 84, 255), IM_COL32(150, 200, 92, 255),
                            IM_COL32(88, 150, 235, 255)};
 
 GizmoMode g_mode = GizmoMode::Move;
+bool g_visible = true;
+gpx::Deform g_start_deform;
 
-struct Drag {
-  bool active = false;
-  int axis = -1;          // 0/1/2, or 3 for the uniform centre handle
-  int object = -1;
-  GizmoMode mode = GizmoMode::None;
-  ImVec2 start_mouse{0, 0};
-  ImVec2 dir_screen{1, 0}; // unit screen direction of the dragged axis
-  float px_per_unit = 1.f; // screen pixels per world unit along that axis
-  float start_angle = 0.f; // rotate: pointer bearing at the press
-  float sign = 1.f;        // rotate: which way the ring turns on screen
-  float start_pos[3] = {0, 0, 0};
-  float start_scl[3] = {1, 1, 1};
-  float start_scale = 1.f;
-  float start_rot[3] = {0, 0, 0}; // yaw, pitch, roll
-  float start_extra = 0.f;        // water level / planet radius / sun angles
-  float start_extra2 = 0.f;
-} g_drag;
+Drag g_drag;
 
 // ---------------------------------------------------------------- projection
 bool project(const float *mvp, const float p[3], ImVec2 origin, int w, int h,
@@ -120,7 +108,9 @@ bool anchor_of(const SceneObject &o, float out[3]) {
 int axis_mask(const SceneObject &o, GizmoMode m) {
   switch (o.type) {
     case SceneObject::Mesh:
-      return m == GizmoMode::Scale ? 0xF : 0x7;
+      if (m == GizmoMode::Scale) return 0xF;
+      if (m == GizmoMode::Taper) return 0x8;   // one dial, the centre
+      return 0x7;                              // move, rotate, twist, bend, skew: an axis each
     case SceneObject::Light:
       // a point light moves; a spot also turns; neither scales
       return m == GizmoMode::Move ? 0x7 : (m == GizmoMode::Rotate ? 0x3 : 0);
@@ -140,9 +130,18 @@ int axis_mask(const SceneObject &o, GizmoMode m) {
 }
 
 const char *undo_label(GizmoMode m) {
-  return m == GizmoMode::Move ? "Move object"
-         : m == GizmoMode::Rotate ? "Rotate object"
-                                  : "Scale object";
+  switch (m) {
+    case GizmoMode::Move: return "Move object";
+    case GizmoMode::Rotate: return "Rotate object";
+    case GizmoMode::Scale: return "Scale object";
+    case GizmoMode::Twist: return "Twist object";
+    case GizmoMode::Bend: return "Bend object";
+    case GizmoMode::Skew: return "Skew object";
+    default: return "Taper object";
+  }
+}
+bool ring_mode(GizmoMode m) {
+  return m == GizmoMode::Rotate || m == GizmoMode::Twist || m == GizmoMode::Bend;
 }
 
 // Apply a world-space translation to whatever the object actually stores.
@@ -191,18 +190,35 @@ void apply_move(SceneObject &o, const float d[3]) {
   }
 }
 
-} // namespace
+} // namespace gizmo_detail
+
+using namespace gizmo_detail;
 
 GizmoMode &gizmo_mode() { return g_mode; }
+bool &gizmo_visible() { return g_visible; }
+const char *gizmo_mode_name(GizmoMode m) {
+  switch (m) {
+    case GizmoMode::Move: return "Move";
+    case GizmoMode::Rotate: return "Rotate";
+    case GizmoMode::Scale: return "Scale";
+    case GizmoMode::Twist: return "Twist";
+    case GizmoMode::Bend: return "Bend";
+    case GizmoMode::Skew: return "Skew";
+    case GizmoMode::Taper: return "Taper";
+    default: return "None";
+  }
+}
 
 // ------------------------------------------------------------------- update
 bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
                   ImVec2 origin, int w, int h, bool view_hovered) {
   (void)vc;
-  if (g_mode == GizmoMode::None) return false;
+  if (g_mode == GizmoMode::None || !g_visible) return false;
   SceneState &sc = scene();
   if (sc.selected < 0 || sc.selected >= (int)sc.objects.size()) return false;
   SceneObject &o = sc.objects[sc.selected];
+  if (!o.show_gizmo) return false;
+  if (g_mode >= GizmoMode::Twist && o.type != SceneObject::Mesh) return false;
   // a locked object has no gizmo and cannot be dragged; a drag in flight
   // when the lock lands ends right there
   if (o.locked) {
@@ -235,12 +251,17 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
       float d[3] = {0, 0, 0};
       d[g_drag.axis] = units;
       apply_move(o, d);
-    } else if (g_drag.mode == GizmoMode::Rotate) {
+    } else if (ring_mode(g_drag.mode)) {
       float ang = std::atan2(m.y - c.y, m.x - c.x);
       float delta = (ang - g_drag.start_angle) * 57.29578f * g_drag.sign;
       while (delta > 180.f) delta -= 360.f;
       while (delta < -180.f) delta += 360.f;
-      if (o.type == SceneObject::Planet) {
+      if (g_drag.mode == GizmoMode::Twist) {
+        o.deform.twist[g_drag.axis] = std::clamp(g_start_deform.twist[g_drag.axis] + delta, -720.f, 720.f);
+      } else if (g_drag.mode == GizmoMode::Bend) {
+        o.deform.bend_axis = g_drag.axis;
+        o.deform.bend = std::clamp(g_start_deform.bend + delta, -180.f, 180.f);
+      } else if (o.type == SceneObject::Planet) {
         o.planet.spin_deg = g_drag.start_extra + delta;
       } else {
         float *dst = g_drag.axis == 0 ? &o.pitch
@@ -248,6 +269,13 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
                                         : &o.roll;
         *dst = g_drag.start_rot[g_drag.axis] + delta;
       }
+    } else if (g_drag.mode == GizmoMode::Skew) {
+      float dpx = (m.x - g_drag.start_mouse.x) * g_drag.dir_screen.x +
+                  (m.y - g_drag.start_mouse.y) * g_drag.dir_screen.y;
+      o.deform.shear[g_drag.axis] = std::clamp(g_start_deform.shear[g_drag.axis] + dpx / 150.f, -4.f, 4.f);
+    } else if (g_drag.mode == GizmoMode::Taper) {
+      float dpx = (m.x - g_drag.start_mouse.x);
+      o.deform.taper = std::clamp(g_start_deform.taper + dpx / 150.f, -1.f, 3.f);
     } else { // scale
       float dpx = (m.x - g_drag.start_mouse.x) * g_drag.dir_screen.x +
                   (m.y - g_drag.start_mouse.y) * g_drag.dir_screen.y;
@@ -290,7 +318,7 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
 
   int hot = -1;
   float hot_d = GRAB_PX;
-  if (g_mode == GizmoMode::Rotate) {
+  if (ring_mode(g_mode)) {
     // Rings are sampled rather than solved: 32 points is plenty to grab by,
     // and it needs no ellipse maths that a degenerate view could break.
     for (int ax = 0; ax < 3; ++ax) {
@@ -345,6 +373,7 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
   g_drag.start_rot[0] = o.pitch;
   g_drag.start_rot[1] = o.yaw;
   g_drag.start_rot[2] = o.roll;
+  g_start_deform = o.deform;
   if (o.type == SceneObject::Camera)
     for (int i = 0; i < 3; ++i) g_drag.start_pos[i] = o.cam.eye[i];
   else if (o.type == SceneObject::Sun || o.type == SceneObject::Water)
@@ -363,7 +392,7 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
     g_drag.dir_screen = ImVec2(1.f, 0.f); // uniform: drag right to grow
     g_drag.px_per_unit = 1.f;
   }
-  if (g_mode == GizmoMode::Rotate) {
+  if (ring_mode(g_mode)) {
     g_drag.start_angle = std::atan2(io.MousePos.y - c.y, io.MousePos.x - c.x);
     float rt[3], up[3], fw[3];
     renderer_view_basis(vc, rt, up, fw);
@@ -374,104 +403,6 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
     g_drag.sign = facing > 0.f ? -1.f : 1.f;
   }
   return true;
-}
-
-// --------------------------------------------------------------------- draw
-void gizmo_draw(App &a, int slot, const RenderSettings::ViewConfig &vc,
-                ImVec2 origin, int w, int h) {
-  (void)a;
-  (void)vc;
-  if (g_mode == GizmoMode::None) return;
-  SceneState &sc = scene();
-  if (sc.selected < 0 || sc.selected >= (int)sc.objects.size()) return;
-  const SceneObject &o = sc.objects[sc.selected];
-  const float *mvp = renderer_last_mvp(slot);
-  if (!mvp) return;
-  float anchor[3];
-  if (!anchor_of(o, anchor)) return;
-  ImVec2 c;
-  if (!project(mvp, anchor, origin, w, h, c)) return;
-  ImDrawList *dl = ImGui::GetWindowDrawList();
-  dl->PushClipRect(origin, ImVec2(origin.x + w, origin.y + h), true);
-  if (o.locked) {
-    // a small padlock where the gizmo would be: the object is selected, it
-    // just cannot be moved from here
-    icon_draw(dl, Icon::Lock, ImVec2(c.x, c.y - 14.f), 16.f,
-              IM_COL32(240, 238, 232, 200));
-    dl->AddCircleFilled(c, 3.f, IM_COL32(240, 238, 232, 200), 12);
-    dl->PopClipRect();
-    return;
-  }
-  int mask = axis_mask(o, g_mode);
-  if (!mask) { dl->PopClipRect(); return; }
-
-  float px_per_unit[3] = {0, 0, 0};
-  const float probe = 0.01f;
-  for (int ax = 0; ax < 3; ++ax) {
-    float p[3] = {anchor[0], anchor[1], anchor[2]};
-    p[ax] += probe;
-    ImVec2 q;
-    if (project(mvp, p, origin, w, h, q)) {
-      ImVec2 d(q.x - c.x, q.y - c.y);
-      px_per_unit[ax] = std::sqrt(len2(d)) / probe;
-    }
-  }
-  float best_px = std::max({px_per_unit[0], px_per_unit[1], px_per_unit[2]});
-  if (best_px < 1e-4f) { dl->PopClipRect(); return; }
-  float L = HANDLE_PX / best_px;
-  bool dragging = g_drag.active && g_drag.object == sc.selected;
-
-  if (g_mode == GizmoMode::Rotate) {
-    for (int ax = 0; ax < 3; ++ax) {
-      if (!(mask & (1 << ax))) continue;
-      bool hot = dragging && g_drag.axis == ax;
-      ImU32 col = hot ? IM_COL32(255, 240, 200, 255) : AXIS_COL[ax];
-      int u = (ax + 1) % 3, v = (ax + 2) % 3;
-      dl->PathClear();
-      for (int i = 0; i <= 48; ++i) {
-        float t = (float)i / 48.f * 6.2831853f;
-        float p[3] = {anchor[0], anchor[1], anchor[2]};
-        p[u] += std::cos(t) * L;
-        p[v] += std::sin(t) * L;
-        ImVec2 q;
-        if (project(mvp, p, origin, w, h, q)) dl->PathLineTo(q);
-      }
-      dl->PathStroke(col, 0, hot ? 3.f : 2.f);
-    }
-  } else {
-    for (int ax = 0; ax < 3; ++ax) {
-      if (!(mask & (1 << ax))) continue;
-      bool hot = dragging && g_drag.axis == ax;
-      ImU32 col = hot ? IM_COL32(255, 240, 200, 255) : AXIS_COL[ax];
-      float p[3] = {anchor[0], anchor[1], anchor[2]};
-      p[ax] += L;
-      ImVec2 q;
-      if (!project(mvp, p, origin, w, h, q)) continue;
-      dl->AddLine(c, q, col, hot ? 3.f : 2.f);
-      ImVec2 d(q.x - c.x, q.y - c.y);
-      float l = std::sqrt(len2(d));
-      if (l < 1e-3f) continue;
-      d.x /= l;
-      d.y /= l;
-      ImVec2 n(-d.y, d.x);
-      if (g_mode == GizmoMode::Move) { // arrowhead
-        const float t = 11.f, s = 5.f;
-        dl->AddTriangleFilled(q, ImVec2(q.x - d.x * t + n.x * s, q.y - d.y * t + n.y * s),
-                              ImVec2(q.x - d.x * t - n.x * s, q.y - d.y * t - n.y * s),
-                              col);
-      } else { // a box, the universal "this scales"
-        const float s = 4.5f;
-        dl->AddRectFilled(ImVec2(q.x - s, q.y - s), ImVec2(q.x + s, q.y + s), col);
-      }
-    }
-    if (mask & 0x8) {
-      bool hot = dragging && g_drag.axis == 3;
-      ImU32 col = hot ? IM_COL32(255, 240, 200, 255) : IM_COL32(225, 222, 216, 230);
-      dl->AddRectFilled(ImVec2(c.x - 5.f, c.y - 5.f), ImVec2(c.x + 5.f, c.y + 5.f), col);
-    }
-  }
-  dl->AddCircleFilled(c, 3.f, IM_COL32(240, 238, 232, 220), 12);
-  dl->PopClipRect();
 }
 
 } // namespace studio

@@ -6,6 +6,7 @@
 // converted to metres (or feet) and given a unit that reads well at the size
 // in question, so a 30 cm rock is "30 cm" and not "0.0003".
 #include "app.hpp"
+#include "gizmo.hpp"
 #include "ai_assist.hpp"
 #include "icons.hpp"
 #include "planet_place.hpp"
@@ -78,6 +79,32 @@ void transform_ui(App &a, SceneObject &o) {
                         u.decimals, ht * u.per_m, u.decimals, d * u.per_m,
                         u.suffix);
   }
+  if (o.type == SceneObject::Mesh && prop_filter_match("Deform")) {
+    // Vue's Twist in the Numerics tab, and the bend, skew and taper the
+    // gizmos drag: the same numbers, typed
+    ImGui::SeparatorText("Deform");
+    gpx::Deform &d = o.deform;
+    ImGui::DragFloat3("Twist", d.twist, 0.5f, -720.f, 720.f, "%.1f°");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Turns the far end about each axis; the base stays. Vue's Twist.");
+    ImGui::DragFloat("Bend", &d.bend, 0.5f, -180.f, 180.f, "%.1f°");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60);
+    ImGui::Combo("##bendaxis", &d.bend_axis, "X\0Y\0Z\0");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("The axis the object curls around, from its base.");
+    ImGui::DragFloat3("Skew", d.shear, 0.005f, -4.f, 4.f, "%.3f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("X and Z slide the top sideways by that fraction of the width;\nY slides one side up.");
+    ImGui::DragFloat("Taper", &d.taper, 0.005f, -1.f, 3.f, "%.3f");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("-1 brings the top to a point; 1 doubles it.");
+    if (!d.identity() && ImGui::SmallButton("Reset deformations")) d = gpx::Deform();
+  }
+  ImGui::SeparatorText("Gizmo");
+  studio::Checkbox("Show the gizmo on this object", &o.show_gizmo);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Under the global Gizmos switch in the tool row (Ctrl+G).");
+  ImGui::SameLine();
+  ImGui::TextDisabled("tool: %s", gizmo_mode_name(gizmo_mode()));
 }
 
 } // namespace

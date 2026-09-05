@@ -277,6 +277,7 @@ static void menu_view(App &a) {
   ImGui::MenuItem("Properties", nullptr, &a.show_properties);
   ImGui::MenuItem("Viewport", nullptr, &a.show_viewport);
   ImGui::MenuItem("Timeline", nullptr, &a.show_timeline);
+  ImGui::MenuItem("Gizmos", shortcut_chord("view.gizmos").c_str(), &gizmo_visible());
   ImGui::MenuItem("Preview", nullptr, &a.show_preview);
   ImGui::MenuItem("Material Editor", nullptr, &a.show_material_editor);
   ImGui::Separator();
@@ -394,6 +395,11 @@ void draw_toolbar(App &a) {
   if (shortcut_pressed("tool.move")) gizmo_mode() = GizmoMode::Move;
   if (shortcut_pressed("tool.rotate")) gizmo_mode() = GizmoMode::Rotate;
   if (shortcut_pressed("tool.scale")) gizmo_mode() = GizmoMode::Scale;
+  if (shortcut_pressed("tool.twist")) gizmo_mode() = GizmoMode::Twist;
+  if (shortcut_pressed("tool.bend")) gizmo_mode() = GizmoMode::Bend;
+  if (shortcut_pressed("tool.skew")) gizmo_mode() = GizmoMode::Skew;
+  if (shortcut_pressed("tool.taper")) gizmo_mode() = GizmoMode::Taper;
+  if (shortcut_pressed("view.gizmos")) gizmo_visible() = !gizmo_visible();
   if (shortcut_pressed("app.settings")) settings_open();
   if (shortcut_pressed("ai.generate_image")) ai_generate_open_image(JOB_TEXTURE);
   if (shortcut_pressed("ai.generate_model")) ai_generate_open_model();

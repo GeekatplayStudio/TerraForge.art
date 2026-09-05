@@ -148,13 +148,62 @@ uniform float u_inst_time;
 uniform vec3 u_inst_base;             // the model matrix's own translation
 uniform vec4 u_inst[256];             // x,y,z,scale per copy
 uniform vec4 u_inst_rot[256];         // cos(yaw), sin(yaw)
+// deformers in the object's own space: the GLSL twin of gpx/deform.hpp
+uniform int u_def_on, u_def_bend_axis;
+uniform vec3 u_def_twist, u_def_shear, u_bmin, u_bmax;
+uniform float u_def_bend, u_def_taper;
 out vec3 v_nrm;
 out float v_tint;
 out vec3 v_world;
+float def_frac(float x, float lo, float hi) { float d = hi - lo; return d > 1e-9 ? (x - lo) / d : 0.0; }
+vec3 def_rotate(vec3 p, int axis, float rad, vec3 pivot) {
+  int u = (axis + 1) % 3, v = (axis + 2) % 3;
+  float c = cos(rad), s = sin(rad);
+  float a = p[u] - pivot[u], b = p[v] - pivot[v];
+  p[u] = pivot[u] + a * c - b * s;
+  p[v] = pivot[v] + a * s + b * c;
+  return p;
+}
+vec3 deform(vec3 p) {
+  vec3 centre = (u_bmin + u_bmax) * 0.5;
+  float ty = def_frac(p.y, u_bmin.y, u_bmax.y);
+  float tx = def_frac(p.x, u_bmin.x, u_bmax.x);
+  if (u_def_taper != 0.0) {
+    float k = max(1.0 + u_def_taper * ty, 0.0);
+    p.x = centre.x + (p.x - centre.x) * k;
+    p.z = centre.z + (p.z - centre.z) * k;
+  }
+  p.x += u_def_shear.x * ty * (u_bmax.x - u_bmin.x);
+  p.z += u_def_shear.z * ty * (u_bmax.z - u_bmin.z);
+  p.y += u_def_shear.y * tx * (u_bmax.y - u_bmin.y);
+  for (int a = 0; a < 3; ++a)
+    if (u_def_twist[a] != 0.0) {
+      float t = def_frac(p[a], u_bmin[a], u_bmax[a]);
+      p = def_rotate(p, a, radians(u_def_twist[a]) * t, centre);
+    }
+  if (u_def_bend != 0.0) {
+    int up = u_def_bend_axis == 1 ? 0 : 1;
+    float t = def_frac(p[up], u_bmin[up], u_bmax[up]);
+    vec3 pivot = centre;
+    pivot[up] = u_bmin[up];
+    p = def_rotate(p, u_def_bend_axis, radians(u_def_bend) * t, pivot);
+  }
+  return p;
+}
 void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
   v_tint = 1.0;
+  if (u_def_on == 1) {
+    // the normal follows two deformed tangents, like the CPU twin
+    float eps = max(max(u_bmax.x - u_bmin.x, u_bmax.y - u_bmin.y), u_bmax.z - u_bmin.z) * 1e-3 + 1e-6;
+    vec3 ax = abs(nrm.x) < 0.9 ? vec3(1, 0, 0) : vec3(0, 1, 0);
+    vec3 t1 = normalize(cross(ax, nrm)), t2 = cross(nrm, t1);
+    vec3 p0 = deform(pos), p1 = deform(pos + t1 * eps), p2 = deform(pos + t2 * eps);
+    vec3 nn = cross(p1 - p0, p2 - p0);
+    if (dot(nn, nn) > 1e-24) nrm = normalize(nn);
+    pos = p0;
+  }
   if (u_inst_on == 1) {
     vec4 I = u_inst[gl_InstanceID];
     vec4 R = u_inst_rot[gl_InstanceID];
