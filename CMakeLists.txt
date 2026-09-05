@@ -128,6 +128,7 @@ set(ENGINE_SOURCES
     engine/mesh_engines.cpp
     engine/mesh_cleanup.cpp
     engine/mesh_io.cpp
+    engine/mesh_io_gltf.cpp
     engine/mesh_reduce.cpp
     engine/mesh_repair.cpp
     engine/mesh_topology.cpp
@@ -163,6 +164,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_erosion_layers.cpp
     engine/nodes/nodes_material_layers.cpp
     engine/nodes/nodes_material_types.cpp
+    engine/nodes/nodes_material_grain.cpp
     engine/nodes/nodes_operators.cpp
     engine/nodes/nodes_masks.cpp
     engine/nodes/nodes_points.cpp
@@ -295,8 +297,26 @@ set(STUDIO_SOURCES
     studio/panel_material_browser.cpp
     studio/material_ui.cpp
     studio/material_ops.cpp
+    studio/material_channel_ops.cpp
+    studio/config.cpp
+    studio/shortcuts.cpp
+    studio/http_client.cpp
+    studio/ai_prompts.cpp
+    studio/ai_text_providers.cpp
+    studio/ai_image_providers.cpp
+    studio/ai_comfy.cpp
+    studio/ai_model_providers.cpp
+    studio/ai_jobs.cpp
+    studio/ai_ops_generate.cpp
+    studio/ai_describe.cpp
+    studio/panel_ai_generate.cpp
+    studio/panel_settings.cpp
+    studio/panel_settings_services.cpp
     studio/renderer_matparams.cpp
     studio/panel_material_tabs.cpp
+    studio/panel_material_tabs_mix.cpp
+    studio/panel_material_hierarchy.cpp
+    studio/material_channel_ui.cpp
     studio/asset_store.cpp
     studio/asset_ops.cpp
     studio/panel_assets.cpp
@@ -434,7 +454,7 @@ target_link_libraries(geekatplay_studio PRIVATE
     imgui imgui_node_editor glad glfw third_party_headers)
 if(WIN32)
     # dbghelp: symbolised stacks in crash reports (studio/crash_log.cpp)
-    target_link_libraries(geekatplay_studio PRIVATE opengl32 winhttp dbghelp)
+    target_link_libraries(geekatplay_studio PRIVATE opengl32 winhttp dbghelp crypt32)
 else()
     target_link_libraries(geekatplay_studio PRIVATE OpenGL::GL)
 endif()
@@ -494,7 +514,9 @@ add_executable(undo_tests
     tests/cpp/test_undo.cpp
     tests/cpp/test_undo_render.cpp
     tests/cpp/test_material_stack_ops.cpp
+    tests/cpp/test_material_channel_ops.cpp
     studio/material_stack_ops.cpp
+    studio/material_channel_ops.cpp
     studio/undo.cpp
     studio/project_io.cpp
     studio/node_library.cpp
@@ -540,6 +562,12 @@ target_link_libraries(asset_tests PRIVATE third_party_headers)
 
 # The mesh module: diagnosis, repair, reduction and the file formats, all of
 # it free of GL and of the node graph, so it tests in a console.
+# The material editor's engine side: Vue tab groups, NaturalGrain, mapped
+# picture controls, layer presence modes, the two-material distribution.
+add_executable(material_editor_tests tests/cpp/test_material_editor.cpp)
+target_link_libraries(material_editor_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(mesh_tests tests/cpp/test_mesh.cpp)
 target_link_libraries(mesh_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -550,6 +578,27 @@ add_executable(layout_tests tests/cpp/test_layout.cpp studio/layout_record.cpp
                             studio/paths.cpp)
 target_include_directories(layout_tests PRIVATE studio)
 target_link_libraries(layout_tests PRIVATE third_party_headers)
+
+# The configuration manager and the shortcut table: JSON round trips with
+# protected secrets, provider defaults, chord parse/format, table sanity.
+add_executable(config_tests tests/cpp/test_config.cpp studio/config.cpp studio/shortcuts.cpp)
+target_include_directories(config_tests PRIVATE studio)
+target_link_libraries(config_tests PRIVATE imgui third_party_headers)
+if(WIN32)
+  target_link_libraries(config_tests PRIVATE crypt32)
+endif()
+
+# The AI services without a network: request builders and response parsers
+# on the providers' documented JSON, ComfyUI injection and inference, prompts.
+add_executable(ai_services_tests tests/cpp/test_ai_services.cpp
+    studio/http_client.cpp studio/config.cpp studio/ai_prompts.cpp
+    studio/ai_text_providers.cpp studio/ai_image_providers.cpp studio/ai_comfy.cpp
+    studio/ai_model_providers.cpp studio/ollama.cpp studio/prefs.cpp studio/paths.cpp)
+target_include_directories(ai_services_tests PRIVATE studio)
+target_link_libraries(ai_services_tests PRIVATE third_party_headers)
+if(WIN32)
+  target_link_libraries(ai_services_tests PRIVATE winhttp crypt32)
+endif()
 
 # The node reference generator: docs/NODES.md straight from the registry.
 add_executable(node_docs_gen tools/gen_node_docs.cpp)
@@ -575,6 +624,9 @@ add_test(NAME UndoTests COMMAND undo_tests)
 add_test(NAME RenderTests COMMAND render_tests)
 add_test(NAME LayoutTests COMMAND layout_tests)
 add_test(NAME MeshTests COMMAND mesh_tests)
+add_test(NAME MaterialEditorTests COMMAND material_editor_tests)
+add_test(NAME ConfigTests COMMAND config_tests)
+add_test(NAME AiServiceTests COMMAND ai_services_tests)
 add_test(NAME AssetTests COMMAND asset_tests)
 
 

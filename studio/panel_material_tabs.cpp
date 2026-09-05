@@ -1,230 +1,189 @@
-// Geekatplay TerraForge - the Material Studio's property tabs, laid out as
-// Vue's Material Editor lays them out: Color, Bump, Highlights, Transparency,
-// Reflection, Translucency, Effects - plus Layers, Population or Effector
-// when the material's type calls for one.
-//
-// Every control edits an attribute on the MaterialOutput node (declared in
-// engine/material_params.cpp, so the label, range and tooltip live in one
-// place), and every channel has a mode - None, Picture, Procedural - that
-// connects or disconnects a node behind it. The graph stays the truth.
+// Geekatplay TerraForge - the Material Editor's tabs for a material or a
+// layer, as Vue lays them out (manual p703: Color, Alpha, Bump, Normal,
+// Displacement, Highlights, Transparency, Reflection, Translucency, Effects,
+// Presence; p742-744 for PBR: Ambient Occlusion, Metalness, Roughness,
+// Clearcoat). Each channel tab starts with the channel's mode block
+// (material_channel_ui.cpp) and continues with that tab's parameters, read
+// from the node's attribute groups so the label, range and tooltip live in
+// one place (engine/material_params.cpp).
 #include "app.hpp"
-#include "material_stack_ops.hpp"
+#include "material_channel_ops.hpp"
 #include "material_ui.hpp"
 #include "undo.hpp"
-#include <algorithm>
-#include <cstring>
 #include <imgui.h>
 #include <string>
 
 namespace studio {
 
-std::string dialog_open_file(const char *filter, const char *def_ext);
-
 namespace {
 
-void touched(App &a, gpx::Node *mat) {
-  a.graph.mark_dirty(mat->id);
-  a.request_eval();
-  a.uploaded_serial = 0;
+const float LW = 170.f;
+
+void group(App &a, gpx::Node *n, const char *g) {
+  for (gpx::Attribute &at : n->attrs.items)
+    if (at.group == g) material_attr_widget(a, n, at.key.c_str(), LW);
+}
+void keys(App &a, gpx::Node *n, std::initializer_list<const char *> ks) {
+  for (const char *k : ks) material_attr_widget(a, n, k, LW);
 }
 
-// One attribute as the widget its type wants, label on the left.
-void attr_widget(App &a, gpx::Node *mat, const char *key, float label_w) {
-  gpx::Attribute *at = mat->attrs.find(key);
-  if (!at) return;
-  ImGui::PushID(key);
-  bool changed = false;
-  ImGui::SetNextItemWidth(-label_w);
-  switch (at->type) {
-  case gpx::AttrType::Float:
-    changed = ImGui::SliderFloat(at->label.c_str(), &at->f, at->fmin, at->fmax,
-                                 "%.3f", at->log_scale ? ImGuiSliderFlags_Logarithmic : 0);
-    break;
-  case gpx::AttrType::Bool:
-    changed = studio::Checkbox(at->label.c_str(), &at->b);
-    break;
-  case gpx::AttrType::Color:
-    changed = ImGui::ColorEdit3(at->label.c_str(), at->col, ImGuiColorEditFlags_NoInputs);
-    break;
-  case gpx::AttrType::Choice: {
-    std::vector<const char *> items;
-    for (const std::string &s : at->labels) items.push_back(s.c_str());
-    changed = ImGui::Combo(at->label.c_str(), &at->i, items.data(), (int)items.size());
-    break;
+// ---- the root material's tabs -------------------------------------------
+void tab_color(App &a, gpx::Node *m) {
+  material_channel_ui(a, m, "base color", "Color", CHAN_COLOR, "tint");
+  ImGui::SeparatorText("Color correction");
+  group(a, m, "Color");
+}
+void tab_alpha(App &a, gpx::Node *m) {
+  material_channel_ui(a, m, "alpha", "Alpha", CHAN_ALPHA, "alpha");
+  ImGui::TextDisabled("Alpha does not bend light; transparency does. White is transparent.");
+}
+void tab_bump(App &a, gpx::Node *m) {
+  material_channel_ui(a, m, "normal", "Normal map", CHAN_NORMAL, nullptr);
+  ImGui::SeparatorText("Parameters");
+  keys(a, m, {"normal_strength", "bump_depth", "bump_slope", "normal_invert"});
+}
+void tab_displacement(App &a, gpx::Node *m) {
+  material_channel_ui(a, m, "height", "Displacement", CHAN_VALUE, nullptr);
+  ImGui::SeparatorText("Parameters");
+  keys(a, m, {"displacement", "disp_smoothing"});
+  ImGui::TextDisabled("Depth is in world units. Moves geometry, not only normals.");
+}
+void tab_highlights(App &a, gpx::Node *m, bool pbr) {
+  material_channel_ui(a, m, "roughness", "Highlights map", CHAN_VALUE, nullptr);
+  ImGui::SeparatorText("Parameters");
+  if (pbr) {
+    keys(a, m, {"specular"});
+    ImGui::TextDisabled("PBR: the shape of the highlights is the Roughness channel.");
+  } else {
+    group(a, m, "Highlights");
   }
-  case gpx::AttrType::Vec2:
-    changed = ImGui::DragFloat2(at->label.c_str(), at->v2, 0.01f, at->v2min, at->v2max);
-    break;
-  default:
-    break;
-  }
-  if (ImGui::IsItemHovered() && !at->tooltip.empty()) ImGui::SetTooltip("%s", at->tooltip.c_str());
-  if (changed) touched(a, mat);
-  ImGui::PopID();
+}
+void tab_transparency(App &a, gpx::Node *m) { group(a, m, "Transparency"); }
+void tab_reflection(App &a, gpx::Node *m, bool pbr) {
+  if (pbr) keys(a, m, {"specular_level", "reflection", "reflect_blur"});
+  else keys(a, m, {"reflection", "reflect_min", "reflect_angle", "reflect_blur"});
+}
+void tab_translucency(App &a, gpx::Node *m) { group(a, m, "Translucency"); }
+void tab_effects(App &a, gpx::Node *m, bool pbr) {
+  ImGui::SeparatorText("Lighting");
+  if (pbr) keys(a, m, {"luminous", "luminous_color", "backlight"});
+  else group(a, m, "Effects");
+  ImGui::SeparatorText("Global transformation");
+  group(a, m, "Transform");
+}
+void tab_ao(App &a, gpx::Node *m) {
+  material_channel_ui(a, m, "ambient occlusion", "Ambient occlusion", CHAN_VALUE, nullptr);
+  ImGui::TextDisabled("How much incoming light reaches a point. Affects the diffuse only.");
+}
+void tab_metalness(App &a, gpx::Node *m) {
+  material_channel_ui(a, m, "metallic", "Metalness", CHAN_VALUE, "metallic");
+  ImGui::TextDisabled("1 raw metal (colour is the reflectance), 0 non-metal (colour is the albedo).");
+}
+void tab_roughness(App &a, gpx::Node *m) {
+  material_channel_ui(a, m, "roughness", "Roughness", CHAN_VALUE, "roughness");
+  ImGui::TextDisabled("0 a perfect mirror, 1 fully diffuse; between, glossy.");
+}
+void tab_clearcoat(App &a, gpx::Node *m) { group(a, m, "Clearcoat"); }
+
+// ---- a MaterialLayer's tabs ---------------------------------------------
+void layer_color(App &a, gpx::Node *l) {
+  material_channel_ui(a, l, "albedo", "Color", CHAN_COLOR, nullptr);
+  ImGui::SeparatorText("Layer");
+  keys(a, l, {"name", "blend"});
+}
+void layer_alpha(App &a, gpx::Node *l) {
+  material_channel_ui(a, l, "mask", "Alpha (mask)", CHAN_ALPHA, "opacity");
+  keys(a, l, {"invert_mask", "alpha_boost"});
+}
+void layer_bump(App &a, gpx::Node *l) {
+  material_channel_ui(a, l, "normal", "Normal map", CHAN_NORMAL, nullptr);
+  keys(a, l, {"normal_add"});
+}
+void layer_highlights(App &a, gpx::Node *l) {
+  material_channel_ui(a, l, "roughness", "Roughness", CHAN_VALUE, "rough_value");
+}
+void layer_effects(App &a, gpx::Node *l) {
+  ImGui::SeparatorText("Placement");
+  group(a, l, "Placement");
 }
 
-// A channel's mode: what feeds it, and a way to change that. "Picture" adds
-// a TextureFile node with a file the user picks; "Procedural" adds a
-// FractalColor; "None" disconnects and leaves the node in the graph.
-void channel_mode(App &a, gpx::Node *mat, const char *port, const char *human) {
-  gpx::Node *src = a.graph.upstream_node(*mat, port);
-  ImGui::PushID(port);
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted(human);
-  ImGui::SameLine(150);
-  const char *mode = !src ? "None" : (src->type == "TextureFile" ? "Picture" : "Procedural");
-  std::string shown = src ? std::string(mode) + ": " + src->type + " #" +
-                                std::to_string(src->id)
-                          : std::string(mode);
-  ImGui::SetNextItemWidth(230);
-  if (ImGui::BeginCombo("##mode", shown.c_str())) {
-    if (ImGui::Selectable("None", !src) && src) {
-      undo_push_locked(a, std::string("disconnect ") + human);
-      if (gpx::Link *lk = layer_incoming(a.graph, mat->id, port)) a.graph.remove_link(lk->id);
-      touched(a, mat);
+struct Tab {
+  const char *name;
+  void (*fn)(App &, gpx::Node *);
+};
+
+void draw_tabs(App &a, gpx::Node *n, const std::vector<Tab> &tabs) {
+  for (const Tab &t : tabs)
+    if (ImGui::BeginTabItem(t.name)) {
+      ImGui::BeginChild("##tab", ImVec2(0, 0));
+      t.fn(a, n);
+      ImGui::EndChild();
+      ImGui::EndTabItem();
     }
-    if (ImGui::Selectable("Picture...", src && src->type == "TextureFile")) {
-      std::string path = dialog_open_file("Images\0*.png;*.jpg;*.jpeg;*.tga;*.bmp\0", "png");
-      if (!path.empty()) {
-        undo_push_locked(a, std::string("picture for ") + human);
-        gpx::Node *tf = a.graph.add_node("TextureFile", mat->pos_x - 280, mat->pos_y + 40);
-        if (tf) {
-          if (gpx::Attribute *pa = tf->attrs.find("path")) pa->s = path;
-          if (src) if (gpx::Link *lk = layer_incoming(a.graph, mat->id, port)) a.graph.remove_link(lk->id);
-          a.graph.add_link(tf->id, "texture", mat->id, port);
-          a.graph_layout_serial++;
-          touched(a, mat);
-        }
-      }
-    }
-    if (ImGui::Selectable("Procedural", src && src->type != "TextureFile")) {
-      if (!src || src->type == "TextureFile") {
-        undo_push_locked(a, std::string("procedural ") + human);
-        gpx::Node *fc = a.graph.add_node("FractalColor", mat->pos_x - 280, mat->pos_y + 40);
-        if (fc) {
-          if (src) if (gpx::Link *lk = layer_incoming(a.graph, mat->id, port)) a.graph.remove_link(lk->id);
-          a.graph.add_link(fc->id, "texture", mat->id, port);
-          a.graph_layout_serial++;
-          touched(a, mat);
-        }
-      }
-    }
-    ImGui::EndCombo();
-  }
-  if (src) {
-    ImGui::SameLine();
-    if (ImGui::SmallButton("edit")) graph_focus_node(a, src->id);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Select the node and show it in the graph.");
-  }
-  ImGui::PopID();
-}
-
-void group(App &a, gpx::Node *mat, const char *group_name, float lw) {
-  for (gpx::Attribute &at : mat->attrs.items)
-    if (at.group == group_name) attr_widget(a, mat, at.key.c_str(), lw);
-}
-
-void tab_color(App &a, gpx::Node *mat, float lw) {
-  channel_mode(a, mat, "base color", "Color");
-  channel_mode(a, mat, "ambient occlusion", "Ambient occlusion");
-  ImGui::Spacing();
-  group(a, mat, "Color", lw);
-}
-void tab_bump(App &a, gpx::Node *mat, float lw) {
-  channel_mode(a, mat, "normal", "Normal map");
-  channel_mode(a, mat, "height", "Displacement");
-  ImGui::Spacing();
-  group(a, mat, "Bump", lw);
-}
-void tab_highlights(App &a, gpx::Node *mat, float lw) {
-  channel_mode(a, mat, "roughness", "Roughness map");
-  ImGui::Spacing();
-  group(a, mat, "Highlights", lw);
-}
-void tab_reflection(App &a, gpx::Node *mat, float lw) {
-  channel_mode(a, mat, "metallic", "Metalness map");
-  ImGui::Spacing();
-  group(a, mat, "Reflection", lw);
-}
-
-void tab_layers(App &a, gpx::Node *mat) {
-  std::vector<gpx::Node *> layers = collect_layers(a.graph, mat);
-  if (ImGui::SmallButton("Add layer")) {
-    undo_push_locked(a, "add material layer");
-    add_material_layer(a.graph, mat, layers);
-    a.graph_layout_serial++;
-    a.request_eval();
-    return;
-  }
-  for (size_t i = 0; i < layers.size(); ++i) {
-    gpx::Node *l = layers[i];
-    ImGui::PushID((int)i);
-    std::string name = layer_display_name(l, i);
-    if (ImGui::Selectable(name.c_str(), a.selected_node == l->id)) a.selected_node = l->id;
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.55f);
-    ImGui::TextDisabled("%s", layer_presence_summary(l).c_str());
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Its presence rules. Select the layer and edit them\n"
-                        "in Properties, or double-click to open its node.");
-    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) graph_focus_node(a, l->id);
-    ImGui::PopID();
-  }
-  if (layers.empty()) ImGui::TextDisabled("No layers yet.");
-  // the selected layer's own properties, right here
-  if (a.selected_node && a.selected_node != mat->id)
-    for (gpx::Node *l : layers)
-      if (l->id == a.selected_node) {
-        ImGui::Separator();
-        node_properties_ui(a, l->id, true);
-      }
 }
 
 } // namespace
 
 void material_tabs_ui(App &a, gpx::Node *mat) {
-  const float lw = 170.f;
-  int type = material_type_of(a.graph, mat);
+  MaterialStudioState &st = material_studio();
+  gpx::Node *sel = a.graph.find_node(st.selected);
+  if (!sel) sel = mat;
   if (!ImGui::BeginTabBar("##mattabs", ImGuiTabBarFlags_FittingPolicyScroll)) return;
-  struct Tab {
-    const char *name;
-    void (*fn)(App &, gpx::Node *, float);
-    const char *group;
-  };
-  const Tab tabs[] = {{"Color", tab_color, nullptr},
-                      {"Bump", tab_bump, nullptr},
-                      {"Highlights", tab_highlights, nullptr},
-                      {"Transparency", nullptr, "Transparency"},
-                      {"Reflection", tab_reflection, nullptr},
-                      {"Translucency", nullptr, "Translucency"},
-                      {"Effects", nullptr, "Effects"}};
-  for (const Tab &t : tabs)
-    if (ImGui::BeginTabItem(t.name)) {
-      ImGui::BeginChild("##tab", ImVec2(0, 0));
-      if (t.fn) t.fn(a, mat, lw);
-      else group(a, mat, t.group, lw);
+
+  if (sel->type == "MaterialOutput") {
+    const int type = material_type_of(a.graph, mat);
+    const bool pbr = type == MAT_PBR;
+    static bool s_pbr;
+    s_pbr = pbr;
+    std::vector<Tab> tabs = {
+        {"Color", tab_color},
+        {"Alpha", tab_alpha},
+        {"Bump", tab_bump},
+        {"Displacement", tab_displacement},
+        {"Highlights", [](App &aa, gpx::Node *m) { tab_highlights(aa, m, s_pbr); }},
+    };
+    if (!pbr) tabs.push_back({"Transparency", tab_transparency});
+    tabs.push_back({"Reflection", [](App &aa, gpx::Node *m) { tab_reflection(aa, m, s_pbr); }});
+    if (!pbr) tabs.push_back({"Translucency", tab_translucency});
+    if (pbr) {
+      tabs.push_back({"Ambient Occlusion", tab_ao});
+      tabs.push_back({"Metalness", tab_metalness});
+      tabs.push_back({"Roughness", tab_roughness});
+      tabs.push_back({"Clearcoat", tab_clearcoat});
+    }
+    tabs.push_back({"Effects", [](App &aa, gpx::Node *m) { tab_effects(aa, m, s_pbr); }});
+    draw_tabs(a, sel, tabs);
+    if ((type == MAT_DISTRIBUTION || type == MAT_EFFECTOR) &&
+        ImGui::BeginTabItem(type == MAT_DISTRIBUTION ? "Population" : "Effector")) {
+      ImGui::BeginChild("##tab");
+      if (gpx::Node *src = a.graph.upstream_node(*mat, "base color"))
+        material_tab_population_ui(a, src);
       ImGui::EndChild();
       ImGui::EndTabItem();
     }
-  if (type == MAT_LAYERED && ImGui::BeginTabItem("Layers")) {
-    ImGui::BeginChild("##tab");
-    tab_layers(a, mat);
-    ImGui::EndChild();
-    ImGui::EndTabItem();
-  }
-  if ((type == MAT_DISTRIBUTION || type == MAT_EFFECTOR) &&
-      ImGui::BeginTabItem(type == MAT_DISTRIBUTION ? "Population" : "Effector")) {
-    ImGui::BeginChild("##tab");
-    if (gpx::Node *src = a.graph.upstream_node(*mat, "base color"))
-      node_properties_ui(a, src->id, true);
-    ImGui::EndChild();
-    ImGui::EndTabItem();
-  }
-  if (type == MAT_MIXED && ImGui::BeginTabItem("Mix")) {
-    ImGui::BeginChild("##tab");
-    if (gpx::Node *src = a.graph.upstream_node(*mat, "base color"))
-      node_properties_ui(a, src->id, true);
-    ImGui::EndChild();
-    ImGui::EndTabItem();
+  } else if (sel->type == "MaterialLayer") {
+    draw_tabs(a, sel,
+              {{"Color", layer_color},
+               {"Alpha", layer_alpha},
+               {"Bump", layer_bump},
+               {"Highlights", layer_highlights},
+               {"Effects", layer_effects}});
+    if (ImGui::BeginTabItem("Presence")) {
+      ImGui::BeginChild("##tab");
+      material_tab_presence_ui(a, sel);
+      ImGui::EndChild();
+      ImGui::EndTabItem();
+    }
+  } else if (sel->type == "MaterialStack") {
+    material_tabs_mix_ui(a, sel);
+  } else {
+    // a sub-material or a driving node: its own parameters, and a way in
+    if (ImGui::BeginTabItem(sel->type.c_str())) {
+      ImGui::BeginChild("##tab");
+      material_tab_population_ui(a, sel);
+      ImGui::EndChild();
+      ImGui::EndTabItem();
+    }
   }
   ImGui::EndTabBar();
 }

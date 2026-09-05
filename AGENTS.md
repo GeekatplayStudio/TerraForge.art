@@ -102,6 +102,34 @@ each one was a bug we already paid for. Do not regress them.
    the generic "actions applied" when the batch said nothing, and
    `scene_state.json` carries `status`, so a script can read what an op did.
 
+## Configuration and AI services
+
+1. **Configuration is not preferences.** `config.json` (studio/config.cpp)
+   holds what the application connects to - keys, endpoints, ComfyUI, apps,
+   shortcuts; `terraforge_prefs.json` holds how it looks and performs. A
+   preferences reset never loses a key. Secrets go through `secret_protect`
+   (DPAPI on Windows; `plain:` elsewhere, stated in the file) - never write a
+   key in clear.
+2. **Every provider is its documented wire format, as pure functions.** A
+   request builder and a response parser per provider, tested on canned JSON
+   in tests/cpp/test_ai_services.cpp with error mutations. Adding a provider
+   means those two functions, a `ProviderInfo` row, and an adapter branch;
+   the source of the formats is docs_private/IMAGEEXPRESS_PORT.md.
+3. **Results are written to disk before anyone is told.** Provider URLs
+   expire; a job reports DONE only with a file path, and the UI thread
+   (`ai_jobs_service`) is the only place a result touches the graph or the
+   scene.
+4. **Nothing blocks the UI thread.** `ai_text`, `ai_generate_image`,
+   `ai_generate_model` and `comfy_run` are blocking by design and run on the
+   job thread (ai_jobs.cpp) or in tests; the `ai_ask` op is the one
+   deliberate exception and says so.
+5. **ComfyUI injection is by (node id, input name), empty values skipped.**
+   `comfy_inject` errors on a missing node and keeps workflow defaults for
+   anything not given, so an imported workflow behaves as it does in ComfyUI.
+6. **Shortcuts come from the table.** `shortcut_pressed("file.save")`, never
+   `IsKeyPressed(ImGuiKey_S)`; the Settings window rebinds the table and the
+   menus print `shortcut_chord(id)`.
+
 ## Mesh module
 
 1. **An imported file's coordinates are never rewritten.** `scene_import_mesh`

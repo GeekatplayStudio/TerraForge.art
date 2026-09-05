@@ -6,6 +6,7 @@
 // (stale/opaque library, downstream recompute stalls) and Blender
 // (unreliable previews, append/link confusion): thumbnails regenerate on
 // every save and loading always creates an independent copy.
+#include "ai_services.hpp"
 #include "app.hpp"
 #include "material_library.hpp"
 #include "material_ui.hpp"
@@ -73,7 +74,7 @@ static void run_material_ai(std::string prompt) {
     matai_error.clear();
   }
   std::string out, err;
-  bool ok = ollama_generate(p.ollama_url, p.text_model,
+  bool ok = ai_text(std::string(),
                             material_ai_system_prompt(),
                             "Create this material: " + prompt, "", out, err);
   std::lock_guard<std::mutex> lk(matai_mtx);

@@ -1,6 +1,9 @@
 ﻿// Geekatplay TerraForge — menu bar (File/Edit/View/Render/Help), tool strip
 // with typed resolution, progress and resource usage.
 #include "app.hpp"
+#include "ai_describe.hpp"
+#include "ai_jobs.hpp"
+#include "shortcuts.hpp"
 #include "gizmo.hpp"
 #include "icons.hpp"
 #include "i18n.hpp"
@@ -248,90 +251,16 @@ static void menu_edit(App &a) {
     a.request_eval();
   }
   ImGui::Separator();
-  if (ImGui::MenuItem("Preferences...")) show_prefs = true;
+  if (ImGui::MenuItem("Settings...", shortcut_chord("app.settings").c_str())) show_prefs = true;
   ImGui::EndMenu();
 }
 
+// The Preferences dialog grew into the Settings window (panel_settings.cpp):
+// general, shortcuts, AI services, ComfyUI, applications, asset folders.
 static void prefs_dialog() {
   if (show_prefs) {
-    ImGui::OpenPopup("Preferences");
+    settings_open();
     show_prefs = false;
-  }
-  ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-  ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-  if (ImGui::BeginPopupModal("Preferences", nullptr,
-                             ImGuiWindowFlags_AlwaysAutoResize)) {
-    Prefs &p = prefs();
-    ImGui::SeparatorText("Interface");
-    ImGui::SetNextItemWidth(220);
-    // Re-apply the theme on either change: padding, spacing and control sizes
-    // are all derived from the font, so leaving them at the old size is what
-    // made text clip inside its button the moment the font grew.
-    if (ImGui::SliderFloat("Font size", &p.font_size, 12.f, 30.f, "%.0f px")) {
-      ImGui::GetStyle().FontSizeBase = p.font_size;
-      apply_theme();
-    }
-    ImGui::SetNextItemWidth(220);
-    if (ImGui::SliderFloat("UI scale", &p.ui_scale, 0.7f, 2.f, "%.2f")) {
-      ImGui::GetStyle().FontScaleMain = p.ui_scale;
-      apply_theme();
-    }
-    ImGui::SeparatorText("Performance");
-    ImGui::SetNextItemWidth(220);
-    ImGui::SliderInt("Viewport rate", &p.viewport_fps, 10, 120, "%d fps");
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Upper limit for redrawing the 3D views. Lower it to\n"
-                        "leave the GPU to the render preview and evaluation.");
-    ImGui::SetNextItemWidth(220);
-    ImGui::SliderInt("Idle rate", &p.idle_fps, 2, 60, "%d fps");
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("When nothing is happening - no input, no evaluation,\n"
-                        "no playback - the whole application idles at this\n"
-                        "rate and wakes on the first input.");
-    ImGui::SetNextItemWidth(220);
-    ImGui::SliderInt("Preview panel rate", &p.preview_fps, 1, 60, "%d fps");
-    ImGui::SetNextItemWidth(220);
-    ImGui::Combo("Preview panel quality", &p.preview_quality, "25%\0" "50%\0" "100%\0");
-    ImGui::SetNextItemWidth(220);
-    ImGui::SliderInt("Preview res while dragging", &p.interactive_res, 64, 512);
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Slider drags recompute at this low resolution for\n"
-                        "silky-smooth feedback; full quality on release.");
-    ImGui::SetNextItemWidth(220);
-    ImGui::SliderInt("Graph memory ceiling", &p.graph_memory_mb, 0, 16384,
-                     p.graph_memory_mb ? "%d MB" : "no limit");
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Every node keeps its output buffer, so a deep graph\n"
-                        "at high resolution can hold gigabytes nothing will\n"
-                        "read again. Past this, buffers no longer needed in\n"
-                        "the current pass are released and rebuilt on demand.\n"
-                        "Nothing is released while the graph fits. 0 = no cap.");
-    {
-      double held = app().snapshot_bytes / (1024.0 * 1024.0);
-      double freed = app().graph.released_bytes / (1024.0 * 1024.0);
-      ImGui::TextDisabled("graph buffers: %.1f MB held, %.1f MB released so far",
-                          held, freed);
-    }
-    ImGui::SeparatorText("AI (local Ollama)");
-    char url[256], tm[128], vm[128];
-    auto copy_to = [](char *dst, size_t n, const std::string &s) {
-      snprintf(dst, n, "%s", s.c_str());
-    };
-    copy_to(url, sizeof url, p.ollama_url);
-    copy_to(tm, sizeof tm, p.text_model);
-    copy_to(vm, sizeof vm, p.vision_model);
-    ImGui::SetNextItemWidth(280);
-    if (ImGui::InputText("Ollama URL", url, sizeof url)) p.ollama_url = url;
-    ImGui::SetNextItemWidth(280);
-    if (ImGui::InputText("Text model", tm, sizeof tm)) p.text_model = tm;
-    ImGui::SetNextItemWidth(280);
-    if (ImGui::InputText("Vision model (photos)", vm, sizeof vm)) p.vision_model = vm;
-    ImGui::Spacing();
-    if (ImGui::Button("Close", ImVec2(120, 0))) {
-      prefs_save();
-      ImGui::CloseCurrentPopup();
-    }
-    ImGui::EndPopup();
   }
 }
 
@@ -375,6 +304,25 @@ static void menu_view(App &a) {
 
 // the Terrain menu lives in terrain_styles.cpp
 void menu_terrain(App &a);
+
+// The AI menu: generate an image, a texture or a skydome, a 3D model; build
+// a scene, a terrain or an atmosphere from words; the jobs list; settings.
+static void menu_ai(App &a) {
+  (void)a;
+  if (!ImGui::BeginMenu("AI")) return;
+  if (ImGui::MenuItem("Describe a scene...")) ai_describe_open(DESCRIBE_SCENE);
+  if (ImGui::MenuItem("Describe the terrain...")) ai_describe_open(DESCRIBE_TERRAIN);
+  if (ImGui::MenuItem("Describe the atmosphere...")) ai_describe_open(DESCRIBE_ATMOSPHERE);
+  ImGui::Separator();
+  if (ImGui::MenuItem("Generate an image...", shortcut_chord("ai.generate_image").c_str())) ai_generate_open_image(JOB_IMAGE);
+  if (ImGui::MenuItem("Generate a tileable texture...")) ai_generate_open_image(JOB_TEXTURE);
+  if (ImGui::MenuItem("Generate a 360 skydome...")) ai_generate_open_image(JOB_SKYDOME);
+  if (ImGui::MenuItem("Generate a 3D model...", shortcut_chord("ai.generate_model").c_str())) ai_generate_open_model();
+  ImGui::Separator();
+  if (ImGui::MenuItem("Jobs...")) ai_generate_open_jobs();
+  if (ImGui::MenuItem("AI services settings...")) settings_open();
+  ImGui::EndMenu();
+}
 
 static void menu_help() {
   if (!ImGui::BeginMenu("Help")) return;
@@ -420,6 +368,7 @@ void draw_toolbar(App &a) {
     menu_edit(a);
     menu_terrain(a);
     menu_view(a);
+    menu_ai(a);
     menu_help();
 
     // The global tools, on the row the hand is already on. They used to be a
@@ -440,31 +389,33 @@ void draw_toolbar(App &a) {
   ImGuiIO &io = ImGui::GetIO();
   // W/E/R pick the transform tool, as they do in Maya, Unity and Unreal.
   // Guarded on text input so typing a node name does not swap the gadget.
-  if (!io.WantTextInput && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift) {
-    if (ImGui::IsKeyPressed(ImGuiKey_W, false)) gizmo_mode() = GizmoMode::Move;
-    if (ImGui::IsKeyPressed(ImGuiKey_E, false)) gizmo_mode() = GizmoMode::Rotate;
-    if (ImGui::IsKeyPressed(ImGuiKey_R, false)) gizmo_mode() = GizmoMode::Scale;
-  }
-  if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
+  // every chord comes from the shortcut table (shortcuts.cpp), which the
+  // Settings window can rebind
+  if (shortcut_pressed("tool.move")) gizmo_mode() = GizmoMode::Move;
+  if (shortcut_pressed("tool.rotate")) gizmo_mode() = GizmoMode::Rotate;
+  if (shortcut_pressed("tool.scale")) gizmo_mode() = GizmoMode::Scale;
+  if (shortcut_pressed("app.settings")) settings_open();
+  if (shortcut_pressed("ai.generate_image")) ai_generate_open_image(JOB_TEXTURE);
+  if (shortcut_pressed("ai.generate_model")) ai_generate_open_model();
+  if (shortcut_pressed("file.save")) {
     std::string p = a.project_path;
     if (p.empty()) p = dialog_save_file(PROJECT_FILTER, "gpxt", "terrain.gpxt");
     if (!p.empty()) project_save(a, p);
   }
-  if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O, false)) {
+  if (shortcut_pressed("file.open")) {
     std::string p = dialog_open_file(PROJECT_FILTER, "gpxt");
     if (!p.empty()) project_load(a, p);
   }
-  if (ImGui::IsKeyPressed(ImGuiKey_F5, false)) {
+  if (shortcut_pressed("graph.recompute")) {
     std::lock_guard<std::mutex> lk(a.graph_mtx);
     a.graph.mark_all_dirty();
     a.request_eval();
   }
   // undo / redo, with the usual Windows and Blender-style shortcuts
-  if (io.KeyCtrl && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+  if (shortcut_pressed("edit.undo")) {
     if (undo_perform(a)) a.status = "undo";
   }
-  if ((io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y, false)) ||
-      (io.KeyCtrl && io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false))) {
+  if (shortcut_pressed("edit.redo") || shortcut_pressed("edit.redo_alt")) {
     if (redo_perform(a)) a.status = "redo";
   }
 }

@@ -16,6 +16,9 @@ namespace gpx {
 
 // Load by extension. Returns false with `err` set on anything it cannot read.
 bool mesh_load(const std::string &path, TriMesh &out, std::string &err);
+// Binary glTF, geometry only (mesh_io_gltf.cpp): what the 3D generation
+// services return. Node transforms applied, every primitive welded into one.
+bool mesh_load_glb(const std::string &path, TriMesh &out, std::string &err);
 
 // Save by extension (.stl .obj .ply .off). `ascii_stl` writes the readable
 // STL variant, which triples the file size and is what some old tools want.

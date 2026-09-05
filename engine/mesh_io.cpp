@@ -394,8 +394,10 @@ bool mesh_load(const std::string &path, TriMesh &out, std::string &err) {
     ok = load_ply(path, out, err);
   else if (ext == "off")
     ok = load_off(path, out, err);
+  else if (ext == "glb")
+    ok = mesh_load_glb(path, out, err); // mesh_io_gltf.cpp
   else {
-    err = "unsupported mesh format '." + ext + "' (OBJ, STL, PLY and OFF are read)";
+    err = "unsupported mesh format '." + ext + "' (OBJ, STL, PLY, OFF and GLB are read)";
     return false;
   }
   if (ok && out.f.empty()) {

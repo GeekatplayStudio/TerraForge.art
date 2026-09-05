@@ -303,10 +303,10 @@ vec3 aces(vec3 x){
 }
 void main(){
   vec3 N = normalize(v_nrm);
-  vec3 albedo = (u_has_albedo == 1) ? pow(texture(u_albedo, v_uv).rgb, vec3(2.2))
+  vec3 albedo = (u_has_albedo == 1) ? pow(texture(u_albedo, mat_uv(v_uv)).rgb, vec3(2.2))
                                     : vec3(0.55,0.53,0.5);
   if (u_has_normal == 1){
-    vec3 nm = texture(u_normal_map, v_uv).xyz * 2.0 - 1.0;
+    vec3 nm = texture(u_normal_map, mat_uv(v_uv)).xyz * 2.0 - 1.0;
     vec3 T = normalize(cross(vec3(0,1,0), N) + vec3(1e-4));
     vec3 B = cross(N, T);
     nm.xy *= u_normal_strength;
@@ -314,7 +314,7 @@ void main(){
   }
   albedo = mat_albedo(albedo);
   float rough = clamp(u_roughness * ((u_has_rough == 1) ?
-                      texture(u_rough_map, v_uv).r*2.0 : 1.0), 0.03, 1.0);
+                      texture(u_rough_map, mat_uv(v_uv)).r*2.0 : 1.0), 0.03, 1.0);
   vec3 V = vec3(0,0,1);
   vec3 L = normalize(u_sun);
   vec3 H = normalize(L+V);
@@ -329,6 +329,7 @@ void main(){
   vec3 F = F0 + (1.0-F0)*pow(1.0-VdH,5.0);
   vec3 spec = D*G*F/max(4.0*NdL*NdV,1e-4);
   if (u_m_phong == 1) spec = F * mat_phong(NdH, rough);
+  spec += mat_clearcoat(NdH, NdV, NdL);
   vec3 kd = (1.0-F)*(1.0-u_metallic);
   vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
   vec3 sun_c = u_sun_color * u_sun_intensity;
@@ -339,6 +340,7 @@ void main(){
   vec3 reflection = refl * u_reflection * (1.0-rough) * mat_fresnel(NdV, F0.g);
   if (u_m_color_reflected == 1) reflection *= albedo;
   col += reflection + mat_translucent(albedo, V, L, sun_c) + u_m_luminous;
+  if (u_m_ignore_light == 1) col = albedo + u_m_luminous;
   col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, 1.0);
 })GLSL";

@@ -3,6 +3,7 @@
 // it. The scripting API and the MCP server call the same function, so text,
 // script and tool calls all take one code path.
 #include "ai_assist.hpp"
+#include "ai_services.hpp"
 #include "app.hpp"
 #include "ollama.hpp"
 #include "prefs.hpp"
@@ -68,7 +69,7 @@ static void run_assist(AiDomain domain, std::string prompt, std::string image) {
     prompt += "\n(An image is attached: analyse it and match its lens, framing, "
               "light and mood.)";
   std::string out, err;
-  bool ok = ollama_generate(p.ollama_url, model, sys, prompt, image, out, err);
+  bool ok = ai_text(std::string(), sys, prompt, image, out, err);
   std::lock_guard<std::mutex> lk(st.mtx);
   if (ok) {
     st.result = out;

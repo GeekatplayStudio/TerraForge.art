@@ -56,6 +56,76 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
                        "selected object.",
         "params": {"name": "str", "open": "bool", "assign": "bool"},
     },
+    "studio_ai_generate_texture": {
+        "description": "Generate a seamless tileable texture from a prompt with "
+                       "the configured image provider (ComfyUI, OpenAI Images, "
+                       "Stability, Google Imagen); apply connects it to a "
+                       "material's channel. Runs as a background job.",
+        "params": {"prompt": "str", "negative": "str", "provider": "str",
+                   "width": "int", "seed": "int", "apply": "bool",
+                   "material": "str|int", "channel": "str", "workflow": "str"},
+    },
+    "studio_ai_generate_skydome": {
+        "description": "Generate a 2:1 equirectangular 360 skydome from a "
+                       "prompt; apply sets it as the sky backdrop.",
+        "params": {"prompt": "str", "negative": "str", "provider": "str",
+                   "width": "int", "seed": "int", "apply": "bool"},
+    },
+    "studio_ai_generate_image": {
+        "description": "Generate a plain image from a prompt into the texture library.",
+        "params": {"prompt": "str", "negative": "str", "provider": "str",
+                   "width": "int", "height": "int", "seed": "int"},
+    },
+    "studio_ai_generate_model": {
+        "description": "Generate a 3D model from a prompt and/or a reference "
+                       "picture with Meshy, Tripo or Hitem3D; import places it "
+                       "in the scene when it arrives.",
+        "params": {"prompt": "str", "image": "str", "provider": "str", "import": "bool"},
+    },
+    "studio_ai_describe": {
+        "description": "Build the scene, the terrain or the atmosphere from a "
+                       "natural-language description: the text model plans a "
+                       "list of studio actions and they are applied when the "
+                       "answer arrives (a background job).",
+        "params": {"prompt": "str", "scope": "str", "image": "str"},
+    },
+    "studio_ai_ask": {
+        "description": "Ask the configured text model (Ollama, OpenAI, Anthropic, "
+                       "Gemini) a question, optionally about a picture.",
+        "params": {"prompt": "str", "system": "str", "image": "str", "provider": "str"},
+    },
+    "studio_ai_jobs": {
+        "description": "List AI generation jobs with state, progress and results.",
+        "params": {},
+    },
+    "studio_config_set_service": {
+        "description": "Set an AI service's key, endpoint, model or enabled flag "
+                       "(openai, anthropic, google, stability, openai_image, "
+                       "google_image, comfyui, ollama, meshy, tripo, hitem3d, "
+                       "replicate, fal). Keys are stored protected.",
+        "params": {"service": "str", "key": "str", "endpoint": "str",
+                   "model": "str", "enabled": "bool"},
+    },
+    "studio_ai_job_cancel": {
+        "description": "Cancel a running AI generation job by id.",
+        "params": {"id": "int"},
+    },
+    "studio_config_set_defaults": {
+        "description": "Choose the default providers (text_provider, "
+                       "image_provider, model_provider) and the ComfyUI address "
+                       "or installation folder.",
+        "params": {"text_provider": "str", "image_provider": "str",
+                   "model_provider": "str", "comfy_url": "str", "comfy_install": "str"},
+    },
+    "studio_config_check_comfy": {
+        "description": "Probe the configured ComfyUI server: node types and "
+                       "checkpoints it has, or why it cannot be reached.",
+        "params": {},
+    },
+    "studio_config_status": {
+        "description": "Which AI services are ready, and the ComfyUI address.",
+        "params": {},
+    },
     "studio_asset_search": {
         "description": "Search the asset index - materials, meshes, textures, "
                        "layouts in every watched folder - by name, folder, tag "
@@ -120,6 +190,18 @@ ASSET_SIMPLE = {
     "studio_set_material": "set_material",
     "studio_save_material": "save_material",
     "studio_load_material": "load_material",
+    "studio_ai_generate_texture": "ai_generate_texture",
+    "studio_ai_generate_skydome": "ai_generate_skydome",
+    "studio_ai_generate_image": "ai_generate_image",
+    "studio_ai_generate_model": "ai_generate_model",
+    "studio_ai_describe": "ai_describe",
+    "studio_ai_ask": "ai_ask",
+    "studio_ai_jobs": "ai_jobs",
+    "studio_config_set_service": "config_set_service",
+    "studio_ai_job_cancel": "ai_job_cancel",
+    "studio_config_set_defaults": "config_set_defaults",
+    "studio_config_check_comfy": "config_check_comfy",
+    "studio_config_status": "config_status",
     "studio_asset_search": "asset_search",
     "studio_asset_open": "asset_open",
     "studio_asset_tag": "asset_tag",

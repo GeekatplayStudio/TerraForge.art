@@ -188,7 +188,7 @@ void main(){
     N = normalize(east * N.x + up * N.y + north * N.z);
   }
   if (u_has_normal == 1){
-    vec3 nm = texture(u_normal_map, v_uv).xyz * 2.0 - 1.0;
+    vec3 nm = texture(u_normal_map, mat_uv(v_uv)).xyz * 2.0 - 1.0;
     nm.xy *= u_normal_strength;
     // terrain tangent frame: +X tangent, +Z bitangent
     vec3 T = normalize(vec3(1.0, 0.0, 0.0) - N * N.x);
@@ -210,7 +210,7 @@ void main(){
     albedo = gpx_terrain_surface(v_world, N, v_world.y, sl, orient, 0.0,
                                  gp_octavesf(length(u_cam - v_world), 11.0)).rgb;
   } else if (u_has_albedo == 1) {
-    albedo = pow(texture(u_albedo, v_uv).rgb, vec3(2.2));
+    albedo = pow(texture(u_albedo, mat_uv(v_uv)).rgb, vec3(2.2));
   } else {
     // No material: the landscape palette the horizon surround uses, on the
     // same altitude scale, so the tile and the ground beyond it are one
@@ -221,7 +221,7 @@ void main(){
   }
   albedo = mat_albedo(albedo);
   float rough = clamp(u_roughness * (u_has_rough == 1 ?
-                      texture(u_rough_map, v_uv).r * 2.0 : 1.0), 0.03, 1.0);
+                      texture(u_rough_map, mat_uv(v_uv)).r * 2.0 : 1.0), 0.03, 1.0);
   if (u_surf_rough_on == 1){
     float lodr = gp_octavesf(length(u_cam - v_world), 11.0);
     rough = clamp(gpx_terrain_rough(v_world, N, v_world.y, N.y,
@@ -263,6 +263,7 @@ void main(){
   vec3 F = F0 + (1.0 - F0) * pow(1.0 - VdH, 5.0);
   vec3 spec = D * G * F / max(4.0 * NdL * NdV, 1e-4);
   if (u_m_phong == 1) spec = F * mat_phong(NdH, rough);
+  spec += mat_clearcoat(NdH, NdV, NdL);
 
   vec3 sun_c = u_sun_color * u_sun_intensity;
   vec3 kd = (1.0 - F) * (1.0 - u_metallic);
@@ -304,6 +305,7 @@ void main(){
   }
 
   vec3 col = direct + ambient + reflection + translucent + u_m_luminous;
+  if (u_m_ignore_light == 1) col = albedo + u_m_luminous;
   float d = length(v_world - u_cam);
   float fog_f; vec3 fog_c;
   fog_terms(v_world, u_cam, d, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
@@ -313,7 +315,7 @@ void main(){
                    ambient, specular_only, fog_f, fog_c, 0.0, col);
     return;
   }
-  col = apply_fog_terms(col, fog_f, fog_c);
+  if (u_m_ignore_atmo == 0) col = apply_fog_terms(col, fog_f, fog_c);
   col = aces(col * u_exposure);
   col = pow(col, vec3(1.0/2.2));
   // sculpt brush ring, drawn on the surface after grading so it stays legible
@@ -328,7 +330,7 @@ void main(){
     float fill = 1.0 - smoothstep(0.0, u_brush.z, bd);
     col = mix(col, bcol, fill * fill * 0.10);
   }
-  frag = vec4(col, 1.0 - u_transparency);
+  frag = vec4(col, u_m_alpha);
 })GLSL";
 
 } // namespace studio

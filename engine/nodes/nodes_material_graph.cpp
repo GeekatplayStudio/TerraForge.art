@@ -25,6 +25,7 @@ REGISTER_NODE(
       n.add_in("metallic", DataType::Texture, true);
       n.add_in("height", DataType::Texture, true);
       n.add_in("ambient occlusion", DataType::Texture, true);
+      n.add_in("alpha", DataType::Texture, true);
       n.add_out("preview", DataType::Texture);
       add_text(n.attrs, "name", "Material name", "Material", "Identity");
       // every surface property, grouped by the Material Editor's tabs

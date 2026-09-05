@@ -280,10 +280,10 @@ void build_materials_layout(unsigned dockspace_id, unsigned view_mask) {
   ImGui::DockBuilderDockWindow("Material Editor", right_bottom);
 
   // top: the studio; below it the thin browser; bottom: graph | scene view
-  ImGuiID bottom = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.42f,
+  ImGuiID bottom = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.36f,
                                                nullptr, &main_id);
   // tall enough for one row of tiles with their labels under the tab row
-  ImGuiID browser = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.34f,
+  ImGuiID browser = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.24f,
                                                 nullptr, &main_id);
   ImGui::DockBuilderDockWindow("Material Studio", main_id);
   ImGui::DockBuilderDockWindow("Material Browser", browser);

@@ -38,10 +38,23 @@ REGISTER_NODE(
     TextureFile, "Material", "Load an image texture (PNG/JPG/TGA/BMP) with mapping modes",
     [](Node &n) {
       n.add_out("texture", DataType::Texture);
-      add_filename(n.attrs, "path", "Image file", "");
-      add_choice(n.attrs, "mapping", "Mapping", {"Stretch", "Tile", "Tile offset"}, 1);
-      add_float(n.attrs, "tiles", "Tiles across", 8.f, 1.f, 64.f);
-      add_float(n.attrs, "brightness", "Brightness", 1.f, 0.2f, 3.f);
+      add_filename(n.attrs, "path", "Image file", "", "Picture");
+      add_choice(n.attrs, "mapping", "Mapping", {"Stretch", "Tile", "Tile offset"}, 1,
+                 "Picture");
+      add_float(n.attrs, "tiles", "Tiles across", 8.f, 1.f, 64.f, "Picture");
+      add_float(n.attrs, "brightness", "Brightness", 1.f, 0.2f, 3.f, "Picture");
+      // Vue's mapped-picture controls (manual p705-707): gamma, rotate by
+      // quarter turns, invert, mirror, scale and offset of the picture itself
+      add_float(n.attrs, "gamma", "Gamma", 1.f, 0.2f, 3.f, "Picture").tooltip =
+          "Gamma correction for this picture, overriding the global setting.";
+      add_choice(n.attrs, "rotate", "Rotate", {"0", "90", "180", "270"}, 0, "Picture");
+      add_bool(n.attrs, "invert", "Invert colors", false, "Picture");
+      add_bool(n.attrs, "mirror_x", "Mirror X", false, "Picture");
+      add_bool(n.attrs, "mirror_y", "Mirror Y", false, "Picture");
+      add_vec2(n.attrs, "scale", "Picture scale", 1.f, 1.f, 0.05f, 20.f, "Picture");
+      add_vec2(n.attrs, "offset", "Image offset", 0.f, 0.f, -1.f, 1.f, "Picture");
+      add_choice(n.attrs, "interpolation", "Interpolation", {"Linear", "Nearest"}, 0,
+                 "Picture");
     },
     [](Node &n) {
       std::string path = n.attrs.get_s("path");
@@ -57,17 +70,63 @@ REGISTER_NODE(
         return;
       }
       TextureRGBA src(iw, ih);
-      for (size_t i = 0; i < src.v.size(); ++i) src.v[i] = data[i] / 255.f;
+      const float gamma = n.attrs.get_f("gamma", 1.f);
+      const bool invert = n.attrs.get_b("invert", false);
+      for (size_t i = 0; i < src.v.size(); ++i) {
+        float c = data[i] / 255.f;
+        if ((i & 3) != 3) {
+          if (gamma != 1.f) c = std::pow(c, gamma);
+          if (invert) c = 1.f - c;
+        }
+        src.v[i] = c;
+      }
       stbi_image_free(data);
+      // rotation by quarter turns and mirroring are a remap of the source
+      // pixels once, not a per-sample cost
+      const int rot = n.attrs.get_choice("rotate");
+      const bool mx = n.attrs.get_b("mirror_x", false), my = n.attrs.get_b("mirror_y", false);
+      if (rot || mx || my) {
+        const bool swap = rot == 1 || rot == 3;
+        TextureRGBA dst(swap ? ih : iw, swap ? iw : ih);
+        for (int y = 0; y < dst.h; ++y)
+          for (int x = 0; x < dst.w; ++x) {
+            int sx = x, sy = y;
+            if (rot == 1) { sx = y; sy = ih - 1 - x; }
+            else if (rot == 2) { sx = iw - 1 - x; sy = ih - 1 - y; }
+            else if (rot == 3) { sx = iw - 1 - y; sy = x; }
+            if (mx) sx = iw - 1 - sx;
+            if (my) sy = ih - 1 - sy;
+            const float *s4 = src.px(sx, sy);
+            float *d4 = dst.px(x, y);
+            for (int k = 0; k < 4; ++k) d4[k] = s4[k];
+          }
+        src = dst;
+      }
       int mapping = n.attrs.get_choice("mapping");
       float tiles = n.attrs.get_f("tiles", 8.f);
       float bright = n.attrs.get_f("brightness", 1.f);
+      float scx = 1.f, scy = 1.f, ofx = 0.f, ofy = 0.f;
+      n.attrs.get_vec2("scale", scx, scy);
+      n.attrs.get_vec2("offset", ofx, ofy);
+      const bool nearest = n.attrs.get_choice("interpolation") == 1;
       parallel_rows(out.h, [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
           for (int x = 0; x < out.w; ++x) {
             float rgba[4];
-            sample_mapped(src, x / float(out.w), y / float(out.h), mapping, tiles,
-                          rgba);
+            float u = (x / float(out.w)) / std::max(scx, 1e-3f) - ofx;
+            float v = (y / float(out.h)) / std::max(scy, 1e-3f) - ofy;
+            if (nearest) {
+              // snap to the texel centre before the mapped, filtered read
+              float tu = u, tv = v;
+              if (mapping) { tu *= tiles; tv *= tiles; }
+              tu -= std::floor(tu); tv -= std::floor(tv);
+              int sx = std::min((int)(tu * src.w), src.w - 1);
+              int sy = std::min((int)(tv * src.h), src.h - 1);
+              const float *p4 = src.px(sx, sy);
+              for (int k = 0; k < 4; ++k) rgba[k] = p4[k];
+            } else {
+              sample_mapped(src, u, v, mapping, tiles, rgba);
+            }
             float *px = out.px(x, y);
             px[0] = std::clamp(rgba[0] * bright, 0.f, 1.f);
             px[1] = std::clamp(rgba[1] * bright, 0.f, 1.f);

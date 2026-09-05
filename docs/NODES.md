@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 234 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 235 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -26,7 +26,7 @@ Every node in Geekatplay TerraForge — 234 across 31 categories. Generated from
 | [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 14 |
-| [Material](#material) | 24 |
+| [Material](#material) | 25 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
@@ -2627,8 +2627,13 @@ One layer of a material stack: its own maps, its own mask, and its own reaction 
 | Invert mask | toggle, default off |  |
 | Roughness | float, 0 to 1, default 0.8 | Used where this layer has no roughness map connected. |
 | Add to normals below | float, 0 to 1, default 1 | 1: this layer's relief adds to the layer beneath, the way lichen sits on rock. 0: it replaces it, the way snow flattens what it covers. |
+| Alpha boost | float, -1 to 1, default 0 | The layer's overall presence, within what the constraints below allow. Positive: stronger. |
+| Highlight (solid color) | toggle, default off | Shows the layer as a flat colour so you can see where it lands. Shading is off while highlighted. |
+| Highlight color | color |  |
 | By altitude | toggle, default off |  |
+| Range of altitudes | choice: By terrain / Absolute / Relative to sea | By terrain: the band is a fraction of this terrain's own range. Absolute: in the terrain's height units. Relative to sea: measured from the sea level below. |
 | Altitude band | range | As a fraction of the terrain's own height range. |
+| Sea level | float, 0 to 1, default 0 |  |
 | Fade | float, 0 to 0.5, default 0.08 |  |
 | By slope | toggle, default off |  |
 | Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
@@ -2653,19 +2658,83 @@ The material: base color, normal, roughness, metallic, height and AO channels
 | metallic | in (optional) | texture |
 | height | in (optional) | texture |
 | ambient occlusion | in (optional) | texture |
+| alpha | in (optional) | texture |
 | preview | out | texture |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Material name | text |  |
-| Roughness | float, 0.02 to 1, default 0.85 | Used where no roughness map is connected, and as a multiplier for the map. |
-| Metallic | float, 0 to 1, default 0 |  |
-| Specular | float, 0 to 1, default 0.35 |  |
-| Sky reflection | float, 0 to 1, default 0.25 |  |
-| Translucency | float, 0 to 1, default 0 |  |
-| Transparency | float, 0 to 1, default 0 |  |
-| Normal strength | float, 0 to 4, default 1 |  |
-| Displacement | float, 0 to 0.1, default 0 | Height map displacement applied to the surface, in world units. |
+| Overall color | color | Multiplies every colour in the material. White leaves it alone. |
+| Brightness | float, 0 to 2, default 1 |  |
+| Saturation | float, 0 to 2, default 1 |  |
+| Color blend | toggle, default off | Blend the picture with a solid colour, in product mode. |
+| Blend color | color |  |
+| Blend amount | float, 0 to 1, default 0.5 |  |
+| Color mask | float, 0 to 1, default 0 | 0: the colour multiplies the picture. 1: it replaces it. |
+| Global alpha | float, 0 to 1, default 1 | Where no alpha map is connected. Alpha does not bend light; transparency does. |
+| Alpha boost | float, -1 to 1, default 0 | For a layer of a multi-layer material: its overall presence, within the limits the Presence tab sets. |
+| Normal intensity | float, 0 to 4, default 1 | How much of the normal map's vector is applied. |
+| Bump depth | float, -4 to 4, default 1 | The amount of bump. Negative turns bumps into holes. |
+| Dependent on slope | float, 0 to 1, default 0 | Higher bumps on steep faces than on flat ground, as on eroded terrain. |
+| Invert normal map | toggle, default off |  |
+| Displacement depth | float, 0 to 0.1, default 0 | Height map displacement applied to the surface, in world units. Moves geometry, not only normals. |
+| Displacement smoothing | float, 0 to 1, default 0 |  |
+| Lighting model | choice: GGX / Phong | GGX: the physically based microfacet model, size is roughness. Phong: the legacy model, size and intensity independent. |
+| Highlight intensity | float, 0 to 1, default 0.35 |  |
+| Roughness (highlight size) | float, 0.02 to 1, default 0.85 | Small: a polished surface with tight bright spots. Large: dull. Also multiplies a connected roughness map. |
+| Highlight color | color | A uniform shade for the highlights - blue for pearl. |
+| Anisotropy | float, 0 to 1, default 0 | Stretched highlights along a direction, for brushed metal or hair. |
+| Global transparency | float, 0 to 1, default 0 |  |
+| Refraction index | float, 1 to 2.5, default 1 | 1 air, 1.33 water, 1.52 glass. Bends light crossing the surface; also sets how reflective a transparent surface is. |
+| Turn reflective with angle | float, 0 to 1, default 0 | Glass and water mirror at a low angle. About 0.4 looks right. |
+| Fade out | float, 0 to 1, default 0 |  |
+| Thin surface (no refraction) | toggle, default off |  |
+| Additive | toggle, default off | Adds the colour to the background: luminous, immaterial objects. |
+| Flare intensity | float, 0 to 1, default 0 | Brightening when light is seen through a partly transparent surface. Strongest at 50% transparency. |
+| Flare span | float, 0 to 1, default 0.2 |  |
+| Global reflectivity | float, 0 to 1, default 0.25 |  |
+| Minimal reflectivity | float, 0 to 1, default 0 | Reflectivity looking straight at the surface; the angle sensitivity raises it toward grazing. |
+| Sensitivity to incidence angle | float, 0 to 1, default 0.5 |  |
+| Blurred reflections | float, 0 to 1, default 0 |  |
+| Metalness | float, 0 to 1, default 0 | Metal reflects its own colour and has no diffuse. Also multiplies a connected metallic map. |
+| Specular level (PBR) | float, 0 to 1, default 0.5 | F0 of the non-metal parts: 0.5 is the common 4 %, 1 is 8 %. |
+| Translucency | float, 0 to 1, default 0 | Light bleeding through thin material toward the viewer. |
+| Subsurface scattering | toggle, default off |  |
+| Average depth (m) | float, 0.0001 to 1, default 0.01 | How far light travels inside: a fraction of a millimetre for skin, centimetres for wax. |
+| Absorption / scattering balance | float, 0 to 1, default 0.5 |  |
+| Scattering color | color | The colour light picks up inside - the red of a finger over a torch. |
+| Backlight | toggle, default off | Thin enough that light shows through from behind, like a leaf. |
+| Coat intensity | float, 0 to 1, default 0 | A thin reflective layer on top: the lacquer over car paint. |
+| Coat tint | color |  |
+| Coat roughness | float, 0.02 to 1, default 0.1 |  |
+| Coat refraction index | float, 1 to 2.5, default 1.5 |  |
+| Flatten | float, 0 to 1, default 1 | 1: the coat has its own smooth normal. 0: it follows the bumps below. |
+| Diffuse lighting | float, 0 to 1, default 0.6 | How the material reacts to light from light sources. Diffuse + ambient should stay at 100%. |
+| Ambient lighting | float, 0 to 1, default 0.4 |  |
+| Luminous | float, 0 to 2, default 0 | Seems to emit light. Does not cast real light. |
+| Luminous color | color |  |
+| Contrast | float, 0.2 to 4, default 1 | How fast the surface goes from light to shadow; low for fluffy things. |
+| Color reflected light | toggle, default off | Highlights and reflections take the surface colour: metal. |
+| Color transmitted light | toggle, default off | Light crossing a transparent surface takes its colour: stained glass. |
+| Casts shadows | toggle, default on |  |
+| Receives shadows | toggle, default on |  |
+| One sided | toggle, default off | Traced for one intersection per ray; matters for transparent surfaces. |
+| Hide from camera rays | toggle, default off | Seen only in reflections and refractions. |
+| Hide from reflected / refracted rays | toggle, default off |  |
+| Ignore lighting | toggle, default off | No sun, no lights: the surface shows its own colour. |
+| Ignore atmosphere | toggle, default off | No fog or haze between it and the camera. |
+| Only shadows | toggle, default off | Invisible, but still casts a shadow. |
+| Disable anti-aliasing | toggle, default off |  |
+| Mapping | choice: Automatic / Flat / Faces / Cylindrical / Spherical | How the 2D maps wrap a 3D object. Terrain is always Flat (projected from above); the others are for objects. |
+| Scale of the maps | float, 0.05 to 20, default 1 | Scales every texture map together. |
+| Origin | x/y pair | Offsets the material in map space, for precise placement. |
+| Rotation | float, -180 to 180, default 0 | Turns the maps about the surface normal, in degrees. |
+| Turbulence | toggle, default off | A noise repeatedly displaces where the maps are read, so a tiled picture stops looking tiled. |
+| Complexity | int, 1 to 8, default 3 |  |
+| Amplitude | float, 0 to 0.5, default 0.05 |  |
+| Scale | float, 0.25 to 64, default 4 |  |
+| Harmonics | float, 0.1 to 0.9, default 0.5 | How scale and amplitude shrink with each repetition of the noise. |
+| Cycling | float, 0 to 1, default 0 | A large, slow perturbation that keeps a material from repeating. |
 
 ### MaterialStack
 
@@ -2685,11 +2754,21 @@ Blend up to six material layers by mask, height-aware, into albedo + roughness
 | albedo 5 | in (optional) | texture |
 | mask 6 | in (optional) | heightmap |
 | albedo 6 | in (optional) | texture |
+| terrain | in (optional) | heightmap |
 | albedo | out | texture |
 | roughness | out | texture |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
+| Mixing | choice: Weighted layers / Two materials (distribution) | Weighted: every layer by its own mask. Two materials: material 1 and 2 by one distribution (mask 1) against the proportions, as Vue mixes. |
+| Mixing proportions | float, 0 to 1, default 0.5 | Left: more of material 1. Right: more of material 2. |
+| Smooth blending strip | float, 0 to 1, default 0.2 | The width of the band where the two are blended. |
+| Blending method | choice: Simple blend / Full blend (linear bumps) / Full blend (cubic bumps) / Cover / Color and lighting blend |  |
+| Distribution dependent on environment | toggle, default off |  |
+| Influence of altitude | float, -1 to 1, default 0 | Positive: material 2 higher up. Negative: lower down. |
+| Influence of slope | float, -1 to 1, default 0 | Positive: material 2 on steep faces. Negative: on flat. |
+| Influence of orientation | float, 0 to 1, default 0 |  |
+| Azimuth | float, 0 to 360, default 0 | Material 2 gathers on faces looking this way. 0 is north. |
 | Height blend | float, 0 to 1, default 0.5 | 0: plain weighted mix. 1: the layer whose texture is highest at this texel wins — silt fills the cracks of the rock before it covers the ridges. |
 | Blend depth | float, 0.02 to 1, default 0.25 | How far below the winning layer others still show. |
 | Roughness | float, 0 to 1, default 0.8 |  |
@@ -2698,6 +2777,28 @@ Blend up to six material layers by mask, height-aware, into albedo + roughness
 | Roughness | float, 0 to 1, default 0.8 |  |
 | Roughness | float, 0 to 1, default 0.8 |  |
 | Roughness | float, 0 to 1, default 0.8 |  |
+
+### NaturalGrain
+
+Natural grain: one or two colours varied by a noise, for ground and rock
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| mask | in (optional) | heightmap |
+| texture | out | texture |
+| grain | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Base color | color |  |
+| Mix with a second color | toggle, default on |  |
+| Second color | color |  |
+| Scale | float, 0.005 to 4, default 0.2 | The overall size of the grain. Keep it large for a terrain, small for a pebble. |
+| Roughness | float, 0 to 1, default 0.6 | How much fine detail rides on the large variation. |
+| Contrast | float, 0 to 1, default 0.5 |  |
+| Balance | float, 0 to 1, default 0.5 | Which of the two colours dominates. |
+| Distortion | float, 0 to 1, default 0 | Warps the grain so it stops looking like a noise. |
+| Seed | seed |  |
 
 ### NormalBlend
 
@@ -2790,6 +2891,14 @@ Load an image texture (PNG/JPG/TGA/BMP) with mapping modes
 | Mapping | choice: Stretch / Tile / Tile offset |  |
 | Tiles across | float, 1 to 64, default 8 |  |
 | Brightness | float, 0.2 to 3, default 1 |  |
+| Gamma | float, 0.2 to 3, default 1 | Gamma correction for this picture, overriding the global setting. |
+| Rotate | choice: 0 / 90 / 180 / 270 |  |
+| Invert colors | toggle, default off |  |
+| Mirror X | toggle, default off |  |
+| Mirror Y | toggle, default off |  |
+| Picture scale | x/y pair |  |
+| Image offset | x/y pair |  |
+| Interpolation | choice: Linear / Nearest |  |
 
 ### TextureToMask
 

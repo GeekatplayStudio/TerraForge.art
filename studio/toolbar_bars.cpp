@@ -15,6 +15,7 @@
 // workflow tabs, the camera, the resolution and the statistics all had equal
 // weight and none of them were grouped.
 #include "app.hpp"
+#include "ai_jobs.hpp"
 #include "i18n.hpp"
 #include "gizmo.hpp"
 #include "icons.hpp"
@@ -294,6 +295,8 @@ void tools_objects(App &a) {
   }
   tool_sep();
   mesh_tool_buttons(a); // import, analyse and repair (panel_mesh.cpp)
+  tool_sep();
+  ai_tool_buttons(); // generate a model, an image (panel_ai_generate.cpp)
   tool_sep();
   ImGui::TextDisabled("%d objects", (int)sc.objects.size());
 }

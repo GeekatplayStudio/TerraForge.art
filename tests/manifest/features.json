@@ -961,6 +961,102 @@
       "description": "The Material Studio's properties as Vue's tabs - Color, Bump, Highlights, Transparency, Reflection, Translucency, Effects - each control generated from the node's attribute (label, range, tooltip in one place), every channel with a mode combo (None disconnects, Picture adds a TextureFile from a file dialog, Procedural adds a FractalColor) and an edit button to the node; Layers, Population, Effector or Mix tabs appear with the material's type and edit the layer or driving node in place",
       "test_file": "test_engine.cpp",
       "test_symbol": "test_material_params"
+    },
+    {
+      "id": "materials.editor_vue",
+      "area": "studio",
+      "phase": "32",
+      "description": "The Material Studio laid out as Vue's Advanced Material Editor: preview with object/background/spin, Randomize, Zoom and Store (snapshots restored by double-click into the same MaterialOutput); name, type, mapping and the material options popup; the material hierarchy with three-state visibility (visible, invisible, highlighted in a solid colour) and Add/Remove/Up/Down; tabs for the selected line - Color, Alpha, Bump, Displacement, Highlights, Transparency, Reflection, Translucency, Effects (with Global transformation), PBR's Ambient Occlusion, Metalness, Roughness, Clearcoat; a layer's Color/Alpha/Bump/Highlights/Effects/Presence; a mix's Materials to mix / Alpha / Influence of environment",
+      "test_file": "test_material_channel_ops.cpp",
+      "test_symbol": "test_material_channel_ops_run"
+    },
+    {
+      "id": "materials.channel_modes",
+      "area": "studio",
+      "phase": "32",
+      "description": "Every channel has Vue's mode: Constant/None, Mapped picture (a TextureFile with load, rotate, invert, mirror, gamma, scale, offset, interpolation), Procedural (any node; FractalColor by default) and Natural grain (two colours through a noise: scale, roughness, contrast, balance, distortion) - each switch rewires the graph and never deletes the node it replaces",
+      "test_file": "test_material_editor.cpp",
+      "test_symbol": "test_natural_grain"
+    },
+    {
+      "id": "materials.presence_mix",
+      "area": "engine",
+      "phase": "32",
+      "description": "A layer's Presence: altitude band by terrain, absolute or relative to sea, slope band, orientation, alpha boost that strengthens but never invents; Mixed material: two materials by one distribution against the proportions inside a smooth blending strip, five blending methods, influence of altitude (signed), slope (signed) and orientation (azimuth)",
+      "test_file": "test_material_editor.cpp",
+      "test_symbol": "test_mixed_distribution"
+    },
+    {
+      "id": "config.manager",
+      "area": "studio",
+      "phase": "32",
+      "description": "The configuration manager: config.json with AI services (key, endpoint, model, enabled), ComfyUI (local/cloud, mode, install path, workflow folders, poll, timeout), AI defaults (text/image/3D providers, output folders), external applications, shortcuts; secrets protected with DPAPI per user (marked plain elsewhere); provider defaults filled in; a garbage file fails with a reason, an empty one loads every default",
+      "test_file": "test_config.cpp",
+      "test_symbol": "test_config_json"
+    },
+    {
+      "id": "config.shortcuts",
+      "area": "studio",
+      "phase": "32",
+      "description": "Keyboard shortcuts as a table of commands with default chords, remapped from Settings > Shortcuts by pressing keys, conflicts flagged, Reset per command; chords parse and format as exact inverses; the toolbar asks by command id",
+      "test_file": "test_config.cpp",
+      "test_symbol": "test_table"
+    },
+    {
+      "id": "config.settings_window",
+      "area": "studio",
+      "phase": "32",
+      "description": "The Settings window: General, Shortcuts, AI services (defaults + a row per provider with hidden key, endpoint, model, ready state), ComfyUI (connection check), Applications, Asset folders; Preferences moved into it",
+      "test_file": "test_config.cpp",
+      "test_symbol": "test_providers"
+    },
+    {
+      "id": "ai.services",
+      "area": "studio",
+      "phase": "32",
+      "description": "AI services ported from Image Express as C++: one HTTP client (WinHTTP; POSIX sockets elsewhere), text through Ollama, OpenAI, Anthropic and Gemini; images through OpenAI Images, Stability v2beta, Google Imagen and ComfyUI; 3D through Meshy (preview then refine), Tripo and Hitem3D (ak:sk token exchange); every request builder and parser a pure function tested on the documented JSON with error mutations; results written to disk before anyone is told; poll backoff 2 s to 15 s",
+      "test_file": "test_ai_services.cpp",
+      "test_symbol": "test_models"
+    },
+    {
+      "id": "ai.comfy",
+      "area": "studio",
+      "phase": "32",
+      "description": "ComfyUI client: probe /object_info, queue /prompt with a client id, poll /history, fetch /view; parameters injected by (node id, input name) with empty values leaving workflow defaults and a missing node named in the error; bindings inferred from node classes and titles; workflows found by name in the install and configured folders, else the bundled SDXL text_to_image",
+      "test_file": "test_ai_services.cpp",
+      "test_symbol": "test_comfy"
+    },
+    {
+      "id": "ai.prompts",
+      "area": "studio",
+      "phase": "32",
+      "description": "Prompt templates written for terrain work: a texture as a seamless top-down flat-lit tile, a skydome as a 2:1 equirectangular panorama with the horizon at the middle, negatives merged, sizes forced (square tiles, 2:1 skies at least 2048 wide)",
+      "test_file": "test_ai_services.cpp",
+      "test_symbol": "test_prompts"
+    },
+    {
+      "id": "ai.jobs",
+      "area": "studio",
+      "phase": "32",
+      "description": "AI jobs on a worker thread with progress, cancel and a result serviced on the UI thread: the file joins the asset index; a texture connects to a material's channel, a skydome becomes the backdrop, a model imports as an object; Generate image / Generate 3D model / Jobs windows; the AI menu and Objects tool row",
+      "test_file": "test_ai_services.cpp",
+      "test_symbol": "test_not_configured"
+    },
+    {
+      "id": "ai.describe",
+      "area": "studio",
+      "phase": "32",
+      "description": "Natural language for the whole scene, the terrain or the atmosphere: a planner prompt over every action schema plus the generation ops, an answer that is a JSON list of actions applied through ai_apply_actions; the assistant bars now use the configured text provider",
+      "test_file": "test_ai_services.cpp",
+      "test_symbol": "test_text_formats"
+    },
+    {
+      "id": "mesh.glb",
+      "area": "engine",
+      "phase": "32",
+      "description": "Binary glTF read natively (geometry, node transforms, uint8/16/32 indices, every primitive welded) so the models the 3D services return import without a library; a non-GLB fails with a reason",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_glb_reader"
     }
   ]
 }

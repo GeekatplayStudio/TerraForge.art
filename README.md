@@ -289,6 +289,17 @@ wanted his students to have.
   backgrounds, a turntable — from a texture cache that re-uploads only when
   the material actually changed, so a spinning preview costs nothing and a
   browser page of thumbnails uploads each once.
+- **Laid out as Vue's Advanced Material Editor.** Preview with its options,
+  Randomize, Zoom and Store (snapshots you can come back to); the material
+  hierarchy — the material, its layers top first, the two materials a mix
+  mixes — with the three-state visibility switch and Add / Remove / Up /
+  Down; and the tabs of whichever line is selected. Every channel has a
+  mode: **Constant**, **Mapped picture** (load, rotate, invert, mirror,
+  gamma, scale, offset), **Procedural** (any function node) or **Natural
+  grain** (two colours through a noise). A layer has its **Presence** tab —
+  altitude by terrain, absolute or relative to sea, slope, orientation,
+  alpha boost — and a mixed material its **Materials to mix**, **Alpha** and
+  **Influence of environment** tabs.
 - **Every property, in Vue's tabs.** *Color* (overall tint, brightness,
   saturation, map scale and origin), *Bump* (normal intensity, bump depth,
   slope dependence, displacement), *Highlights* (GGX or Phong, intensity,
@@ -318,6 +329,20 @@ wanted his students to have.
 - **Everything the studio and the browser do is an op** — `open_material`,
   `set_material_type`, `save_material`, `asset_search`, `asset_tag`... — so
   the assistant, the Python API and MCP drive them the same way you do.
+
+### AI as a tool
+- **Generate a tileable texture, a 360 skydome, an image or a 3D model** from
+  a prompt — *AI* menu, or the Objects tool row. A local ComfyUI or Ollama,
+  or OpenAI, Anthropic, Gemini, Stability, Meshy, Tripo, Hitem3D with your
+  own keys. Results land in your library and the asset index; a texture can
+  go straight onto the open material, a sky into the backdrop, a model into
+  the scene. Jobs run in the background with progress and cancel.
+- **Describe a scene, a terrain or an atmosphere in words** and the text
+  model builds it through the same actions the assistant, the Python API and
+  MCP use. See [docs/AI_SERVICES.md](docs/AI_SERVICES.md).
+- **Settings** (`Ctrl+,`): keyboard shortcuts you can remap, AI services and
+  keys (stored protected), the ComfyUI installation and workflow folders,
+  external applications, the folders the asset index watches.
 
 ### The lens, simulated
 - **One switch per camera.** Off, the lens is perfect. On, the picture goes

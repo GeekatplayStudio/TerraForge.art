@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <string>
 
 using namespace gpx;
@@ -75,6 +76,45 @@ static size_t issue_count(const MeshReport &r, const char *id) {
   for (const MeshIssue &i : r.issues)
     if (i.id == id) return i.count;
   return 0;
+}
+
+// A GLB built by hand: one triangle, indices as uint16, a node that moves
+// it by +10 on X. The reader must apply the transform and read the indices.
+static void test_glb_reader() {
+  std::printf("glb reader...\n");
+  std::string json_chunk = R"({"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],
+"nodes":[{"mesh":0,"translation":[10,0,0]}],
+"meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}],
+"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"},
+             {"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":6}],
+"buffers":[{"byteLength":44}]})";
+  while (json_chunk.size() % 4) json_chunk.push_back(' ');
+  float pos[9] = {0, 0, 0, 1, 0, 0, 0, 1, 0};
+  unsigned short idx[3] = {0, 1, 2};
+  std::string bin((const char *)pos, 36);
+  bin.append((const char *)idx, 6);
+  while (bin.size() % 4) bin.push_back('\0');
+  auto u32 = [](std::string &s, uint32_t v) { s.append((const char *)&v, 4); };
+  std::string glb = "glTF";
+  u32(glb, 2);
+  u32(glb, (uint32_t)(12 + 8 + json_chunk.size() + 8 + bin.size()));
+  u32(glb, (uint32_t)json_chunk.size()); u32(glb, 0x4E4F534Au); glb += json_chunk;
+  u32(glb, (uint32_t)bin.size()); u32(glb, 0x004E4942u); glb += bin;
+  std::string path = (std::filesystem::temp_directory_path() / "terraforge_test.glb").string();
+  { std::ofstream f(path, std::ios::binary); f.write(glb.data(), (std::streamsize)glb.size()); }
+  gpx::TriMesh m;
+  std::string err;
+  check(gpx::mesh_load(path, m, err), err.empty() ? "a GLB loads through mesh_load" : err.c_str());
+  check(m.vert_count() == 3 && m.face_count() == 1, "one triangle, three vertices");
+  check(m.vert_count() == 3 && std::fabs(m.vert(1)[0] - 11.f) < 1e-6f, "the node translation is applied");
+  check(m.face_count() == 1 && m.face(0)[2] == 2, "uint16 indices are read");
+  std::string bad = (std::filesystem::temp_directory_path() / "terraforge_bad.glb").string();
+  { std::ofstream f(bad, std::ios::binary); f << "not a glb at all"; }
+  check(!gpx::mesh_load(bad, m, err) && !err.empty(), "a non-GLB fails with a reason");
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+  std::filesystem::remove(bad, ec);
 }
 
 static void test_healthy_cube() {
@@ -508,6 +548,7 @@ static void test_retopo() {
 int main() {
   test_retopo();
   test_overlapping_shells();
+  test_glb_reader();
   test_healthy_cube();
   test_hole_is_found_and_closed();
   test_two_holes_counted_separately();

@@ -202,6 +202,8 @@ void graph_focus_node(App &a, uint64_t node);
 void draw_toolbar(App &a);       // row 1: the classic text menus
 void draw_workspace_bar(App &a); // row 2: which workflow
 void draw_panel_mesh(App &a);    // Mesh Tools: analyse, repair, reduce
+void draw_panel_settings(App &a); // Settings: general, shortcuts, AI services, ComfyUI, apps, assets
+void settings_open();
 void draw_panel_material_studio(App &a);  // panel_material_studio.cpp
 void draw_panel_material_browser(App &a); // panel_material_browser.cpp
 // Every workspace keeps its own window arrangement (layout_workspace.cpp).

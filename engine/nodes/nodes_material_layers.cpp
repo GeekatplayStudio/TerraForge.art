@@ -220,10 +220,25 @@ REGISTER_NODE(
                      "way lichen sits on rock. 0: it replaces it, the way\n"
                      "snow flattens what it covers.";
 
+      // Vue's Alpha boost and the three-state visibility switch (p691, p704)
+      add_float(n.attrs, "alpha_boost", "Alpha boost", 0.f, -1.f, 1.f, "Layer")
+          .tooltip = "The layer's overall presence, within what the\n"
+                     "constraints below allow. Positive: stronger.";
+      add_bool(n.attrs, "highlight", "Highlight (solid color)", false, "Layer")
+          .tooltip = "Shows the layer as a flat colour so you can see where\n"
+                     "it lands. Shading is off while highlighted.";
+      add_color(n.attrs, "highlight_color", "Highlight color", 1.f, 0.2f, 0.9f, 1.f,
+                "Layer");
       add_bool(n.attrs, "use_altitude", "By altitude", false, "Altitude");
+      add_choice(n.attrs, "altitude_mode", "Range of altitudes",
+                 {"By terrain", "Absolute", "Relative to sea"}, 0, "Altitude")
+          .tooltip = "By terrain: the band is a fraction of this terrain's own\n"
+                     "range. Absolute: in the terrain's height units. Relative\n"
+                     "to sea: measured from the sea level below.";
       add_range(n.attrs, "altitude", "Altitude band", 0.f, 1.f, 0.f, 1.f,
                 "Altitude")
           .tooltip = "As a fraction of the terrain's own height range.";
+      add_float(n.attrs, "sea_level", "Sea level", 0.f, 0.f, 1.f, "Altitude");
       add_float(n.attrs, "altitude_fuzz", "Fade", 0.08f, 0.f, 0.5f, "Altitude");
 
       add_bool(n.attrs, "use_slope", "By slope", false, "Slope");
@@ -272,6 +287,13 @@ REGISTER_NODE(
       const float rval = n.attrs.get_f("rough_value", 0.8f);
       const float naddw = n.attrs.get_f("normal_add", 1.f);
       const bool ua = n.attrs.get_b("use_altitude", false);
+      const int amode = n.attrs.get_choice("altitude_mode");
+      const float sea = n.attrs.get_f("sea_level", 0.f);
+      const float boost = n.attrs.get_f("alpha_boost", 0.f);
+      const bool highlight = n.attrs.get_b("highlight", false);
+      float hcol[3] = {1.f, 0.2f, 0.9f};
+      if (const Attribute *hc = n.attrs.find("highlight_color"))
+        for (int c = 0; c < 3; ++c) hcol[c] = hc->col[c];
       const bool us = n.attrs.get_b("use_slope", false);
       const bool uo = n.attrs.get_b("use_orientation", false);
       float alo, ahi, slo, shi;
@@ -291,7 +313,7 @@ REGISTER_NODE(
       // altitude is read as a fraction of the terrain's own range, so a band
       // set on one terrain still means "the top third" on another
       float hlo = 0.f, hhi = 1.f;
-      if (TR && ua) {
+      if (TR && ua && amode == 0) {
         hlo = 1e30f; hhi = -1e30f;
         for (float v : TR->v) { hlo = std::min(hlo, v); hhi = std::max(hhi, v); }
         if (hhi - hlo < 1e-6f) hhi = hlo + 1.f;
@@ -323,7 +345,9 @@ REGISTER_NODE(
               int ty = std::min((int)(v * TR->h), TR->h - 1);
               TR->gradient_at(tx, ty, dx, dy);
               if (ua) {
-                float h = (TR->sample(u, v) - hlo) / (hhi - hlo);
+                float h = TR->sample(u, v);
+                if (amode == 0) h = (h - hlo) / (hhi - hlo);
+                else if (amode == 2) h -= sea;
                 p *= band(h, alo, ahi, afz);
               }
               if (p > 0.f && (us || uo)) {
@@ -344,6 +368,9 @@ REGISTER_NODE(
                 }
               }
             }
+            // the boost strengthens or weakens the layer where it already
+            // is; it cannot put it where the constraints excluded it
+            if (p > 0.f && boost != 0.f) p = std::clamp(p * (1.f + boost) + (boost > 0.f ? boost * 0.5f : 0.f), 0.f, 1.f);
             p = std::clamp(p, 0.f, 1.f);
             opz.at(x, y) = p;
 
@@ -395,6 +422,9 @@ REGISTER_NODE(
                   mix[c] = ba[c] + (ca[c] - ba[c]) * ka;
             }
             float *pa = oa.px(x, y);
+            if (highlight) {
+              for (int c = 0; c < 3; ++c) mix[c] = ba[c] + (hcol[c] - ba[c]) * ka;
+            }
             pa[0] = mix[0]; pa[1] = mix[1]; pa[2] = mix[2];
             pa[3] = std::max(ba[3], ka);
 

@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — AI panel: describe a terrain in plain language
 // (or drop in a photo) and a local Ollama model builds the node graph,
 // materials and lighting.
+#include "ai_services.hpp"
 #include "app.hpp"
 #include "ollama.hpp"
 #include "prefs.hpp"
@@ -110,7 +111,7 @@ static void run_generation(std::string prompt, std::string image) {
     prompt += "\n(An image is attached: reproduce this landscape's shapes, "
               "materials, lighting and atmosphere as closely as possible.)";
   std::string out, err;
-  bool ok = ollama_generate(p.ollama_url, model, build_system_prompt(), prompt,
+  bool ok = ai_text(std::string(), build_system_prompt(), prompt,
                             image, out, err);
   std::lock_guard<std::mutex> lk(ai_mtx);
   if (ok) {

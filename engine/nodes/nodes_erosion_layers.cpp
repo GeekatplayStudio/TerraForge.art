@@ -251,6 +251,83 @@ REGISTER_NODE(
     })
 
 // ------------------------------------------------------------ MaterialStack
+namespace {
+
+// Vue's Mixed material: material 1 and 2 by one distribution against the
+// mixing proportions, inside a smooth blending strip, with altitude, slope
+// and orientation pushing the distribution toward material 2.
+void material_stack_mix_two(Node &n, const Heightmap *dist, const TextureRGBA *T1,
+                            const TextureRGBA *T2, float R1, float R2,
+                            TextureRGBA &alb, TextureRGBA &rgh) {
+  const Heightmap *TR = n.in_hmap("terrain");
+  if (TR && TR->empty()) TR = nullptr;
+  const float prop = n.attrs.get_f("proportion", 0.5f);
+  const float strip = std::max(n.attrs.get_f("strip", 0.2f), 1e-3f);
+  const int method = n.attrs.get_choice("blend_method");
+  const bool env = n.attrs.get_b("env_on", false) && TR;
+  const float ai = n.attrs.get_f("alt_influence", 0.f);
+  const float si = n.attrs.get_f("slope_influence", 0.f);
+  const float oi = n.attrs.get_f("orient_influence", 0.f);
+  const float az = n.attrs.get_f("orient_azimuth", 0.f) * 3.14159265f / 180.f;
+  float hlo = 0.f, hhi = 1.f;
+  if (env) {
+    hlo = 1e30f; hhi = -1e30f;
+    for (float v : TR->v) { hlo = std::min(hlo, v); hhi = std::max(hhi, v); }
+    if (hhi - hlo < 1e-6f) hhi = hlo + 1.f;
+  }
+  const float cell = TR ? 1.f / std::max(TR->w, 1) : 1.f;
+  auto fetch = [](const TextureRGBA *T, float u, float v, float *c) {
+    if (!T) { c[0] = c[1] = c[2] = 0.5f; return; }
+    int sx = std::min((int)(u * T->w), T->w - 1), sy = std::min((int)(v * T->h), T->h - 1);
+    const float *p = T->px(sx, sy);
+    c[0] = p[0]; c[1] = p[1]; c[2] = p[2];
+  };
+  parallel_rows(alb.h, [&](int y0, int y1) {
+    for (int y = y0; y < y1; ++y)
+      for (int x = 0; x < alb.w; ++x) {
+        float u = (x + 0.5f) / alb.w, v = (y + 0.5f) / alb.h;
+        // the distribution function, 0..1; no function means an even field
+        float d = dist ? std::clamp(dist->sample(u, v), 0.f, 1.f) : 0.5f;
+        if (env) {
+          float dx = 0, dy = 0;
+          int tx = std::min((int)(u * TR->w), TR->w - 1);
+          int ty = std::min((int)(v * TR->h), TR->h - 1);
+          TR->gradient_at(tx, ty, dx, dy);
+          float h = (TR->sample(u, v) - hlo) / (hhi - hlo);
+          d += ai * (h - 0.5f);
+          float gx = dx / cell, gy = dy / cell;
+          float steep = std::atan(std::sqrt(gx * gx + gy * gy)) / 1.5707963f;
+          d += si * (steep - 0.5f);
+          if (oi > 0.f && steep > 0.02f) {
+            float facing = std::atan2(-gx, -gy);
+            d += oi * 0.5f * std::cos(facing - az);
+          }
+        }
+        // compare to the proportions inside the strip: below, material 1;
+        // above, material 2; between, a blend
+        float w2 = std::clamp((d - prop) / strip + 0.5f, 0.f, 1.f);
+        float c1[3], c2[3];
+        fetch(T1, u, v, c1);
+        fetch(T2, u, v, c2);
+        float kc = w2, kr = w2;
+        switch (method) {
+          case 1: break; // linear bumps: the same ramp, the renderer chamfers
+          case 2: kc = kr = w2 * w2 * (3.f - 2.f * w2); break; // cubic
+          case 3: kc = w2 > 0.5f ? 1.f : 0.f; break;            // cover
+          case 4: kr = 0.f; break; // colour and lighting from 2, the rest from 1
+          default: break;
+        }
+        float *pa = alb.px(x, y), *pr = rgh.px(x, y);
+        for (int c = 0; c < 3; ++c) pa[c] = c1[c] + (c2[c] - c1[c]) * kc;
+        pa[3] = 1.f;
+        pr[0] = pr[1] = pr[2] = R1 + (R2 - R1) * kr;
+        pr[3] = 1.f;
+      }
+  });
+}
+
+} // namespace
+
 REGISTER_NODE(
     MaterialStack, "Material",
     "Blend up to six material layers by mask, height-aware, into albedo + roughness",
@@ -259,8 +336,37 @@ REGISTER_NODE(
         n.add_in("mask " + std::to_string(k), DataType::Heightmap, true);
         n.add_in("albedo " + std::to_string(k), DataType::Texture, true);
       }
+      n.add_in("terrain", DataType::Heightmap, true);
       n.add_out("albedo", DataType::Texture);
       n.add_out("roughness", DataType::Texture);
+      // Vue's Mixed material (manual p747-752): two materials, a distribution
+      // function (mask 1), mixing proportions, a smooth blending strip, a
+      // blending method and the influence of altitude, slope and orientation
+      add_choice(n.attrs, "mix_mode", "Mixing",
+                 {"Weighted layers", "Two materials (distribution)"}, 0, "Mix")
+          .tooltip = "Weighted: every layer by its own mask. Two materials:\n"
+                     "material 1 and 2 by one distribution (mask 1) against\n"
+                     "the proportions, as Vue mixes.";
+      add_float(n.attrs, "proportion", "Mixing proportions", 0.5f, 0.f, 1.f, "Mix")
+          .tooltip = "Left: more of material 1. Right: more of material 2.";
+      add_float(n.attrs, "strip", "Smooth blending strip", 0.2f, 0.f, 1.f, "Mix")
+          .tooltip = "The width of the band where the two are blended.";
+      add_choice(n.attrs, "blend_method", "Blending method",
+                 {"Simple blend", "Full blend (linear bumps)",
+                  "Full blend (cubic bumps)", "Cover", "Color and lighting blend"},
+                 0, "Mix");
+      add_bool(n.attrs, "env_on", "Distribution dependent on environment", false,
+               "Environment");
+      add_float(n.attrs, "alt_influence", "Influence of altitude", 0.f, -1.f, 1.f,
+                "Environment")
+          .tooltip = "Positive: material 2 higher up. Negative: lower down.";
+      add_float(n.attrs, "slope_influence", "Influence of slope", 0.f, -1.f, 1.f,
+                "Environment")
+          .tooltip = "Positive: material 2 on steep faces. Negative: on flat.";
+      add_float(n.attrs, "orient_influence", "Influence of orientation", 0.f, 0.f,
+                1.f, "Environment");
+      add_float(n.attrs, "orient_azimuth", "Azimuth", 0.f, 0.f, 360.f, "Environment")
+          .tooltip = "Material 2 gathers on faces looking this way. 0 is north.";
       add_float(n.attrs, "height_blend", "Height blend", 0.5f, 0.f, 1.f, "Blending")
           .tooltip = "0: plain weighted mix. 1: the layer whose texture is\n"
                      "highest at this texel wins — silt fills the cracks of\n"
@@ -293,6 +399,10 @@ REGISTER_NODE(
       TextureRGBA &rgh = n.out_tex("roughness");
       float hb = n.attrs.get_f("height_blend", 0.5f);
       float depth = n.attrs.get_f("blend_depth", 0.25f);
+      if (n.attrs.get_choice("mix_mode") == 1) {
+        material_stack_mix_two(n, M[0], T[0], T[1], R[0], R[1], alb, rgh);
+        return;
+      }
       parallel_rows(alb.h, [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
           for (int x = 0; x < alb.w; ++x) {

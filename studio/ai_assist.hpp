@@ -45,6 +45,13 @@ int ai_mesh_op(App &a, const std::string &op, const nlohmann::json &act,
 int ai_material_op(App &a, const std::string &op, const nlohmann::json &act,
                    std::string &err);
 
+// AI generation and configuration (ai_ops_generate.cpp): ai_generate_image,
+// ai_generate_texture, ai_generate_skydome, ai_generate_model, ai_ask,
+// ai_jobs, ai_job_cancel, config_set_service, config_set_defaults,
+// config_status, config_check_comfy.
+int ai_generate_op(App &a, const std::string &op, const nlohmann::json &act,
+                   std::string &err);
+
 // The asset manager (asset_ops.cpp): asset_search, asset_open, asset_tag,
 // asset_untag, asset_note, asset_trash, asset_restore, asset_rescan,
 // asset_add_root, asset_remove_root, asset_roots.

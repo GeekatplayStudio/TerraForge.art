@@ -1,5 +1,7 @@
 ﻿// Geekatplay Studio — main loop, docking layout, background evaluation
 #include "app.hpp"
+#include "ai_describe.hpp"
+#include "ai_jobs.hpp"
 #include "console.hpp"
 #include "autosave.hpp"
 #include "prefs.hpp"
@@ -201,6 +203,10 @@ void run_main() {
     draw_panel_mesh(a);
     draw_panel_material_studio(a);
     draw_panel_material_browser(a);
+    draw_panel_settings(a);
+    draw_panel_ai_generate(a);
+    draw_panel_ai_describe(a);
+    ai_jobs_service(a);
     // apply material maps from the graph to the renderer
     {
       std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);

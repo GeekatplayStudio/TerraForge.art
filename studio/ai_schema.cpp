@@ -102,6 +102,22 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    color_reflected, color_transmitted)
 - {"op":"save_material","material":"Mossy rock"}  (to the library, with thumbnail)
 - {"op":"load_material","name":"Mossy rock","open":true,"assign":false}
+- {"op":"ai_generate_texture","prompt":"wet mossy granite","apply":true,
+   "material":"Mossy rock","channel":"base color","provider":"comfyui","width":1024,"seed":0}
+   (a seamless tileable texture; apply connects it to the material's channel)
+- {"op":"ai_generate_skydome","prompt":"sunset over a fjord","apply":true}
+   (a 2:1 equirectangular sky; apply sets it as the backdrop)
+- {"op":"ai_generate_image","prompt":"...","width":1024,"height":1024}
+- {"op":"ai_generate_model","prompt":"a weathered boulder","image":"C:/ref.png","import":true,
+   "provider":"meshy"}  (text- or image-to-3D; import places it in the scene)
+- {"op":"ai_describe","prompt":"a foggy fjord at dawn...","scope":"scene"|"terrain"|"atmosphere"}
+   (the text model plans actions from the description and they are applied)
+- {"op":"ai_ask","prompt":"...","system":"...","image":"..."}  (the text model answers in the status)
+- {"op":"ai_jobs"} / {"op":"ai_job_cancel","id":3}
+- {"op":"config_set_service","service":"openai","key":"sk-...","endpoint":"","model":"gpt-4o-mini","enabled":true}
+- {"op":"config_set_defaults","text_provider":"openai","image_provider":"comfyui","model_provider":"meshy",
+   "comfy_url":"http://127.0.0.1:8188","comfy_install":"D:/ComfyUI"}
+- {"op":"config_status"} / {"op":"config_check_comfy"}
 - {"op":"asset_search","query":"mossy rock","kind":"material","limit":20}
    (the asset index: materials, meshes, textures, layouts found by name,
    folder, tag or note; ids are kind/relative-path)
