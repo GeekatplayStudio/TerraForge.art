@@ -16,6 +16,8 @@ implementation rather than three.
 
 from typing import Any, Dict, Optional
 
+from .studio_asset_tools import ASSET_TOOLS, ASSET_SIMPLE
+
 GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
     "studio_get_graph": {
         "description": "The node graph as it stands: every node with its id, "
@@ -405,6 +407,9 @@ _SIMPLE = {
     "studio_open_node_editor": "open_node_editor",
     "studio_add_primitive": "add_primitive",
 }
+# the Material Studio and the asset manager (studio_asset_tools.py)
+GRAPH_TOOLS.update(ASSET_TOOLS)
+_SIMPLE.update(ASSET_SIMPLE)
 
 
 def handle_graph_tool(tool: str, params: Dict[str, Any],

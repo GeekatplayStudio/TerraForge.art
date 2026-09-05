@@ -122,6 +122,7 @@ set(ENGINE_SOURCES
     engine/heightmap.cpp
     engine/attribute.cpp
     engine/animation.cpp
+    engine/asset_index.cpp
     engine/mesh_analysis.cpp
     engine/mesh_engines.cpp
     engine/mesh_cleanup.cpp
@@ -292,6 +293,10 @@ set(STUDIO_SOURCES
     studio/panel_material_studio.cpp
     studio/panel_material_browser.cpp
     studio/material_ui.cpp
+    studio/material_ops.cpp
+    studio/asset_store.cpp
+    studio/asset_ops.cpp
+    studio/panel_assets.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
     studio/icons.cpp
@@ -524,6 +529,12 @@ target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# The asset index: scan, tf-idf search, tags, trash, and its JSON file,
+# against a folder the test builds itself.
+add_executable(asset_tests tests/cpp/test_assets.cpp engine/asset_index.cpp)
+target_include_directories(asset_tests PRIVATE engine)
+target_link_libraries(asset_tests PRIVATE third_party_headers)
+
 # The mesh module: diagnosis, repair, reduction and the file formats, all of
 # it free of GL and of the node graph, so it tests in a console.
 add_executable(mesh_tests tests/cpp/test_mesh.cpp)
@@ -561,6 +572,7 @@ add_test(NAME UndoTests COMMAND undo_tests)
 add_test(NAME RenderTests COMMAND render_tests)
 add_test(NAME LayoutTests COMMAND layout_tests)
 add_test(NAME MeshTests COMMAND mesh_tests)
+add_test(NAME AssetTests COMMAND asset_tests)
 
 
 

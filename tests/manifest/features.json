@@ -905,6 +905,38 @@
       "description": "Two material types beyond colour: DistributionLayer, whose presence mask also places objects (a deterministic hashed dart throw with spacing, threshold and size-from-presence, the EcoSystem-material idea), and EffectorLayer, a typed influence field (pressure, wind, light, heat, moisture, custom) with strength, falloff, invert and an optional tint so it can be seen while painted - published for systems that arrive later",
       "test_file": "test_engine.cpp",
       "test_symbol": "test_material_types"
+    },
+    {
+      "id": "assets.index",
+      "area": "engine",
+      "phase": "30",
+      "description": "The asset index (engine/asset_index.cpp): scans watched roots by kind and extension, keys records as kind/relative-path, keeps tags and notes across rescans, finds a PNG beside a file as its thumbnail, searches by TF-IDF cosine over name, folders, tags, note and kind with prefix matching for words still being typed and a kind filter, trashes by moving to <root>/trash (never deleting) and restores, and round-trips through one JSON file",
+      "test_file": "test_assets.cpp",
+      "test_symbol": "test_scan_search_tags_trash"
+    },
+    {
+      "id": "assets.tokenizer",
+      "area": "engine",
+      "phase": "30",
+      "description": "Asset words: lower-cased, split on punctuation, CamelCase and letter/digit boundaries; single letters dropped; file names prettified (Moss_Rock_02 -> Moss Rock 02)",
+      "test_file": "test_assets.cpp",
+      "test_symbol": "test_tokenizer"
+    },
+    {
+      "id": "assets.tab",
+      "area": "studio",
+      "phase": "30",
+      "description": "The Assets tab of the Material Browser: a search box that reorders tiles by match, a kind filter, trash view, hover cards with tags and note, double-click opens (a material loads and opens in the studio, a mesh imports, a layout applies), right-click tags/notes/trashes/restores, and a Folders popup to add, remove and rescan roots; the material library and the layouts folder are watched by default",
+      "test_file": "test_assets.cpp",
+      "test_symbol": "test_scan_search_tags_trash"
+    },
+    {
+      "id": "assets.ops",
+      "area": "api",
+      "phase": "30",
+      "description": "Asset ops for the assistant, Python API and MCP: asset_search (selects the Assets tab with the query), asset_open, asset_tag/untag/note, asset_trash/restore, asset_rescan, asset_roots, asset_add_root/remove_root; and material ops open_material, list_materials, set_material_type, save_material, load_material - every one an MCP tool (studio_asset_tools.py)",
+      "test_file": "test_assets.cpp",
+      "test_symbol": "test_scan_search_tags_trash"
     }
   ]
 }

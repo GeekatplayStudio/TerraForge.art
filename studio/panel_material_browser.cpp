@@ -8,6 +8,7 @@
 // from the library moves the files to a trash folder rather than deleting
 // them - a browser that can lose work in one mis-click is not a browser.
 #include "app.hpp"
+#include "asset_store.hpp"
 #include "material_library.hpp"
 #include "material_ui.hpp"
 #include "panel_float.hpp"
@@ -238,6 +239,13 @@ void draw_panel_material_browser(App &a) {
     if (ImGui::BeginTabItem("Library")) {
       ImGui::BeginChild("##l", ImVec2(0, 0));
       library_tab(a, cell);
+      ImGui::EndChild();
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Assets", nullptr,
+                            assets_tab_take_focus() ? ImGuiTabItemFlags_SetSelected : 0)) {
+      ImGui::BeginChild("##a", ImVec2(0, 0));
+      draw_assets_tab(a, cell);
       ImGui::EndChild();
       ImGui::EndTabItem();
     }

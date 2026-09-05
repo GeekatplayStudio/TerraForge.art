@@ -294,6 +294,18 @@ wanted his students to have.
 - **The browser**: *Project* materials and the *Library*, thumbnails with a
   hover card showing what each is made of; double-click opens, right-click
   assigns or saves. Removing from the library moves to a trash folder.
+- **The asset manager** is the browser's third tab. Every watched folder —
+  the material library and your layouts by default, any folder of meshes or
+  textures you add — is indexed, and found by typing what a thing *is*: name,
+  the folders it sits in, the tags and the note you gave it. "mossy rock"
+  finds `Moss_Rock_02`; "mos" already does. It is a TF-IDF vector search
+  with no model and no service, deterministic and microseconds a record;
+  double-click opens (a material into the studio, a mesh as an object, a
+  layout applied), right-click tags, notes, trashes — never deletes — and
+  restores. The index is one JSON file you can read.
+- **Everything the studio and the browser do is an op** — `open_material`,
+  `set_material_type`, `save_material`, `asset_search`, `asset_tag`... — so
+  the assistant, the Python API and MCP drive them the same way you do.
 
 ### The lens, simulated
 - **One switch per camera.** Off, the lens is perfect. On, the picture goes

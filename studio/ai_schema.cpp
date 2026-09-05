@@ -86,6 +86,24 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    amount, chromatic aberration and flare are off at 0/false. Setting any
    of them turns the simulation on. It applies to the viewport, the Preview
    panel and captured images alike)
+- {"op":"open_material","material":"Mossy rock"}  (by name or node id; opens
+   the Material Studio in the Materials workspace)
+- {"op":"list_materials"}  (every project material with its type)
+- {"op":"set_material_type","material":"Mossy rock","type":"layered"}
+   (simple | pbr | mixed | layered | distribution | effector - scaffolds the
+   nodes the type needs and keeps what was connected)
+- {"op":"save_material","material":"Mossy rock"}  (to the library, with thumbnail)
+- {"op":"load_material","name":"Mossy rock","open":true,"assign":false}
+- {"op":"asset_search","query":"mossy rock","kind":"material","limit":20}
+   (the asset index: materials, meshes, textures, layouts found by name,
+   folder, tag or note; ids are kind/relative-path)
+- {"op":"asset_open","id":"material/Moss_Rock_02.gpxmat"}  (a material loads
+   and opens in the studio, a mesh imports, a layout applies)
+- {"op":"asset_tag","id":"...","tag":"lichen"}  / asset_untag / 
+  {"op":"asset_note","id":"...","text":"..."}
+- {"op":"asset_trash","id":"..."} / asset_restore  (moves, never deletes)
+- {"op":"asset_rescan"} / {"op":"asset_roots"} /
+  {"op":"asset_add_root","path":"D:/models","kind":"mesh"} / asset_remove_root
 - {"op":"import_mesh","path":"C:/models/part.stl"}
    (OBJ, STL, PLY or OFF; the file's own coordinates are kept and the object
    is sized by its transform, then analysed straight away)

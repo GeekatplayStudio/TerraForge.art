@@ -181,7 +181,9 @@ static void publish_state(App &a) {
     j["project_path"] = a.project_path;
     // so a caller can wait for an actual event rather than for the file's
     // modification time to move
-    j["eval"] = {{"running", a.eval.running.load()},
+    // the last op's one-line result, so a script can read what it did
+  j["status"] = a.status;
+  j["eval"] = {{"running", a.eval.running.load()},
                  {"serial", a.eval_serial},
                  {"done", a.eval.progress_done.load()},
                  {"total", a.eval.progress_total.load()}};
@@ -215,8 +217,11 @@ void studio_api_tick(App &a) {
     fs::remove(inbox, ec);
     if (!text.empty()) {
       std::string err;
+      // an op that reported something keeps its line; the generic one is
+      // for batches that said nothing
+      const std::string before = a.status;
       if (ai_apply_actions(a, text, err)) {
-        a.status = "API: actions applied";
+        if (a.status == before) a.status = "API: actions applied";
         log_info("api", "actions applied (" + std::to_string(text.size()) + " bytes)");
       } else {
         a.status = "API error: " + err;

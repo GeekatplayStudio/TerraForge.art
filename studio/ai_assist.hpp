@@ -40,6 +40,17 @@ int ai_layout_op(App &a, const std::string &op, const nlohmann::json &act,
 int ai_mesh_op(App &a, const std::string &op, const nlohmann::json &act,
                std::string &err);
 
+// The Material Studio and Browser (material_ops.cpp): open_material,
+// list_materials, set_material_type, save_material, load_material.
+int ai_material_op(App &a, const std::string &op, const nlohmann::json &act,
+                   std::string &err);
+
+// The asset manager (asset_ops.cpp): asset_search, asset_open, asset_tag,
+// asset_untag, asset_note, asset_trash, asset_restore, asset_rescan,
+// asset_add_root, asset_remove_root, asset_roots.
+int ai_asset_op(App &a, const std::string &op, const nlohmann::json &act,
+                std::string &err);
+
 // Viewport and surface quality (ai_ops_view.cpp): subdivision, per-patch
 // culling, height scale, planetary radius, fractal relief, displacement
 // strength, shadows, exposure. Same return convention as ai_graph_op.

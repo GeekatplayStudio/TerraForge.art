@@ -78,6 +78,20 @@ each one was a bug we already paid for. Do not regress them.
    seed checks; a DistributionLayer was the first node to fail for that
    reason. A node whose seed only acts under a non-default setting is listed
    in `seed_is_conditional` with the reason, not silently skipped.
+5. **The asset index never deletes.** `AssetIndex::trash` moves a file (and
+   its thumbnail) to `<root>/trash` and marks the record; `restore` moves it
+   back. A scan indexes the trash folder as trashed, never as live. Tags and
+   notes live only in `assets.json` - a rescan keeps them by id
+   (`kind/relative-path`), so renaming a root loses them; that is the
+   documented price of ids being paths.
+6. **Search is TF-IDF over the record's words, no model.** `tokens_of` is
+   name + up to three parent folders + tags + note + kind; a query term the
+   vocabulary has never seen still matches by prefix. Deterministic and a
+   few microseconds a record; the `embedding` slot exists for an external
+   model to fill later without any caller changing.
+7. **An op that reports keeps its status line.** The API inbox only writes
+   the generic "actions applied" when the batch said nothing, and
+   `scene_state.json` carries `status`, so a script can read what an op did.
 
 ## Mesh module
 
