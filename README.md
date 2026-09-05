@@ -289,6 +289,18 @@ wanted his students to have.
   backgrounds, a turntable — from a texture cache that re-uploads only when
   the material actually changed, so a spinning preview costs nothing and a
   browser page of thumbnails uploads each once.
+- **Every property, in Vue's tabs.** *Color* (overall tint, brightness,
+  saturation, map scale and origin), *Bump* (normal intensity, bump depth,
+  slope dependence, displacement), *Highlights* (GGX or Phong, intensity,
+  roughness, highlight colour, anisotropy), *Transparency* (amount,
+  refraction index, turn reflective with angle, flare, thin surface,
+  additive), *Reflection* (reflectivity, minimal reflectivity, angle
+  sensitivity, blur, metalness), *Translucency* (subsurface depth, balance,
+  scattering colour, backlight) and *Effects* (diffuse/ambient split,
+  luminous, contrast, shadows, coloured reflected and transmitted light).
+  Each channel has a mode — none, a picture from disk, or procedural — and
+  the terrain and the preview sphere shade from the same numbers through the
+  same GLSL, so what the sphere shows is what the ground gets.
 - **New / Save / Load** as Vue lays them out; a material changed since it
   was opened is marked *modified* and the studio asks before switching away.
 - **The browser**: *Project* materials and the *Library*, thumbnails with a

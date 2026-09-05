@@ -39,6 +39,12 @@ std::string inject_sky(const char *src) {
   };
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
   {
+    extern const char *const MATERIAL_UNIFORMS_GLSL; // renderer_matparams.cpp
+    extern const char *const MATERIAL_FN_GLSL;
+    sub("MATERIAL_UNIFORMS_PLACEHOLDER", MATERIAL_UNIFORMS_GLSL);
+    sub("MATERIAL_FN_PLACEHOLDER", MATERIAL_FN_GLSL);
+  }
+  {
     extern const char *PL_PALETTE;   // planet_shaders.cpp
     extern const char *PL_SPHERE_FN; // planet_shaders.cpp
     sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);

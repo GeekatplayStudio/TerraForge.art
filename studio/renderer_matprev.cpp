@@ -146,10 +146,7 @@ unsigned renderer_material_preview_of(const MaterialPreviewSpec &spec, int size,
   uni3(prog_matprev, "u_grade", g_grade);
   uni1(prog_matprev, "u_sat", g_saturation);
   // this material's own surface, not the terrain's
-  uni1(prog_matprev, "u_roughness", spec.roughness);
-  uni1(prog_matprev, "u_metallic", spec.metallic);
-  uni1(prog_matprev, "u_specular", spec.specular);
-  uni1(prog_matprev, "u_reflection", spec.reflection);
+  renderer_material_uniforms(prog_matprev, spec.params);
   unii(prog_matprev, "u_has_albedo", s.has_albedo ? 1 : 0);
   unii(prog_matprev, "u_has_normal", s.has_normal ? 1 : 0);
   unii(prog_matprev, "u_has_rough", s.has_rough ? 1 : 0);

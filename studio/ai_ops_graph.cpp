@@ -339,4 +339,8 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
   return ai_scene_op(a, op, act, err); // the rest live in ai_ops_scene.cpp
 }
 
+// Exposed for the material ops (material_ops.cpp): one attribute from a JSON
+// value, the same conversion set_attr uses.
+bool ai_set_attr_value(gpx::Attribute &at, const json &v) { return set_attr_value(at, v); }
+
 } // namespace studio

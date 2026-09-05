@@ -207,13 +207,7 @@ void pass_terrain(const FrameCtx &F) {
     unii(PT, "u_shadows", (shadows_ok && vc.display != 0) ? 1 : 0);
     unii(PT, "u_quality", cinematic ? 1 : 0);
     uni1(PT, "u_shadow_soft", RS.shadow_softness);
-    uni1(PT, "u_roughness", RS.mat_roughness);
-    uni1(PT, "u_metallic", RS.mat_metallic);
-    uni1(PT, "u_specular", RS.mat_specular);
-    uni1(PT, "u_reflection", RS.mat_reflection);
-    uni1(PT, "u_translucency", RS.mat_translucency);
-    uni1(PT, "u_transparency", RS.mat_transparency);
-    uni1(PT, "u_normal_strength", RS.mat_normal_strength);
+    renderer_material_uniforms(PT, RS.matp);
     upload_fog_uniforms(PT, RS, atmosphere);
     backdrop_bind(PT);
     unii(PT, "u_aov", g_aov);

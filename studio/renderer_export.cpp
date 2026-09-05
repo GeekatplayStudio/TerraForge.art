@@ -68,10 +68,7 @@ unsigned renderer_material_preview(int size, int shape, float spin) {
   uni1(prog_matprev, "u_exposure", (RS.exposure) * g_exposure_mult);
     uni3(prog_matprev, "u_grade", g_grade);
     uni1(prog_matprev, "u_sat", g_saturation);
-  uni1(prog_matprev, "u_roughness", RS.mat_roughness);
-  uni1(prog_matprev, "u_metallic", RS.mat_metallic);
-  uni1(prog_matprev, "u_specular", RS.mat_specular);
-  uni1(prog_matprev, "u_reflection", RS.mat_reflection);
+  renderer_material_uniforms(prog_matprev, RS.matp);
   unii(prog_matprev, "u_has_albedo", has_albedo ? 1 : 0);
   unii(prog_matprev, "u_has_normal", has_normal_map ? 1 : 0);
   unii(prog_matprev, "u_has_rough", has_rough_map ? 1 : 0);

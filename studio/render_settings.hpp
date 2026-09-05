@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — environment / render settings shared between the
 // renderer and the Environment panel.
 #pragma once
+#include "gpx/material_params.hpp"
 #include <string>
 #include <utility>
 #include <vector>
@@ -166,6 +167,9 @@ struct RenderSettings {
   float mat_transparency = 0.f;   // surface alpha (glassy objects)
   float mat_displacement = 0.f;   // extra displacement from a map, world units
   float mat_normal_strength = 1.f;
+  // every property of the terrain's material (the fields above are the
+  // subset older code reads; this is the whole set the shaders get)
+  gpx::MaterialParams matp;
   unsigned long long map_normal_node = 0;
   unsigned long long map_roughness_node = 0;
   unsigned long long map_displacement_node = 0;
@@ -355,8 +359,11 @@ struct MaterialPreviewSpec {
   unsigned long long key = 0, version = 0;
   const void *albedo = nullptr, *normal = nullptr, *rough = nullptr; // gpx::TextureRGBA*
   float roughness = 0.85f, metallic = 0.f, specular = 0.35f, reflection = 0.25f;
+  gpx::MaterialParams params; // the whole surface (renderer_matparams.cpp)
   int background = 0; // 0 dark, 1 grey, 2 light
 };
+// Upload a material's properties to a lit program (renderer_matparams.cpp).
+void renderer_material_uniforms(unsigned prog, const gpx::MaterialParams &m);
 unsigned renderer_material_preview_of(const MaterialPreviewSpec &spec, int size,
                                       int shape, float spin);
 // The same, copied into a texture of its own that survives the next call.

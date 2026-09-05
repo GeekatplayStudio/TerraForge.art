@@ -12,6 +12,8 @@ using nlohmann::json;
 
 namespace studio {
 
+bool ai_set_attr_value(gpx::Attribute &at, const json &v); // ai_ops_graph.cpp
+
 namespace {
 
 gpx::Node *resolve_material(App &a, const json &act, std::string &err) {
@@ -84,6 +86,29 @@ int ai_material_op(App &a, const std::string &op, const json &act,
     undo_push(a, std::string("material type: ") + material_type_name(type));
     material_set_type(a, m, type);
     a.status = "'" + m->attrs.get_s("name") + "' is now " + material_type_name(type);
+    return 1;
+  }
+
+  if (op == "set_material") {
+    // one property of the material by its attribute key: ior, tint,
+    // roughness, luminous... anything material_params_declare puts there
+    gpx::Node *m = resolve_material(a, act, err);
+    if (!m) return 0;
+    std::string key = act.value("key", std::string());
+    gpx::Attribute *at = m->attrs.find(key);
+    if (!at || !act.contains("value")) {
+      err = "set_material needs 'key' (a MaterialOutput property) and 'value'";
+      return 0;
+    }
+    undo_push(a, "material " + key);
+    if (!ai_set_attr_value(*at, act["value"])) {
+      err = "set_material: '" + key + "' cannot take " + act["value"].dump();
+      return 0;
+    }
+    a.graph.mark_dirty(m->id);
+    a.request_eval();
+    a.uploaded_serial = 0;
+    a.status = "'" + m->attrs.get_s("name") + "' " + key + " = " + act["value"].dump();
     return 1;
   }
 

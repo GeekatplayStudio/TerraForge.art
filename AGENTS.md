@@ -89,7 +89,16 @@ each one was a bug we already paid for. Do not regress them.
    vocabulary has never seen still matches by prefix. Deterministic and a
    few microseconds a record; the `embedding` slot exists for an external
    model to fill later without any caller changing.
-7. **An op that reports keeps its status line.** The API inbox only writes
+7. **A material property is declared once.** `material_params_declare`
+   (engine/material_params.cpp) puts it on the MaterialOutput node with its
+   label, range, group and tooltip; `material_params_from` reads it into
+   `MaterialParams` with clamping and a default for files that predate it;
+   `renderer_material_uniforms` uploads it; the studio's tabs draw whatever
+   is in the group. Adding a property means those three functions and the
+   shared GLSL in renderer_matparams.cpp - never a hard-coded slider list.
+   Every lit shader takes the material through the MATERIAL_*_PLACEHOLDER
+   snippets, so the preview sphere and the terrain cannot disagree.
+8. **An op that reports keeps its status line.** The API inbox only writes
    the generic "actions applied" when the batch said nothing, and
    `scene_state.json` carries `status`, so a script can read what an op did.
 

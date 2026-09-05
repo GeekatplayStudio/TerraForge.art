@@ -121,6 +121,7 @@ set(ENGINE_SOURCES
     src/mcp_bridge.cpp
     engine/heightmap.cpp
     engine/attribute.cpp
+    engine/material_params.cpp
     engine/animation.cpp
     engine/asset_index.cpp
     engine/mesh_analysis.cpp
@@ -294,6 +295,8 @@ set(STUDIO_SOURCES
     studio/panel_material_browser.cpp
     studio/material_ui.cpp
     studio/material_ops.cpp
+    studio/renderer_matparams.cpp
+    studio/panel_material_tabs.cpp
     studio/asset_store.cpp
     studio/asset_ops.cpp
     studio/panel_assets.cpp

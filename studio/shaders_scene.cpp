@@ -288,10 +288,11 @@ uniform sampler2D u_albedo;
 uniform sampler2D u_normal_map;
 uniform sampler2D u_rough_map;
 uniform int u_has_albedo, u_has_normal, u_has_rough;
-uniform float u_roughness, u_metallic, u_specular, u_reflection;
+MATERIAL_UNIFORMS_PLACEHOLDER
 uniform vec3 u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_exposure, u_sun_intensity, u_ambient;
 const float PI = 3.14159265;
+MATERIAL_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -308,16 +309,18 @@ void main(){
     vec3 nm = texture(u_normal_map, v_uv).xyz * 2.0 - 1.0;
     vec3 T = normalize(cross(vec3(0,1,0), N) + vec3(1e-4));
     vec3 B = cross(N, T);
+    nm.xy *= u_normal_strength;
     N = normalize(T*nm.x + B*nm.y + N*max(nm.z,0.05));
   }
+  albedo = mat_albedo(albedo);
   float rough = clamp(u_roughness * ((u_has_rough == 1) ?
                       texture(u_rough_map, v_uv).r*2.0 : 1.0), 0.03, 1.0);
   vec3 V = vec3(0,0,1);
   vec3 L = normalize(u_sun);
   vec3 H = normalize(L+V);
-  float NdL = max(dot(N,L),0.0), NdV = max(dot(N,V),1e-4);
+  float NdL = mat_ndl(dot(N,L)), NdV = max(dot(N,V),1e-4);
   float NdH = max(dot(N,H),0.0), VdH = max(dot(V,H),0.0);
-  vec3 F0 = mix(vec3(0.08*u_specular), albedo, u_metallic);
+  vec3 F0 = mat_f0(albedo);
   float a = rough*rough, a2 = a*a;
   float dnm = (NdH*NdH*(a2-1.0)+1.0);
   float D = a2 / max(PI*dnm*dnm, 1e-6);
@@ -325,13 +328,17 @@ void main(){
   float G = (NdL/(NdL*(1.0-k)+k)) * (NdV/(NdV*(1.0-k)+k));
   vec3 F = F0 + (1.0-F0)*pow(1.0-VdH,5.0);
   vec3 spec = D*G*F/max(4.0*NdL*NdV,1e-4);
+  if (u_m_phong == 1) spec = F * mat_phong(NdH, rough);
   vec3 kd = (1.0-F)*(1.0-u_metallic);
   vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
-  vec3 col = (kd*albedo/PI + spec) * u_sun_color * u_sun_intensity * NdL
-           + albedo * sky * (0.45 + 0.55*N.y);
+  vec3 sun_c = u_sun_color * u_sun_intensity;
+  vec3 col = (kd*albedo/PI + spec) * sun_c * NdL * (u_m_diffuse / 0.6)
+           + albedo * sky * (0.45 + 0.55*N.y) * (u_m_ambient / 0.4);
   vec3 R = reflect(-V, N);
   vec3 refl = mix(u_sky_horizon, u_sky_zenith, clamp(R.y*0.5+0.5,0.0,1.0));
-  col += refl * u_reflection * (1.0-rough) * (F0.g + (1.0-F0.g)*pow(1.0-NdV,5.0));
+  vec3 reflection = refl * u_reflection * (1.0-rough) * mat_fresnel(NdV, F0.g);
+  if (u_m_color_reflected == 1) reflection *= albedo;
+  col += reflection + mat_translucent(albedo, V, L, sun_c) + u_m_luminous;
   col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, 1.0);
 })GLSL";

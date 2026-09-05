@@ -54,6 +54,9 @@ void material_channel_row(App &a, gpx::Node *mat, const char *port,
                           const char *human);
 // The surface sliders on the MaterialOutput. Returns true when one moved.
 bool material_surface_ui(App &a, gpx::Node *mat, float label_w);
+// The studio's property tabs (panel_material_tabs.cpp): every group of the
+// MaterialOutput's attributes as a tab, channel modes, and the type's own.
+void material_tabs_ui(App &a, gpx::Node *mat);
 
 // The studio's editing state: which material is open, and whether it has
 // changed since it was opened or last saved - so switching away can ask.

@@ -397,6 +397,7 @@ void run_main() {
           rs.mat_transparency = at.get_f("transparency", rs.mat_transparency);
           rs.mat_normal_strength = at.get_f("normal_strength", rs.mat_normal_strength);
           rs.mat_displacement = at.get_f("displacement", rs.mat_displacement);
+          rs.matp = gpx::material_params_from(at);
         } else if (rs.terrain_material_mode == 1) {
           albedo = nullptr; // procedural in-shader material
         } else if (rs.terrain_material_mode == 2) {

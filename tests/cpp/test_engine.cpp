@@ -1,10 +1,11 @@
-﻿// Geekatplay Studio â€” engine test suite (graph, nodes, serialization)
+// Geekatplay Studio â€” engine test suite (graph, nodes, serialization)
 #include "gpx/camera_math.hpp"
 #include "gpx/hydrology.hpp"
 #include "gpx/planet_math.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/metanode.hpp"
 #include <vector>
+#include "gpx/material_params.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/parallel.hpp"
 #include "gpx/serialization.hpp"
@@ -3098,6 +3099,62 @@ static void test_basalt() {
 // A DistributionLayer must put objects only where its presence says, and put
 // the same objects there every time; an EffectorLayer must publish exactly
 // the field its strength, falloff and invert describe.
+// Every surface property a material carries (engine/material_params.cpp):
+// a fresh MaterialOutput reads as the defaults, an edit reads back clamped,
+// and the whole set survives the graph's JSON.
+static void test_material_params() {
+  std::printf("material params...\n");
+  gpx::Graph g;
+  gpx::Node *mat = g.add_node("MaterialOutput");
+  CHECK(mat != nullptr, "MaterialOutput exists");
+  gpx::MaterialParams d = gpx::material_params_from(mat->attrs);
+  CHECK(d.roughness == 0.85f && d.specular == 0.35f && d.reflection == 0.25f,
+        "a fresh material has the classic defaults");
+  CHECK(d.ior == 1.f && d.diffuse == 0.6f && d.ambient == 0.4f && d.contrast == 1.f,
+        "Vue's defaults: air, 60/40 lighting, unit contrast");
+  CHECK(d.tint[0] == 1.f && d.luminous == 0.f && !d.sss && d.cast_shadows,
+        "white tint, not luminous, no scattering, casts shadows");
+  // the groups are the editor's tabs
+  const char *tabs[] = {"Color", "Bump", "Highlights", "Transparency",
+                        "Reflection", "Translucency", "Effects"};
+  for (const char *t : tabs) {
+    int n = 0;
+    for (const gpx::Attribute &at : mat->attrs.items)
+      if (at.group == t) ++n;
+    CHECK(n >= 3, (std::string("the ") + t + " tab has properties").c_str());
+  }
+  // edits read back, out-of-range values are clamped
+  mat->attrs.find("ior")->f = 1.52f;
+  mat->attrs.find("tint")->col[0] = 0.2f;
+  mat->attrs.find("contrast")->f = 99.f;
+  mat->attrs.find("highlight_model")->i = 1;
+  mat->attrs.find("backlight")->b = true;
+  gpx::MaterialParams e = gpx::material_params_from(mat->attrs);
+  CHECK(std::fabs(e.ior - 1.52f) < 1e-6f, "the refraction index reads back");
+  CHECK(std::fabs(e.tint[0] - 0.2f) < 1e-6f, "the tint reads back");
+  CHECK(e.contrast == 4.f, "contrast is clamped to its range");
+  CHECK(e.highlight_model == 1 && e.backlight, "choice and flag read back");
+  // through the JSON and back
+  std::string js = gpx::graph_to_json(g);
+  gpx::Graph g2;
+  std::string err;
+  CHECK(gpx::graph_from_json(g2, js, err), "the graph round-trips");
+  gpx::Node *m2 = nullptr;
+  for (auto &n : g2.nodes)
+    if (n->type == "MaterialOutput") m2 = n.get();
+  CHECK(m2 != nullptr, "the material is back");
+  if (m2) {
+    gpx::MaterialParams r = gpx::material_params_from(m2->attrs);
+    CHECK(std::fabs(r.ior - 1.52f) < 1e-6f && std::fabs(r.tint[0] - 0.2f) < 1e-6f &&
+              r.highlight_model == 1 && r.backlight,
+          "every edited property survives save and load");
+  }
+  // an attribute set with none of the keys reads as the defaults
+  gpx::AttrSet empty;
+  gpx::MaterialParams z = gpx::material_params_from(empty);
+  CHECK(z.roughness == 0.85f && z.ior == 1.f, "an old file without the keys reads as defaults");
+}
+
 static void test_material_types() {
   std::printf("material types...\n");
   {
@@ -4729,6 +4786,7 @@ int main() {
   test_erosion_layers();
   test_material_stack();
   test_material_types();
+  test_material_params();
   test_material_layers();
   test_fractal_color();
   test_vue_fractals();

@@ -937,6 +937,30 @@
       "description": "Asset ops for the assistant, Python API and MCP: asset_search (selects the Assets tab with the query), asset_open, asset_tag/untag/note, asset_trash/restore, asset_rescan, asset_roots, asset_add_root/remove_root; and material ops open_material, list_materials, set_material_type, save_material, load_material - every one an MCP tool (studio_asset_tools.py)",
       "test_file": "test_assets.cpp",
       "test_symbol": "test_scan_search_tags_trash"
+    },
+    {
+      "id": "materials.params",
+      "area": "engine",
+      "phase": "31",
+      "description": "Every surface property a material carries, declared on MaterialOutput in Vue's tab groups (Color: tint, brightness, saturation, map scale, origin; Bump: normal intensity, bump depth, slope dependence, invert, displacement depth and smoothing; Highlights: GGX/Phong model, intensity, roughness, highlight colour, anisotropy; Transparency: amount, refraction index, turn reflective with angle, fade out, thin surface, additive, flare; Reflection: reflectivity, minimal reflectivity, angle sensitivity, blur, metalness; Translucency: amount, subsurface scattering with depth, balance and colour, backlight; Effects: diffuse/ambient split, luminous with colour, contrast, casts shadows, colour reflected and transmitted light) and read into one MaterialParams struct with clamping and defaults for old files",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_params"
+    },
+    {
+      "id": "materials.shading",
+      "area": "studio",
+      "phase": "31",
+      "description": "The terrain and the material preview shade from the same MaterialParams through one shared GLSL snippet (renderer_matparams.cpp): tint/gain/saturation on the albedo, contrast on the light falloff, F0 from highlight intensity, colour and refraction index, Fresnel with minimal reflectivity and angle sensitivity, Phong as an alternative highlight model, translucency with scattering colour and backlight, luminous emission, diffuse/ambient balance, colour-reflected light, bump depth and invert on the normal map",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_params"
+    },
+    {
+      "id": "materials.tabs",
+      "area": "studio",
+      "phase": "31",
+      "description": "The Material Studio's properties as Vue's tabs - Color, Bump, Highlights, Transparency, Reflection, Translucency, Effects - each control generated from the node's attribute (label, range, tooltip in one place), every channel with a mode combo (None disconnects, Picture adds a TextureFile from a file dialog, Procedural adds a FractalColor) and an edit button to the node; Layers, Population, Effector or Mix tabs appear with the material's type and edit the layer or driving node in place",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_material_params"
     }
   ]
 }

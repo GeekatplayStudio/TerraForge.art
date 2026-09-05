@@ -4,6 +4,7 @@
 // one node that can be assigned to a scene object. The rest are Substance
 // Designer style channel operators.
 #include "gpx/node_graph.hpp"
+#include "gpx/material_params.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
 
@@ -26,19 +27,10 @@ REGISTER_NODE(
       n.add_in("ambient occlusion", DataType::Texture, true);
       n.add_out("preview", DataType::Texture);
       add_text(n.attrs, "name", "Material name", "Material", "Identity");
-      add_float(n.attrs, "roughness", "Roughness", 0.85f, 0.02f, 1.f, "Defaults")
-          .tooltip = "Used where no roughness map is connected, and as a\n"
-                     "multiplier for the map.";
-      add_float(n.attrs, "metallic", "Metallic", 0.f, 0.f, 1.f, "Defaults");
-      add_float(n.attrs, "specular", "Specular", 0.35f, 0.f, 1.f, "Defaults");
-      add_float(n.attrs, "reflection", "Sky reflection", 0.25f, 0.f, 1.f, "Defaults");
-      add_float(n.attrs, "translucency", "Translucency", 0.f, 0.f, 1.f, "Defaults");
-      add_float(n.attrs, "transparency", "Transparency", 0.f, 0.f, 1.f, "Defaults");
-      add_float(n.attrs, "normal_strength", "Normal strength", 1.f, 0.f, 4.f,
-                "Defaults");
-      add_float(n.attrs, "displacement", "Displacement", 0.f, 0.f, 0.1f, "Defaults")
-          .tooltip = "Height map displacement applied to the surface, in\n"
-                     "world units.";
+      // every surface property, grouped by the Material Editor's tabs
+      // (engine/material_params.cpp); the renderers read them through
+      // material_params_from()
+      material_params_declare(n.attrs);
     },
     [](Node &n) {
       // the preview output is simply the base color, so the node shows a

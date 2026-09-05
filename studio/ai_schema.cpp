@@ -92,6 +92,14 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"set_material_type","material":"Mossy rock","type":"layered"}
    (simple | pbr | mixed | layered | distribution | effector - scaffolds the
    nodes the type needs and keeps what was connected)
+- {"op":"set_material","material":"Mossy rock","key":"ior","value":1.52}
+   (any property of the material: tint [r,g,b,a], color_gain, saturation,
+   map_scale, normal_strength, bump_depth, displacement, highlight_model
+   (0 GGX, 1 Phong), specular, roughness, highlight_color, transparency,
+   ior, reflect_with_angle, reflection, reflect_min, reflect_angle,
+   metallic, translucency, sss, sss_depth, sss_color, backlight, diffuse,
+   ambient, luminous, luminous_color, contrast, cast_shadows,
+   color_reflected, color_transmitted)
 - {"op":"save_material","material":"Mossy rock"}  (to the library, with thumbnail)
 - {"op":"load_material","name":"Mossy rock","open":true,"assign":false}
 - {"op":"asset_search","query":"mossy rock","kind":"material","limit":20}

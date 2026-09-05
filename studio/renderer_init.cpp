@@ -152,7 +152,7 @@ bool renderer_init() {
   std::string fs_mesh = inject_sky(FS_MESH); // fog and the pass writer
   prog_mesh = link_prog(VS_MESH, fs_mesh.c_str());
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
-  prog_matprev = link_prog(VS_MATPREV, FS_MATPREV);
+  prog_matprev = link_prog(VS_MATPREV, inject_sky(FS_MATPREV).c_str());
   make_preview_shapes();
   planet_renderer_init();
 

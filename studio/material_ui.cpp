@@ -156,6 +156,7 @@ MaterialPreviewSpec material_preview_spec(App &a, gpx::Node *mat) {
   s.metallic = mat->attrs.get_f("metallic", 0.f);
   s.specular = mat->attrs.get_f("specular", 0.35f);
   s.reflection = mat->attrs.get_f("reflection", 0.25f);
+  s.params = gpx::material_params_from(mat->attrs);
   s.background = material_studio().background;
   return s;
 }
@@ -188,13 +189,14 @@ bool material_surface_ui(App &a, gpx::Node *mat, float label_w) {
     if (ImGui::SliderFloat(label, &at->f, lo, hi)) changed = true;
   };
   slider("roughness", "Roughness", 0.02f, 1.f);
-  slider("metallic", "Metallic", 0.f, 1.f);
-  slider("specular", "Specular", 0.f, 1.f);
-  slider("reflection", "Sky reflection", 0.f, 1.f);
+  slider("metallic", "Metalness", 0.f, 1.f);
+  slider("specular", "Highlight intensity", 0.f, 1.f);
+  slider("reflection", "Reflectivity", 0.f, 1.f);
   slider("translucency", "Translucency", 0.f, 1.f);
   slider("transparency", "Transparency", 0.f, 1.f);
-  slider("normal_strength", "Normal strength", 0.f, 4.f);
+  slider("normal_strength", "Normal intensity", 0.f, 4.f);
   slider("displacement", "Displacement", 0.f, 0.1f);
+  slider("luminous", "Luminous", 0.f, 2.f);
   if (changed) {
     a.graph.mark_dirty(mat->id);
     a.request_eval();

@@ -27,8 +27,7 @@ uniform vec4 u_lights[8];
 uniform vec3 u_light_col[8];
 uniform vec4 u_light_dir[8]; // spot axis xyz + cos(half cone); w<-1 = point
 // material
-uniform float u_roughness, u_metallic, u_specular, u_reflection;
-uniform float u_translucency, u_transparency, u_normal_strength;
+MATERIAL_UNIFORMS_PLACEHOLDER
 uniform float u_planet_radius; // the sphere the tile lies on, 0 = flat
 // the built-in palette's frame: the water level in world units, the site's
 // |latitude|/90 for the snow line, and where the snow starts (0..1 of the
@@ -169,6 +168,7 @@ float cloud_shadow(vec3 world){
   return 1.0 - d * 0.65;
 }
 
+MATERIAL_FN_PLACEHOLDER
 void main(){
   vec3 N = get_normal(v_uv);
   // steepness in the tile's own frame, before the planet rotation below: on
@@ -219,6 +219,7 @@ void main(){
     float var = gp_detail(v_uv, 5.0, 2, 0.5);
     albedo = pl_palette(t, slope_local, u_lat, 0.0, u_snow_line, var);
   }
+  albedo = mat_albedo(albedo);
   float rough = clamp(u_roughness * (u_has_rough == 1 ?
                       texture(u_rough_map, v_uv).r * 2.0 : 1.0), 0.03, 1.0);
   if (u_surf_rough_on == 1){
@@ -244,7 +245,7 @@ void main(){
   vec3 V = normalize(u_cam - v_world);
   vec3 L = u_sun;
   vec3 H = normalize(L + V);
-  float NdL = max(dot(N, L), 0.0);
+  float NdL = mat_ndl(dot(N, L));
   float NdV = max(dot(N, V), 1e-4);
   float NdH = max(dot(N, H), 0.0);
   float VdH = max(dot(V, H), 0.0);
@@ -252,7 +253,7 @@ void main(){
   float shadow = shadow_factor(v_world + N * 0.002) * cloud_shadow(v_world);
   float ao = terrain_ao(v_uv, h);
 
-  vec3 F0 = mix(vec3(0.08 * u_specular), albedo, u_metallic);
+  vec3 F0 = mat_f0(albedo);
   float a = rough * rough;
   float a2 = a * a;
   float dnm = (NdH*NdH*(a2-1.0)+1.0);
@@ -261,24 +262,26 @@ void main(){
   float G = (NdL/(NdL*(1.0-k)+k)) * (NdV/(NdV*(1.0-k)+k));
   vec3 F = F0 + (1.0 - F0) * pow(1.0 - VdH, 5.0);
   vec3 spec = D * G * F / max(4.0 * NdL * NdV, 1e-4);
+  if (u_m_phong == 1) spec = F * mat_phong(NdH, rough);
 
   vec3 sun_c = u_sun_color * u_sun_intensity;
   vec3 kd = (1.0 - F) * (1.0 - u_metallic);
-  vec3 direct = (kd * albedo / PI + spec) * sun_c * NdL * shadow;
+  vec3 direct = (kd * albedo / PI + spec) * sun_c * NdL * shadow * (u_m_diffuse / 0.6);
 
   vec3 sky_amb = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
   vec3 ambient = albedo * sky_amb * (0.5 + 0.5*N.y) * ao;
   ambient += albedo * vec3(0.25,0.22,0.18) * 0.25 * u_ambient * (1.0 - N.y) * ao;
+  ambient *= u_m_ambient / 0.4;
 
   // sky reflection
   vec3 R = reflect(-V, N);
   vec3 refl = sky_color(R, u_sky_zenith, u_sky_horizon, u_sun, u_sun_color, u_atmo);
-  float fres = F0.g + (1.0 - F0.g) * pow(1.0 - NdV, 5.0);
+  float fres = mat_fresnel(NdV, F0.g);
   vec3 reflection = refl * fres * u_reflection * (1.0 - rough) * ao;
+  if (u_m_color_reflected == 1) reflection *= albedo;
 
   // translucency (light bleeding through thin material toward the viewer)
-  float trans_term = pow(max(dot(V, -L), 0.0), 3.0);
-  vec3 translucent = albedo * u_translucency * trans_term * sun_c * 0.6;
+  vec3 translucent = mat_translucent(albedo, V, L, sun_c);
 
   // scene point lights: diffuse with a smooth radius falloff; cheap and
   // enough for lanterns, windows and fill lights
@@ -300,7 +303,7 @@ void main(){
     direct += kd * albedo / PI * u_light_col[li] * nl * att * cone;
   }
 
-  vec3 col = direct + ambient + reflection + translucent;
+  vec3 col = direct + ambient + reflection + translucent + u_m_luminous;
   float d = length(v_world - u_cam);
   float fog_f; vec3 fog_c;
   fog_terms(v_world, u_cam, d, u_hscale, u_sun, u_sun_color, fog_f, fog_c);

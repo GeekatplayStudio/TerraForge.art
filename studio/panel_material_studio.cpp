@@ -9,7 +9,6 @@
 #include "app.hpp"
 #include "gpx/serialization.hpp"
 #include "material_library.hpp"
-#include "material_stack_ops.hpp"
 #include "material_ui.hpp"
 #include "panel_float.hpp"
 #include "render_settings.hpp"
@@ -168,59 +167,10 @@ void preview(App &a, MaterialStudioState &st, gpx::Node *mat, float side) {
                       "double-click to jump to its node.");
 }
 
-void layers_ui(App &a, gpx::Node *mat) {
-  std::vector<gpx::Node *> layers = collect_layers(a.graph, mat);
-  ImGui::SeparatorText("Layers");
-  if (ImGui::SmallButton("Add layer")) {
-    undo_push_locked(a, "add material layer");
-    add_material_layer(a.graph, mat, layers);
-    a.graph_layout_serial++;
-    a.request_eval();
-    return;
-  }
-  for (size_t i = 0; i < layers.size(); ++i) {
-    gpx::Node *l = layers[i];
-    ImGui::PushID((int)i);
-    std::string name = layer_display_name(l, i);
-    if (ImGui::Selectable(name.c_str(), a.selected_node == l->id))
-      a.selected_node = l->id;
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.55f);
-    ImGui::TextDisabled("%s", layer_presence_summary(l).c_str());
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Its presence rules. Select the layer and edit them\n"
-                        "in Properties, or double-click to open its node.");
-    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
-      graph_focus_node(a, l->id);
-    ImGui::PopID();
-  }
-  if (layers.empty()) ImGui::TextDisabled("No layers yet.");
-}
-
 void properties(App &a, gpx::Node *mat) {
-  ImGui::SeparatorText("Channels");
-  if (ImGui::BeginTable("chan", 2, ImGuiTableFlags_SizingStretchProp)) {
-    material_channel_row(a, mat, "base color", "Base color");
-    material_channel_row(a, mat, "normal", "Normal");
-    material_channel_row(a, mat, "roughness", "Roughness");
-    material_channel_row(a, mat, "metallic", "Metallic");
-    material_channel_row(a, mat, "height", "Height / displacement");
-    material_channel_row(a, mat, "ambient occlusion", "Ambient occlusion");
-    ImGui::EndTable();
-  }
-  ImGui::SeparatorText("Surface");
-  material_surface_ui(a, mat, 130.f);
-  int type = material_type_of(a.graph, mat);
-  if (type == MAT_LAYERED) layers_ui(a, mat);
-  if (type == MAT_DISTRIBUTION || type == MAT_EFFECTOR) {
-    gpx::Node *src = a.graph.upstream_node(*mat, "base color");
-    if (src) {
-      ImGui::SeparatorText(type == MAT_DISTRIBUTION ? "Population" : "Effector");
-      node_properties_ui(a, src->id, true);
-    }
-  }
-  ImGui::Spacing();
-  if (ImGui::Button("Open in the node editor", ImVec2(-1, 0)))
-    graph_focus_node(a, mat->id);
+  // Vue's tabs: Color, Bump, Highlights, Transparency, Reflection,
+  // Translucency, Effects, and the type's own tab (panel_material_tabs.cpp)
+  material_tabs_ui(a, mat);
 }
 
 } // namespace

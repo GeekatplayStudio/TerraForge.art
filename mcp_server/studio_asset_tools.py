@@ -35,6 +35,16 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
                        "pbr, mixed, layered, distribution or effector.",
         "params": {"material": "str|int", "type": "str"},
     },
+    "studio_set_material": {
+        "description": "Set one property of a material by key: tint, "
+                       "color_gain, saturation, roughness, specular, "
+                       "highlight_model, highlight_color, transparency, ior, "
+                       "reflection, reflect_min, reflect_angle, metallic, "
+                       "translucency, sss_color, backlight, diffuse, ambient, "
+                       "luminous, contrast, cast_shadows... (the Material "
+                       "Studio's tabs).",
+        "params": {"material": "str|int", "key": "str", "value": "any"},
+    },
     "studio_save_material": {
         "description": "Save a material to the library with a rendered "
                        "thumbnail.",
@@ -107,6 +117,7 @@ ASSET_SIMPLE = {
     "studio_open_material": "open_material",
     "studio_list_materials": "list_materials",
     "studio_set_material_type": "set_material_type",
+    "studio_set_material": "set_material",
     "studio_save_material": "save_material",
     "studio_load_material": "load_material",
     "studio_asset_search": "asset_search",
