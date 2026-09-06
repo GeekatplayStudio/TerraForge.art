@@ -42,8 +42,34 @@ enum class Icon {
   Group, Null, Expression, Modifier, Bake,
   // viewport helpers
   Fit, Snap, Magnet,
+  // animation: a key diamond (the animate toggle beside a property), a
+  // sculpt brush set, and the view arrangement
+  Key, Raise, Flatten, Smooth, Terrace, Noise, Erase, Console, Views,
+  // the universal gizmo: arrows and a ring in one
+  Transform,
   Count
 };
+
+// Cinema 4D's colour code, which is functional rather than decorative:
+// blue for geometry, green for generators, purple for deformers, orange
+// for tools and systems, yellow for lights, teal for cameras and views,
+// red for record and delete, and the plain ink for everything neutral.
+// The whole application reads the same code, so a purple icon is always
+// a deformer wherever it appears.
+namespace icon_hue {
+ImU32 geometry();
+ImU32 generator();
+ImU32 deformer();
+ImU32 tool();
+ImU32 light();
+ImU32 camera();
+ImU32 sky();
+ImU32 record();
+ImU32 neutral();
+} // namespace icon_hue
+
+// The functional colour of an icon, per the code above.
+ImU32 icon_color(Icon ic);
 
 // The palette icon sizes, small / medium / large: {18, 26, 36}.
 const int *icon_size_ladder();
@@ -51,12 +77,21 @@ const int *icon_size_ladder();
 // indexes the ladder).
 float icon_toolbar_size();
 
-// Paints an icon into the current window at `centre`, `size` pixels across.
+// Paints an icon into the current window at `centre`, `size` pixels across,
+// in one colour.
 void icon_draw(ImDrawList *dl, Icon ic, ImVec2 centre, float size, ImU32 col);
+// The same, in two tones: `base` for the lines and `hue` for the part that
+// carries the meaning. Pass icon_color(ic) for the code colour.
+void icon_draw_tinted(ImDrawList *dl, Icon ic, ImVec2 centre, float size,
+                      ImU32 base, ImU32 hue);
 
-// An icon button. `size` is the square button edge; 0 means the toolbar
-// size plus the frame padding. Returns true when clicked. `tip` is shown on
-// hover — always give one, since an icon without a name is a puzzle.
+// An icon button, drawn as Cinema 4D draws a palette button: a raised tile
+// a shade lighter than the panel, the glyph in its functional colour, and -
+// when the tool is on - an accent frame and a warm fill behind it. The
+// glyph keeps its colour in every state, so the code stays readable.
+// `size` is the square button edge; 0 means the toolbar size plus the frame
+// padding. Returns true when clicked. `tip` is shown on hover — always give
+// one, since an icon without a name is a puzzle.
 bool IconButton(Icon ic, const char *id, const char *tip, bool active = false,
                 float size = 0.f);
 

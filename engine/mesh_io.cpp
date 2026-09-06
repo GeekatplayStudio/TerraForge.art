@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <sstream>
 
 namespace gpx {
@@ -30,12 +31,92 @@ void add_polygon(TriMesh &m, const std::vector<uint32_t> &poly) {
   }
 }
 
+// The MTL beside an OBJ: material name -> its diffuse picture and colour.
+struct MtlEntry { std::string map; float kd[3] = {1.f, 1.f, 1.f}; };
+std::map<std::string, MtlEntry> load_mtl(const std::string &path) {
+  std::map<std::string, MtlEntry> out;
+  std::ifstream f(path);
+  if (!f) return out;
+  std::string line, cur;
+  while (std::getline(f, line)) {
+    std::istringstream ss(line);
+    std::string key;
+    ss >> key;
+    if (key == "newmtl") { ss >> cur; out[cur]; }
+    else if (key == "map_Kd" && !cur.empty()) {
+      // the last token is the file; earlier ones are options (-s, -o...)
+      std::string tok, last;
+      while (ss >> tok) last = tok;
+      // a path with spaces: everything after the keyword when no option was given
+      size_t p = line.find("map_Kd");
+      std::string rest = p == std::string::npos ? last : line.substr(p + 6);
+      while (!rest.empty() && (rest[0] == ' ' || rest[0] == '\t')) rest.erase(0, 1);
+      while (!rest.empty() && (rest.back() == '\r' || rest.back() == ' ')) rest.pop_back();
+      out[cur].map = rest.empty() || rest[0] == '-' ? last : rest;
+    } else if (key == "Kd" && !cur.empty()) {
+      ss >> out[cur].kd[0] >> out[cur].kd[1] >> out[cur].kd[2];
+    }
+  }
+  return out;
+}
+
 bool load_obj(const std::string &path, TriMesh &m, std::string &err) {
   std::ifstream f(path);
   if (!f) {
     err = "cannot open " + path;
     return false;
   }
+  const std::string dir = [&] {
+    size_t s = path.find_last_of("/\\");
+    return s == std::string::npos ? std::string() : path.substr(0, s);
+  }();
+  std::vector<float> pos, tex;              // as the file has them
+  std::map<std::string, MtlEntry> mtl;
+  std::map<std::string, int> image_of;      // material name -> TriMesh image
+  // a vertex per (position, texture coordinate) pair, so a corner that
+  // uses another uv at the same point gets its own vertex
+  std::map<std::pair<long, long>, uint32_t> split;
+  auto emit = [&](long vi, long ti) -> uint32_t {
+    auto key = std::make_pair(vi, ti);
+    auto it = split.find(key);
+    if (it != split.end()) return it->second;
+    uint32_t idx = (uint32_t)m.vert_count();
+    m.v.insert(m.v.end(), pos.begin() + vi * 3, pos.begin() + vi * 3 + 3);
+    if (ti >= 0 && (size_t)ti * 2 + 1 < tex.size()) {
+      if (m.uv.size() != (size_t)idx * 2) m.uv.resize((size_t)idx * 2, 0.f);
+      m.uv.push_back(tex[(size_t)ti * 2]);
+      m.uv.push_back(1.f - tex[(size_t)ti * 2 + 1]); // OBJ's v runs up
+    } else if (!m.uv.empty()) {
+      m.uv.push_back(0.f);
+      m.uv.push_back(0.f);
+    }
+    split.emplace(key, idx);
+    return idx;
+  };
+  auto begin_part = [&](const std::string &name) {
+    if (!m.parts.empty() && m.parts.back().face_count == 0) m.parts.pop_back();
+    MeshPart part;
+    part.first_face = (uint32_t)m.face_count();
+    part.name = name;
+    auto it = mtl.find(name);
+    if (it != mtl.end()) {
+      for (int k = 0; k < 3; ++k) part.color[k] = it->second.kd[k];
+      if (!it->second.map.empty()) {
+        auto im = image_of.find(name);
+        if (im == image_of.end()) {
+          MeshImage mi;
+          std::string rel = it->second.map;
+          for (char &c : rel) if (c == '\\') c = '/';
+          mi.path = dir.empty() || (rel.size() > 1 && (rel[1] == ':' || rel[0] == '/')) ? rel : dir + "/" + rel;
+          mi.name = rel.substr(rel.find_last_of('/') + 1);
+          m.images.push_back(std::move(mi));
+          im = image_of.emplace(name, (int)m.images.size() - 1).first;
+        }
+        part.image = im->second;
+      }
+    }
+    m.parts.push_back(part);
+  };
   std::string line;
   while (std::getline(f, line)) {
     if (line.size() < 2) continue;
@@ -43,27 +124,56 @@ bool load_obj(const std::string &path, TriMesh &m, std::string &err) {
       std::istringstream ss(line.substr(1));
       float x = 0, y = 0, z = 0;
       ss >> x >> y >> z;
-      m.v.push_back(x);
-      m.v.push_back(y);
-      m.v.push_back(z);
+      pos.push_back(x);
+      pos.push_back(y);
+      pos.push_back(z);
+    } else if (line[0] == 'v' && line[1] == 't') {
+      std::istringstream ss(line.substr(2));
+      float u = 0, v = 0;
+      ss >> u >> v;
+      tex.push_back(u);
+      tex.push_back(v);
+    } else if (line.rfind("mtllib", 0) == 0) {
+      std::string rel = line.substr(6);
+      while (!rel.empty() && (rel[0] == ' ' || rel[0] == '\t')) rel.erase(0, 1);
+      while (!rel.empty() && (rel.back() == '\r' || rel.back() == ' ')) rel.pop_back();
+      auto loaded = load_mtl(dir.empty() ? rel : dir + "/" + rel);
+      mtl.insert(loaded.begin(), loaded.end());
+    } else if (line.rfind("usemtl", 0) == 0) {
+      std::string name = line.substr(6);
+      while (!name.empty() && (name[0] == ' ' || name[0] == '\t')) name.erase(0, 1);
+      while (!name.empty() && (name.back() == '\r' || name.back() == ' ')) name.pop_back();
+      begin_part(name);
     } else if (line[0] == 'f' && (line[1] == ' ' || line[1] == '\t')) {
       std::istringstream ss(line.substr(1));
       std::string tok;
       std::vector<uint32_t> poly;
+      const long have = (long)(pos.size() / 3), have_t = (long)(tex.size() / 2);
       while (ss >> tok) {
-        // "v", "v/vt", "v//vn" and "v/vt/vn" all start with the position.
-        long idx = strtol(tok.c_str(), nullptr, 10);
-        if (idx == 0) continue;
-        // OBJ indices are 1-based, and negative means "counting back from
-        // the end of the vertices read so far".
-        size_t have = m.vert_count();
-        long resolved = idx > 0 ? idx - 1 : (long)have + idx;
-        if (resolved < 0 || (size_t)resolved >= have) continue;
-        poly.push_back((uint32_t)resolved);
+        // "v", "v/vt", "v//vn" and "v/vt/vn" all start with the position
+        long vi = strtol(tok.c_str(), nullptr, 10);
+        if (vi == 0) continue;
+        long resolved = vi > 0 ? vi - 1 : have + vi;
+        if (resolved < 0 || resolved >= have) continue;
+        long ti = -1;
+        size_t slash = tok.find('/');
+        if (slash != std::string::npos && slash + 1 < tok.size() && tok[slash + 1] != '/') {
+          long t = strtol(tok.c_str() + slash + 1, nullptr, 10);
+          if (t != 0) ti = t > 0 ? t - 1 : have_t + t;
+          if (ti < 0 || ti >= have_t) ti = -1;
+        }
+        poly.push_back(emit(resolved, ti));
       }
-      if (poly.size() >= 3) add_polygon(m, poly);
+      if (poly.size() >= 3) {
+        if (m.parts.empty()) begin_part("");
+        add_polygon(m, poly);
+        m.parts.back().face_count = (uint32_t)m.face_count() - m.parts.back().first_face;
+      }
     }
   }
+  if (!m.parts.empty() && m.parts.back().face_count == 0) m.parts.pop_back();
+  if (m.parts.size() == 1 && m.parts[0].image < 0 && m.parts[0].name.empty()) m.parts.clear();
+  if (!m.uv.empty() && m.uv.size() != m.vert_count() * 2) m.uv.resize(m.vert_count() * 2, 0.f);
   if (m.v.empty()) {
     err = "no vertices in " + path;
     return false;
@@ -396,8 +506,12 @@ bool mesh_load(const std::string &path, TriMesh &out, std::string &err) {
     ok = load_off(path, out, err);
   else if (ext == "glb")
     ok = mesh_load_glb(path, out, err); // mesh_io_gltf.cpp
+  else if (ext == "gltf")
+    ok = mesh_load_gltf(path, out, err);
+  else if (ext == "fbx")
+    ok = mesh_load_fbx(path, out, err); // mesh_io_fbx.cpp
   else {
-    err = "unsupported mesh format '." + ext + "' (OBJ, STL, PLY, OFF and GLB are read)";
+    err = "unsupported model format '." + ext + "' (OBJ, FBX, GLB, glTF, STL, PLY and OFF are read)";
     return false;
   }
   if (ok && out.f.empty()) {
@@ -423,7 +537,7 @@ bool mesh_save(const std::string &path, const TriMesh &m, std::string &err,
 }
 
 const std::vector<std::string> &mesh_load_formats() {
-  static const std::vector<std::string> f = {"obj", "stl", "ply", "off"};
+  static const std::vector<std::string> f = {"obj", "fbx", "glb", "gltf", "stl", "ply", "off"};
   return f;
 }
 

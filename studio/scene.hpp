@@ -4,6 +4,7 @@
 #include "gpx/planet_math.hpp"
 #include "gpx/deform.hpp"
 #include <map>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -143,9 +144,32 @@ struct SceneObject {
   gpx::Deform deform;
   float bmin[3] = {-0.5f, -0.5f, -0.5f}, bmax[3] = {0.5f, 0.5f, 0.5f};
   bool show_gizmo = true; // this object's gizmo, under the global switch
+  // Grounded (a child of the terrain): the base rides on the surface while
+  // locked, `ground_offset` heightmap units above (or below) it.
+  bool ground_lock = true;
+  float ground_offset = 0.f;
+  // What the driver node last handed this object (its transform attributes,
+  // as the node had them). While the node still says the same, the object's
+  // own edits - a gizmo drag, a typed value, the ground lock - are kept and
+  // written back into the node; only a change made on the node itself is
+  // pushed onto the object. Without this every evaluation reset the object.
+  std::vector<float> driver_stamp;
   float color[3] = {0.62f, 0.60f, 0.57f};
   std::vector<float> verts; // interleaved pos(3) + normal(3)
-  unsigned vao = 0, vbo = 0;
+  // Texture coordinates, two per vertex, when the model came with them
+  // (same count as verts/6; empty otherwise), and the model's materials
+  // as vertex runs, each with its picture decoded to RGBA.
+  std::vector<float> uvs;
+  struct Part {
+    int first = 0, count = 0;   // vertices, not faces
+    float color[3] = {1.f, 1.f, 1.f};
+    std::string name;
+    std::vector<uint8_t> rgba;  // the picture, decoded; empty = none
+    int w = 0, h = 0;
+    unsigned tex = 0;           // its GL texture, made on first draw
+  };
+  std::vector<Part> parts;
+  unsigned vao = 0, vbo = 0, uvbo = 0;
   int vert_count = 0;
   bool gpu_dirty = false;
   // EcoSystem-style scattering: a Points-output node populates the terrain
@@ -229,6 +253,9 @@ void scene_init_builtins();
 bool scene_primitive_verts(const std::string &kind, std::vector<float> &verts);
 int scene_add_primitive(const std::string &kind, const std::string &name);
 int scene_add_light(const std::string &name);
+// Load any model file (OBJ, FBX, glTF/GLB, STL, PLY, OFF) into the object:
+// geometry, uvs, materials and their pictures. Keeps the object's transform.
+bool scene_load_mesh(const std::string &path, SceneObject &o, std::string &err);
 bool scene_load_obj_verts(const std::string &path,
                           std::vector<float> &verts, std::string &err);
 // load OBJ into a new scene object; returns index or -1

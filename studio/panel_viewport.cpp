@@ -1,4 +1,4 @@
-﻿// Geekatplay TerraForge — viewport windows. Each view is its own dockable,
+// Geekatplay TerraForge — viewport windows. Each view is its own dockable,
 // resizable, floatable window with a Blender-style header toolbar.
 #include "app.hpp"
 #include "prefs.hpp"
@@ -9,6 +9,7 @@
 #include "panel_float.hpp"
 #include "sculpt.hpp"
 #include "theme_colors.hpp"
+#include "toolbar_internal.hpp"
 #include <imgui.h>
 #include <string>
 #include <algorithm>
@@ -139,55 +140,70 @@ static void view_options_popup(App &a, int slot, RenderSettings::ViewConfig &vc,
   ImGui::PopStyleVar(2);
 }
 
-// The view's own controls: right-aligned, and grouped by what they answer.
-// The old strip put "which way am I looking" next to "what am I drawing" in
-// one row of look-alike text buttons, and clipped the moment the font grew.
-// Here projection, shading and overlays are three groups of icons, the strip
-// is measured before it is drawn, and it steps down to a compact form rather
-// than running off the edge of a narrow view.
+// The view's own controls: right-aligned, in three groups that answer three
+// different questions - which way am I looking (projection), what am I
+// drawing (shading), what else is in the picture (overlays) - with a rule
+// and real air between them, so a projection is never mistaken for a
+// shading mode. The strip is measured before it is drawn and steps down
+// to a compact form rather than running off the edge of a narrow view.
+// Each button is a palette icon in its functional colour.
 static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7, 3));
   // float-out / dock-back sits in the far corner; everything else stops
   // short of it
   panel_float_controls(a, view_window_name(slot));
-  sculpt_toolbar(a); // the tools live left, the view controls right
+  // the view's name, left, so a floated window still says which it is
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 6.f);
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextDisabled("%s", CAMERA_NAMES[vc.camera & 3]);
   ImGui::SameLine();
   const float used = ImGui::GetCursorPosX();
 
-  const ImGuiStyle &st = ImGui::GetStyle();
-  const float bw = ImGui::GetFontSize() + st.FramePadding.y * 2.f + 6.f;
-  const float gap = 2.f, sep = 10.f;
-  const float full = bw * 12.f + gap * 8.f + sep * 3.f;
-  const float right = ImGui::GetContentRegionMax().x - bw - 6.f;
+  const float bw = tool_size();
+  const float gap = 3.f, air = 7.f;
+  const float full = bw * 11.f + gap * 8.f + (air * 2.f + 1.f) * 3.f;
+  // the float / dock button owns the far corner; the strip stops short of it
+  const float float_w = ImGui::GetFontSize() + 6.f + 8.f;
+  const float right = ImGui::GetContentRegionMax().x - float_w - bw - 6.f;
 
   auto pick = [&](Icon ic, const char *id, const char *tip, int *value, int on) {
-    if (IconButton(ic, id, tip, *value == on)) *value = on;
+    if (IconButton(ic, id, tip, *value == on, bw) && *value != on) {
+      *value = on;
+      renderer_invalidate_views();
+    }
     ImGui::SameLine(0, gap);
   };
   auto flag = [&](Icon ic, const char *id, const char *tip, bool *v) {
-    if (IconButton(ic, id, tip, *v)) *v = !*v;
+    if (IconButton(ic, id, tip, *v, bw)) {
+      *v = !*v;
+      renderer_invalidate_views();
+    }
     ImGui::SameLine(0, gap);
   };
   auto divider = [&] {
-    ImGui::SameLine(0, sep * 0.5f);
+    ImGui::SameLine(0, air - gap);
     ImVec2 p = ImGui::GetCursorScreenPos();
-    ImGui::GetWindowDrawList()->AddLine(ImVec2(p.x, p.y + 2.f),
-                                        ImVec2(p.x, p.y + bw - 2.f),
+    ImGui::GetWindowDrawList()->AddLine(ImVec2(p.x, p.y + 3.f),
+                                        ImVec2(p.x, p.y + bw - 3.f),
                                         theme::fade(theme::text_dim(), 0.7f));
-    ImGui::SameLine(0, sep * 0.5f);
+    ImGui::Dummy(ImVec2(1.f, bw));
+    ImGui::SameLine(0, air);
   };
 
   if (right - used >= full) {
     ImGui::SetCursorPosX(right - full);
+    // projection: which way the view looks
     pick(Icon::ViewPersp, "##vp", "Perspective", &vc.camera, 0);
     pick(Icon::ViewTop, "##vt", "Top (orthographic, looking down)", &vc.camera, 1);
     pick(Icon::ViewFront, "##vf", "Front (orthographic)", &vc.camera, 2);
     pick(Icon::ViewRight, "##vr", "Right (orthographic)", &vc.camera, 3);
     divider();
+    // shading: one of three, always exactly one lit
     pick(Icon::Wireframe, "##sw", "Wireframe", &vc.display, 0);
     pick(Icon::Shaded, "##ss", "Solid", &vc.display, 1);
-    pick(Icon::Textured, "##sx", "Textured", &vc.display, 2);
+    pick(Icon::Textured, "##sx", "Textured\n\nThe material's colour on the surface.", &vc.display, 2);
     divider();
+    // overlays: each on or off by itself
     flag(Icon::Sky, "##oa", "Sky, fog and clouds in this view", &vc.atmosphere);
     flag(Icon::Water, "##ow", "Show the water surface", &vc.show_water_view);
     flag(Icon::Grid, "##og", "Ground reference grid", &vc.grid);
@@ -209,8 +225,8 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
       ImGui::SetCursorPosX(right - bw); // room for the gear and nothing else
     }
   }
-  if (IconButton(Icon::Gear, "##vopt",
-                 "View options: engine, background, units and layout"))
+  if (IconButton(Icon::Views, "##vopt",
+                 "View options: arrange the viewports, engine, background, units", false, bw))
     ImGui::OpenPopup("view_more");
   view_options_popup(a, slot, vc, "view_more");
   ImGui::PopStyleVar();
@@ -375,18 +391,26 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
     else
       renderer_view_input(vc, io.MouseDelta.x, io.MouseDelta.y, wheel, rot,
                           pan, w);
-    // click (without dragging) selects the object under the cursor
+    // A click is a press that did not travel. IsMouseDragging is already
+    // false on the release frame, so it cannot tell a click from the end of
+    // an orbit; the distance the pointer covered while the button was down
+    // can, and it is kept until the next press.
+    auto travelled = [&](ImGuiMouseButton b) {
+      return io.MouseDragMaxDistanceSqr[b] > 4.f * 4.f;
+    };
+    // click (without orbiting) selects the object under the cursor
     if (!sculpting && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
-        !ImGui::IsMouseDragging(ImGuiMouseButton_Left, 3.f)) {
+        !travelled(ImGuiMouseButton_Left)) {
       int hit = renderer_pick(slot, vc, u, v, w, h);
       if (hit >= 0) {
         scene().selected = hit; // shared: updates every view and the panels
         a.scene_selection_serial++;
       }
     }
-    // right-click (without panning) opens the same options menu
+    // right-click (without panning) opens the view menu; a pan that ends
+    // here must not
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
-        !ImGui::IsMouseDragging(ImGuiMouseButton_Right, 3.f))
+        !travelled(ImGuiMouseButton_Right))
       ImGui::OpenPopup("view_ctx");
   }
   view_options_popup(a, slot, vc, "view_ctx");
@@ -443,9 +467,11 @@ void draw_panel_viewport(App &a) {
     // Where a new viewport goes when the user asks for one.
     if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered()) a.view_focus = slot;
     if (open) {
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6, 4));
-      ImGui::BeginChild("##hdr", ImVec2(0, ImGui::GetFrameHeight() + 8),
-                        ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+      // a borderless child drops its window padding unless told to keep
+      // it - which is how the header's buttons came to sit on the frame
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6, 5));
+      ImGui::BeginChild("##hdr", ImVec2(0, tool_size() + 10),
+                        ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar);
       view_header(a, slot, rs.views[slot]);
       ImGui::EndChild();
       ImGui::PopStyleVar();

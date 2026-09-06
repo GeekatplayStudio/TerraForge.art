@@ -6,6 +6,7 @@
 #include "shortcuts.hpp"
 #include "gizmo.hpp"
 #include "icons.hpp"
+#include "panel_graph_internal.hpp"
 #include "i18n.hpp"
 #include "material_library.hpp"
 #include "prefs.hpp"
@@ -129,7 +130,7 @@ static void menu_file(App &a) {
   ImGui::Separator();
   if (ImGui::BeginMenu(tr("menu.file.import"))) {
     if (ImGui::MenuItem(tr("menu.file.import_obj"))) {
-      std::string p = dialog_open_file("Wavefront OBJ\0*.obj\0", "obj");
+      std::string p = dialog_open_file(MODEL_FILE_FILTER, nullptr);
       if (!p.empty()) {
         std::string err;
         int idx = scene_import_obj(p, err);
@@ -371,14 +372,9 @@ void draw_toolbar(App &a) {
     menu_view(a);
     menu_ai(a);
     menu_help();
-
-    // The global tools, on the row the hand is already on. They used to be a
-    // 56 px column down the left edge: a whole column of window spent on seven
-    // buttons, with undo somewhere no other application keeps it.
-    ImGui::Spacing();
-    ImGui::SameLine(0, 14);
-    draw_global_tools(a);
-
+    // Text menus only on this row: the commands are on the tool row below
+    // and the modes down the left column, the way every other application
+    // arranges them.
     ImGui::EndMenuBar();
   }
   about_dialog();

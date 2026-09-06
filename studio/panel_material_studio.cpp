@@ -76,7 +76,13 @@ void options_popup(App &a, gpx::Node *mat) {
 void header(App &a, MaterialStudioState &st, gpx::Node *&mat) {
   std::vector<MatEntry> mats = collect_materials(a);
   std::string label = mat ? mat->attrs.get_s("name") : "(choose a material)";
-  ImGui::SetNextItemWidth(200);
+  // the pickers share the row with the buttons: they take what the buttons
+  // leave, never the other way round
+  const float row_w = ImGui::GetContentRegionAvail().x;
+  const float buttons_w = ImGui::CalcTextSize("New").x + ImGui::CalcTextSize("Load...").x +
+                          ImGui::CalcTextSize("Save").x + ImGui::CalcTextSize("modified").x +
+                          ImGui::GetStyle().FramePadding.x * 6.f + ImGui::GetStyle().ItemSpacing.x * 4.f;
+  ImGui::SetNextItemWidth(std::clamp(row_w - buttons_w, 90.f, 260.f));
   if (ImGui::BeginCombo("##mat", label.c_str())) {
     for (const MatEntry &m : mats)
       if (ImGui::Selectable(m.name.c_str(), mat && m.id == mat->id)) material_studio_open(a, m.id);
@@ -120,12 +126,16 @@ void header(App &a, MaterialStudioState &st, gpx::Node *&mat) {
   // name, type, mapping, options on the second row
   char buf[128];
   snprintf(buf, sizeof buf, "%s", mat->attrs.get_s("name").c_str());
-  ImGui::SetNextItemWidth(200);
+  // name : type : mapping : options, sharing the row by weight
+  const float row2 = ImGui::GetContentRegionAvail().x;
+  const float opt_w = ImGui::CalcTextSize("Options...").x + ImGui::GetStyle().FramePadding.x * 2.f;
+  const float free_w = std::max(row2 - opt_w - ImGui::GetStyle().ItemSpacing.x * 3.f, 180.f);
+  ImGui::SetNextItemWidth(std::clamp(free_w * 0.42f, 80.f, 240.f));
   if (ImGui::InputText("##name", buf, sizeof buf))
     if (gpx::Attribute *na = mat->attrs.find("name")) na->s = buf;
   ImGui::SameLine();
   int type = material_type_of(a.graph, mat);
-  ImGui::SetNextItemWidth(150);
+  ImGui::SetNextItemWidth(std::clamp(free_w * 0.32f, 70.f, 170.f));
   if (ImGui::BeginCombo("##type", material_type_name(type))) {
     for (int t = 0; t < MAT_TYPE_COUNT; ++t) {
       if (ImGui::Selectable(material_type_name(t), t == type) && t != type) {
@@ -142,7 +152,7 @@ void header(App &a, MaterialStudioState &st, gpx::Node *&mat) {
   if (gpx::Attribute *mp = mat->attrs.find("mapping")) {
     std::vector<const char *> items;
     for (const std::string &l : mp->labels) items.push_back(l.c_str());
-    ImGui::SetNextItemWidth(120);
+    ImGui::SetNextItemWidth(std::clamp(free_w * 0.26f, 60.f, 140.f));
     if (ImGui::Combo("##mapping", &mp->i, items.data(), (int)items.size())) {
       a.graph.mark_dirty(mat->id);
       a.request_eval();
@@ -156,15 +166,18 @@ void header(App &a, MaterialStudioState &st, gpx::Node *&mat) {
 // the preview and Vue's preview options: object, background, local light,
 // randomize, zoom, store
 void preview(App &a, MaterialStudioState &st, gpx::Node *mat, float side) {
+  // the preview's own controls fit the preview's width: two combos sharing
+  // it, the spin switch under them. Nothing here is wider than the picture.
   const char *shapes[3] = {"Sphere", "Cube", "Plane"};
-  ImGui::SetNextItemWidth(78);
+  const float half = (side - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+  ImGui::SetNextItemWidth(half);
   ImGui::Combo("##shape", &st.shape, shapes, 3);
   ImGui::SameLine();
   const char *bgs[3] = {"dark", "grey", "light"};
-  ImGui::SetNextItemWidth(60);
+  ImGui::SetNextItemWidth(half);
   ImGui::Combo("##bg", &st.background, bgs, 3);
-  ImGui::SameLine();
   studio::Checkbox("spin", &st.turntable);
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("Turntable: the preview keeps turning.");
   if (st.turntable) st.spin += ImGui::GetIO().DeltaTime * 0.5f;
   if (!mat) {
     ImGui::Dummy(ImVec2(side, side));
@@ -190,7 +203,8 @@ void preview(App &a, MaterialStudioState &st, gpx::Node *mat, float side) {
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("A random change to every fractal and noise in the material.");
   ImGui::SameLine();
   if (ImGui::SmallButton("Zoom")) st.show_zoom = true;
-  ImGui::SameLine();
+  // Store goes beside Zoom when the column is wide enough, under it when not
+  if (ImGui::GetContentRegionAvail().x > ImGui::CalcTextSize("Store").x + 12.f) ImGui::SameLine();
   if (ImGui::SmallButton("Store")) {
     MaterialStudioState::Snapshot s;
     s.json = gpx::material_to_json(a.graph, mat->id);
@@ -238,7 +252,7 @@ void snapshots(App &a, MaterialStudioState &st, gpx::Node *mat, float height) {
     }
     ImGui::PopID();
   }
-  if (st.snapshots.empty()) ImGui::TextDisabled("Store keeps versions here.");
+  if (st.snapshots.empty()) ImGui::TextWrapped("Store keeps versions here.");
   ImGui::EndChild();
 }
 
@@ -287,22 +301,51 @@ void draw_panel_material_studio(App &a) {
     }
   }
 
-  // top: preview on the left, header + hierarchy + stored on the right
-  const float top_h = 236.f;
-  const float side = 160.f;
-  ImGui::BeginChild("##left", ImVec2(side + 44, top_h), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+  // Top: the preview on the left, the header and the hierarchy in the
+  // middle, the stored previews on the right; the tabs beneath. Every
+  // measure follows the window and the font: the preview is a share of the
+  // width (within limits), the top band is as tall as the preview and its
+  // controls need, and the hierarchy takes what the header leaves. The
+  // band's height can be dragged; nothing is ever drawn where it cannot fit.
+  const ImGuiStyle &sty = ImGui::GetStyle();
+  const float fh = ImGui::GetFrameHeightWithSpacing();
+  const float avail_w = ImGui::GetContentRegionAvail().x;
+  const float side = std::clamp(avail_w * 0.18f, 120.f, 220.f);
+  const float left_w = side + sty.WindowPadding.x * 2.f;
+  const float preview_h = side + fh * 2.f + ImGui::GetFrameHeight() + sty.WindowPadding.y * 2.f + 4.f;
+  static float band_extra = 0.f; // the user's drag on the splitter
+  const float top_h = std::max(preview_h, fh * 5.f + 60.f) + band_extra;
+  const float right_w = std::clamp(avail_w * 0.14f, 90.f, 180.f);
+
+  ImGui::BeginChild("##left", ImVec2(left_w, top_h), ImGuiChildFlags_AlwaysUseWindowPadding,
+                    ImGuiWindowFlags_NoScrollbar);
   preview(a, st, mat, side);
   ImGui::EndChild();
   ImGui::SameLine();
-  ImGui::BeginChild("##mid", ImVec2(-150, top_h), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+  ImGui::BeginChild("##mid", ImVec2(-right_w, top_h), ImGuiChildFlags_AlwaysUseWindowPadding,
+                    ImGuiWindowFlags_NoScrollbar);
   header(a, st, mat);
-  if (mat) material_hierarchy_ui(a, mat, top_h - 96);
+  // two header rows above, one row of layer buttons below, and the air
+  const float hier_h = top_h - fh * 2.f - ImGui::GetFrameHeight() - sty.WindowPadding.y * 2.f -
+                       sty.ItemSpacing.y * 2.f - 4.f;
+  if (mat) material_hierarchy_ui(a, mat, std::max(hier_h, fh * 2.f));
   ImGui::EndChild();
   ImGui::SameLine();
-  ImGui::BeginChild("##right", ImVec2(0, top_h), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
-  snapshots(a, st, mat, top_h - 4);
+  ImGui::BeginChild("##right", ImVec2(0, top_h), ImGuiChildFlags_AlwaysUseWindowPadding,
+                    ImGuiWindowFlags_NoScrollbar);
+  snapshots(a, st, mat, top_h - sty.WindowPadding.y * 2.f);
   ImGui::EndChild();
-  ImGui::Separator();
+
+  // the splitter between the band and the tabs: drag to give either more room
+  {
+    ImGui::InvisibleButton("##band_split", ImVec2(-1.f, 6.f));
+    if (ImGui::IsItemHovered() || ImGui::IsItemActive()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+    if (ImGui::IsItemActive()) band_extra = std::max(-60.f, band_extra + ImGui::GetIO().MouseDelta.y);
+    ImVec2 p0 = ImGui::GetItemRectMin(), p1 = ImGui::GetItemRectMax();
+    ImGui::GetWindowDrawList()->AddLine(ImVec2(p0.x, (p0.y + p1.y) * 0.5f), ImVec2(p1.x, (p0.y + p1.y) * 0.5f),
+                                        ImGui::GetColorU32(ImGui::IsItemHovered() ? ImGuiCol_SeparatorHovered
+                                                                                  : ImGuiCol_Separator));
+  }
 
   // bottom: the tabs of the selected hierarchy line
   ImGui::BeginChild("##tabs", ImVec2(0, 0));

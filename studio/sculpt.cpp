@@ -219,67 +219,43 @@ void sculpt_end_stroke(App &a) {
 }
 
 // ------------------------------------------------------------------- toolbar
-void sculpt_toolbar(App &a) {
+void sculpt_set_active(App &a, bool on) {
   SculptState &S = sculpt_state();
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7, 3));
-  bool on = S.active;
-  if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.33f, 0.13f, 1.f));
-  if (ImGui::SmallButton("sculpt")) {
-    S.active = !S.active;
-    if (S.active) {
-      // make sure the layer exists so the first stroke lands instantly
-      std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
-      if (lk.owns_lock() && !a.graph.nodes.empty()) {
-        bool had = false;
-        for (auto &n : a.graph.nodes)
-          if (n->type == "TerrainSculpt") had = true;
-        if (!had) undo_push_locked(a, "Add sculpt layer");
-        sculpt_target_node(a);
-        a.request_eval();
-      }
-    }
+  S.active = on;
+  if (!on) return;
+  // make sure the layer exists so the first stroke lands instantly
+  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  if (lk.owns_lock() && !a.graph.nodes.empty()) {
+    bool had = false;
+    for (auto &n : a.graph.nodes)
+      if (n->type == "TerrainSculpt") had = true;
+    if (!had) undo_push_locked(a, "Add sculpt layer");
+    sculpt_target_node(a);
+    a.request_eval();
   }
-  if (on) ImGui::PopStyleColor();
+}
+
+void sculpt_params_row(App &a) {
+  (void)a;
+  SculptState &S = sculpt_state();
+  ImGui::SetNextItemWidth(110);
+  ImGui::SliderFloat("##radius", &S.radius, 0.01f, 0.3f, "radius %.2f");
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Sculpt the terrain with brushes.\n"
-                      "Strokes live in a TerrainSculpt node in the graph, so\n"
-                      "the procedural terrain underneath stays editable.");
-  if (S.active) {
-    ImGui::SameLine();
-    static const char *tools[] = {"raise", "flatten", "smooth",
-                                  "terrace", "noise", "erase"};
-    static const char *tips[] = {
-        "Raise the ground (hold Alt or tick invert to dig).",
-        "Pull the surface toward the height under your first click.",
-        "Relax bumps and stroke marks.",
-        "Cut the slope under the brush into steps.",
-        "Stamp fractal detail (Alt inverts).",
-        "Remove sculpted strokes, revealing the procedural terrain."};
-    for (int i = 0; i < 6; ++i) {
-      ImGui::SameLine(0, 2);
-      bool sel = (int)S.tool == i;
-      if (sel)
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.26f, 0.12f, 1.f));
-      if (ImGui::SmallButton(tools[i])) S.tool = (SculptTool)i;
-      if (sel) ImGui::PopStyleColor();
-      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tips[i]);
-    }
-    ImGui::SameLine(0, 8);
-    ImGui::SetNextItemWidth(90);
-    ImGui::SliderFloat("##radius", &S.radius, 0.01f, 0.3f, "radius %.2f");
-    ImGui::SameLine(0, 4);
-    ImGui::SetNextItemWidth(90);
-    ImGui::SliderFloat("##flow", &S.flow, 0.05f, 2.f, "flow %.2f");
-    ImGui::SameLine(0, 4);
-    ImGui::SetNextItemWidth(90);
-    ImGui::SliderFloat("##falloff", &S.falloff, 0.25f, 6.f, "falloff %.1f");
-    ImGui::SameLine(0, 6);
-    studio::Checkbox("invert", &S.invert);
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Reverses the brush (raise digs...). Holding Alt\n"
-                        "while brushing does the same.");
-  }
-  ImGui::PopStyleVar();
+    ImGui::SetTooltip("Brush radius, as a fraction of the terrain's width.\n"
+                      "The mouse wheel over the viewport changes it too.");
+  ImGui::SameLine(0, 4);
+  ImGui::SetNextItemWidth(100);
+  ImGui::SliderFloat("##flow", &S.flow, 0.05f, 2.f, "flow %.2f");
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("Strength per second of brushing.");
+  ImGui::SameLine(0, 4);
+  ImGui::SetNextItemWidth(100);
+  ImGui::SliderFloat("##falloff", &S.falloff, 0.25f, 6.f, "falloff %.1f");
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("Edge hardness of the brush profile.");
+  ImGui::SameLine(0, 6);
+  studio::Checkbox("invert", &S.invert);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Reverses the brush (raise digs...). Holding Alt\n"
+                      "while brushing does the same.");
 }
 
 } // namespace studio

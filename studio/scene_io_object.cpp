@@ -30,6 +30,8 @@ void object_transform_to_json(json &jo, const SceneObject &o) {
   jo["roll"] = o.roll;
   jo["color"] = v3(o.color);
   jo["show_gizmo"] = o.show_gizmo;
+  jo["ground_lock"] = o.ground_lock;
+  jo["ground_offset"] = o.ground_offset;
   if (!o.deform.identity()) {
     jo["twist"] = v3(o.deform.twist);
     jo["bend"] = o.deform.bend;
@@ -54,6 +56,8 @@ void object_transform_from_json(const json &jo, SceneObject &o) {
   o.roll = jo.value("roll", 0.f);
   if (jo.contains("color")) v3_from(jo["color"], o.color);
   o.show_gizmo = jo.value("show_gizmo", true);
+  o.ground_lock = jo.value("ground_lock", true);
+  o.ground_offset = jo.value("ground_offset", 0.f);
   if (jo.contains("twist")) v3_from(jo["twist"], o.deform.twist);
   o.deform.bend = jo.value("bend", 0.f);
   o.deform.bend_axis = jo.value("bend_axis", 0);

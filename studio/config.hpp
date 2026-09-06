@@ -54,9 +54,19 @@ struct PerfConfig {
   int fps_secondary = 20; // other views, the preview: lightened first
 };
 
+// Checking GitHub for a newer version (updater.hpp).
+struct UpdateConfig {
+  bool check_on_start = true;
+  std::string repo = "GeekatplayStudio/TerraForge.art"; // owner/name
+  std::string branch = "main";
+  std::string source_dir;   // the checkout to pull and rebuild; empty = where this build came from
+  std::string skipped_sha;  // a version the user chose to skip
+};
+
 struct Config {
   std::map<std::string, ServiceConfig> services; // keyed by provider id
   PerfConfig perf;
+  UpdateConfig updates;
   ComfyConfig comfy;
   AiDefaults ai;
   std::map<std::string, std::string> apps;      // external applications by name -> path

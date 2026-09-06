@@ -6,6 +6,9 @@
 #include "ai_jobs.hpp"
 #include "console.hpp"
 #include "autosave.hpp"
+#include "config.hpp"
+#include "imprint.hpp"
+#include "updater.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "planet_place.hpp"
@@ -49,6 +52,7 @@ void run_main() {
   project_default_graph(a);
   a.request_eval();
   a.eval.worker = std::thread(eval_worker, std::ref(a));
+  if (config().updates.check_on_start) update_check_async(); // in the background; a dialog if newer
 
   bool first_frame = true;
   double frame_t0 = glfwGetTime();
@@ -115,22 +119,28 @@ void run_main() {
     // Rows 2 and 3, then the global tool column beside the dockspace. Each is
     // its own band so the eye can find them: what you are working on, then the
     // tools for that work, then everything else.
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 3));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 3));
     ImGui::BeginChild("##wsbar", ImVec2(0, 30), ImGuiChildFlags_None,
                       ImGuiWindowFlags_NoScrollbar);
     draw_workspace_bar(a);
     ImGui::EndChild();
     // the tool row is as tall as its palette buttons (Settings > Icon size)
-    ImGui::BeginChild("##toolbar", ImVec2(0, tool_size() + 6.f), ImGuiChildFlags_None,
+    ImGui::BeginChild("##toolbar", ImVec2(0, tool_size() + 8.f), ImGuiChildFlags_None,
                       ImGuiWindowFlags_NoScrollbar);
     draw_tool_bar(a);
     ImGui::EndChild();
     ImGui::PopStyleVar();
 
-    // The global tools used to be a 56 px column down the left edge, which
-    // spent a whole column of the window on seven buttons and put undo where
-    // no application keeps it. They are icons on the menu row now, where the
-    // hand already is.
+    // The left tool column: the modes of the chosen workflow, Cinema 4D's
+    // mode palette. It is a child beside the dockspace, never a dock window,
+    // so no layout can lose it.
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(7, 6));
+    ImGui::BeginChild("##lefttools", ImVec2(left_tools_width(), -statusbar_height()),
+                      ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar);
+    draw_left_tools(a);
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::SameLine(0, 0);
 
     // Every path that changes the workspace - the bar, a node focus, a
     // script - lands here, so the layout follows the workspace no matter who
@@ -142,7 +152,7 @@ void run_main() {
     }
 
     // version bumped whenever the default layout changes shape
-    ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV8");
+    ImGuiID dockspace_id = ImGui::GetID("GeekatplayDockspaceV9");
     if (first_frame || a.request_layout_reset) {
       if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr ||
           a.request_layout_reset)
@@ -152,6 +162,7 @@ void run_main() {
     }
     ImGui::DockSpace(dockspace_id, ImVec2(0, -statusbar_height()), ImGuiDockNodeFlags_None);
     a.dockspace_id = dockspace_id;
+    ImGui::SetCursorPosX(0.f);
     draw_statusbar(a); // health at a glance, along the bottom
     ImGui::End();
 
@@ -183,6 +194,7 @@ void run_main() {
     if (a.show_library) draw_panel_library(a);
   if (a.show_nodelist) draw_panel_nodelist(a);
     perf_mark("panels.left");
+    previews_flush(); // a model thumbnail made this frame shows on its card now
     draw_panel_graph(a);
     perf_mark("graph");
     draw_console(a);
@@ -237,6 +249,7 @@ void run_main() {
     render_service_requests(a);
     draw_render_window(a);
     autosave_recovery_dialog(a); // offers the last session back after a crash
+    update_ui(a); // the "new version on GitHub" dialog, when there is one
     autosave_tick(a, glfwGetTime());
     perf_mark("ui");
     studio_api_tick(a); // apply queued script/MCP actions, publish state
@@ -244,6 +257,7 @@ void run_main() {
 
     app_service_upload(a);
     anim_service(a); // clock, keyed properties, camera pose tracks
+    app_service_imprint(a); // grounded objects: bases on the surface, footprints to the node
     app_service_points_overlay(a);
     perf_mark("services");
 

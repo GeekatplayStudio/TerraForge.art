@@ -350,7 +350,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       if (o.path.rfind("primitive:", 0) == 0 &&
           scene_primitive_verts(o.path.substr(10), o.verts)) {
         // a built-in primitive regenerates from its kind, no file needed
-      } else if (o.path.empty() || !scene_load_obj_verts(o.path, o.verts, err)) {
+      } else if (o.path.empty() || !scene_load_mesh(o.path, o, err)) {
         // The geometry is gone but the object is not: its place in the scene,
         // its transform and its material binding are still worth keeping, and
         // an empty mesh draws nothing rather than crashing anything.

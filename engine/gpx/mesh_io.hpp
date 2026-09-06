@@ -2,7 +2,9 @@
 //
 // The formats a terrain and print workflow actually needs, each written by
 // hand so there is no dependency and no licence to inherit: OBJ (the DCC
-// lingua franca), STL (what every slicer eats), PLY (scanners) and OFF.
+// lingua franca, with its MTL pictures), FBX and glTF (what every DCC and
+// every generation service exports, with uvs and textures), STL (what every
+// slicer eats), PLY (scanners) and OFF.
 //
 // Everything is triangulated on the way in. Faces with more than three
 // vertices are fanned, which is exact for the convex polygons DCC exporters
@@ -16,9 +18,14 @@ namespace gpx {
 
 // Load by extension. Returns false with `err` set on anything it cannot read.
 bool mesh_load(const std::string &path, TriMesh &out, std::string &err);
-// Binary glTF, geometry only (mesh_io_gltf.cpp): what the 3D generation
-// services return. Node transforms applied, every primitive welded into one.
+// glTF (mesh_io_gltf.cpp): binary .glb, what the 3D generation services
+// return, and JSON .gltf with its buffers beside it. Node transforms
+// applied, every primitive one part, with its uvs and base-colour picture.
 bool mesh_load_glb(const std::string &path, TriMesh &out, std::string &err);
+bool mesh_load_gltf(const std::string &path, TriMesh &out, std::string &err);
+// Binary FBX (mesh_io_fbx.cpp): every geometry with its model transform,
+// uvs, per-polygon materials and their diffuse pictures.
+bool mesh_load_fbx(const std::string &path, TriMesh &out, std::string &err);
 
 // Save by extension (.stl .obj .ply .off). `ascii_stl` writes the readable
 // STL variant, which triples the file size and is what some old tools want.

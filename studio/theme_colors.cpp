@@ -14,6 +14,22 @@ namespace theme {
 //   violets  the field domain — the resolution-independent half of the graph
 //   ambers   surface — materials and texture, what it looks like
 //   greys    plumbing — logic, groups, sinks
+ImU32 node_color(const std::string &t, const std::string &c) {
+  if (c == "Material") {
+    // sources: pixels come in
+    if (t == "PBRMaterial" || t == "TextureFile" || t == "FlatColor" || t == "FractalColor" ||
+        t == "NaturalGrain")
+      return IM_COL32(0x6f, 0x8f, 0x4a, 0xff); // the green of every other source
+    // the material and its layers: what the renderer takes
+    if (t == "MaterialOutput" || t == "MaterialLayer" || t == "DistributionLayer" ||
+        t == "EffectorLayer" || t == "SplatMaterial")
+      return IM_COL32(0xa8, 0x6a, 0x2e, 0xff);
+    // everything else changes pixels: a processor
+    return IM_COL32(0x46, 0x6e, 0x94, 0xff); // the blue of every other filter
+  }
+  return category_color(c);
+}
+
 ImU32 category_color(const std::string &c) {
   // sources
   if (c == "Primitive") return IM_COL32(0x6f, 0x8f, 0x4a, 0xff);

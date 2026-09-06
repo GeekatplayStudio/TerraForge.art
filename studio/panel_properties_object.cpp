@@ -8,6 +8,8 @@
 #include "anim_widgets.hpp"
 #include "app.hpp"
 #include "gizmo.hpp"
+#include "imprint.hpp"
+#include "toolbar_internal.hpp"
 #include "ai_assist.hpp"
 #include "icons.hpp"
 #include "planet_place.hpp"
@@ -109,15 +111,92 @@ void transform_ui(App &a, SceneObject &o) {
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("-1 brings the top to a point; 1 doubles it.");
     if (!d.identity() && ImGui::SmallButton("Reset deformations")) d = gpx::Deform();
   }
-  ImGui::SeparatorText("Gizmo");
-  studio::Checkbox("Show the gizmo on this object", &o.show_gizmo);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Under the global Gizmos switch in the tool row (Ctrl+G).");
-  ImGui::SameLine();
-  ImGui::TextDisabled("tool: %s", gizmo_mode_name(gizmo_mode()));
+  // The transform tool, with the object it acts on: Move, Rotate, Scale,
+  // the deformers for a mesh, and this object's own gizmo switch. The same
+  // buttons are in the left tool column; here they sit beside the numbers
+  // they drive.
+  ImGui::SeparatorText("Transform tool");
+  gizmo_transform_tools();
+  if (o.type == SceneObject::Mesh) {
+    tool_sep();
+    gizmo_deform_tools();
+  }
+  ImGui::NewLine();
+  gizmo_space_tools();
+  tool_sep();
+  if (tool_icon(Icon::Fit, "##objgizmo",
+                "Show the gizmo on this object\n\nUnder the global Gizmos switch (Ctrl+G).",
+                o.show_gizmo))
+    o.show_gizmo = !o.show_gizmo;
+  ImGui::NewLine();
+  ImGui::TextDisabled("tool: %s, %s coordinates", gizmo_mode_name(gizmo_mode()),
+                      gizmo_space_name(gizmo_space()));
 }
 
 } // namespace
+
+// ---------------------------------------------------------------- ground
+// A mesh on the terrain: place it there, hold its base on the surface, and
+// the settings of the TerrainImprint node that moulds the ground to it.
+void ground_ui(App &a, SceneObject &o) {
+  ImGui::SeparatorText("Ground");
+  const int ground = imprint_ground_of(o);
+  if (ground < 0) {
+    if (ImGui::Button("Place on terrain")) {
+      int idx = imprint_place_on_terrain(a, scene().selected);
+      if (idx < 0) a.status = "no terrain object to place it on";
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Make this object a child of the terrain. It then stands on\n"
+                        "the surface and the ground moulds itself to its base:\n"
+                        "flat under it, blended around it.");
+    return;
+  }
+  bool lock = o.ground_lock;
+  if (studio::Checkbox("Locked to the surface", &lock)) o.ground_lock = lock;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The base follows the ground as the object is moved across it.\n"
+                      "Drag it up or down to set how far above or below the ground\n"
+                      "it sits; the ground rises or dips to meet it.");
+  const float m = std::max(render_settings().height_scale, 1e-5f) * render_settings().terrain_size_m;
+  float off_m = o.ground_offset * m;
+  if (ImGui::DragFloat("Above ground", &off_m, 0.5f, -5000.f, 5000.f, "%.1f m"))
+    o.ground_offset = off_m / m;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Negative sinks the object into a hollow, positive lifts it\n"
+                      "onto a mound. Zero rests the base on the natural ground.");
+  // the node's settings, right here where the object is
+  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  gpx::Node *node = nullptr;
+  if (lk.owns_lock())
+    for (auto &n : a.graph.nodes)
+      if (n->type == "TerrainImprint") node = n.get();
+  if (!node) {
+    ImGui::TextDisabled("The TerrainImprint node appears in the graph on the\nnext frame.");
+    return;
+  }
+  ImGui::TextDisabled("Terrain blending (TerrainImprint node)");
+  bool changed = false;
+  auto slider = [&](const char *key, const char *label, const char *tip) {
+    gpx::Attribute *at = node->attrs.find(key);
+    if (!at) return;
+    float v = at->f;
+    if (ImGui::SliderFloat(label, &v, at->fmin, at->fmax)) {
+      at->f = v;
+      changed = true;
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
+  };
+  slider("width", "Blend width", "How far around the object the ground responds,\nas a multiple of its footprint.");
+  slider("smoothness", "Smoothness", "0 is a firm shoulder, 1 a long soft tail.");
+  slider("retain", "Keep relief", "How much of the ground's own small relief survives\ninside the blend.");
+  slider("flatten", "Flatten under", "How flat the ground is made under the object itself.");
+  slider("strength", "Strength", "Dial the whole effect back without losing it.");
+  if (changed) {
+    a.graph.mark_dirty(node->id);
+    a.request_eval();
+  }
+}
 
 // ---- scene object properties (Cinema-4D-style attribute manager) ----------
 void object_properties_ui(App &a) {
@@ -295,6 +374,7 @@ void object_properties_ui(App &a) {
       break;
     case SceneObject::Mesh:
       transform_ui(a, o);
+      if (prop_filter_match("Ground")) ground_ui(a, o);
       if (prop_filter_match("Color")) {
         ImGui::SeparatorText("Surface");
         ImGui::ColorEdit3("Color", o.color);

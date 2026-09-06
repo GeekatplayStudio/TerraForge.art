@@ -1,5 +1,6 @@
 // Geekatplay TerraForge — the Objects tree's context menu.
 #include "app.hpp"
+#include "imprint.hpp"
 #include "panel_scene_internal.hpp"
 #include "i18n.hpp"
 #include "icons.hpp"
@@ -54,6 +55,9 @@ void tree_context_menu(App &a, SceneState &sc, int i) {
   ImGui::EndDisabled();
   ImGui::Separator();
   if (IconMenuItem(Icon::Folder, tr("om.menu.group"))) g.req_group = true;
+  if (o.type == SceneObject::Mesh && imprint_ground_of(o) < 0 &&
+      IconMenuItem(Icon::Terrain, tr("om.menu.place_on_terrain")))
+    imprint_place_on_terrain(a, i);
   if (o.parent >= 0 && IconMenuItem(Icon::Unlink, tr("om.menu.unparent"))) {
     undo_push(a, tr("om.undo.unparent"));
     for (int k = 0; k < (int)sc.objects.size(); ++k)

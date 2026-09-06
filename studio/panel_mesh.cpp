@@ -33,9 +33,9 @@ int ai_mesh_op(App &a, const std::string &op, const nlohmann::json &act,
 namespace {
 
 const char *MESH_FILTER =
-    "Meshes (*.obj *.stl *.ply *.off)\0*.obj;*.stl;*.ply;*.off\0"
-    "OBJ (*.obj)\0*.obj\0STL (*.stl)\0*.stl\0PLY (*.ply)\0*.ply\0"
-    "OFF (*.off)\0*.off\0All files\0*.*\0";
+    "3D models (*.fbx *.glb *.gltf *.obj *.stl *.ply *.off)\0*.fbx;*.glb;*.gltf;*.obj;*.stl;*.ply;*.off\0"
+    "FBX (*.fbx)\0*.fbx\0glTF (*.glb *.gltf)\0*.glb;*.gltf\0OBJ (*.obj)\0*.obj\0"
+    "STL (*.stl)\0*.stl\0PLY (*.ply)\0*.ply\0OFF (*.off)\0*.off\0All files\0*.*\0";
 
 ImVec4 severity_color(int sev) {
   if (sev == gpx::MESH_CRITICAL) return ImVec4(0.90f, 0.35f, 0.30f, 1.f);

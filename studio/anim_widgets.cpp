@@ -15,20 +15,28 @@ namespace {
 
 enum class Circle { Static, Animated, Keyed };
 
-// One circle; returns 0 none, 1 add, 2 remove, 3 remove track.
+// The animate toggle before a property: a key diamond, the mark every
+// timeline uses for a key. Grey and hollow: static. Orange and hollow: the
+// value is animated. Orange and filled: there is a key on this frame.
+// Returns 0 none, 1 add, 2 remove, 3 remove track.
 int circle_widget(const char *id, Circle state, bool *right_clicked) {
   ImGuiIO &io = ImGui::GetIO();
   float h = ImGui::GetFrameHeight();
-  float d = h * 0.42f;
+  float d = h * 0.60f;
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImGui::InvisibleButton(id, ImVec2(d + 6.f, h));
   bool hovered = ImGui::IsItemHovered();
   ImDrawList *dl = ImGui::GetWindowDrawList();
   ImVec2 c(p.x + 3.f + d * 0.5f, p.y + h * 0.5f);
-  ImU32 col = state == Circle::Static ? theme::text_dim() : theme::accent();
-  if (hovered) col = theme::text();
-  if (state == Circle::Keyed) dl->AddCircleFilled(c, d * 0.5f, col, 16);
-  else dl->AddCircle(c, d * 0.5f - 0.5f, col, 16, state == Circle::Animated ? 1.6f : 1.f);
+  ImU32 col = state == Circle::Static ? theme::fade(theme::text_dim(), 0.85f) : theme::accent();
+  if (hovered) col = state == Circle::Static ? theme::text() : theme::shade(theme::accent(), 1.2f);
+  {
+    const float r = d * 0.5f - 1.f;
+    ImVec2 pts[4] = {ImVec2(c.x, c.y - r), ImVec2(c.x + r, c.y), ImVec2(c.x, c.y + r),
+                     ImVec2(c.x - r, c.y)};
+    if (state == Circle::Keyed) dl->AddConvexPolyFilled(pts, 4, col);
+    else dl->AddPolyline(pts, 4, col, ImDrawFlags_Closed, state == Circle::Animated ? 1.8f : 1.2f);
+  }
   if (hovered) {
     ImGui::SetTooltip("%s", state == Circle::Keyed ? tr("Key on this frame - click to remove")
                             : state == Circle::Animated ? tr("Animated - click to key this frame")

@@ -1,8 +1,8 @@
-// Geekatplay TerraForge — row 3: the tools for the chosen workflow, one
-// function per workspace. Commands are palette icons (square, on the icon
-// ladder, named in their tooltips); text stays only where a combo or a
-// slider needs a caption. The frame around them, the workspace tabs and
-// the global tools are in toolbar_bars.cpp.
+// Geekatplay TerraForge — row 3: the settings for the chosen workflow, one
+// function per workspace. A setting is a value you dial: the resolution,
+// the sun's height, which camera, the frame. The modes and tools of the
+// workflow are down the left column (toolbar_left.cpp); the frame around
+// this row and the global commands are in toolbar_bars.cpp.
 #include "anim_widgets.hpp"
 #include "app.hpp"
 #include "ai_jobs.hpp"
@@ -13,7 +13,6 @@
 #include "theme_colors.hpp"
 #include "toolbar_internal.hpp"
 #include "undo.hpp"
-#include <cctype>
 #include <cmath>
 #include <imgui.h>
 #include <algorithm>
@@ -30,22 +29,22 @@ void resolution_tools(App &a) {
   tool_label(tr("res"));
   for (int res : {256, 512, 1024, 2048}) {
     const char *label = res == 1024 ? "1k" : res == 2048 ? "2k" : res == 256 ? "256" : "512";
-    const bool active = a.graph.resolution == res;
-    if (active)
-      ImGui::PushStyleColor(ImGuiCol_Button, ImGui::ColorConvertU32ToFloat4(theme::accent()));
-    if (ImGui::Button(label, ImVec2(std::max(h, ImGui::CalcTextSize(label).x + 10.f), h))) {
+    if (tool_text(label, tr("Terrain resolution"), a.graph.resolution == res)) {
       std::lock_guard<std::mutex> lk(a.graph_mtx);
       a.graph.resolution = res;
       a.graph.mark_all_dirty();
       a.request_eval();
     }
-    if (active) ImGui::PopStyleColor();
-    tool_gap();
   }
   static int custom_res = 0;
   if (custom_res == 0) custom_res = a.graph.resolution;
+  // the typed value sits at the tile height, so the row is one row
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                      ImVec2(6.f, (h - ImGui::GetTextLineHeight()) * 0.5f));
   ImGui::SetNextItemWidth(58);
-  if (ImGui::InputInt("##customres", &custom_res, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+  bool typed = ImGui::InputInt("##customres", &custom_res, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue);
+  ImGui::PopStyleVar();
+  if (typed) {
     custom_res = std::clamp(custom_res, 64, 8192);
     std::lock_guard<std::mutex> lk(a.graph_mtx);
     a.graph.resolution = custom_res;
@@ -57,10 +56,12 @@ void resolution_tools(App &a) {
 }
 
 void camera_tools(App &a) {
+  (void)a;
   SceneState &sc = scene();
   int active = scene_active_camera();
   std::string label = tr("Free camera");
   if (active >= 0 && active < (int)sc.objects.size()) label = sc.objects[active].name;
+  tool_label(tr("camera"));
   ImGui::SetNextItemWidth(150);
   if (ImGui::BeginCombo("##camsel", label.c_str())) {
     if (ImGui::Selectable(tr("Free camera"), active < 0)) scene_active_camera() = -1;
@@ -73,13 +74,6 @@ void camera_tools(App &a) {
   }
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("%s", tr("Which camera the perspective views look through."));
-  tool_gap();
-  if (tool_icon(Icon::Camera, "##addcam", tr("Add camera"))) {
-    int idx = scene_add_camera();
-    scene_active_camera() = idx;
-    sc.selected = idx;
-    a.scene_selection_serial++;
-  }
 }
 
 void sun_tools(App &a, const char *suffix) {
@@ -97,31 +91,17 @@ void sun_tools(App &a, const char *suffix) {
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Sun azimuth."));
 }
 
-// Terrain: the shape of the ground, and how finely it is computed.
+// Terrain: how finely the ground is computed, and - in sculpt mode - the
+// brush's size, strength and edge.
 void tools_terrain(App &a) {
   resolution_tools(a);
-  tool_sep();
-  if (tool_icon(Icon::Bake, "##bake4k",
-                tr("Bake 4k exports\n\nRe-evaluate at 4096 with every export node enabled."))) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
-    for (auto &n : a.graph.nodes)
-      if (auto *e = n->attrs.find("auto_export")) e->b = true;
-    a.graph.resolution = 4096;
-    a.graph.mark_all_dirty();
-    a.request_eval();
-    a.status = "baking at 4096; export nodes write when done";
+  if (sculpt_state().active) {
+    tool_sep();
+    sculpt_params_row(a);
   }
-  tool_sep();
-  SculptState &s = sculpt_state();
-  if (tool_icon(Icon::Brush, "##sculpt",
-                tr("Sculpt\n\nBrush directly on the terrain. Strokes live in a\n"
-                   "TerrainSculpt node, so the procedural chain under\n"
-                   "them survives retuning."),
-                s.active))
-    s.active = !s.active;
 }
 
-// Materials: what the surface is made of.
+// Materials: where the surface's colour comes from.
 void tools_materials(App &a) {
   RenderSettings &rs = render_settings();
   tool_label(tr("albedo"));
@@ -132,19 +112,12 @@ void tools_materials(App &a) {
     ImGui::SetTooltip("%s", tr("Where the terrain's colour comes from when no\n"
                                "MaterialOutput is assigned to it."));
   tool_sep();
-  if (tool_icon(Icon::Textured, "##textured", tr("Textured"), rs.use_albedo))
-    rs.use_albedo = !rs.use_albedo;
-  tool_sep();
   resolution_tools(a);
 }
 
-// Atmosphere: the air, the light and the water.
+// Atmosphere: the air and the light.
 void tools_atmosphere(App &a) {
   RenderSettings &rs = render_settings();
-  if (tool_icon(Icon::Cloud, "##clouds", tr("Clouds"), rs.clouds_on)) rs.clouds_on = !rs.clouds_on;
-  if (tool_icon(Icon::Water, "##water", tr("Water"), rs.show_water)) rs.show_water = !rs.show_water;
-  if (tool_icon(Icon::Sun, "##shadows", tr("Shadows"), rs.shadows)) rs.shadows = !rs.shadows;
-  tool_sep();
   tool_label(tr("fog"));
   ImGui::SetNextItemWidth(110);
   static const char *const K[] = {"Off", "Haze", "Fog", "Pollution"};
@@ -153,7 +126,7 @@ void tools_atmosphere(App &a) {
   sun_tools(a, "");
 }
 
-// Render: the camera and the output.
+// Render: the camera and the viewport engine.
 void tools_render(App &a) {
   camera_tools(a);
   tool_sep();
@@ -165,49 +138,11 @@ void tools_render(App &a) {
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("%s", tr("How the viewport itself draws. Offline engines are\n"
                                "chosen per camera in the Render properties."));
-  tool_sep();
-  if (tool_icon(Icon::Render, "##rendercam",
-                tr("Render the active camera\n\nRender through the active camera with its own\n"
-                   "engine, resolution and sample settings.")))
-    a.request_camera_render = scene_active_camera();
 }
 
-// Objects: what stands in the world. The five primitives share the Mesh
-// glyph; the tooltip names each.
+// Objects: the mesh and AI commands that need a word, and the count.
 void tools_objects(App &a) {
   SceneState &sc = scene();
-  struct P {
-    const char *kind, *id, *tip;
-  } prims[] = {{"cube", "##addcube", "Add cube"},
-               {"sphere", "##addsphere", "Add sphere"},
-               {"plane", "##addplane", "Add plane"},
-               {"cylinder", "##addcyl", "Add cylinder"},
-               {"cone", "##addcone", "Add cone"}};
-  for (const P &p : prims) {
-    if (tool_icon(Icon::Mesh, p.id, tr(p.tip))) {
-      undo_push(a, std::string("Add ") + p.kind);
-      sc.selected = scene_add_primitive(p.kind, "");
-      a.scene_selection_serial++;
-    }
-    // the type letter, small, in the button's corner
-    ImVec2 mx = ImGui::GetItemRectMax();
-    char letter[2] = {(char)std::toupper(p.kind[0]), 0};
-    ImVec2 ts = ImGui::CalcTextSize(letter);
-    ImGui::GetWindowDrawList()->AddText(ImVec2(mx.x - ts.x - 2.f, mx.y - ts.y - 1.f),
-                                        theme::text_dim(), letter);
-  }
-  tool_sep();
-  if (tool_icon(Icon::Planet, "##addplanet", tr("om.add_planet_tip"))) {
-    undo_push(a, "Add planet");
-    sc.selected = scene_add_planet();
-    a.scene_selection_serial++;
-  }
-  if (tool_icon(Icon::Terrain, "##addinf", tr("om.add_infinite_tip"))) {
-    undo_push(a, "Add infinite terrain");
-    sc.selected = scene_add_infinite_surface(-1);
-    a.scene_selection_serial++;
-  }
-  tool_sep();
   mesh_tool_buttons(a); // import, analyse and repair (panel_mesh.cpp)
   tool_sep();
   ai_tool_buttons(); // generate a model, an image (panel_ai_generate.cpp)
@@ -215,7 +150,7 @@ void tools_objects(App &a) {
   tool_label(tr("%d objects"), (int)sc.objects.size());
 }
 
-// Lighting: the sun and the placed lights.
+// Lighting: the sun.
 void tools_lighting(App &a) {
   RenderSettings &rs = render_settings();
   sun_tools(a, "2");
@@ -223,19 +158,9 @@ void tools_lighting(App &a) {
   ImGui::SetNextItemWidth(100);
   ImGui::SliderFloat("##sunint", &rs.sun_intensity, 0.f, 10.f, "x%.1f");
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Sun intensity."));
-  tool_sep();
-  if (tool_icon(Icon::Sun, "##shadows2", tr("Shadows"), rs.shadows)) rs.shadows = !rs.shadows;
-  tool_sep();
-  if (tool_icon(Icon::Light, "##addlight",
-                tr("Add light\n\nA point light in the scene. A LightSource node in the\n"
-                   "graph does the same and keeps it in the network."))) {
-    undo_push(a, "Add light");
-    scene().selected = scene_add_light("");
-    a.scene_selection_serial++;
-  }
 }
 
-// Cameras: which one, and a new one.
+// Cameras: which one, and its lens.
 void tools_cameras(App &a) {
   camera_tools(a);
   tool_sep();
@@ -281,17 +206,8 @@ void tools_animation(App &a) {
   float t = a.graph.time, nt;
   if (tool_icon(Icon::PrevKey, "##pk", tr("Previous key")))
     if (anim_prev_key_time(a, t, nt)) anim_set_time(a, nt);
-  if (tool_icon(Icon::KeyAdd, "##ak", tr("Key the selected object's transform (K)")))
-    anim_key_selection_transform(a);
   if (tool_icon(Icon::NextKey, "##nk", tr("Next key")))
     if (anim_next_key_time(a, t, nt)) anim_set_time(a, nt);
-  tool_gap(4.f);
-  if (tool_icon(Icon::Autokey, "##autokey", tr("Autokey"), tl.autokey)) tl.autokey = !tl.autokey;
-  tool_sep();
-  if (tool_icon(Icon::Timeline, "##timeline", tr("Timeline"), a.show_timeline))
-    a.show_timeline = !a.show_timeline;
-  if (tool_icon(Icon::Curve, "##curves", tr("Curves"), a.show_curve_editor))
-    a.show_curve_editor = !a.show_curve_editor;
   tool_sep();
   tool_label("%s", a.seq_active ? tr("rendering sequence...") : tl.format(a.graph.time).c_str());
 }

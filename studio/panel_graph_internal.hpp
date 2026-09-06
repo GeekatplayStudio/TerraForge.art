@@ -44,6 +44,14 @@ struct CollapseRequest {
   int mode; // -1 = cycle
 };
 inline std::vector<CollapseRequest> g_collapse_requests;
+// a model file chosen on an ImportObject's card, applied under the lock
+struct FileRequest { uint64_t node; std::string path; };
+inline std::vector<FileRequest> g_file_requests;
+// the file dialog filter for every model format the engine reads
+inline const char *MODEL_FILE_FILTER =
+    "3D models (*.fbx *.glb *.gltf *.obj *.stl *.ply *.off)\0*.fbx;*.glb;*.gltf;*.obj;*.stl;*.ply;*.off\0"
+    "FBX (*.fbx)\0*.fbx\0glTF (*.glb *.gltf)\0*.glb;*.gltf\0OBJ (*.obj)\0*.obj\0"
+    "STL (*.stl)\0*.stl\0PLY (*.ply)\0*.ply\0OFF (*.off)\0*.off\0All files\0*.*\0";
 
 // What a drag that ended on empty canvas was carrying (panel_graph.cpp sets
 // it inside BeginCreate; the create menu consumes it). Zero node = the menu

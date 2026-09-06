@@ -5,6 +5,7 @@
 // the Timeline's diamonds; the two visibility dots are just that — a filled
 // dot and a ring — the way Cinema 4D's Object Manager draws its states.
 #include "icons_pen.hpp"
+#include "theme_colors.hpp"
 
 namespace studio {
 
@@ -12,26 +13,27 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
   const float PI = ICON_PI;
   switch (ic) {
     // ---- deformers: a box, and what the deformer does to it ----
-    case Icon::Twist: // a column with a spiral band
-      k.line(-0.55f, -0.75f, -0.55f, 0.75f);
-      k.line(0.55f, -0.75f, 0.55f, 0.75f);
-      k.arc(0.f, -0.45f, 0.55f, PI * 0.05f, PI * 0.95f);
-      k.arc(0.f, 0.2f, 0.55f, PI * 1.05f, PI * 1.95f);
-      k.arc(0.f, 0.15f, 0.55f, PI * 0.05f, PI * 0.95f);
+    case Icon::Twist: // a solid column with a spiral band
+      k.hi().rect(-0.55f, -0.75f, 0.55f, 0.75f, true);
+      k.lit().rect(-0.55f, -0.75f, -0.35f, 0.75f, true);
+      k.dark().thick().arc(0.f, -0.45f, 0.55f, PI * 0.05f, PI * 0.95f);
+      k.dark().thick().arc(0.f, 0.2f, 0.55f, PI * 1.05f, PI * 1.95f);
+      k.dark().thick().arc(0.f, 0.15f, 0.55f, PI * 0.05f, PI * 0.95f);
       return true;
-    case Icon::Bend: // a bar arched over
-      k.arc(0.f, 0.75f, 1.05f, PI * 1.2f, PI * 1.8f);
-      k.arc(0.f, 0.75f, 0.6f, PI * 1.2f, PI * 1.8f);
-      k.line(-0.85f, 0.15f, -0.5f, 0.4f);
-      k.line(0.85f, 0.15f, 0.5f, 0.4f);
+    case Icon::Bend: // a solid bar arched over
+      k.hi().thick(2.2f).arc(0.f, 0.75f, 0.82f, PI * 1.2f, PI * 1.8f);
+      k.lit().arc(0.f, 0.75f, 1.02f, PI * 1.22f, PI * 1.78f);
+      k.dark().arc(0.f, 0.75f, 0.62f, PI * 1.22f, PI * 1.78f);
       return true;
-    case Icon::Skew: // a box pushed into a parallelogram
-      k.poly({-0.8f, 0.7f, -0.35f, -0.7f, 0.8f, -0.7f, 0.35f, 0.7f}, true);
-      k.line(-0.55f, 0.f, 0.55f, 0.f);
+    case Icon::Skew: // a solid box pushed into a parallelogram
+      k.hi().fill({-0.85f, 0.7f, -0.35f, -0.7f, 0.85f, -0.7f, 0.35f, 0.7f});
+      k.lit().fill({-0.35f, -0.7f, 0.85f, -0.7f, 0.79f, -0.52f, -0.41f, -0.52f});
+      k.dark().line(-0.6f, 0.f, 0.6f, 0.f);
       return true;
-    case Icon::Taper: // a box narrowing toward the top
-      k.poly({-0.75f, 0.7f, -0.3f, -0.7f, 0.3f, -0.7f, 0.75f, 0.7f}, true);
-      k.line(-0.55f, 0.f, 0.55f, 0.f);
+    case Icon::Taper: // a solid box narrowing toward the top
+      k.hi().fill({-0.85f, 0.7f, -0.3f, -0.7f, 0.3f, -0.7f, 0.85f, 0.7f});
+      k.lit().fill({-0.3f, -0.7f, 0.3f, -0.7f, 0.37f, -0.52f, -0.37f, -0.52f});
+      k.dark().line(-0.6f, 0.f, 0.6f, 0.f);
       return true;
     // ---- transport ----
     case Icon::Play:
@@ -54,29 +56,29 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
       return true;
     case Icon::PrevKey: // a triangle pointing at a key diamond
       k.tri(0.8f, -0.55f, 0.8f, 0.55f, -0.05f, 0.f);
-      k.tri(-0.45f, -0.45f, -0.85f, 0.f, -0.45f, 0.45f);
-      k.tri(-0.45f, -0.45f, -0.05f, 0.f, -0.45f, 0.45f);
+      k.hi().tri(-0.45f, -0.45f, -0.85f, 0.f, -0.45f, 0.45f);
+      k.hi().tri(-0.45f, -0.45f, -0.05f, 0.f, -0.45f, 0.45f);
       return true;
     case Icon::NextKey:
       k.tri(-0.8f, -0.55f, -0.8f, 0.55f, 0.05f, 0.f);
-      k.tri(0.45f, -0.45f, 0.85f, 0.f, 0.45f, 0.45f);
-      k.tri(0.45f, -0.45f, 0.05f, 0.f, 0.45f, 0.45f);
+      k.hi().tri(0.45f, -0.45f, 0.85f, 0.f, 0.45f, 0.45f);
+      k.hi().tri(0.45f, -0.45f, 0.05f, 0.f, 0.45f, 0.45f);
       return true;
     case Icon::KeyAdd: // a diamond with a plus beside it
-      k.tri(-0.3f, -0.55f, -0.85f, 0.f, -0.3f, 0.55f);
-      k.tri(-0.3f, -0.55f, 0.25f, 0.f, -0.3f, 0.55f);
+      k.hi().tri(-0.3f, -0.55f, -0.85f, 0.f, -0.3f, 0.55f);
+      k.hi().tri(-0.3f, -0.55f, 0.25f, 0.f, -0.3f, 0.55f);
       k.line(0.35f, -0.55f, 0.85f, -0.55f);
       k.line(0.6f, -0.8f, 0.6f, -0.3f);
       return true;
     case Icon::KeyRemove:
-      k.tri(-0.3f, -0.55f, -0.85f, 0.f, -0.3f, 0.55f);
-      k.tri(-0.3f, -0.55f, 0.25f, 0.f, -0.3f, 0.55f);
+      k.hi().tri(-0.3f, -0.55f, -0.85f, 0.f, -0.3f, 0.55f);
+      k.hi().tri(-0.3f, -0.55f, 0.25f, 0.f, -0.3f, 0.55f);
       k.line(0.35f, -0.55f, 0.85f, -0.55f);
       return true;
     case Icon::Autokey: // a key diamond inside the record ring
       k.circle(0.f, 0.f, 0.72f);
-      k.tri(0.f, -0.4f, -0.4f, 0.f, 0.f, 0.4f);
-      k.tri(0.f, -0.4f, 0.4f, 0.f, 0.f, 0.4f);
+      k.hi().tri(0.f, -0.4f, -0.4f, 0.f, 0.f, 0.4f);
+      k.hi().tri(0.f, -0.4f, 0.4f, 0.f, 0.f, 0.4f);
       return true;
     case Icon::Loop: // two arcs chasing each other
       k.arc(0.f, 0.f, 0.62f, PI * 1.1f, PI * 1.9f);
@@ -86,7 +88,7 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
       return true;
     case Icon::Marker: // a flag on a pole
       k.line(-0.55f, -0.75f, -0.55f, 0.75f);
-      k.tri(-0.55f, -0.75f, 0.65f, -0.35f, -0.55f, 0.05f);
+      k.hi().tri(-0.55f, -0.75f, 0.65f, -0.35f, -0.55f, 0.05f);
       return true;
     case Icon::Curve: // an f-curve with two key points
       k.line(-0.8f, 0.75f, -0.8f, -0.75f);
@@ -96,8 +98,8 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
       k.dl->PathBezierCubicCurveTo(k.p(-0.1f, 0.5f), k.p(-0.05f, -0.55f),
                                    k.p(0.75f, -0.55f), 12);
       k.dl->PathStroke(k.col, 0, k.w);
-      k.dot(-0.7f, 0.5f, 0.15f);
-      k.dot(0.75f, -0.55f, 0.15f);
+      k.hi().dot(-0.7f, 0.5f, 0.15f);
+      k.hi().dot(0.75f, -0.55f, 0.15f);
       return true;
     case Icon::Timeline: // a ruler with ticks and a playhead
       k.line(-0.85f, 0.2f, 0.85f, 0.2f);
@@ -105,8 +107,8 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
         float x = -0.7f + i * 0.35f;
         k.line(x, 0.2f, x, (i & 1) ? 0.45f : 0.65f);
       }
-      k.line(-0.35f, -0.7f, -0.35f, 0.2f);
-      k.tri(-0.55f, -0.75f, -0.15f, -0.75f, -0.35f, -0.4f);
+      k.hi().line(-0.35f, -0.7f, -0.35f, 0.2f);
+      k.hi().tri(-0.55f, -0.75f, -0.15f, -0.75f, -0.35f, -0.4f);
       return true;
     // ---- object manager marks ----
     case Icon::Dot:
@@ -146,32 +148,36 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
       k.head(0.f, -0.8f, -PI * 0.5f, 0.5f);
       return true;
     // ---- environment ----
-    case Icon::Sun: // a disc with eight short rays
-      k.circle(0.f, 0.f, 0.3f, true);
+    case Icon::Sun: // a solid disc with heavy rays
+      k.hi().circle(0.f, 0.f, 0.32f, true);
+      k.lit().circle(-0.1f, -0.1f, 0.12f, true);
       for (int i = 0; i < 8; ++i) {
         float a = PI * i / 4.f;
-        k.line(std::cos(a) * 0.5f, std::sin(a) * 0.5f, std::cos(a) * 0.8f,
-               std::sin(a) * 0.8f);
+        k.hi().thick().line(std::cos(a) * 0.5f, std::sin(a) * 0.5f, std::cos(a) * 0.82f,
+                            std::sin(a) * 0.82f);
       }
       return true;
-    case Icon::Atmosphere: // a planet with a halo
-      k.circle(0.f, 0.15f, 0.42f, true);
-      k.arc(0.f, 0.15f, 0.75f, PI * 1.02f, PI * 1.98f);
+    case Icon::Atmosphere: // a solid planet with a halo
+      k.hi().circle(0.f, 0.15f, 0.45f, true);
+      k.lit().circle(-0.15f, 0.f, 0.16f, true);
+      k.hi().thick().arc(0.f, 0.15f, 0.78f, PI * 1.02f, PI * 1.98f);
       return true;
     // ---- hierarchy and generators ----
-    case Icon::Group: // a parent square with two children beneath
-      k.rect(-0.3f, -0.8f, 0.3f, -0.25f);
+    case Icon::Group: // a solid parent block over two children
+      k.hi().rect(-0.3f, -0.8f, 0.3f, -0.25f, true);
       k.line(0.f, -0.25f, 0.f, 0.f);
       k.line(-0.5f, 0.f, 0.5f, 0.f);
       k.line(-0.5f, 0.f, -0.5f, 0.25f);
       k.line(0.5f, 0.f, 0.5f, 0.25f);
-      k.rect(-0.8f, 0.25f, -0.2f, 0.8f, true);
-      k.rect(0.2f, 0.25f, 0.8f, 0.8f, true);
+      k.hi().rect(-0.8f, 0.25f, -0.2f, 0.8f, true);
+      k.hi().rect(0.2f, 0.25f, 0.8f, 0.8f, true);
+      k.lit().rect(-0.3f, -0.8f, 0.3f, -0.66f, true);
       return true;
-    case Icon::Null: // the three-axis origin marker
-      k.line(-0.8f, 0.f, 0.8f, 0.f);
-      k.line(0.f, -0.8f, 0.f, 0.8f);
-      k.circle(0.f, 0.f, 0.35f);
+    case Icon::Null: // the three-axis marker with a solid centre
+      k.hi().thick().line(-0.8f, 0.f, 0.8f, 0.f);
+      k.hi().thick().line(0.f, -0.8f, 0.f, 0.8f);
+      k.hi().circle(0.f, 0.f, 0.3f, true);
+      k.lit().circle(-0.08f, -0.08f, 0.1f, true);
       return true;
     case Icon::Expression: // x=
       k.line(-0.8f, -0.45f, -0.15f, 0.45f);
@@ -179,33 +185,37 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
       k.line(0.2f, -0.2f, 0.8f, -0.2f);
       k.line(0.2f, 0.2f, 0.8f, 0.2f);
       return true;
-    case Icon::Modifier: // a box with a filled corner marker
-      k.rect(-0.7f, -0.7f, 0.7f, 0.7f);
-      k.tri(0.7f, -0.7f, 0.7f, 0.1f, -0.1f, -0.7f);
+    case Icon::Modifier: // a solid box with a folded corner
+      k.hi().rect(-0.7f, -0.7f, 0.7f, 0.7f, true);
+      k.lit().rect(-0.7f, -0.7f, 0.7f, -0.52f, true);
+      k.dark().tri(0.7f, -0.7f, 0.7f, 0.15f, -0.15f, -0.7f);
       return true;
     case Icon::Bake: // a flame over a tray
-      k.line(-0.75f, 0.75f, 0.75f, 0.75f);
-      k.rect(-0.55f, 0.35f, 0.55f, 0.75f);
+      k.thick().line(-0.75f, 0.75f, 0.75f, 0.75f);
+      k.rect(-0.55f, 0.35f, 0.55f, 0.75f, true);
       k.dl->PathClear();
-      k.dl->PathLineTo(k.p(0.f, 0.05f));
-      k.dl->PathBezierQuadraticCurveTo(k.p(-0.6f, -0.2f), k.p(0.f, -0.8f), 10);
-      k.dl->PathBezierQuadraticCurveTo(k.p(0.6f, -0.2f), k.p(0.f, 0.05f), 10);
-      k.dl->PathFillConvex(k.col);
+      k.dl->PathLineTo(k.p(0.f, 0.15f));
+      k.dl->PathBezierQuadraticCurveTo(k.p(-0.65f, -0.2f), k.p(0.f, -0.85f), 10);
+      k.dl->PathBezierQuadraticCurveTo(k.p(0.65f, -0.2f), k.p(0.f, 0.15f), 10);
+      k.dl->PathFillConvex(k.hue);
+      k.lit().circle(0.f, -0.15f, 0.16f, true);
       return true;
     // ---- viewport helpers ----
-    case Icon::Fit: // four corner brackets around a dot
-      k.poly({-0.8f, -0.35f, -0.8f, -0.8f, -0.35f, -0.8f});
-      k.poly({0.35f, -0.8f, 0.8f, -0.8f, 0.8f, -0.35f});
-      k.poly({0.8f, 0.35f, 0.8f, 0.8f, 0.35f, 0.8f});
-      k.poly({-0.35f, 0.8f, -0.8f, 0.8f, -0.8f, 0.35f});
-      k.dot(0.f, 0.f, 0.16f);
+    case Icon::Fit: { // four corner brackets around a solid dot
+      Pen t = k.thick();
+      t.poly({-0.8f, -0.35f, -0.8f, -0.8f, -0.35f, -0.8f});
+      t.poly({0.35f, -0.8f, 0.8f, -0.8f, 0.8f, -0.35f});
+      t.poly({0.8f, 0.35f, 0.8f, 0.8f, 0.35f, 0.8f});
+      t.poly({-0.35f, 0.8f, -0.8f, 0.8f, -0.8f, 0.35f});
+      k.hi().dot(0.f, 0.f, 0.22f);
       return true;
+    }
     case Icon::Snap: // a dot landing on a grid crossing
       k.line(-0.8f, 0.f, 0.8f, 0.f);
       k.line(0.f, -0.8f, 0.f, 0.8f);
       k.line(-0.8f, -0.55f, 0.8f, -0.55f);
       k.line(-0.55f, -0.8f, -0.55f, 0.8f);
-      k.dot(0.f, 0.f, 0.26f);
+      k.hi().dot(0.f, 0.f, 0.26f);
       return true;
     case Icon::Magnet: // a horseshoe with two poles
       k.arc(0.f, -0.1f, 0.62f, PI, PI * 2.f);
@@ -214,8 +224,67 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
       k.line(-0.22f, -0.1f, -0.22f, 0.75f);
       k.line(0.22f, -0.1f, 0.22f, 0.75f);
       k.line(0.62f, -0.1f, 0.62f, 0.75f);
-      k.rect(-0.62f, 0.45f, -0.22f, 0.75f, true);
-      k.rect(0.22f, 0.45f, 0.62f, 0.75f, true);
+      k.hi().rect(-0.62f, 0.45f, -0.22f, 0.75f, true);
+      k.hi().rect(0.22f, 0.45f, 0.62f, 0.75f, true);
+      return true;
+    // ---- the animate toggle: a key diamond ----
+    case Icon::Key: // a solid key diamond
+      k.hi().fill({0.f, -0.75f, 0.75f, 0.f, 0.f, 0.75f, -0.75f, 0.f});
+      k.lit().fill({0.f, -0.75f, 0.75f, 0.f, 0.f, -0.3f});
+      return true;
+    // ---- sculpt brushes: the ground line, and what the brush does to it ----
+    case Icon::Raise: // a mound pushed up out of the ground
+      k.line(-0.85f, 0.55f, -0.45f, 0.55f);
+      k.line(0.45f, 0.55f, 0.85f, 0.55f);
+      k.hi().arc(0.f, 0.55f, 0.45f, PI, PI * 2.f);
+      k.line(0.f, -0.75f, 0.f, -0.2f);
+      k.head(0.f, -0.8f, -PI * 0.5f, 0.3f);
+      return true;
+    case Icon::Flatten: // a bump pressed under a flat plate
+      k.hi().line(-0.8f, -0.1f, 0.8f, -0.1f);
+      k.poly({-0.85f, 0.6f, -0.4f, 0.6f, -0.1f, 0.15f, 0.25f, 0.15f, 0.5f, 0.6f, 0.85f, 0.6f});
+      return true;
+    case Icon::Smooth: // a gentle wave
+      k.hi().arc(-0.4f, 0.1f, 0.4f, PI, PI * 2.f);
+      k.hi().arc(0.4f, 0.1f, 0.4f, 0.f, PI);
+      k.line(-0.85f, 0.7f, 0.85f, 0.7f);
+      return true;
+    case Icon::Terrace: // steps
+      k.hi().poly({-0.85f, 0.7f, -0.85f, 0.25f, -0.3f, 0.25f, -0.3f, -0.2f, 0.25f, -0.2f,
+                   0.25f, -0.65f, 0.85f, -0.65f});
+      k.line(-0.85f, 0.7f, 0.85f, 0.7f);
+      return true;
+    case Icon::Noise: // a jagged ridge line
+      k.hi().poly({-0.85f, 0.4f, -0.6f, -0.1f, -0.4f, 0.2f, -0.15f, -0.6f, 0.1f, 0.f,
+                   0.35f, -0.35f, 0.6f, 0.15f, 0.85f, -0.2f});
+      k.line(-0.85f, 0.7f, 0.85f, 0.7f);
+      return true;
+    case Icon::Erase: // a tilted eraser block over the ground
+      k.line(-0.85f, 0.7f, 0.85f, 0.7f);
+      k.hi().poly({-0.55f, 0.35f, 0.25f, -0.45f, 0.7f, 0.f, -0.1f, 0.8f}, true);
+      k.line(-0.15f, -0.05f, 0.3f, 0.4f);
+      return true;
+    // ---- the console: a prompt in a frame ----
+    case Icon::Console:
+      k.rect(-0.8f, -0.65f, 0.8f, 0.65f);
+      k.hi().poly({-0.55f, -0.3f, -0.2f, 0.f, -0.55f, 0.3f});
+      k.line(0.f, 0.3f, 0.5f, 0.3f);
+      return true;
+    // ---- views: four panes ----
+    case Icon::Views:
+      k.rect(-0.8f, -0.8f, 0.8f, 0.8f);
+      k.line(-0.8f, 0.f, 0.8f, 0.f);
+      k.line(0.f, -0.8f, 0.f, 0.8f);
+      k.hi().rect(-0.65f, -0.65f, -0.15f, -0.15f, true);
+      return true;
+    case Icon::Transform: // a heavy ring with the four-way arrows through it
+      k.hi().thick().circle(0.f, 0.f, 0.52f);
+      k.thick().line(-0.55f, 0.f, 0.55f, 0.f);
+      k.thick().line(0.f, -0.55f, 0.f, 0.55f);
+      k.head(0.92f, 0.f, 0.f, 0.36f);
+      k.head(-0.92f, 0.f, PI, 0.36f);
+      k.head(0.f, -0.92f, -PI * 0.5f, 0.36f);
+      k.head(0.f, 0.92f, PI * 0.5f, 0.36f);
       return true;
     default:
       return false;

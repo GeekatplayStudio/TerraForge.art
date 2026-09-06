@@ -1,28 +1,28 @@
-// Geekatplay TerraForge — the bars above and beside the workspace.
+﻿// Geekatplay TerraForge — the bars above and beside the workspace.
 //
 // The layout every serious 3D application converges on, and the one Cinema 4D
-// uses: menus on top, then what you are working on, then the tools for that
-// work, with global tools down the left and the properties of whatever is
+// uses: menus on top, then what you are working on, then the commands for
+// that work, with the modes down the left and the properties of whatever is
 // selected down the right.
 //
-//   row 1   File Edit Terrain View Help          — classic text menus only
-//   row 2   Terrain | Materials | Atmosphere | Render  — which workflow
-//   row 3   the tools for that workflow          — changes with row 2
-//   left    global tools                         — the same in every workflow
-//   right   properties of the selection          — the Properties editor
+//   row 1   File Edit Terrain View AI Help       — classic text menus only
+//   row 2   Terrain | Materials | Objects | ...  — which workflow
+//   row 3   undo redo | refresh render | the settings for that workflow
+//   left    the modes and tools for that workflow   (toolbar_left.cpp)
+//   right   properties of the selection             (the Properties editor)
 //
-// It was all one row before, which is why it read as a wall: the menus, the
-// workflow tabs, the camera, the resolution and the statistics all had equal
-// weight and none of them were grouped. The per-workspace rows are in
-// toolbar_tools.cpp; this file is the frame, the palette vocabulary and the
-// global tools.
+// Nothing about the selected object lives up here: Move, Rotate and Scale
+// are modes, so they sit in the left column and in the object's own
+// Properties, where every other application keeps them. The per-workspace
+// settings rows are in toolbar_tools.cpp; this file is the frame and the
+// palette vocabulary.
 #include "app.hpp"
 #include "i18n.hpp"
-#include "gizmo.hpp"
-#include "sculpt.hpp"
+#include "scene.hpp"
 #include "theme_colors.hpp"
 #include "toolbar_internal.hpp"
 #include "undo.hpp"
+#include <algorithm>
 #include <cstdarg>
 #include <cstdio>
 #include <imgui.h>
@@ -45,24 +45,84 @@ const char *workspace_name(int ws) {
 }
 
 // ---------------------------------------------------- the palette vocabulary
+namespace {
+bool g_vertical = false;
+const float GAP = 3.f;   // between buttons of one group
+const float AIR = 6.f;   // either side of a group rule
+} // namespace
+
 float tool_size() {
   return icon_toolbar_size() + ImGui::GetStyle().FramePadding.y * 2.f;
 }
 
+bool tool_vertical() { return g_vertical; }
+void tool_column_begin() { g_vertical = true; }
+void tool_column_end() { g_vertical = false; }
+
+void tool_pad(float px) {
+  if (g_vertical) ImGui::Dummy(ImVec2(1.f, px - GAP));
+  else ImGui::SetCursorPosX(ImGui::GetCursorPosX() + px);
+}
+
+void tool_gap(float px) {
+  if (!g_vertical) ImGui::SameLine(0, px);
+}
+
 bool tool_icon(Icon ic, const char *id, const char *tip, bool active) {
   bool hit = IconButton(ic, id, tip, active, tool_size());
-  ImGui::SameLine(0, 2);
+  tool_gap(GAP);
+  return hit;
+}
+
+bool tool_text(const char *label, const char *tip, bool active) {
+  const float h = tool_size();
+  const float w = std::max(h, ImGui::CalcTextSize(label).x + 14.f);
+  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0));
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
+  ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 0));
+  ImVec2 p = ImGui::GetCursorScreenPos();
+  bool hit = ImGui::Button(label, ImVec2(w, h));
+  ImGui::PopStyleColor(4);
+  const bool hovered = ImGui::IsItemHovered();
+  const bool held = ImGui::IsItemActive();
+  ImDrawList *dl = ImGui::GetWindowDrawList();
+  ImVec2 p1(p.x + w, p.y + h);
+  ImU32 fill, frame;
+  if (active) {
+    fill = theme::fade(theme::accent(), held ? 0.70f : hovered ? 0.55f : 0.42f);
+    frame = theme::accent();
+  } else {
+    fill = theme::shade(theme::LEAD_SURFACE, held ? 1.25f : hovered ? 2.3f : 1.8f);
+    frame = theme::shade(theme::LEAD_SURFACE, 0.60f);
+  }
+  dl->AddRectFilled(p, p1, fill, 4.f);
+  dl->AddRect(p, p1, frame, 4.f);
+  ImVec2 ts = ImGui::CalcTextSize(label);
+  dl->AddText(ImVec2(p.x + (w - ts.x) * 0.5f, p.y + (h - ts.y) * 0.5f),
+              active || hovered ? theme::text() : theme::shade(theme::text(), 0.85f), label);
+  if (tip && hovered) ImGui::SetTooltip("%s", tip);
+  tool_gap(GAP);
   return hit;
 }
 
 void tool_sep() {
-  ImGui::SameLine(0, 4);
-  ImVec2 p = ImGui::GetCursorScreenPos();
   const float h = tool_size();
-  ImGui::GetWindowDrawList()->AddLine(ImVec2(p.x, p.y + 3.f), ImVec2(p.x, p.y + h - 3.f),
-                                      theme::fade(theme::text_dim(), 0.6f), 1.f);
+  ImDrawList *dl = ImGui::GetWindowDrawList();
+  ImU32 col = theme::fade(theme::text_dim(), 0.6f);
+  if (g_vertical) {
+    ImGui::Dummy(ImVec2(h, AIR - GAP));
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    dl->AddLine(ImVec2(p.x + 3.f, p.y), ImVec2(p.x + h - 3.f, p.y), col, 1.f);
+    ImGui::Dummy(ImVec2(h, 1.f));
+    ImGui::Dummy(ImVec2(h, AIR - GAP));
+    return;
+  }
+  ImGui::SameLine(0, AIR);
+  ImVec2 p = ImGui::GetCursorScreenPos();
+  dl->AddLine(ImVec2(p.x, p.y + 3.f), ImVec2(p.x, p.y + h - 3.f), col, 1.f);
   ImGui::Dummy(ImVec2(1.f, h));
-  ImGui::SameLine(0, 4);
+  ImGui::SameLine(0, AIR);
 }
 
 void tool_label(const char *fmt, ...) {
@@ -71,12 +131,15 @@ void tool_label(const char *fmt, ...) {
   va_start(ap, fmt);
   vsnprintf(buf, sizeof buf, fmt, ap);
   va_end(ap);
-  // centred on the button height, whatever the font size
+  // Painted by hand, centred on the button height, and the cursor advanced
+  // by a full-height dummy: moving the cursor down and back up left the
+  // next tile a few pixels high, which is why "256" floated above its row.
   const float h = tool_size();
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (h - ImGui::GetTextLineHeight()) * 0.5f);
-  ImGui::TextDisabled("%s", buf);
-  ImGui::SameLine(0, 4);
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (h - ImGui::GetTextLineHeight()) * 0.5f);
+  ImVec2 p = ImGui::GetCursorScreenPos();
+  ImVec2 ts = ImGui::CalcTextSize(buf);
+  ImGui::GetWindowDrawList()->AddText(ImVec2(p.x, p.y + (h - ts.y) * 0.5f), theme::text_dim(), buf);
+  ImGui::Dummy(ImVec2(ts.x, h));
+  ImGui::SameLine(0, 5);
 }
 
 // What the graph is currently holding, for the readout at the end of the tool
@@ -97,8 +160,9 @@ static size_t graph_memory_bytes(App &a) {
 void draw_workspace_bar(App &a) {
   ImGuiStyle &st = ImGui::GetStyle();
   ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
-  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, st.ItemSpacing.y));
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2, st.ItemSpacing.y));
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(18, 5));
+  tool_pad(8.f);
 
   for (int oi = 0; oi < 8; ++oi) {
     const int w = WORKSPACE_ORDER[oi];
@@ -129,7 +193,7 @@ void draw_workspace_bar(App &a) {
       }
       if (w == WS_ATMOSPHERE) ImGui::SetWindowFocus("Environment");
       else if (w == WS_RENDER) ImGui::SetWindowFocus("Render");
-      else if (w == WS_OBJECTS) ImGui::SetWindowFocus("Objects");
+      else if (w == WS_OBJECTS) ImGui::SetWindowFocus("Scene###Outliner");
       else if (w == WS_ANIMATION) ImGui::SetWindowFocus("Timeline");
     }
     ImGui::PopStyleColor(active ? 3 : 2);
@@ -139,11 +203,37 @@ void draw_workspace_bar(App &a) {
   ImGui::PopStyleVar(3);
 }
 
-// ------------------------------------------------- row 3: workflow tools
+// ------------------------------------------------- row 3: commands
 void draw_workspace_tools(App &a); // toolbar_tools.cpp
+
+// The commands that act on the project as a whole, the same in every
+// workflow, at the head of the row where the hand already is:
+//
+//   [Undo Redo] | [Refresh] | [Render]
+void draw_global_tools(App &a) {
+  if (tool_icon(Icon::Undo, "##undo", tr("Undo the last change  (Ctrl+Z)"))) {
+    if (undo_perform(a)) a.status = "undo";
+  }
+  if (tool_icon(Icon::Redo, "##redo", tr("Redo  (Ctrl+Y)"))) {
+    if (redo_perform(a)) a.status = "redo";
+  }
+  tool_sep();
+  if (tool_icon(Icon::Refresh, "##eval", tr("Recompute the whole graph  (F5)"))) {
+    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    a.graph.mark_all_dirty();
+    a.request_eval();
+  }
+  if (tool_icon(Icon::Render, "##rendercam",
+                tr("Render the active camera\n\nRender through the active camera with its own\n"
+                   "engine, resolution and sample settings.")))
+    a.request_camera_render = scene_active_camera();
+}
 
 void draw_tool_bar(App &a) {
   ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
+  tool_pad(8.f);
+  draw_global_tools(a);
+  tool_sep();
   draw_workspace_tools(a);
 
   // Status and statistics sit at the right-hand end of the tool row, where
@@ -181,7 +271,7 @@ void draw_tool_bar(App &a) {
   const float w = ImGui::CalcTextSize(right).x;
   const float avail = ImGui::GetWindowContentRegionMax().x;
   ImGui::SameLine();
-  const float want = avail - w - 8.f;
+  const float want = avail - w - 10.f;
   if (want > ImGui::GetCursorPosX() + 12.f) ImGui::SetCursorPosX(want);
   ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
                        (tool_size() - ImGui::GetTextLineHeight()) * 0.5f);
@@ -194,58 +284,6 @@ void draw_tool_bar(App &a) {
     ImGui::TextDisabled("%s", right);
   }
   ImGui::PopStyleVar();
-}
-
-// --------------------------------------------------- the global tools
-// The same in every workflow, because these are things you do *to* the
-// project rather than to one part of it. Nothing goes here that does not
-// work — a palette of dead buttons is worse than no palette. They sit on
-// the menu row as icons: vertical text buttons down the left edge cost a
-// whole column of window and put undo where nobody looks for it.
-//
-//   [Undo Redo] [Refresh] [Brush] [Move Rotate Scale | Twist Bend Skew Taper]
-//   [Gizmos] [Console]
-void draw_global_tools(App &a) {
-  if (tool_icon(Icon::Undo, "##undo", tr("Undo the last change  (Ctrl+Z)"))) {
-    if (undo_perform(a)) a.status = "undo";
-  }
-  if (tool_icon(Icon::Redo, "##redo", tr("Redo  (Ctrl+Y)"))) {
-    if (redo_perform(a)) a.status = "redo";
-  }
-  tool_sep();
-  if (tool_icon(Icon::Refresh, "##eval", tr("Recompute the whole graph  (F5)"))) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
-    a.graph.mark_all_dirty();
-    a.request_eval();
-  }
-  tool_sep();
-  SculptState &s = sculpt_state();
-  if (tool_icon(Icon::Brush, "##brush", tr("Sculpt: brush directly on the terrain"), s.active))
-    s.active = !s.active;
-
-  // Transform tools. These used to be duplicates of the per-view wireframe,
-  // grid and sky toggles, which now live in each viewport's own header where
-  // they belong - a global bar should carry what is global.
-  tool_sep();
-  GizmoMode &gm = gizmo_mode();
-  auto tool = [&](Icon ic, const char *id, GizmoMode m, const char *tip) {
-    if (tool_icon(ic, id, tip, gm == m)) gm = gm == m ? GizmoMode::None : m;
-  };
-  tool(Icon::Move, "##gmove", GizmoMode::Move,
-       tr("Move tool  (W)\n\nDrag an axis in any viewport to move the\n"
-          "selected object. The same numbers are in Properties,\n"
-          "in metres."));
-  tool(Icon::Rotate, "##grot", GizmoMode::Rotate,
-       tr("Rotate tool  (E)\n\nDrag a ring to turn the selected object.\n"
-          "Heading, pitch and bank, in degrees."));
-  tool(Icon::Scale, "##gscl", GizmoMode::Scale,
-       tr("Scale tool  (R)\n\nDrag an axis box to squeeze one axis, or\n"
-          "the centre box to resize the whole object."));
-  tool_sep();
-  gizmo_deform_tools(a); // twist, bend, skew, taper, and the Gizmos switch
-  tool_sep();
-  if (tool_icon(Icon::Node, "##console", tr("Show the console"), a.show_console))
-    a.show_console = !a.show_console;
 }
 
 } // namespace studio

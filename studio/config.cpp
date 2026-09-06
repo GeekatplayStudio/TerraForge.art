@@ -159,6 +159,11 @@ std::string config_to_json(const Config &c, bool protect) {
   j["perf"] = {{"governor", c.perf.governor},
                {"fps_primary", c.perf.fps_primary},
                {"fps_secondary", c.perf.fps_secondary}};
+  j["updates"] = {{"check_on_start", c.updates.check_on_start},
+                  {"repo", c.updates.repo},
+                  {"branch", c.updates.branch},
+                  {"source_dir", c.updates.source_dir},
+                  {"skipped_sha", c.updates.skipped_sha}};
   return j.dump(1);
 }
 
@@ -214,6 +219,17 @@ bool config_from_json(Config &c, const std::string &text, std::string &err) {
     n.perf.governor = pf.value("governor", true);
     n.perf.fps_primary = std::clamp(pf.value("fps_primary", 30), 5, 240);
     n.perf.fps_secondary = std::clamp(pf.value("fps_secondary", 20), 1, 240);
+  }
+  json up = j.value("updates", json::object());
+  if (up.is_object()) {
+    UpdateConfig d;
+    n.updates.check_on_start = up.value("check_on_start", d.check_on_start);
+    n.updates.repo = up.value("repo", d.repo);
+    n.updates.branch = up.value("branch", d.branch);
+    n.updates.source_dir = up.value("source_dir", d.source_dir);
+    n.updates.skipped_sha = up.value("skipped_sha", d.skipped_sha);
+    if (n.updates.repo.empty()) n.updates.repo = d.repo;
+    if (n.updates.branch.empty()) n.updates.branch = d.branch;
   }
   c = n;
   return true;

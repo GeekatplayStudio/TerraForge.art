@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 
 # macOS: the oldest system we build for. This has to be set *before* project(),
 # which is when the compiler is probed — set afterwards it would not reach the
@@ -131,6 +131,7 @@ set(ENGINE_SOURCES
     engine/mesh_cleanup.cpp
     engine/mesh_io.cpp
     engine/mesh_io_gltf.cpp
+    engine/mesh_io_fbx.cpp
     engine/mesh_reduce.cpp
     engine/mesh_repair.cpp
     engine/mesh_topology.cpp
@@ -197,6 +198,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_field_material.cpp
     engine/nodes/nodes_terrain_fx.cpp
     engine/nodes/nodes_sculpt_layer.cpp
+    engine/nodes/nodes_imprint.cpp
     engine/nodes/nodes_export.cpp
 )
 
@@ -291,11 +293,17 @@ set(STUDIO_SOURCES
     studio/app_services.cpp
     studio/layout.cpp
     studio/mesh_object.cpp
+    studio/mesh_load.cpp
     studio/mesh_ops.cpp
     studio/panel_mesh.cpp
     studio/layout_record.cpp
     studio/layout_store.cpp
     studio/layout_workspace.cpp
+    studio/toolbar_left.cpp
+    studio/imprint.cpp
+    studio/updater.cpp
+    studio/mesh_thumbnail.cpp
+    studio/layout_workspaces.cpp
     studio/panel_material_studio.cpp
     studio/panel_material_browser.cpp
     studio/material_ui.cpp
@@ -415,6 +423,7 @@ set(STUDIO_SOURCES
     studio/panel_render_editor.cpp
     studio/render_scene_export.cpp
     studio/scene.cpp
+    studio/mesh_load.cpp
     studio/scene_primitives.cpp
     studio/scene_io.cpp
     studio/scene_io_object.cpp
@@ -463,6 +472,16 @@ elseif(APPLE)
     set(STUDIO_EXE_KIND MACOSX_BUNDLE)
 endif()
 add_executable(geekatplay_studio ${STUDIO_EXE_KIND} ${STUDIO_SOURCES})
+# The commit this build comes from and the tree it was built in, for the
+# updater (studio/updater.cpp): it compares the commit with GitHub's head and
+# pulls and rebuilds the tree.
+execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                OUTPUT_VARIABLE TF_GIT_SHA OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT TF_GIT_SHA)
+    set(TF_GIT_SHA "unknown")
+endif()
+target_compile_definitions(geekatplay_studio PRIVATE
+    TF_GIT_SHA="${TF_GIT_SHA}" TF_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
 # studio/resources has to sit next to the running binary. Inside a .app the
 # binary is in Contents/MacOS, and resources belong in Contents/Resources.
@@ -551,6 +570,7 @@ add_executable(undo_tests
     studio/material_channel_ops.cpp
     studio/undo.cpp
     studio/project_io.cpp
+    studio/mesh_load.cpp
     studio/node_library.cpp
     studio/scene.cpp
     studio/scene_primitives.cpp
@@ -609,6 +629,10 @@ target_link_libraries(asset_tests PRIVATE third_party_headers)
 # picture controls, layer presence modes, the two-material distribution.
 add_executable(material_editor_tests tests/cpp/test_material_editor.cpp)
 target_link_libraries(material_editor_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
+add_executable(mesh_probe tests/cpp/mesh_probe.cpp)
+target_link_libraries(mesh_probe PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
 add_executable(mesh_tests tests/cpp/test_mesh.cpp)

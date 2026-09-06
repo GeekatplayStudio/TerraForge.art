@@ -148,10 +148,12 @@ uniform float u_inst_time;
 uniform vec3 u_inst_base;             // the model matrix's own translation
 layout(location=2) in vec4 in_instance; // x,y,z,scale per copy
 layout(location=3) in vec4 in_instance_rot; // cos(yaw), sin(yaw), brightness
+layout(location=6) in vec2 in_uv;          // texture coordinates, when the model has them
 DEFORM_FN_PLACEHOLDER
 out vec3 v_nrm;
 out float v_tint;
 out vec3 v_world;
+out vec2 v_uv;
 void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
@@ -185,6 +187,7 @@ void main(){
     }
     v_nrm = normalize(u_nrm * nrm);
     v_world = p.xyz;
+  v_uv = in_uv;
     gl_Position = u_mvp * p;
     return;
   }
@@ -198,7 +201,10 @@ const char *const FS_MESH = R"GLSL(#version 430 core
 in vec3 v_nrm;
 in float v_tint;
 in vec3 v_world;
+in vec2 v_uv;
 out vec4 frag;
+uniform sampler2D u_albedo_tex; // the part's picture, when u_has_tex
+uniform int u_has_tex;
 uniform vec3 u_color, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_exposure, u_sun_intensity, u_ambient;
 uniform int u_light_count;
@@ -244,7 +250,9 @@ void main(){
   // emissive) is the terrain's own PBR pipeline, shared through
   // MATERIAL_*_PLACEHOLDER so one material means the same thing everywhere.
   vec3 N = normalize(v_nrm);
-  vec3 albedo = mat_albedo(u_color * v_tint);
+  vec3 base = u_color * v_tint;
+  if (u_has_tex == 1) base *= pow(texture(u_albedo_tex, v_uv).rgb, vec3(2.2));
+  vec3 albedo = mat_albedo(base);
   float rough = clamp(u_roughness, 0.03, 1.0);
   vec3 V = normalize(u_cam - v_world);
   vec3 L = normalize(u_sun);

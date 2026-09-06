@@ -286,7 +286,14 @@ bool scene_load_obj_verts(const std::string &path, std::vector<float> &verts,
   return true;
 }
 
+// Any model format goes through mesh_object.cpp now; the name is kept for
+// the callers that predate FBX and glTF.
+int scene_import_mesh(const std::string &path, std::string &err);
 int scene_import_obj(const std::string &path, std::string &err) {
+  return scene_import_mesh(path, err);
+}
+
+int scene_import_obj_legacy(const std::string &path, std::string &err) {
   std::vector<float> verts;
   if (!scene_load_obj_verts(path, verts, err)) return -1;
   SceneObject o;

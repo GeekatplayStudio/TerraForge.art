@@ -56,6 +56,7 @@ struct App {
   struct NodeView {
     uint64_t id = 0;
     std::string type, category, error;
+    std::string file; // an ImportObject's model file, for its card
     float pos_x = 0, pos_y = 0;
     double ms = 0;
     bool enabled = true;
@@ -228,9 +229,13 @@ void draw_panel_material_browser(App &a); // panel_material_browser.cpp
 // Every workspace keeps its own window arrangement (layout_workspace.cpp).
 void workspace_layout_switch(App &a, int from, int to);
 void build_materials_layout(unsigned dockspace_id, unsigned view_mask);
+// layout_workspaces.cpp: the default arrangement of the given workspace
+void build_workspace_layout(int ws, unsigned dockspace_id, unsigned view_mask);
 void mesh_tool_buttons(App &a);  // the same, on the Objects tool row
 void draw_tool_bar(App &a);      // row 3: the tools for that workflow
-void draw_global_tools(App &a);  // left column: tools common to every workflow
+void draw_global_tools(App &a);  // head of the tool row: undo, redo, refresh, render
+void draw_left_tools(App &a);    // the left tool column: the workflow's modes (toolbar_left.cpp)
+float left_tools_width();
 void draw_panel_graph(App &a);
 void draw_panel_properties(App &a);
 void draw_panel_library(App &a);
@@ -313,6 +318,12 @@ bool Checkbox(const char *label, bool *v);
 void previews_update(App &a);
 void previews_clear();
 unsigned previews_get(uint64_t node_id, int *w = nullptr, int *h = nullptr);
+// A picture for a node that has no texture or heightmap output (the
+// ImportObject card): uploaded on the next previews_update, kept until the
+// node is gone. Safe from any thread.
+void previews_set_image(uint64_t node_id, std::vector<uint8_t> rgba, int w, int h);
+// Upload the pictures handed in since the last frame (main thread, GL bound).
+void previews_flush();
 
 // renderer
 bool renderer_init();

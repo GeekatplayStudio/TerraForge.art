@@ -230,13 +230,22 @@ void build_default_layout(unsigned dockspace_id, unsigned view_mask) {
                                                nullptr, &main_id);
   ImGui::DockBuilderDockWindow("Graph", main_id);
   ImGui::DockBuilderDockWindow("###console", bottom);
-  // Blender layout: Outliner on top, the Preview under it, one Properties
-  // editor below - the picture stays in view while parameters are edited
+  ImGui::DockBuilderDockWindow("Timeline", bottom);
+  ImGui::DockBuilderDockWindow("Curve editor", bottom);
+  // Blender layout: the Scene tree on top, the Preview under it, one
+  // Properties editor below - the picture stays in view while parameters
+  // are edited
   ImGui::DockBuilderDockWindow("Outliner", right);
   ImGuiID preview = ImGui::DockBuilderSplitNode(right_bottom, ImGuiDir_Up, 0.36f,
                                                 nullptr, &right_bottom);
   ImGui::DockBuilderDockWindow("Preview", preview);
   ImGui::DockBuilderDockWindow("Properties", right_bottom);
+  // every other window is placed too, tabbed behind Properties, so none of
+  // them can float over the arrangement
+  ImGui::DockBuilderDockWindow("Mesh Tools", right_bottom);
+  ImGui::DockBuilderDockWindow("Material Editor", right_bottom);
+  ImGui::DockBuilderDockWindow("Material Studio", right_bottom);
+  ImGui::DockBuilderDockWindow("Material Browser", right_bottom);
 
   // The open viewports fill the top region; each stays a normal window the
   // user can resize, re-dock, tear off or float onto another monitor.
@@ -292,6 +301,7 @@ void build_materials_layout(unsigned dockspace_id, unsigned view_mask) {
   ImGui::DockBuilderDockWindow("Graph", bottom);
   ImGui::DockBuilderDockWindow("###console", bottom); // tabbed under the graph
   ImGui::DockBuilderDockWindow("Timeline", bottom);
+  ImGui::DockBuilderDockWindow("Curve editor", bottom);
   // every open viewport goes into the scene cell, tabbed
   bool any = false;
   for (int i = 0; i < RenderSettings::MAX_VIEWS; ++i)

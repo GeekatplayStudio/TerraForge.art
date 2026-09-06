@@ -18,8 +18,11 @@ namespace studio {
 
 namespace {
 
+// The "2" is a version: the defaults changed shape when every workspace got
+// its own arrangement, and a record saved under the old name would have
+// restored the old shape over the new default on the first visit.
 std::string workspace_layout_name(int ws) {
-  return std::string("workspace-") + workspace_name(ws);
+  return std::string("workspace2-") + workspace_name(ws);
 }
 
 // The windows a workspace opens by itself. Materials brings its studio and
@@ -29,6 +32,11 @@ void apply_workspace_panels(App &a, int ws) {
   const bool mats = ws == WS_MATERIALS;
   a.show_material_studio = mats;
   a.show_material_browser = mats;
+  // Animation is the timeline and the curves; entering it opens both.
+  if (ws == WS_ANIMATION) {
+    a.show_timeline = true;
+    a.show_curve_editor = true;
+  }
 }
 
 } // namespace
@@ -63,10 +71,7 @@ void workspace_layout_switch(App &a, int from, int to) {
 
 // Called by app.cpp when a layout reset is due: which builder applies.
 void build_workspace_default_layout(App &a, unsigned dockspace_id) {
-  if (a.workspace == WS_MATERIALS)
-    build_materials_layout(dockspace_id, prefs().view_mask);
-  else
-    build_default_layout(dockspace_id, prefs().view_mask);
+  build_workspace_layout(a.workspace, dockspace_id, prefs().view_mask);
 }
 
 } // namespace studio

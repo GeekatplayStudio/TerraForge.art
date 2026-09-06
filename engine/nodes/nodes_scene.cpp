@@ -41,9 +41,12 @@ void add_transform(Node &n, float size_m) {
 
 REGISTER_NODE(
     ImportObject, "Scene",
-    "An imported 3D object (OBJ) placed in the scene, with its transform and colour",
+    "An imported 3D model (FBX, glTF/GLB, OBJ, STL, PLY, OFF) placed in the scene, with "
+    "its textures, transform and colour",
     [](Node &n) {
-      add_filename(n.attrs, "file", "OBJ file", "", "Object");
+      add_filename(n.attrs, "file", "Model file", "", "Object").tooltip =
+          "FBX, glTF and GLB with their textures; OBJ with its MTL pictures;\n"
+          "STL, PLY and OFF. The Load button on the node card opens the dialog.";
       add_text(n.attrs, "object", "Scene object", "", "Object").tooltip =
           "Name in the Objects tree. Empty: the file name.";
       add_color(n.attrs, "color", "Colour", 0.62f, 0.60f, 0.57f, 1.f, "Object");

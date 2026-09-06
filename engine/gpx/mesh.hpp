@@ -16,15 +16,39 @@
 
 namespace gpx {
 
+// A picture a mesh file carries or points at: the bytes of an embedded
+// image (GLB, FBX), or the path of one on disk (OBJ's MTL, glTF's uri).
+struct MeshImage {
+  std::string name;
+  std::string path;            // empty when the bytes are embedded
+  std::vector<uint8_t> bytes;  // the encoded file (PNG/JPG), empty when on disk
+};
+
+// A run of faces that share one material: which image colours it, or a
+// flat colour when it has none.
+struct MeshPart {
+  uint32_t first_face = 0, face_count = 0;
+  int image = -1;              // index into TriMesh::images, -1 = none
+  float color[4] = {1.f, 1.f, 1.f, 1.f};
+  std::string name;
+};
+
 struct TriMesh {
   // x,y,z per vertex; three vertex indices per face
   std::vector<float> v;
   std::vector<uint32_t> f;
+  // u,v per vertex when the file has them (same count as v/3), else empty.
+  // Faces that need different texture coordinates at a shared position are
+  // split on load, so one vertex has one uv.
+  std::vector<float> uv;
+  // the materials, as face runs, and the images they use; both may be empty
+  std::vector<MeshPart> parts;
+  std::vector<MeshImage> images;
 
   size_t vert_count() const { return v.size() / 3; }
   size_t face_count() const { return f.size() / 3; }
   bool empty() const { return f.empty(); }
-  void clear() { v.clear(); f.clear(); }
+  void clear() { v.clear(); f.clear(); uv.clear(); parts.clear(); images.clear(); }
 
   const float *vert(size_t i) const { return &v[i * 3]; }
   const uint32_t *face(size_t i) const { return &f[i * 3]; }

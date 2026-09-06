@@ -38,8 +38,14 @@ bool sculpt_apply(App &a, float tx, float tz, float dt);
 // Called when the mouse is released: ends the stroke.
 void sculpt_end_stroke(App &a);
 
-// The strip of sculpt controls, drawn inside the viewport panel.
-void sculpt_toolbar(App &a);
+// Switch sculpt mode on or off. On makes sure the TerrainSculpt layer
+// exists so the first stroke lands instantly.
+void sculpt_set_active(App &a, bool on);
+
+// The brush's size, strength and edge, and the invert switch: the settings
+// row for the Terrain workflow while sculpt mode is on (toolbar_tools.cpp).
+// The brushes themselves are palette buttons in the left tool column.
+void sculpt_params_row(App &a);
 
 // Find the TerrainSculpt node strokes go into, creating one on demand wired
 // after the current terrain chain. Returns 0 if the graph is empty or busy.

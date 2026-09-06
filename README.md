@@ -49,6 +49,10 @@ generated from the registry itself.
 and how we work, for anyone who wants to join.
 **[Layered materials](docs/MATERIAL_LAYERS.md)** — how a material stacks,
 what decides where each layer shows, and what was taken from Vue.
+**[Animation](docs/ANIMATION.md)** — the specification (what Cinema 4D,
+Blender, After Effects and Resolve have), the status against it, the manual.
+**[The interface](docs/INTERFACE.md)** — the Object Manager, the tool
+palettes and their icons, the viewport header, languages.
 **[Community posts](docs/COMMUNITY_POSTS.md)** — the project in three lengths.
 
 ## Who is building it
@@ -127,6 +131,24 @@ wanted his students to have.
   connectors show what they carry (range, size, point count, a field's value).
 
 ### The studio
+- **Cinema 4D's arrangement.** A left tool column holds the *modes* of the
+  chosen workflow — the three transform tools head every workspace, then
+  sculpt brushes, deformers, Autokey — and the row above the viewports holds
+  the *settings* (resolution, sun height, camera, frame). Every button is a
+  vector icon from one set of 85, drawn in C4D's language on its 18/26/36 px
+  ladder (Settings ▸ General ▸ Icon size), named in its tooltip.
+- **The Objects panel is an Object Manager:** dotted hierarchy lines, the
+  two three-state visibility dots (grey inherits from the parent, green and
+  red override it — for the viewport and for the render separately;
+  Ctrl-click applies to children, drag to paint a state down the list), an
+  enable tick, layer colour swatches, tags for material / driving node /
+  scatter, search and a type filter, flat or by-layer views, *Set as root*
+  with a path bar, drag-and-drop reorder and reparent, and a context menu
+  that acts on the whole selection.
+- **Three languages.** Every visible string goes through the translation
+  table; English is built in, German and French ship as
+  `resources/lang/<code>.json`, and any file dropped beside them appears in
+  Settings ▸ General ▸ Language. A missing tag falls back to English.
 - **Node cards:** rounded nodes with a category-coloured title bar,
   connectors on the left and right edges coloured by data type (the wires
   carry the same colour), and three detail levels per node — expanded,
@@ -218,10 +240,13 @@ wanted his students to have.
   An unconnected channel leaves that part of the shading alone.
 
 ### Meshes: import, analyse, repair, reduce, export
-- **Bring a model in:** OBJ, STL (binary and ascii), PLY and OFF, read and
-  written by hand with no dependency. The file's own coordinates are kept
-  and the object is placed and sized by its transform, so a millimetre in
-  the file is still a millimetre in the report.
+- **Bring a model in:** OBJ, STL (binary and ascii), PLY, OFF, glTF/GLB and
+  **binary FBX**, read and written by hand with no dependency. FBX and glTF
+  bring their texture coordinates and their materials' pictures (a file
+  beside the model, or embedded), so a textured model arrives textured. The
+  file's own coordinates are kept and the object is placed and sized by its
+  transform, so a millimetre in the file is still a millimetre in the
+  report. The ImportObject node's card shows a thumbnail of what it loaded.
 - **Know what is wrong with it.** Eleven checks, each with a count, a
   severity and *where it is on the model*: open holes and their boundary
   loops, non-manifold edges, inconsistent winding, inside-out normals,
@@ -560,6 +585,15 @@ wanted his students to have.
   import directly, alongside 8/16-bit PNG heightmaps.
 - **Spot lights** too: cone angle, heading and pitch, in the viewport and
   every engine.
+- **Meshes cast shadows** — rocks, trees and every scattered copy are drawn
+  into the sun's shadow map with their deformers, and receive the terrain's
+  and each other's shadows.
+- **Objects stand on the ground.** Make a mesh a child of the terrain and it
+  is *grounded*: its base follows the surface as it is moved, and a
+  `TerrainImprint` node in the graph moulds the ground to it — flat under
+  the footprint, blended back to the natural terrain around it, a hollow
+  when the object is pushed down and a mound when it is lifted. A house on
+  a hillside no longer floats over one edge and sinks into the other.
 
 ### Environment and rendering
 - **Volumetric clouds** raymarched with Perlin-Worley noise, cloud types
@@ -658,6 +692,14 @@ Each one checks for the tools it needs and offers to install the missing ones
 (winget on Windows, Homebrew on macOS, apt/dnf/pacman on Linux), fetches the
 third-party sources, builds, and puts TerraForge where your system expects to
 find applications. Add `-Dev` / `--dev` to build without installing.
+
+### Stay up to date
+
+A build carries the commit it was made from. **Settings ▸ Updates** checks
+GitHub for a newer head of the branch (optionally at every start) and, when
+there is one, offers to update: the application closes, `scripts/update.ps1`
+(or `update.sh`) pulls, rebuilds with the platform's build script, puts the
+new executable where the old one ran from, and starts it again.
 
 ### Or build it by hand
 

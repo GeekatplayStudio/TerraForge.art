@@ -195,19 +195,22 @@ void tree_row_draw(App &a, SceneState &sc, const TreeRow &r, int row_no) {
                            (o.scatter_node ? 1 : 0);
   const float chip_w = fs + 4.f;
   const float tags_w = chips * (chip_w + 2.f) + (chips ? 4.f : 0.f);
-  const float dot_d = fs * 0.5f;
-  const float bar_w = (fs * 0.55f + 4.f) + (dot_d + 6.f) + (fs + 2.f) +
-                      (o.type == SceneObject::Camera ? fs + 2.f : 0.f) + 6.f;
+  // The middle bar: layer swatch | eye | render | enabled | (camera), each
+  // a plain glyph in its own cell with air between - marks, not buttons.
+  const float cell = fs + 2.f, air = 6.f;
+  const float bar_w = (fs * 0.55f + air) + (cell + air) * 3.f +
+                      (o.type == SceneObject::Camera ? cell + air : 0.f) + 4.f;
   float bx = p1.x - tags_w - bar_w;
   const float name_max = bx - 4.f;
   Rect z_sw{ImVec2(bx, mid - fs * 0.3f), ImVec2(bx + fs * 0.55f, mid + fs * 0.3f)};
-  bx += fs * 0.55f + 4.f;
-  Rect z_vp{ImVec2(bx, mid - dot_d - 0.5f), ImVec2(bx + dot_d, mid - 0.5f)};
-  Rect z_rn{ImVec2(bx, mid + 0.5f), ImVec2(bx + dot_d, mid + dot_d + 0.5f)};
-  bx += dot_d + 6.f;
-  Rect z_tick{ImVec2(bx, p0.y), ImVec2(bx + fs, p1.y)};
-  bx += fs + 2.f;
-  Rect z_cam{ImVec2(bx, p0.y), ImVec2(bx + fs, p1.y)};
+  bx += fs * 0.55f + air;
+  Rect z_vp{ImVec2(bx, p0.y), ImVec2(bx + cell, p1.y)};
+  bx += cell + air;
+  Rect z_rn{ImVec2(bx, p0.y), ImVec2(bx + cell, p1.y)};
+  bx += cell + air;
+  Rect z_tick{ImVec2(bx, p0.y), ImVec2(bx + cell, p1.y)};
+  bx += cell + air;
+  Rect z_cam{ImVec2(bx, p0.y), ImVec2(bx + cell, p1.y)};
   Rect z_chip[3];
   int chip_zone[3] = {Z_NONE, Z_NONE, Z_NONE};
   const char *chip_glyph[3] = {"", "", ""};
@@ -292,15 +295,20 @@ void tree_row_draw(App &a, SceneState &sc, const TreeRow &r, int row_no) {
                  : theme::text_dim();
     dl->AddRectFilled(z_sw.a, z_sw.b, lc);
     if (hz == Z_SWATCH) dl->AddRect(z_sw.a, z_sw.b, theme::text());
-    ImVec2 cv((z_vp.a.x + z_vp.b.x) * 0.5f, (z_vp.a.y + z_vp.b.y) * 0.5f);
-    ImVec2 cr((z_rn.a.x + z_rn.b.x) * 0.5f, (z_rn.a.y + z_rn.b.y) * 0.5f);
-    dl->AddCircleFilled(cv, dot_d * 0.5f, dot_color(o.vis_viewport), 12);
-    dl->AddCircleFilled(cr, dot_d * 0.5f, dot_color(o.vis_render), 12);
-    if (hz == Z_DOT_VP) dl->AddCircle(cv, dot_d * 0.5f + 1.f, theme::text(), 12);
-    if (hz == Z_DOT_RN) dl->AddCircle(cr, dot_d * 0.5f + 1.f, theme::text(), 12);
+    // Visibility as icons that say what they are: an eye for the viewport,
+    // a render frame for the render. Green when shown, red when hidden,
+    // grey when following the parent - the same three states, now readable
+    // without a tooltip.
+    ImVec2 cv((z_vp.a.x + z_vp.b.x) * 0.5f, mid);
+    ImVec2 cr((z_rn.a.x + z_rn.b.x) * 0.5f, mid);
+    icon_draw(dl, o.vis_viewport == 2 ? Icon::EyeOff : Icon::Eye, cv, fs * 0.95f,
+              hz == Z_DOT_VP ? theme::text() : dot_color(o.vis_viewport));
+    // the render mark is a picture in a frame - a picture, not a button
+    icon_draw(dl, Icon::Scene, cr, fs * 0.9f,
+              hz == Z_DOT_RN ? theme::text() : dot_color(o.vis_render));
     ImVec2 ct((z_tick.a.x + z_tick.b.x) * 0.5f, mid);
-    if (o.enabled) tick(dl, ct, fs * 0.8f, hz == Z_TICK ? theme::text() : dot_color(1));
-    else cross(dl, ct, fs * 0.8f, hz == Z_TICK ? theme::text() : dot_color(2));
+    if (o.enabled) tick(dl, ct, fs * 0.75f, hz == Z_TICK ? theme::text() : dot_color(1));
+    else cross(dl, ct, fs * 0.7f, hz == Z_TICK ? theme::text() : dot_color(2));
     if (o.type == SceneObject::Camera)
       icon_draw(dl, Icon::Eye, ImVec2((z_cam.a.x + z_cam.b.x) * 0.5f, mid), fs * 0.8f,
                 active_cam ? theme::accent()

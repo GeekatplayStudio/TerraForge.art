@@ -37,6 +37,7 @@ void App::refresh_snapshot() {
     v.ms = n->last_compute_ms;
     v.enabled = n->enabled;
     v.collapse = n->ui_collapse;
+    if (n->type == "ImportObject") v.file = n->attrs.get_s("file");
     total += n->last_compute_ms;
     v.ports.reserve(n->ports.size());
     size_t port_index = 0;

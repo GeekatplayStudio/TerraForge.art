@@ -10,10 +10,13 @@
 // painted in panel_scene_row.cpp, drag and drop and the structural edits
 // live in panel_scene_dnd.cpp, the context menu in panel_scene_menu.cpp.
 //
-// The window keeps the ImGui ID "Outliner" while showing the label "Objects",
-// so docking layouts saved before the rename still place it correctly.
+// The window is called "Scene": it holds the terrain, the water, the sun,
+// the atmosphere, the cameras, the lights and the layers - the whole scene,
+// not only the objects - and it keeps the ImGui ID "Outliner" so docking
+// layouts saved before the rename still place it correctly.
 #include "app.hpp"
 #include "panel_scene_internal.hpp"
+#include "panel_graph_internal.hpp"
 #include "panel_float.hpp"
 #include "console.hpp"
 #include "i18n.hpp"
@@ -206,8 +209,7 @@ void add_bar(App &a, SceneState &sc) {
   }
   ImGui::SameLine(0, 2);
   if (IconButton(Icon::Mesh, "##import", tr("om.import_tip"))) {
-    std::string p =
-        dialog_open_file("Wavefront OBJ\0*.obj\0All files\0*.*\0", "obj");
+    std::string p = dialog_open_file(MODEL_FILE_FILTER, nullptr);
     if (!p.empty()) {
       std::string err;
       int idx = scene_import_obj(p, err);
@@ -428,12 +430,12 @@ void scene_layers_ui(App &a) {
 }
 
 void draw_panel_scene(App &a) {
-  panel_float_prepare(a, "Objects###Outliner");
-  if (!ImGui::Begin("Objects###Outliner")) {
+  panel_float_prepare(a, "Scene###Outliner");
+  if (!ImGui::Begin("Scene###Outliner")) {
     ImGui::End();
     return;
   }
-  panel_float_controls(a, "Objects###Outliner");
+  panel_float_controls(a, "Scene###Outliner");
   SceneState &sc = scene();
   TreeState &g = tree_state();
 

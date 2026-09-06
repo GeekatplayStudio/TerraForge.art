@@ -6,6 +6,7 @@
 #include "scene.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 namespace studio {
 
@@ -30,59 +31,6 @@ gpx::TriMesh mesh_from_object(const SceneObject &o) {
   return m;
 }
 
-void mesh_to_object(SceneObject &o, const gpx::TriMesh &m) {
-  o.verts.clear();
-  o.verts.reserve(m.face_count() * 18);
-  for (size_t i = 0; i < m.face_count(); ++i) {
-    const uint32_t *fc = m.face(i);
-    const float *p0 = m.vert(fc[0]), *p1 = m.vert(fc[1]), *p2 = m.vert(fc[2]);
-    float u[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
-    float v[3] = {p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]};
-    float nx = u[1] * v[2] - u[2] * v[1];
-    float ny = u[2] * v[0] - u[0] * v[2];
-    float nz = u[0] * v[1] - u[1] * v[0];
-    float len = std::sqrt(nx * nx + ny * ny + nz * nz);
-    if (len > 0.f) {
-      nx /= len;
-      ny /= len;
-      nz /= len;
-    } else {
-      ny = 1.f;
-    }
-    for (const float *p : {p0, p1, p2}) {
-      o.verts.insert(o.verts.end(), p, p + 3);
-      o.verts.push_back(nx);
-      o.verts.push_back(ny);
-      o.verts.push_back(nz);
-    }
-  }
-  o.vert_count = (int)(o.verts.size() / 6);
-  o.gpu_dirty = true;
-}
-
-int scene_import_mesh(const std::string &path, std::string &err) {
-  gpx::TriMesh m;
-  if (!gpx::mesh_load(path, m, err)) return -1;
-  SceneObject o;
-  o.type = SceneObject::Mesh;
-  o.path = path;
-  size_t slash = path.find_last_of("/\\");
-  o.name = slash == std::string::npos ? path : path.substr(slash + 1);
-
-  // The geometry is left exactly as the file has it. A model's coordinates
-  // are the one thing a repair tool must not quietly rewrite - a millimetre
-  // in the file has to still be a millimetre in the report - so the object is
-  // placed and sized by its transform instead, which changes nothing about
-  // the mesh itself.
-  float lo[3], hi[3];
-  if (gpx::mesh_bounds(m, lo, hi)) {
-    float span = std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]});
-    if (span > 0.f) o.scale = 0.08f / span; // about a tenth of the tile
-  }
-  mesh_to_object(o, m);
-  scene().objects.push_back(std::move(o));
-  return (int)scene().objects.size() - 1;
-}
 
 SceneObject *mesh_selected_object(App &a, std::string &err) {
   SceneState &sc = scene();

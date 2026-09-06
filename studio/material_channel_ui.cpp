@@ -94,48 +94,60 @@ void procedural_ui(App &a, gpx::Node *src, float lw) {
 
 } // namespace
 
+// The attribute manager's row: the label in a column on the left, the
+// widget filling the rest of the line. The label used to hang off the right
+// of the widget, where a narrow window cut it off - and `label_w` was the
+// space kept for it, which is now the column's width.
 void material_attr_widget(App &a, gpx::Node *n, const char *key, float label_w) {
   gpx::Attribute *at = n->attrs.find(key);
   if (!at) return;
   ImGui::PushID(key);
   bool changed = false;
-  ImGui::SetNextItemWidth(-label_w);
+  const float col = std::clamp(label_w, 90.f, ImGui::GetContentRegionAvail().x * 0.45f);
+  const bool own_label = at->type == gpx::AttrType::Bool;
+  if (!own_label) {
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(at->label.c_str());
+    if (ImGui::IsItemHovered() && !at->tooltip.empty()) ImGui::SetTooltip("%s", at->tooltip.c_str());
+    ImGui::SameLine(col);
+    ImGui::SetNextItemWidth(-1.f);
+  }
   switch (at->type) {
   case gpx::AttrType::Float:
-    changed = ImGui::SliderFloat(at->label.c_str(), &at->f, at->fmin, at->fmax, "%.3f",
+    changed = ImGui::SliderFloat("##v", &at->f, at->fmin, at->fmax, "%.3f",
                                  at->log_scale ? ImGuiSliderFlags_Logarithmic : 0);
     break;
   case gpx::AttrType::Int:
-    changed = ImGui::SliderInt(at->label.c_str(), &at->i, at->imin, at->imax);
+    changed = ImGui::SliderInt("##v", &at->i, at->imin, at->imax);
     break;
   case gpx::AttrType::Bool:
     changed = studio::Checkbox(at->label.c_str(), &at->b);
     break;
   case gpx::AttrType::Color:
-    changed = ImGui::ColorEdit3(at->label.c_str(), at->col, ImGuiColorEditFlags_NoInputs);
+    changed = ImGui::ColorEdit3("##v", at->col, ImGuiColorEditFlags_NoInputs);
     break;
   case gpx::AttrType::Choice: {
     std::vector<const char *> items;
     for (const std::string &s : at->labels) items.push_back(s.c_str());
-    changed = ImGui::Combo(at->label.c_str(), &at->i, items.data(), (int)items.size());
+    changed = ImGui::Combo("##v", &at->i, items.data(), (int)items.size());
     break;
   }
   case gpx::AttrType::Vec2:
-    changed = ImGui::DragFloat2(at->label.c_str(), at->v2, 0.01f, at->v2min, at->v2max);
+    changed = ImGui::DragFloat2("##v", at->v2, 0.01f, at->v2min, at->v2max);
     break;
   case gpx::AttrType::Range:
-    changed = ImGui::DragFloatRange2(at->label.c_str(), &at->v2[0], &at->v2[1],
+    changed = ImGui::DragFloatRange2("##v", &at->v2[0], &at->v2[1],
                                      (at->v2max - at->v2min) / 300.f, at->v2min, at->v2max);
     break;
   case gpx::AttrType::Seed: {
     int s = (int)(at->seed & 0x7fffffff);
-    if (ImGui::InputInt(at->label.c_str(), &s)) { at->seed = (uint32_t)std::max(s, 0); changed = true; }
+    if (ImGui::InputInt("##v", &s)) { at->seed = (uint32_t)std::max(s, 0); changed = true; }
     break;
   }
   case gpx::AttrType::Text: {
     char buf[256];
     snprintf(buf, sizeof buf, "%s", at->s.c_str());
-    if (ImGui::InputText(at->label.c_str(), buf, sizeof buf)) { at->s = buf; changed = true; }
+    if (ImGui::InputText("##v", buf, sizeof buf)) { at->s = buf; changed = true; }
     break;
   }
   default:

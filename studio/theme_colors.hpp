@@ -66,6 +66,13 @@ inline ImU32 error()       { return IM_COL32(0xd8, 0x50, 0x3c, 0xff); }
 // small size and to sit on a dark ground without glowing.
 ImU32 category_color(const std::string &category);
 
+// The header colour of one node: its category's colour, except where a
+// category mixes jobs. Material nodes split three ways - a source that
+// brings pixels in (a file, a download, a flat colour), a processor that
+// changes them, and the material itself that hands them to the renderer -
+// and each is its own colour, the way the icon code separates them.
+ImU32 node_color(const std::string &type, const std::string &category);
+
 // Ports are coloured by what flows through them, which is the one thing you
 // need to know before making a connection.
 ImU32 port_color(bool is_texture, bool is_field, unsigned field_type,

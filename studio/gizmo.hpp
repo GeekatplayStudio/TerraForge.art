@@ -17,13 +17,26 @@ namespace studio {
 
 struct App;
 
-enum class GizmoMode { None = 0, Move, Rotate, Scale, Twist, Bend, Skew, Taper };
+// Universal is Vue's gizmo: arrows, rings and boxes in one gadget, so an
+// object is moved, turned and resized without changing tool. The single
+// tools show one part each; the deformers are their own gadgets.
+enum class GizmoMode { None = 0, Universal, Move, Rotate, Scale, Twist, Bend, Skew, Taper };
+// Which axes the gadget is drawn on: the world's, the object's own, or its
+// parent's - Cinema 4D's world/object coordinate switch, with the parent
+// added because a child of a turned group is usually dragged along it.
+enum class GizmoSpace { World = 0, Local, Parent };
 // Vue's Display > Gizmos > Show Gizmos: one switch over every view.
 bool &gizmo_visible();
 
+// True while a handle is being dragged; which object and which axis
+// (0..2, 3 = the uniform centre).
+bool gizmo_dragging(int &object, int &axis);
+
 const char *gizmo_mode_name(GizmoMode m);
+const char *gizmo_space_name(GizmoSpace s);
 // Which gadget the viewports show. Shared by every view, like the tool it is.
 GizmoMode &gizmo_mode();
+GizmoSpace &gizmo_space();
 
 // Hit-test and drag. Call once per view, after the view's image has been
 // submitted and BEFORE the camera input is read: returns true when the gizmo

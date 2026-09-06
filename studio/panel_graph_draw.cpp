@@ -49,7 +49,7 @@ void draw_node(App &a, const App::NodeView &n) {
                    ImVec4(0, 0, 0, collapse == 2 ? 0.f : 7.f));
   ed::BeginNode(n.id);
 
-  ImU32 hc = theme::category_color(n.category);
+  ImU32 hc = theme::node_color(n.type, n.category);
   if (!n.enabled) hc = theme::fade(theme::shade(hc, 0.55f), 0.9f);
   ImDrawList *dl = ImGui::GetWindowDrawList();
   const ImU32 body_col = n.enabled ? theme::node_bg()
@@ -74,6 +74,7 @@ void draw_node(App &a, const App::NodeView &n) {
                         (out_n ? out_label_w + dot_col : 0.f);
   float body_w = std::max(head_w, collapse == 2 ? 0.f : ports_w) + PAD_X * 2.f;
   if (prev_tex) body_w = std::max(body_w, PREVIEW + PAD_X * 2.f);
+  if (n.type == "ImportObject") body_w = std::max(body_w, 180.f);
   body_w = std::max(body_w, 120.f);
 
   // ---- header ----------------------------------------------------------
@@ -231,6 +232,31 @@ void draw_node(App &a, const App::NodeView &n) {
       ImGui::Dummy(ImVec2(PAD_X, 0));
       ImGui::SameLine(0, 0);
     };
+    // An ImportObject carries its own controls on the card: the file it
+    // shows, and the button that picks another - so importing a model is
+    // one click on the node, not a trip to the Properties editor.
+    if (n.type == "ImportObject" && collapse == 0) {
+      indent();
+      ImGui::PushID((int)(n.id & 0x7fffffff));
+      if (ImGui::SmallButton(tr("Load..."))) {
+        extern std::string dialog_open_file(const char *, const char *);
+        std::string p = dialog_open_file(MODEL_FILE_FILTER, nullptr);
+        if (!p.empty()) g_file_requests.push_back({n.id, p});
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", tr("Import a model: FBX, glTF/GLB, OBJ (with textures), STL, PLY, OFF"));
+      ImGui::SameLine(0, 6);
+      std::string shown = n.file.empty() ? std::string(tr("(no model)"))
+                                         : n.file.substr(n.file.find_last_of("/\\") + 1);
+      const float room = body_w - PAD_X * 2.f - ImGui::GetItemRectSize().x - 6.f;
+      while (ImGui::CalcTextSize(shown.c_str()).x > room && shown.size() > 4)
+        shown = shown.substr(0, shown.size() - 4) + "...";
+      ImGui::PushStyleColor(ImGuiCol_Text, n.file.empty() ? theme::text_dim() : theme::text());
+      ImGui::TextUnformatted(shown.c_str());
+      ImGui::PopStyleColor();
+      if (!n.file.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", n.file.c_str());
+      ImGui::PopID();
+    }
     if (collapse == 0 && n.ms > 0.01) {
       indent();
       ImGui::PushStyleColor(ImGuiCol_Text, theme::text_dim());

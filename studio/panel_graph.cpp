@@ -246,6 +246,17 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
 
   bool eval_running = !can_edit;
   // collapse requests raised by last frame's chevrons or the H key
+  if (!eval_running && !g_file_requests.empty()) {
+    for (const FileRequest &r : g_file_requests)
+      if (gpx::Node *n = a.graph.find_node(r.node))
+        if (gpx::Attribute *at = n->attrs.find("file")) {
+          undo_push_locked(a, "Import model");
+          at->s = r.path;
+          a.graph.mark_dirty(n->id);
+          a.request_eval();
+        }
+    g_file_requests.clear();
+  }
   if (!eval_running && !g_collapse_requests.empty()) {
     for (const CollapseRequest &r : g_collapse_requests)
       if (gpx::Node *n = a.graph.find_node(r.node))

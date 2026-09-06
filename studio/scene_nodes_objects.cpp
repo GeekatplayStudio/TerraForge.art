@@ -13,6 +13,7 @@
 // (1 = terrain_size_m). The conversion happens here and nowhere else.
 #include "app.hpp"
 #include "console.hpp"
+#include "mesh_thumbnail.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include <algorithm>
@@ -40,17 +41,46 @@ int find_driven(const gpx::Node &n, SceneObject::Type type,
 
 float m_to_tile(float m, float size_m) { return m / std::max(size_m, 1.f); }
 
-void apply_transform(SceneObject &o, const gpx::AttrSet &at, float size_m) {
-  o.pos[0] = m_to_tile(at.get_f("x_m", 2500.f), size_m);
-  o.pos[1] = m_to_tile(at.get_f("y_m", 0.f), size_m);
-  o.pos[2] = m_to_tile(at.get_f("z_m", 2500.f), size_m);
-  o.scale = m_to_tile(at.get_f("size_m", 400.f), size_m);
-  o.yaw = at.get_f("heading", 0.f);
-  o.pitch = at.get_f("pitch", 0.f);
-  o.roll = at.get_f("bank", 0.f);
-  o.visible = at.get_b("visible", true);
+// The node's transform attributes as one list, in the order they are
+// compared and written back.
+static const char *const XFORM_KEYS[7] = {"x_m", "y_m", "z_m", "size_m", "heading", "pitch", "bank"};
+
+// Two-way: the node drives the object only when the node changed since it
+// last drove it; otherwise the object's own state is the truth and the node
+// is brought up to date with it, so a drag in the viewport survives every
+// later evaluation and is saved with the project.
+void apply_transform(SceneObject &o, gpx::AttrSet &at, float size_m) {
+  std::vector<float> now(11);
+  for (int k = 0; k < 7; ++k) now[(size_t)k] = at.get_f(XFORM_KEYS[k], 0.f);
+  now[7] = at.get_b("visible", true) ? 1.f : 0.f;
   if (const gpx::Attribute *c = at.find("color"))
-    for (int k = 0; k < 3; ++k) o.color[k] = c->col[k];
+    for (int k = 0; k < 3; ++k) now[(size_t)8 + k] = c->col[k];
+  const bool node_changed = o.driver_stamp != now;
+  if (node_changed) {
+    o.pos[0] = m_to_tile(at.get_f("x_m", 2500.f), size_m);
+    o.pos[1] = m_to_tile(at.get_f("y_m", 0.f), size_m);
+    o.pos[2] = m_to_tile(at.get_f("z_m", 2500.f), size_m);
+    o.scale = m_to_tile(at.get_f("size_m", 400.f), size_m);
+    o.yaw = at.get_f("heading", 0.f);
+    o.pitch = at.get_f("pitch", 0.f);
+    o.roll = at.get_f("bank", 0.f);
+    o.visible = at.get_b("visible", true);
+    if (const gpx::Attribute *c = at.find("color"))
+      for (int k = 0; k < 3; ++k) o.color[k] = c->col[k];
+  } else {
+    // the object moved on its own: the node follows, quietly
+    const float vals[7] = {o.pos[0] * size_m, o.pos[1] * size_m, o.pos[2] * size_m, o.scale * size_m,
+                           o.yaw, o.pitch, o.roll};
+    for (int k = 0; k < 7; ++k)
+      if (gpx::Attribute *a = at.find(XFORM_KEYS[k])) a->f = vals[k];
+    if (gpx::Attribute *v = at.find("visible")) v->b = o.visible;
+    if (gpx::Attribute *c = at.find("color"))
+      for (int k = 0; k < 3; ++k) c->col[k] = o.color[k];
+    for (int k = 0; k < 7; ++k) now[(size_t)k] = vals[k];
+    now[7] = o.visible ? 1.f : 0.f;
+    for (int k = 0; k < 3; ++k) now[(size_t)8 + k] = o.color[k];
+  }
+  o.driver_stamp = now;
 }
 
 void apply_light(App &a, gpx::Node &n, float size_m) {
@@ -129,18 +159,27 @@ void apply_mesh(App &a, gpx::Node &n, float size_m, bool primitive) {
   if (idx >= 0 && scene().objects[idx].path != source) {
     // the file or shape changed: reload geometry in place, keep the object
     SceneObject &o = scene().objects[idx];
-    std::vector<float> verts;
     std::string err;
-    bool ok = primitive ? scene_primitive_verts(source.substr(10), verts)
-                        : scene_load_obj_verts(source, verts, err);
+    bool ok;
+    if (primitive) {
+      std::vector<float> verts;
+      ok = scene_primitive_verts(source.substr(10), verts);
+      if (ok) {
+        o.verts = std::move(verts);
+        o.uvs.clear();
+        o.parts.clear();
+        o.vert_count = (int)(o.verts.size() / 6);
+      }
+    } else {
+      ok = scene_load_mesh(source, o, err);
+    }
     if (!ok) {
       n.error = err.empty() ? "could not load " + source : err;
       return;
     }
     o.path = source;
-    o.verts = std::move(verts);
-    o.vert_count = (int)(o.verts.size() / 6);
     o.gpu_dirty = true;
+    if (!primitive) previews_set_image(n.id, mesh_thumbnail(o, 112), 112, 112);
   }
   if (idx < 0) {
     std::string err;
@@ -150,11 +189,16 @@ void apply_mesh(App &a, gpx::Node &n, float size_m, bool primitive) {
       n.error = err.empty() ? "could not load " + source : err;
       return;
     }
+    if (!primitive) previews_set_image(n.id, mesh_thumbnail(scene().objects[idx], 112), 112, 112);
   }
+  // an adopted object that has no picture on the card yet
+  if (!primitive && !previews_get(n.id))
+    previews_set_image(n.id, mesh_thumbnail(scene().objects[idx], 112), 112, 112);
   SceneObject &o = scene().objects[idx];
   o.driver_node = n.id;
-  o.name = name;
-  apply_transform(o, at, size_m);
+  // a name typed on the node wins; otherwise a rename in the tree stays
+  if (!at.get_s("object").empty() || o.name.empty()) o.name = name;
+  apply_transform(o, n.attrs, size_m);
 }
 
 void apply_planet(App &a, gpx::Node &n, float size_m) {

@@ -110,29 +110,56 @@ static bool load_into(const fs::path &file, TextureRGBA &out, int mapping,
 
 REGISTER_NODE(
     PBRMaterial, "Material",
-    "Download a CC0 photoscanned PBR material set from ambientCG (albedo/normal/roughness/AO)",
+    "A PBR material set (albedo/normal/roughness/AO): a folder of maps on disk, or a CC0 "
+    "photoscan downloaded from ambientCG",
     [](Node &n) {
       n.add_out("albedo", DataType::Texture);
       n.add_out("normal", DataType::Texture);
       n.add_out("roughness", DataType::Texture);
       n.add_out("ao", DataType::Texture);
+      add_choice(n.attrs, "source", "Source", {"ambientCG download", "Folder on disk"}, 0)
+          .tooltip = "Where the maps come from. A folder holds the set's images; the\n"
+                     "maps are found by name (color/albedo/diffuse, normal, roughness,\n"
+                     "ao/ambientocclusion) - the layout every PBR library ships.";
+      add_filename(n.attrs, "folder", "Material folder (or any map in it)", "")
+          .tooltip = "Pick any image of the set; the folder it is in is scanned for\n"
+                     "the other maps.";
       add_text(n.attrs, "asset", "ambientCG asset ID", "Rock035");
       add_choice(n.attrs, "resolution", "Resolution", {"1K", "2K", "4K", "8K"}, 1);
       add_choice(n.attrs, "mapping", "Mapping", {"Stretch", "Tile"}, 1);
       add_float(n.attrs, "tiles", "Tiles across", 8.f, 1.f, 64.f);
     },
     [](Node &n) {
+      const bool local = n.attrs.get_choice("source") == 1;
       std::string asset = n.attrs.get_s("asset");
-      if (asset.empty()) {
+      fs::path dir;
+      std::string file_id;
+      if (local) {
+        fs::path chosen = n.attrs.get_s("folder");
+        if (chosen.empty()) {
+          n.error = "choose the material folder, or any map in it";
+          return;
+        }
+        std::error_code ec;
+        dir = fs::is_directory(chosen, ec) ? chosen : chosen.parent_path();
+        if (!fs::is_directory(dir, ec)) {
+          n.error = "not a folder: " + dir.string();
+          return;
+        }
+        file_id = dir.filename().string();
+      }
+      if (!local && asset.empty()) {
         n.error = "set an ambientCG asset ID (browse ambientcg.com)";
         return;
       }
       const char *res_names[4] = {"1K", "2K", "4K", "8K"};
       std::string res = res_names[std::clamp(n.attrs.get_choice("resolution"), 0, 3)];
-      std::string file_id = asset + "_" + res + "-JPG";
-      fs::path dir = material_cache_dir() / file_id;
+      if (!local) {
+        file_id = asset + "_" + res + "-JPG";
+        dir = material_cache_dir() / file_id;
+      }
       fs::path marker = dir / ".complete";
-      if (!fs::exists(marker)) {
+      if (!local && !fs::exists(marker)) {
         std::error_code ec;
         fs::create_directories(dir, ec);
         fs::path zip = dir / (file_id + ".zip");
@@ -156,10 +183,12 @@ REGISTER_NODE(
       TextureRGBA &nrm = n.out_tex("normal");
       TextureRGBA &rgh = n.out_tex("roughness");
       TextureRGBA &ao = n.out_tex("ao");
-      bool ok = load_into(find_map(dir, {"_color", "color."}), alb, mapping, tiles);
-      load_into(find_map(dir, {"normalgl"}), nrm, mapping, tiles);
-      load_into(find_map(dir, {"roughness"}), rgh, mapping, tiles);
-      load_into(find_map(dir, {"ambientocclusion", "_ao"}), ao, mapping, tiles);
+      // the names every library uses, ambientCG's first
+      bool ok = load_into(find_map(dir, {"_color", "color.", "albedo", "diffuse", "basecolor", "base_color"}),
+                          alb, mapping, tiles);
+      load_into(find_map(dir, {"normalgl", "normal"}), nrm, mapping, tiles);
+      load_into(find_map(dir, {"roughness", "rough"}), rgh, mapping, tiles);
+      load_into(find_map(dir, {"ambientocclusion", "_ao", "occlusion", "ao."}), ao, mapping, tiles);
       if (!ok) n.error = "no color map found in " + file_id;
     })
 

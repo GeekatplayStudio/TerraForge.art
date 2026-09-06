@@ -9,6 +9,7 @@
 // panel_settings_services.cpp; this file is the frame, General and
 // Shortcuts, Applications and Asset folders.
 #include "app.hpp"
+#include "updater.hpp"
 #include "asset_store.hpp"
 #include "config.hpp"
 #include "i18n.hpp"
@@ -110,6 +111,51 @@ void tab_general(App &a) {
   ImGui::TextDisabled("textures: %s", config_output_dir("textures").c_str());
   ImGui::TextDisabled("skies:    %s", config_output_dir("skies").c_str());
   ImGui::TextDisabled("models:   %s", config_output_dir("models").c_str());
+}
+
+// Updates: a check against GitHub, and the update-and-rebuild hand-over.
+void tab_updates(App &a) {
+  Config &c = config();
+  const UpdateStatus st = update_status();
+  ImGui::TextDisabled("this build: %s", build_commit().c_str());
+  studio::Checkbox("Check for updates when TerraForge starts", &c.updates.check_on_start);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Asks GitHub for the head of the branch below. When it is newer than this\n"
+                      "build, a dialog offers to update and rebuild.");
+  static char repo[128], branch[64], src[512];
+  snprintf(repo, sizeof repo, "%s", c.updates.repo.c_str());
+  snprintf(branch, sizeof branch, "%s", c.updates.branch.c_str());
+  snprintf(src, sizeof src, "%s", c.updates.source_dir.c_str());
+  ImGui::SetNextItemWidth(320);
+  if (ImGui::InputText("GitHub repository (owner/name)", repo, sizeof repo)) c.updates.repo = repo;
+  ImGui::SetNextItemWidth(320);
+  if (ImGui::InputText("Branch", branch, sizeof branch)) c.updates.branch = branch;
+  ImGui::SetNextItemWidth(320);
+  if (ImGui::InputText("Source checkout to rebuild", src, sizeof src)) c.updates.source_dir = src;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The git checkout that is pulled and built. Empty: the tree this build\n"
+                      "was made from.");
+  ImGui::Spacing();
+  if (ImGui::Button(st.checking ? "Checking..." : "Check now", ImVec2(140, 0)) && !st.checking)
+    update_check_async();
+  ImGui::SameLine();
+  if (st.checking) ImGui::TextDisabled("asking GitHub...");
+  else if (!st.checked) ImGui::TextDisabled("not checked yet");
+  else if (!st.error.empty()) ImGui::TextColored(ImVec4(0.85f, 0.45f, 0.3f, 1.f), "%s", st.error.c_str());
+  else if (st.available) ImGui::TextColored(ImVec4(0.87f, 0.62f, 0.24f, 1.f), "newer version on GitHub: %s", st.remote_sha.substr(0, 10).c_str());
+  else ImGui::TextDisabled("up to date");
+  if (st.checked && st.available) {
+    if (!st.remote_message.empty()) ImGui::TextWrapped("%s", st.remote_message.c_str());
+    if (ImGui::Button("Update and rebuild", ImVec2(180, 0))) update_and_rebuild(a);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Closes TerraForge, pulls the repository, builds it for this machine,\n"
+                        "replaces this executable and starts it again. Save your work first.");
+  }
+  if (!c.updates.skipped_sha.empty()) {
+    ImGui::TextDisabled("skipping %s", c.updates.skipped_sha.substr(0, 10).c_str());
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Forget")) c.updates.skipped_sha.clear();
+  }
 }
 
 void tab_shortcuts(App &a) {
@@ -257,7 +303,8 @@ void draw_panel_settings(App &a) {
                 {"AI services", settings_services_tab},
                 {"ComfyUI", settings_comfy_tab},
                 {"Applications", tab_applications},
-                {"Asset folders", tab_assets}};
+                {"Asset folders", tab_assets},
+                {"Updates", tab_updates}};
     for (const Tab &t : tabs)
       if (ImGui::BeginTabItem(t.name)) {
         ImGui::BeginChild("##t", ImVec2(0, -32));

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <mutex>
 #include <stdexcept>
 #include <vector>
 
@@ -13,9 +14,24 @@ namespace studio {
 struct Preview {
   unsigned tex = 0;
   int w = 0, h = 0;
+  bool custom = false; // set by previews_set_image, not from a port
 };
 static std::map<uint64_t, Preview> PREVIEWS;
 static const int PW = 112;
+
+// pictures handed in from anywhere, uploaded on the main thread
+struct PendingImage {
+  uint64_t id;
+  std::vector<uint8_t> rgba;
+  int w, h;
+};
+static std::mutex g_pending_mtx;
+static std::vector<PendingImage> g_pending;
+
+void previews_set_image(uint64_t node_id, std::vector<uint8_t> rgba, int w, int h) {
+  std::lock_guard<std::mutex> lk(g_pending_mtx);
+  g_pending.push_back({node_id, std::move(rgba), w, h});
+}
 
 static void upload_preview(uint64_t id, const std::vector<uint8_t> &rgba, int w,
                            int h) {
@@ -30,8 +46,25 @@ static void upload_preview(uint64_t id, const std::vector<uint8_t> &rgba, int w,
   p.h = h;
 }
 
+// Pictures handed in since the last frame go up now; previews_update only
+// runs after an evaluation, and a model loaded while the scene was being
+// applied would otherwise wait for the next one.
+void previews_flush() {
+  std::vector<PendingImage> take;
+  {
+    std::lock_guard<std::mutex> lk(g_pending_mtx);
+    take.swap(g_pending);
+  }
+  for (PendingImage &pi : take) {
+    upload_preview(pi.id, pi.rgba, pi.w, pi.h);
+    PREVIEWS[pi.id].custom = true;
+  }
+}
+
 void previews_update(App &a) {
+  previews_flush();
   for (auto &n : a.graph.nodes) {
+    if (PREVIEWS.count(n->id) && PREVIEWS[n->id].custom) continue;
     gpx::Port *pt = n->first_out(gpx::DataType::Texture);
     if (pt && pt->tex && !pt->tex->empty()) {
       gpx::TextureRGBA small(PW, PW);

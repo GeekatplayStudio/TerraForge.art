@@ -7,6 +7,7 @@
 // Cinema 4D palette ladder: 1 px at 18, 2 px at 26, 3 px at 36.
 #pragma once
 #include "icons.hpp"
+#include <algorithm>
 #include <cmath>
 #include <initializer_list>
 
@@ -14,7 +15,7 @@ namespace studio {
 
 inline constexpr float ICON_PI = 3.14159265f;
 // The inset between the icon box and the glyph, in pixels, at every size.
-inline constexpr float ICON_PAD = 2.f;
+inline constexpr float ICON_PAD = 1.5f;
 
 struct Pen {
   ImDrawList *dl;
@@ -22,6 +23,46 @@ struct Pen {
   float r;    // half the drawable box (size/2 - padding), pixels
   ImU32 col;
   float w;    // stroke width, pixels
+  // The functional colour (Cinema 4D's code: blue geometry, green
+  // generators, purple deformers, orange tools, yellow lights, teal
+  // cameras). Equal to `col` when the icon is drawn in one tone.
+  ImU32 hue;
+
+  // The same pen in another colour, for the part of a glyph that carries
+  // its meaning: the arrow heads of Move, the lens of a camera, the front
+  // face of a cube.
+  Pen tone(ImU32 c) const {
+    Pen k = *this;
+    k.col = c;
+    return k;
+  }
+  // The pen in the functional colour.
+  Pen hi() const { return tone(hue); }
+  // The functional colour lit from above and in shadow below: the two
+  // tones that make a filled shape read as a solid rather than a stamp,
+  // the way Cinema 4D's object icons are shaded.
+  Pen lit() const { return tone(mix(hue, IM_COL32(255, 255, 255, 255), 0.38f)); }
+  Pen dark() const { return tone(mix(hue, IM_COL32(0, 0, 0, 255), 0.42f)); }
+  // A heavier stroke for the tool icons, which read as marks not drawings.
+  Pen thick(float k = 1.5f) const {
+    Pen p = *this;
+    p.w = std::max(1.f, std::round(w * k));
+    return p;
+  }
+  // Fill a polygon through the given (x,y) pairs.
+  void fill(std::initializer_list<float> xy) const {
+    const float *v = xy.begin();
+    int n = static_cast<int>(xy.size() / 2);
+    if (n < 3) return;
+    dl->PathClear();
+    for (int i = 0; i < n; ++i) dl->PathLineTo(p(v[i * 2], v[i * 2 + 1]));
+    dl->PathFillConvex(col);
+  }
+  static ImU32 mix(ImU32 a, ImU32 b, float t) {
+    ImVec4 x = ImGui::ColorConvertU32ToFloat4(a), y = ImGui::ColorConvertU32ToFloat4(b);
+    return ImGui::ColorConvertFloat4ToU32(
+        ImVec4(x.x + (y.x - x.x) * t, x.y + (y.y - x.y) * t, x.z + (y.z - x.z) * t, x.w));
+  }
 
   // A whole-pixel stroke is crisp when its centre line sits on a half pixel;
   // an even one when it sits on a pixel boundary.

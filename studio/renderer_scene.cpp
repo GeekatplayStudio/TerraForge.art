@@ -242,6 +242,46 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     infinite_draw(inf);
   }
 
+  // A mesh is drawn part by part: each run of vertices with its own picture
+  // (bound on unit 3) and colour, or in one go when it has none.
+  auto draw_mesh_parts = [&](SceneObject &o, bool instanced) {
+    const int copies = instanced ? (int)(o.inst.size() / 8) : 1;
+    auto draw = [&](int first, int count) {
+      if (instanced) glDrawArraysInstanced(GL_TRIANGLES, first, count, copies);
+      else glDrawArrays(GL_TRIANGLES, first, count);
+    };
+    const bool have_uv = o.uvs.size() == (size_t)o.vert_count * 2;
+    if (o.parts.empty() || !have_uv) {
+      unii(prog_mesh, "u_has_tex", 0);
+      draw(0, o.vert_count);
+      return;
+    }
+    glActiveTexture(GL_TEXTURE3);
+    int covered = 0;
+    for (const SceneObject::Part &part : o.parts) {
+      if (part.first < 0 || part.count <= 0 || part.first + part.count > o.vert_count) continue;
+      float col[3] = {o.color[0] * part.color[0], o.color[1] * part.color[1], o.color[2] * part.color[2]};
+      uni3(prog_mesh, "u_color", col);
+      if (part.tex) {
+        glBindTexture(GL_TEXTURE_2D, part.tex);
+        unii(prog_mesh, "u_albedo_tex", 3);
+        unii(prog_mesh, "u_has_tex", 1);
+      } else {
+        unii(prog_mesh, "u_has_tex", 0);
+      }
+      draw(part.first, part.count);
+      covered = std::max(covered, part.first + part.count);
+    }
+    // vertices no part claims are drawn plain
+    if (covered < o.vert_count) {
+      uni3(prog_mesh, "u_color", o.color);
+      unii(prog_mesh, "u_has_tex", 0);
+      draw(covered, o.vert_count - covered);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+  };
+
   // Lighting is shared by every mesh in this view.
   glUseProgram(prog_mesh);
   upload_scene_lights(prog_mesh, RS.height_scale);
@@ -265,7 +305,32 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
       glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 24, nullptr);
       glEnableVertexAttribArray(1);
       glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, (void *)12);
+      // texture coordinates in their own buffer, so a mesh without any keeps
+      // the six-float layout every other reader of `verts` expects
+      if (o.uvs.size() == (size_t)o.vert_count * 2) {
+        if (!o.uvbo) glGenBuffers(1, &o.uvbo);
+        glBindBuffer(GL_ARRAY_BUFFER, o.uvbo);
+        glBufferData(GL_ARRAY_BUFFER, o.uvs.size() * 4, o.uvs.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 2, GL_FLOAT, GL_FALSE, 8, nullptr);
+      } else {
+        glDisableVertexAttribArray(6);
+      }
       glBindVertexArray(0);
+      // the parts' pictures, decoded on load, become textures here
+      for (SceneObject::Part &part : o.parts) {
+        if (part.tex || part.rgba.empty() || part.w <= 0) continue;
+        glGenTextures(1, &part.tex);
+        glBindTexture(GL_TEXTURE_2D, part.tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, part.w, part.h, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                     part.rgba.data());
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+      }
+      glBindTexture(GL_TEXTURE_2D, 0);
       o.gpu_dirty = false;
       scene_object_bounds(o);
     }
@@ -355,11 +420,11 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
         }
         buffer.revision = o.inst_revision;
       }
-      glDrawArraysInstanced(GL_TRIANGLES, 0, o.vert_count, (int)(o.inst.size() / 8));
+      draw_mesh_parts(o, true);
       unii(prog_mesh, "u_inst_on", 0);
     } else {
       unii(prog_mesh, "u_inst_on", 0);
-      glDrawArrays(GL_TRIANGLES, 0, o.vert_count);
+      draw_mesh_parts(o, false);
     }
   }
 

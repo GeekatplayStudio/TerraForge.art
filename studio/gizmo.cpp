@@ -30,8 +30,10 @@ extern const ImU32 AXIS_COL[3];
 const ImU32 AXIS_COL[3] = {IM_COL32(226, 92, 84, 255), IM_COL32(150, 200, 92, 255),
                            IM_COL32(88, 150, 235, 255)};
 
-GizmoMode g_mode = GizmoMode::Move;
+GizmoMode g_mode = GizmoMode::Universal;
+GizmoSpace g_space = GizmoSpace::World;
 bool g_visible = true;
+Hot g_hot;
 gpx::Deform g_start_deform;
 
 Drag g_drag;
@@ -98,6 +100,21 @@ bool anchor_of(const SceneObject &o, float out[3]) {
       out[2] = 0.5f + d[2] * gd;
       return true;
     }
+    // The terrain tile and the ground under it are the world, so they do
+    // not move - but they are objects, they get selected, and a selected
+    // object with no gadget looks like a selection that failed. Their gizmo
+    // sits at the tile's centre: Scale resizes the tile (X and Z the width,
+    // Y the height), the other tools show the axes and nothing more.
+    case SceneObject::Terrain:
+      out[0] = 0.5f;
+      out[1] = rs.height_scale * 0.5f;
+      out[2] = 0.5f;
+      return true;
+    case SceneObject::InfiniteSurface:
+      out[0] = 0.5f;
+      out[1] = 0.f;
+      out[2] = 0.5f;
+      return true;
     default:
       return false;
   }
@@ -124,6 +141,8 @@ int axis_mask(const SceneObject &o, GizmoMode m) {
       return m == GizmoMode::Move ? 0x2 : 0; // the level, and only the level
     case SceneObject::Sun:
       return m == GizmoMode::Move ? 0x7 : 0;
+    case SceneObject::Terrain:
+      return m == GizmoMode::Scale ? 0xF : 0;
     default:
       return 0;
   }
@@ -131,6 +150,7 @@ int axis_mask(const SceneObject &o, GizmoMode m) {
 
 const char *undo_label(GizmoMode m) {
   switch (m) {
+    case GizmoMode::Universal: return "Transform object";
     case GizmoMode::Move: return "Move object";
     case GizmoMode::Rotate: return "Rotate object";
     case GizmoMode::Scale: return "Scale object";
@@ -190,14 +210,87 @@ void apply_move(SceneObject &o, const float d[3]) {
   }
 }
 
+// ------------------------------------------------------------ the frame
+// The axes the gadget stands on. Local is the object's rotation, the same
+// R the renderer builds in scene_object_matrix; Parent is the parent's.
+static void rotation_columns(const SceneObject &o, float axes[3][3]) {
+  const float D2R = 0.017453292519943295f;
+  float ch = std::cos(o.yaw * D2R), sh = std::sin(o.yaw * D2R);
+  float cp = std::cos(o.pitch * D2R), sp = std::sin(o.pitch * D2R);
+  float cb = std::cos(o.roll * D2R), sb = std::sin(o.roll * D2R);
+  float r[9] = {ch * cb + sh * sp * sb, -ch * sb + sh * sp * cb, sh * cp,
+                cp * sb,                cp * cb,                 -sp,
+                -sh * cb + ch * sp * sb, sh * sb + ch * sp * cb, ch * cp};
+  for (int c = 0; c < 3; ++c)
+    for (int rr = 0; rr < 3; ++rr) axes[c][rr] = r[rr * 3 + c];
+}
+
+void gizmo_frame(const SceneObject &o, float axes[3][3]) {
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j) axes[i][j] = i == j ? 1.f : 0.f;
+  if (g_space == GizmoSpace::Local) {
+    rotation_columns(o, axes);
+  } else if (g_space == GizmoSpace::Parent) {
+    const SceneState &sc = scene();
+    if (o.parent >= 0 && o.parent < (int)sc.objects.size())
+      rotation_columns(sc.objects[o.parent], axes);
+  }
+}
+
+float scale_box_reach(const Layout &lay) { return lay.universal ? 1.28f : 1.f; }
+float ring_reach(const Layout &lay) { return lay.universal ? 0.7f : 1.f; }
+
+bool gizmo_layout(const SceneObject &o, const float *mvp, ImVec2 origin, int w, int h,
+                  Layout &lay) {
+  float anchor[3];
+  if (!anchor_of(o, anchor)) return false;
+  if (!project(mvp, anchor, origin, w, h, lay.c)) return false;
+  gizmo_frame(o, lay.axes);
+  lay.universal = g_mode == GizmoMode::Universal;
+  if (lay.universal) {
+    lay.mask_move = axis_mask(o, GizmoMode::Move);
+    lay.mask_rot = axis_mask(o, GizmoMode::Rotate);
+    lay.mask_scl = axis_mask(o, GizmoMode::Scale);
+  } else {
+    int m = axis_mask(o, g_mode);
+    lay.mask_move = g_mode == GizmoMode::Move || g_mode == GizmoMode::Skew ? m : 0;
+    lay.mask_rot = ring_mode(g_mode) ? m : 0;
+    lay.mask_scl = g_mode == GizmoMode::Scale || g_mode == GizmoMode::Taper ? m : 0;
+  }
+  // A shared world length keeps the tripod a rigid frame, so foreshortening
+  // reads as foreshortening rather than as three unrelated sticks.
+  const float probe = 0.01f;
+  float best = 0.f;
+  for (int ax = 0; ax < 3; ++ax) {
+    float p[3] = {anchor[0] + lay.axes[ax][0] * probe, anchor[1] + lay.axes[ax][1] * probe,
+                  anchor[2] + lay.axes[ax][2] * probe};
+    ImVec2 q;
+    if (project(mvp, p, origin, w, h, q)) {
+      ImVec2 d(q.x - lay.c.x, q.y - lay.c.y);
+      best = std::max(best, std::sqrt(len2(d)) / probe);
+    }
+  }
+  if (best < 1e-4f) return false;
+  lay.L = HANDLE_PX / best;
+  return true;
+}
+
 } // namespace gizmo_detail
 
 using namespace gizmo_detail;
 
+bool gizmo_dragging(int &object, int &axis) {
+  object = g_drag.object;
+  axis = g_drag.axis;
+  return g_drag.active;
+}
+
 GizmoMode &gizmo_mode() { return g_mode; }
+GizmoSpace &gizmo_space() { return g_space; }
 bool &gizmo_visible() { return g_visible; }
 const char *gizmo_mode_name(GizmoMode m) {
   switch (m) {
+    case GizmoMode::Universal: return "Transform";
     case GizmoMode::Move: return "Move";
     case GizmoMode::Rotate: return "Rotate";
     case GizmoMode::Scale: return "Scale";
@@ -208,11 +301,92 @@ const char *gizmo_mode_name(GizmoMode m) {
     default: return "None";
   }
 }
+const char *gizmo_space_name(GizmoSpace s) {
+  switch (s) {
+    case GizmoSpace::Local: return "object";
+    case GizmoSpace::Parent: return "parent";
+    default: return "world";
+  }
+}
+
+// ------------------------------------------------------------- hit test
+namespace {
+
+// The handle under the pointer, by priority: the centre box, then the scale
+// boxes, then the arrows, then the rings - the small targets first, so a
+// box sitting on a ring is still grabbable.
+Hot hit_test(const Layout &lay, const float anchor[3], const float *mvp, ImVec2 origin,
+             int w, int h, ImVec2 m) {
+  Hot hot;
+  const float GRAB = 8.f;
+  auto tip = [&](int ax, float reach, ImVec2 &q) {
+    float p[3] = {anchor[0] + lay.axes[ax][0] * lay.L * reach,
+                  anchor[1] + lay.axes[ax][1] * lay.L * reach,
+                  anchor[2] + lay.axes[ax][2] * lay.L * reach};
+    return project(mvp, p, origin, w, h, q);
+  };
+  if (lay.mask_scl & 0x8) {
+    float d = std::sqrt(len2(ImVec2(m.x - lay.c.x, m.y - lay.c.y)));
+    if (d < 9.f) { hot.part = P_CENTRE; hot.axis = 3; return hot; }
+  }
+  const float reach = scale_box_reach(lay);
+  for (int ax = 0; ax < 3; ++ax) {
+    if (!(lay.mask_scl & (1 << ax))) continue;
+    ImVec2 q;
+    if (!tip(ax, reach, q)) continue;
+    if (std::sqrt(len2(ImVec2(m.x - q.x, m.y - q.y))) < GRAB) {
+      hot.part = P_SCALE;
+      hot.axis = ax;
+      return hot;
+    }
+  }
+  float best = GRAB;
+  for (int ax = 0; ax < 3; ++ax) {
+    if (!(lay.mask_move & (1 << ax))) continue;
+    ImVec2 q0, q1;
+    if (!tip(ax, 0.12f, q0) || !tip(ax, 1.f, q1)) continue;
+    float d = dist_to_segment(m, q0, q1);
+    if (d < best) { best = d; hot.part = P_MOVE; hot.axis = ax; }
+  }
+  if (hot.part != P_NONE) return hot;
+  // Rings are sampled rather than solved: 32 points is plenty to grab by,
+  // and it needs no ellipse maths that a degenerate view could break.
+  for (int ax = 0; ax < 3; ++ax) {
+    if (!(lay.mask_rot & (1 << ax))) continue;
+    int u = (ax + 1) % 3, v = (ax + 2) % 3;
+    ImVec2 prev;
+    bool have_prev = false;
+    for (int i = 0; i <= 32; ++i) {
+      float t = (float)i / 32.f * 6.2831853f;
+      float p[3];
+      for (int k = 0; k < 3; ++k)
+        p[k] = anchor[k] + (lay.axes[u][k] * std::cos(t) + lay.axes[v][k] * std::sin(t)) * lay.L * ring_reach(lay);
+      ImVec2 q;
+      if (!project(mvp, p, origin, w, h, q)) { have_prev = false; continue; }
+      if (have_prev) {
+        float d = dist_to_segment(m, prev, q);
+        if (d < best) { best = d; hot.part = P_RING; hot.axis = ax; }
+      }
+      prev = q;
+      have_prev = true;
+    }
+  }
+  return hot;
+}
+
+GizmoMode part_mode(int part) {
+  if (part == P_RING) return ring_mode(g_mode) ? g_mode : GizmoMode::Rotate;
+  if (part == P_SCALE || part == P_CENTRE)
+    return g_mode == GizmoMode::Taper ? g_mode : GizmoMode::Scale;
+  return g_mode == GizmoMode::Skew ? g_mode : GizmoMode::Move;
+}
+
+} // namespace
 
 // ------------------------------------------------------------------- update
 bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
                   ImVec2 origin, int w, int h, bool view_hovered) {
-  (void)vc;
+  if (g_hot.slot == slot) g_hot = Hot{};
   if (g_mode == GizmoMode::None || !g_visible) return false;
   SceneState &sc = scene();
   if (sc.selected < 0 || sc.selected >= (int)sc.objects.size()) return false;
@@ -227,13 +401,11 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
   }
   const float *mvp = renderer_last_mvp(slot);
   if (!mvp) return false;
+  Layout lay;
+  if (!gizmo_layout(o, mvp, origin, w, h, lay)) return false;
   float anchor[3];
-  if (!anchor_of(o, anchor)) return false;
-  int mask = axis_mask(o, g_mode);
-  if (!mask) return false;
-
-  ImVec2 c;
-  if (!project(mvp, anchor, origin, w, h, c)) return false;
+  anchor_of(o, anchor);
+  const ImVec2 c = lay.c;
   ImGuiIO &io = ImGui::GetIO();
 
   // A drag already in progress owns the mouse until the button comes up, even
@@ -248,8 +420,8 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
       float dpx = (m.x - g_drag.start_mouse.x) * g_drag.dir_screen.x +
                   (m.y - g_drag.start_mouse.y) * g_drag.dir_screen.y;
       float units = g_drag.px_per_unit > 1e-4f ? dpx / g_drag.px_per_unit : 0.f;
-      float d[3] = {0, 0, 0};
-      d[g_drag.axis] = units;
+      float d[3] = {g_drag.axis_world[0] * units, g_drag.axis_world[1] * units,
+                    g_drag.axis_world[2] * units};
       apply_move(o, d);
     } else if (ring_mode(g_drag.mode)) {
       float ang = std::atan2(m.y - c.y, m.x - c.x);
@@ -280,7 +452,14 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
       float dpx = (m.x - g_drag.start_mouse.x) * g_drag.dir_screen.x +
                   (m.y - g_drag.start_mouse.y) * g_drag.dir_screen.y;
       float k = std::max(0.02f, 1.f + dpx / 120.f);
-      if (g_drag.axis == 3) {
+      if (o.type == SceneObject::Terrain) {
+        // the tile: width on X and Z (or the centre), height on Y
+        RenderSettings &rs = render_settings();
+        if (g_drag.axis == 1)
+          rs.height_scale = std::clamp(g_drag.start_extra * k, 0.005f, 2.f);
+        else
+          rs.terrain_size_m = std::clamp(g_drag.start_scale * k, 100.f, 100000.f);
+      } else if (g_drag.axis == 3) {
         if (o.type == SceneObject::Planet)
           o.planet.radius = std::max(0.001f, g_drag.start_extra * k);
         else
@@ -295,78 +474,20 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
 
   if (!view_hovered) return false;
 
-  // --- hit test -------------------------------------------------------
-  // A shared world length keeps the tripod a rigid frame, so foreshortening
-  // reads as foreshortening rather than as three unrelated sticks.
-  float px_per_unit[3] = {0, 0, 0};
-  ImVec2 probe_dir[3];
-  const float probe = 0.01f;
-  for (int ax = 0; ax < 3; ++ax) {
-    float p[3] = {anchor[0], anchor[1], anchor[2]};
-    p[ax] += probe;
-    ImVec2 q;
-    if (!project(mvp, p, origin, w, h, q)) continue;
-    ImVec2 d(q.x - c.x, q.y - c.y);
-    float l = std::sqrt(len2(d));
-    px_per_unit[ax] = l / probe;
-    if (l > 1e-5f) probe_dir[ax] = ImVec2(d.x / l, d.y / l);
-    else probe_dir[ax] = ImVec2(0, 0);
-  }
-  float best_px = std::max({px_per_unit[0], px_per_unit[1], px_per_unit[2]});
-  if (best_px < 1e-4f) return false;
-  float L = HANDLE_PX / best_px; // world length of a full handle
-
-  int hot = -1;
-  float hot_d = GRAB_PX;
-  if (ring_mode(g_mode)) {
-    // Rings are sampled rather than solved: 32 points is plenty to grab by,
-    // and it needs no ellipse maths that a degenerate view could break.
-    for (int ax = 0; ax < 3; ++ax) {
-      if (!(mask & (1 << ax))) continue;
-      int u = (ax + 1) % 3, v = (ax + 2) % 3;
-      ImVec2 prev;
-      bool have_prev = false;
-      for (int i = 0; i <= 32; ++i) {
-        float t = (float)i / 32.f * 6.2831853f;
-        float p[3] = {anchor[0], anchor[1], anchor[2]};
-        p[u] += std::cos(t) * L;
-        p[v] += std::sin(t) * L;
-        ImVec2 q;
-        if (!project(mvp, p, origin, w, h, q)) { have_prev = false; continue; }
-        if (have_prev) {
-          float d = dist_to_segment(io.MousePos, prev, q);
-          if (d < hot_d) { hot_d = d; hot = ax; }
-        }
-        prev = q;
-        have_prev = true;
-      }
-    }
-  } else {
-    for (int ax = 0; ax < 3; ++ax) {
-      if (!(mask & (1 << ax))) continue;
-      float p[3] = {anchor[0], anchor[1], anchor[2]};
-      p[ax] += L;
-      ImVec2 q;
-      if (!project(mvp, p, origin, w, h, q)) continue;
-      float d = dist_to_segment(io.MousePos, c, q);
-      if (d < hot_d) { hot_d = d; hot = ax; }
-    }
-    if (mask & 0x8) { // uniform handle: the box at the centre
-      float d = std::sqrt((io.MousePos.x - c.x) * (io.MousePos.x - c.x) +
-                          (io.MousePos.y - c.y) * (io.MousePos.y - c.y));
-      if (d < 9.f) { hot = 3; hot_d = 0.f; }
-    }
-  }
-  if (hot < 0) return false;
+  Hot hot = hit_test(lay, anchor, mvp, origin, w, h, io.MousePos);
+  if (hot.part == P_NONE) return false;
+  hot.slot = slot;
+  g_hot = hot; // the painter brightens it
 
   ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
   if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left)) return true; // hovering
 
-  undo_push(a, undo_label(g_mode));
+  const GizmoMode mode = part_mode(hot.part);
+  undo_push(a, undo_label(mode));
   g_drag.active = true;
-  g_drag.axis = hot;
+  g_drag.axis = hot.axis;
   g_drag.object = sc.selected;
-  g_drag.mode = g_mode;
+  g_drag.mode = mode;
   g_drag.start_mouse = io.MousePos;
   g_drag.start_scale = o.scale;
   for (int i = 0; i < 3; ++i) g_drag.start_scl[i] = o.scl[i];
@@ -382,23 +503,40 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
     for (int i = 0; i < 3; ++i) g_drag.start_pos[i] = o.pos[i];
   g_drag.start_extra = o.type == SceneObject::Water ? render_settings().water_level
                        : o.type == SceneObject::Planet
-                           ? (g_mode == GizmoMode::Rotate ? o.planet.spin_deg
-                                                          : o.planet.radius)
-                           : 0.f;
-  if (hot < 3) {
-    g_drag.dir_screen = probe_dir[hot];
-    g_drag.px_per_unit = px_per_unit[hot];
+                           ? (mode == GizmoMode::Rotate ? o.planet.spin_deg
+                                                        : o.planet.radius)
+                       : o.type == SceneObject::Terrain ? render_settings().height_scale
+                                                        : 0.f;
+  if (o.type == SceneObject::Terrain) g_drag.start_scale = render_settings().terrain_size_m;
+  if (hot.axis < 3) {
+    // the screen direction of the frame axis, and how many pixels a world
+    // unit along it covers, from a short probe
+    const float probe = 0.01f;
+    float p[3] = {anchor[0] + lay.axes[hot.axis][0] * probe,
+                  anchor[1] + lay.axes[hot.axis][1] * probe,
+                  anchor[2] + lay.axes[hot.axis][2] * probe};
+    ImVec2 q;
+    g_drag.dir_screen = ImVec2(1.f, 0.f);
+    g_drag.px_per_unit = 1.f;
+    if (project(mvp, p, origin, w, h, q)) {
+      ImVec2 d(q.x - c.x, q.y - c.y);
+      float l = std::sqrt(len2(d));
+      if (l > 1e-5f) {
+        g_drag.dir_screen = ImVec2(d.x / l, d.y / l);
+        g_drag.px_per_unit = l / probe;
+      }
+    }
+    for (int k = 0; k < 3; ++k) g_drag.axis_world[k] = lay.axes[hot.axis][k];
   } else {
     g_drag.dir_screen = ImVec2(1.f, 0.f); // uniform: drag right to grow
     g_drag.px_per_unit = 1.f;
   }
-  if (ring_mode(g_mode)) {
+  if (ring_mode(mode)) {
     g_drag.start_angle = std::atan2(io.MousePos.y - c.y, io.MousePos.x - c.x);
     float rt[3], up[3], fw[3];
     renderer_view_basis(vc, rt, up, fw);
     // a ring turning away from the eye reads as turning the other way
-    float axis[3] = {0, 0, 0};
-    axis[hot] = 1.f;
+    const float *axis = lay.axes[hot.axis];
     float facing = axis[0] * fw[0] + axis[1] * fw[1] + axis[2] * fw[2];
     g_drag.sign = facing > 0.f ? -1.f : 1.f;
   }
