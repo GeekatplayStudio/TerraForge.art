@@ -1289,6 +1289,62 @@
       "description": "scene_state.json objects carry pos, rot, scale and an animated flag, and the state carries the timeline block and an op's reply, so a script can read back what an animation did",
       "test_file": "test_api_coverage.py",
       "test_symbol": "test_every_op_is_reachable_over_mcp"
+    },
+    {
+      "id": "scene.imprint",
+      "area": "engine",
+      "phase": "37",
+      "description": "TerrainImprint moulds the ground to placed objects: a footprint is the convex hull of the base (signed distance to the polygon, so every corner of a square base is flat), a flat margin past the walls, a blend distance (absolute, or a multiple of the footprint's radius), a sink allowance (clamp(ground, base, base+sink)) so a boulder sits in the slope before the ground is dug, retained relief, strength, an imprint mask; bad lines are ignored; deterministic",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_terrain_imprint"
+    },
+    {
+      "id": "scene.footprint",
+      "area": "studio",
+      "phase": "37",
+      "description": "imprint_footprint: the convex hull of an object's lowest vertices deformed and placed as the viewport places them, its centroid, radius and base height; heading turns the corners, squeeze narrows them, the base band ignores the roof, no geometry falls back to the bounding box; the footprint line the node reads carries base, sink, margin and blend",
+      "test_file": "test_imprint.cpp",
+      "test_symbol": "test_cube_footprint"
+    },
+    {
+      "id": "scene.ground_settings",
+      "area": "studio",
+      "phase": "37",
+      "description": "Properties > Ground: flat margin, blend distance and may-sink in metres per grounded object, saved with the scene; place_on_terrain and set_ground ops and MCP tools; the grounded lock rests the base on the highest ground under the hull",
+      "test_file": "test_imprint.cpp",
+      "test_symbol": "test_band_and_fallbacks"
+    },
+    {
+      "id": "materials.displacement_layers",
+      "area": "engine",
+      "phase": "37",
+      "description": "Terragen's surface-layer displacement on the node graph: MaterialLayer's displacement channel (below displacement in, displacement in and out) composited by presence, a multiplier and an add-or-replace dial; MaterialOutput's displacement input; FakeStones' displacement port (the stones alone); the studio adds the assigned material's relief to the terrain tile",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement_layers"
+    },
+    {
+      "id": "primitive.grass_displacement",
+      "area": "engine",
+      "phase": "37",
+      "description": "GrassDisplacement: a field of tufts (domes on a jittered cellular lattice, gathered into clumps, ragged tops) raised on ground inside a slope band; displacement, grass_mask and output ports; tuft size, height, density, clumping, clump size, raggedness, seed; deterministic; example macro rocks_grass_layers.json",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_displacement_layers"
+    },
+    {
+      "id": "mesh.textured_import",
+      "area": "studio",
+      "phase": "37",
+      "description": "A textured model (FBX, glTF/GLB) draws its pictures on every path of the mesh shader: the texture coordinate varying is written for plain and instanced draws alike (an unwritten varying is what flickered)",
+      "test_file": "test_mesh.cpp",
+      "test_symbol": "test_file_round_trip"
+    },
+    {
+      "id": "scene.surface_features",
+      "area": "studio",
+      "phase": "37",
+      "description": "Surface features ride on the placed ground: the assigned material's displacement is added and the objects' imprint moulded (gpx::imprint_apply, the node's own function) after the tile is placed on its planet, so relief below the placement's presence threshold - every stone, every house-sized mould - is no longer swallowed; the ground between the two steps is the natural ground a grounded object's base rests on; probe_height reports the displayed and the graph height at a point",
+      "test_file": "test_imprint.cpp",
+      "test_symbol": "test_surface_features"
     }
   ]
 }

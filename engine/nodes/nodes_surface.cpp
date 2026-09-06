@@ -109,7 +109,9 @@ REGISTER_NODE(
             float slope = std::atan(std::sqrt(gx * gx + gy * gy) * in->w / hamp) *
                           0.63662f;
             float u = x / float(out.w), v = y / float(out.h);
-            float sum = 0, wsum = 0, running_amp = 1.f;
+            // Normalised by `norm` below - the sum of the octave amplitudes,
+            // computed once above rather than re-added per pixel.
+            float sum = 0;
             for (const Oct &o : octs) {
               float nx = u * o.freq, ny = v * o.freq;
               float nv;
@@ -127,8 +129,6 @@ REGISTER_NODE(
               float sl = 1.f - std::clamp((slope - spike) / (1.f - spike + 1e-4f),
                                           0.f, 1.f) * (o.freq > f_feat ? 1.f : 0.3f);
               sum += nv * o.amp * sl;
-              wsum += o.amp;
-              (void)running_amp;
             }
             float d = (sum / norm + doff) * amp * hamp;
             if (along_normal) d *= 1.f + slope * 1.5f;

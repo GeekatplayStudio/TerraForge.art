@@ -187,7 +187,7 @@ bool rebuild_terrain_program(std::string &err) {
     log_error("shader", "shadow pass: " + derr);
   }
   // meshes cast into the same map (renderer_shadow_meshes.cpp)
-  if (GLuint dm = link_checked(inject_sky(VS_DEPTH_MESH), FS_DEPTH, derr)) {
+  if (GLuint dm = link_checked(inject_sky(VS_DEPTH_MESH), FS_DEPTH_MESH, derr)) {
     if (prog_depth_mesh) delete_program(prog_depth_mesh);
     prog_depth_mesh = dm;
   } else {

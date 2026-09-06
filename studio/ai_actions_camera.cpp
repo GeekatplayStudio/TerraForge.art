@@ -82,9 +82,16 @@ static void resolve_look_at(const json &j, float *target) {
         std::string n = o.name;
         for (auto &c : n) c = (char)tolower(c);
         if (n == s && o.type == SceneObject::Mesh) {
-          target[0] = o.pos[0];
-          target[1] = o.pos[1] * render_settings().height_scale;
-          target[2] = o.pos[2];
+          // aim at the centre of the mesh's bounds as placed, not the pivot:
+          // a plant library keeps its origin at the roots (or nowhere near
+          // the plant at all), and a camera on the pivot frames the ground
+          float m16[16];
+          scene_object_matrix(o, render_settings().height_scale, m16, nullptr);
+          const float c[3] = {(o.bmin[0] + o.bmax[0]) * 0.5f,
+                              (o.bmin[1] + o.bmax[1]) * 0.5f,
+                              (o.bmin[2] + o.bmax[2]) * 0.5f};
+          for (int r = 0; r < 3; ++r)
+            target[r] = m16[r] * c[0] + m16[4 + r] * c[1] + m16[8 + r] * c[2] + m16[12 + r];
           return;
         }
       }

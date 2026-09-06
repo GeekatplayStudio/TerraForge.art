@@ -1,0 +1,37 @@
+{ "actions": [
+  { "op": "add_node", "type": "Noise", "x": 40, "y": 300, "alias": "base", "attrs": { "octaves": 7 } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "TerrainOutput", "to_port": "heightmap" },
+
+  { "op": "add_node", "type": "FakeStones", "x": 320, "y": 120, "alias": "stones",
+    "attrs": { "stone_scale": 0.012, "density": 0.45, "tallness": 0.7, "pancake": 0.2, "vary_density": 0.7 } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "stones", "to_port": "input" },
+  { "op": "add_node", "type": "GrassDisplacement", "x": 320, "y": 480, "alias": "grass",
+    "attrs": { "tuft_scale": 0.004, "height": 0.004, "density": 0.8, "clumping": 0.55 } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "grass", "to_port": "input" },
+
+  { "op": "add_node", "type": "FlatColor", "x": 320, "y": 20,  "alias": "col_rock",  "attrs": { "r": 0.44, "g": 0.42, "b": 0.40 } },
+  { "op": "add_node", "type": "FlatColor", "x": 320, "y": 380, "alias": "col_grass", "attrs": { "r": 0.22, "g": 0.44, "b": 0.14 } },
+
+  { "op": "add_node", "type": "MaterialLayer", "x": 640, "y": 140, "alias": "rock_layer",
+    "attrs": { "use_slope": true, "slope": [12, 60], "slope_fuzz": 6, "rough_value": 0.9, "disp_amount": 1.0 } },
+  { "op": "connect", "from": "col_rock", "from_port": "texture",      "to": "rock_layer", "to_port": "albedo" },
+  { "op": "connect", "from": "stones",   "from_port": "displacement", "to": "rock_layer", "to_port": "displacement" },
+  { "op": "connect", "from": "stones",   "from_port": "stone_mask",   "to": "rock_layer", "to_port": "mask" },
+  { "op": "connect", "from": "base",     "from_port": "output",       "to": "rock_layer", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "MaterialLayer", "x": 900, "y": 300, "alias": "grass_layer",
+    "attrs": { "use_slope": true, "slope": [0, 14], "slope_fuzz": 5, "rough_value": 0.95, "disp_amount": 1.0, "disp_add": 1.0 } },
+  { "op": "connect", "from": "rock_layer", "from_port": "albedo",       "to": "grass_layer", "to_port": "below albedo" },
+  { "op": "connect", "from": "rock_layer", "from_port": "roughness",    "to": "grass_layer", "to_port": "below rough" },
+  { "op": "connect", "from": "rock_layer", "from_port": "displacement", "to": "grass_layer", "to_port": "below displacement" },
+  { "op": "connect", "from": "col_grass",  "from_port": "texture",      "to": "grass_layer", "to_port": "albedo" },
+  { "op": "connect", "from": "grass",      "from_port": "displacement", "to": "grass_layer", "to_port": "displacement" },
+  { "op": "connect", "from": "grass",      "from_port": "grass_mask",   "to": "grass_layer", "to_port": "mask" },
+  { "op": "connect", "from": "base",       "from_port": "output",       "to": "grass_layer", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "MaterialOutput", "x": 1180, "y": 300, "alias": "mat", "attrs": { "name": "Rocks and grass" } },
+  { "op": "connect", "from": "grass_layer", "from_port": "albedo",       "to": "mat", "to_port": "base color" },
+  { "op": "connect", "from": "grass_layer", "from_port": "roughness",    "to": "mat", "to_port": "roughness" },
+  { "op": "connect", "from": "grass_layer", "from_port": "displacement", "to": "mat", "to_port": "displacement" },
+  { "op": "assign_material", "node": "mat" }
+] }

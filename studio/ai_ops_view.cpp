@@ -20,6 +20,7 @@
 using nlohmann::json;
 
 namespace studio {
+const gpx::Heightmap *app_placed_terrain(); // app_services.cpp
 
 namespace {
 
@@ -44,6 +45,33 @@ bool renderer_render_to_file(const std::string &path, int w, int h);
 // did, -1 when the op is not ours.
 int ai_view_op(App &a, const std::string &op, const json &act,
                std::string &err) {
+  if (op == "probe_height") {
+    // The ground's height at a point of the tile - the terrain as displayed
+    // (placed on the planet, the material's relief added) and the graph's
+    // own heightmap - in heightmap units and in metres. What a script reads
+    // to check that an imprint, a displacement or a sculpt did what it said.
+    const float x = std::clamp(act.value("x", 0.5f), 0.f, 1.f);
+    const float z = std::clamp(act.value("z", 0.5f), 0.f, 1.f);
+    const RenderSettings &rs = render_settings();
+    const float hm_m = rs.height_scale * rs.terrain_size_m;
+    nlohmann::json out = {{"x", x}, {"z", z}};
+    if (const gpx::Heightmap *placed = app_placed_terrain()) {
+      float h = placed->sample(x, z);
+      out["placed"] = h;
+      out["placed_m"] = h * hm_m;
+    }
+    for (auto &n : a.graph.nodes)
+      if (n->type == "TerrainOutput")
+        if (gpx::Port *ph = n->first_out(gpx::DataType::Heightmap))
+          if (ph->hmap && !ph->hmap->empty()) {
+            float h = ph->hmap->sample(x, z);
+            out["graph"] = h;
+            out["graph_m"] = h * hm_m;
+          }
+    a.api_reply = out.dump();
+    a.status = "probe " + std::to_string(x) + ", " + std::to_string(z);
+    return 1;
+  }
   if (op == "capture") {
     // The viewport as a PNG. The UI could already do this from the File menu
     // and the render panel; scripting could not, so no automated check could

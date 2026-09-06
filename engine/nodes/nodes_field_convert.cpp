@@ -23,8 +23,6 @@ namespace gpx {
 
 namespace {
 
-const char *CAT = "Field Convert";
-
 // The lanes a value type actually carries, for the lane-picking converter.
 int lane_count(FieldType t) {
   switch (t) {

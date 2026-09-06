@@ -26,6 +26,9 @@ REGISTER_NODE(
       n.add_in("height", DataType::Texture, true);
       n.add_in("ambient occlusion", DataType::Texture, true);
       n.add_in("alpha", DataType::Texture, true);
+      // the relief the material's layers raise (rocks, grass), in heightmap
+      // units; the studio adds it to the terrain it is assigned to
+      n.add_in("displacement", DataType::Heightmap, true);
       n.add_out("preview", DataType::Texture);
       add_text(n.attrs, "name", "Material name", "Material", "Identity");
       // every surface property, grouped by the Material Editor's tabs

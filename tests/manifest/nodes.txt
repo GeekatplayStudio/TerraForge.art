@@ -38,8 +38,10 @@ DiffusionLimited|Primitive
 DirectionalBlur|Filter
 Dissolve|Erosion
 DistanceField|Mask
+DistributionLayer|Material
 Dunes|Primitive
 Dynamics|Animation
+EffectorLayer|Material
 Equalize|Filter
 ErosionLayers|Erosion
 ExpandShrink|Filter
@@ -92,12 +94,14 @@ Flood|Hydrology
 FlowAccumulation|Analysis
 FlowWarp|Transform
 Fold|Filter
+FractalColor|Material
 Fractal|Primitive
 GaborNoise|Primitive
 GammaCorrection|Filter
 GeologicalStrata|Primitive
 Glaciation|Erosion
 GradientMap|Material
+GrassDisplacement|Primitive
 Gravel|Effect
 Grit|Effect
 HeightmapFile|Primitive
@@ -117,6 +121,7 @@ LineNoise|Primitive
 MakeTileable|Transform
 MaskPaint|Mask
 MaskToTexture|Material
+MaterialLayer|Material
 MaterialOutput|Material
 MaterialStack|Material
 MathGradient|Operator
@@ -127,6 +132,7 @@ MetaNode|Group
 MixLayers|Operator
 Morphology|Filter
 MotionBlur|Camera
+NaturalGrain|Material
 NoiseFractal|Primitive
 Noise|Primitive
 NormalBlend|Material
@@ -207,6 +213,7 @@ TerrainClip|Effect
 TerrainDisplacement|Export
 TerrainFractal2|Primitive
 TerrainFractal|Primitive
+TerrainImprint|Effect
 TerrainMetrics|Analysis
 TerrainObject|Scene
 TerrainOutput|Export

@@ -103,6 +103,21 @@ void mesh_to_object(SceneObject &o, const gpx::TriMesh &m) {
       p.rgba = img->first;
       p.w = img->second.first;
       p.h = img->second.second;
+      // a separate opacity picture (a leaf card's cut-out) becomes the colour
+      // picture's alpha, resampled to its size; the shaders cut on alpha
+      if (mp.alpha_image >= 0)
+        if (const auto *am = image(mp.alpha_image)) {
+          const int aw = am->second.first, ah = am->second.second;
+          for (int y = 0; y < p.h; ++y) {
+            const int ay = std::min((int)((y + 0.5f) * ah / p.h), ah - 1);
+            for (int x = 0; x < p.w; ++x) {
+              const int ax = std::min((int)((x + 0.5f) * aw / p.w), aw - 1);
+              const uint8_t *src = &am->first[((size_t)ay * aw + ax) * 4];
+              // white = opaque: the picture's own alpha when it has one, else its brightness
+              p.rgba[((size_t)y * p.w + x) * 4 + 3] = src[3] < 255 ? src[3] : (uint8_t)((src[0] + src[1] + src[2]) / 3);
+            }
+          }
+        }
     }
     if (p.count > 0) o.parts.push_back(std::move(p));
   }

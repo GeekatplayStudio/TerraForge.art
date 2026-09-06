@@ -240,6 +240,47 @@ each one was a bug we already paid for. Do not regress them.
 7. **Every key edit is one undo step per gesture**: push once on drag start
    (`drag_started`), not per mouse move.
 
+## Objects on the terrain, and displacement layers
+
+1. **A footprint is the convex hull of the base, never the bounding box.**
+   `imprint_footprint` (studio/imprint_footprint.cpp, pure, tested in
+   undo_tests) takes the vertices in the lowest band of the object's height,
+   deforms and places them as the viewport does, and hulls their XZ. The
+   TerrainImprint node measures a signed distance to that polygon, so a
+   square base is flat at all four corners; the ellipse it replaced left the
+   corners in the blend and a house floated at each one. Margin and blend are
+   distances (tile fractions in the file, metres in the UI), sink is a
+   height; blend <= 0 means the node's multiple of the footprint's radius.
+2. **Sink is a clamp, not a mode.** The node's target height is
+   `clamp(ground, base, base + sink)`: below the base the ground rises to the
+   base, within the allowance it is left alone, deeper it is dug to
+   `base + sink`. `sink = 0` is the exact flat base; there is no separate
+   "buried" switch to keep in step.
+3. **The grounded lock reads the highest ground under the hull**, so no
+   corner is ever below the natural surface unless the user sinks it.
+4. **A layer's relief is a delta in heightmap units, composited by
+   presence** - the same `p` the colour uses - on top of or instead of the
+   layers below (`disp_add`). A node that hands a layer relief exposes the
+   delta (FakeStones' and GrassDisplacement's `displacement` ports), never
+   the displaced terrain; a layer never subtracts its own input.
+5. **Surface features are applied after placement, on the ground the
+   viewport shows.** The tile is placed on its planet by amplitude: a
+   texel within `place_presence` of the tile's ground is not a feature and
+   the planet shows through - so a house's mould and a layer's stones (both
+   smaller than that) were swallowed. `surface_features_apply`
+   (studio/surface_features.cpp, pure) adds the material's displacement and
+   then the objects' imprint to the *placed* ground, with the same
+   `gpx::imprint_apply` the node uses; the tile handed to placement is the
+   imprint node's input, so nothing is moulded twice. The ground between
+   the two steps is `app_natural_ground()`, which the grounded lock reads,
+   so an object rests on what the user sees. The graph's own TerrainImprint
+   output still exists for graph consumers and exports.
+6. **Patching by text: a node's `apply_post` is not a landmark.** The
+   FakeStones displacement port was first inserted after "the next
+   apply_post", which belonged to Crater - a node without that port - and
+   crashed every battery. Locate by the node's own registration, never by a
+   call several nodes share.
+
 ## Performance rules
 
 1. **Never upload a GPU texture per frame.** Uploads are versioned

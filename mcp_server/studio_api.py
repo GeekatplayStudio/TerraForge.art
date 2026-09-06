@@ -287,6 +287,28 @@ MCP_TOOLS = {
         "params": {"name": "str", "position": "[x,y,z]", "scale": "float",
                    "rotation_deg": "float"},
     },
+    "studio_probe_height": {
+        "description": "The ground's height at a point of the tile (x, z in "
+                       "0..1): the terrain as displayed and the graph's own "
+                       "heightmap, in heightmap units and metres. Read the "
+                       "answer from the state's `reply`.",
+        "params": {"x": "float", "z": "float"},
+    },
+    "studio_place_on_terrain": {
+        "description": "Make a mesh object stand on the terrain: it becomes a "
+                       "child of the terrain, its base rides on the surface and "
+                       "a TerrainImprint node moulds the ground to it.",
+        "params": {"object": "str"},
+    },
+    "studio_set_ground": {
+        "description": "A grounded object's settings, in metres: lock (base "
+                       "follows the surface), offset_m above/below it, margin_m "
+                       "the flat patch reaches past the walls, blend_m how far "
+                       "the ground responds (0 = auto), sink_m how deep it may "
+                       "sit before the ground is dug out.",
+        "params": {"object": "str", "lock": "bool", "offset_m": "float",
+                   "margin_m": "float", "blend_m": "float", "sink_m": "float"},
+    },
     "studio_graph": {
         "description": "Merge a node-graph spec (terrain or material) into the "
                        "project.",
@@ -381,6 +403,12 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.send(*acts)}
     if tool == "studio_place_object":
         return {"status": "success", "sent": s.place_object(**params)}
+    if tool == "studio_probe_height":
+        return {"status": "success", "sent": s.send({"op": "probe_height", **params})}
+    if tool == "studio_place_on_terrain":
+        return {"status": "success", "sent": s.send({"op": "place_on_terrain", **params})}
+    if tool == "studio_set_ground":
+        return {"status": "success", "sent": s.send({"op": "set_ground", **params})}
     if tool == "studio_graph":
         return {"status": "success", "sent": s.graph(params.get("spec", {}))}
     if tool == "studio_render":

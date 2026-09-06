@@ -139,9 +139,10 @@ anything done in one appears in the other.
 
 ## Known limits
 
-- `MaterialLayer` composites albedo, normal and roughness. Metallic, height and
-  ambient occlusion pass through untouched, because the viewport renderer does
-  not consume metallic or AO maps yet.
+- `MaterialLayer` composites albedo, normal, roughness and **displacement**
+  (see [Rocks and grass as displacement layers](DISPLACEMENT_LAYERS.md)).
+  Metallic and ambient occlusion pass through untouched, because the viewport
+  renderer does not consume metallic or AO maps yet.
 - Presence is evaluated on the heightmap the layer is given, before any
   displacement. Vue makes re-evaluation after displacement an opt-in checkbox;
   there is no equivalent here.

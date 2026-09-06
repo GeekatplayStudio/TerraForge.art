@@ -29,6 +29,7 @@ struct MeshImage {
 struct MeshPart {
   uint32_t first_face = 0, face_count = 0;
   int image = -1;              // index into TriMesh::images, -1 = none
+  int alpha_image = -1;        // a separate opacity picture (FBX TransparentColor), -1 = none
   float color[4] = {1.f, 1.f, 1.f, 1.f};
   std::string name;
 };

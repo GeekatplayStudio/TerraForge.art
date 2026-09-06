@@ -158,6 +158,7 @@ void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
   v_tint = 1.0;
+  v_uv = in_uv; // for every path below: an unwritten varying is what flickered textured meshes
   if (u_def_on == 1) {
     // the normal follows two deformed tangents, like the CPU twin
     float eps = max(max(u_bmax.x - u_bmin.x, u_bmax.y - u_bmin.y), u_bmax.z - u_bmin.z) * 1e-3 + 1e-6;
@@ -187,7 +188,6 @@ void main(){
     }
     v_nrm = normalize(u_nrm * nrm);
     v_world = p.xyz;
-  v_uv = in_uv;
     gl_Position = u_mvp * p;
     return;
   }
@@ -251,7 +251,11 @@ void main(){
   // MATERIAL_*_PLACEHOLDER so one material means the same thing everywhere.
   vec3 N = normalize(v_nrm);
   vec3 base = u_color * v_tint;
-  if (u_has_tex == 1) base *= pow(texture(u_albedo_tex, v_uv).rgb, vec3(2.2));
+  if (u_has_tex == 1) {
+    vec4 t = texture(u_albedo_tex, v_uv);
+    if (t.a < 0.5) discard; // a leaf card: the picture's alpha is the leaf's edge
+    base *= pow(t.rgb, vec3(2.2));
+  }
   vec3 albedo = mat_albedo(base);
   float rough = clamp(u_roughness, 0.03, 1.0);
   vec3 V = normalize(u_cam - v_world);

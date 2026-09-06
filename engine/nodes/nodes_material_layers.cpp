@@ -192,10 +192,16 @@ REGISTER_NODE(
       n.add_in("roughness", DataType::Texture, true);
       n.add_in("mask", DataType::Heightmap, true);
       n.add_in("terrain", DataType::Heightmap, true);
+      // displacement (Terragen's child displacement shader on a surface
+      // layer): this layer's own relief, in heightmap units, raised where
+      // the layer is present, on top of or instead of what is below
+      n.add_in("below displacement", DataType::Heightmap, true);
+      n.add_in("displacement", DataType::Heightmap, true);
       n.add_out("albedo", DataType::Texture);
       n.add_out("normal", DataType::Texture);
       n.add_out("roughness", DataType::Texture);
       n.add_out("presence", DataType::Heightmap);
+      n.add_out("displacement", DataType::Heightmap);
 
       add_text(n.attrs, "name", "Name", "Layer", "Layer");
       add_bool(n.attrs, "enabled", "Visible", true, "Layer");
@@ -221,6 +227,13 @@ REGISTER_NODE(
                      "snow flattens what it covers.";
 
       // Vue's Alpha boost and the three-state visibility switch (p691, p704)
+      add_float(n.attrs, "disp_amount", "Displacement", 1.f, 0.f, 4.f, "Displacement")
+          .tooltip = "Multiplies the displacement input - a FakeStones or\n"
+                     "GrassDisplacement 'displacement' output, or any relief\n"
+                     "in heightmap units - where this layer is present.";
+      add_float(n.attrs, "disp_add", "Add to displacement below", 1.f, 0.f, 1.f, "Displacement")
+          .tooltip = "1 stacks this layer's relief on the layers below; 0\n"
+                     "replaces theirs where this layer is present.";
       add_float(n.attrs, "alpha_boost", "Alpha boost", 0.f, -1.f, 1.f, "Layer")
           .tooltip = "The layer's overall presence, within what the\n"
                      "constraints below allow. Positive: stronger.";
@@ -270,6 +283,10 @@ REGISTER_NODE(
       const TextureRGBA *LR = n.in_tex("roughness");
       const Heightmap *MK = n.in_hmap("mask");
       const Heightmap *TR = n.in_hmap("terrain");
+      const Heightmap *BD = n.in_hmap("below displacement");
+      const Heightmap *LD = n.in_hmap("displacement");
+      if (BD && BD->empty()) BD = nullptr;
+      if (LD && LD->empty()) LD = nullptr;
       auto live = [](const TextureRGBA *t) { return t && !t->empty() ? t : nullptr; };
       BA = live(BA); BN = live(BN); BR = live(BR);
       LA = live(LA); LN = live(LN); LR = live(LR);
@@ -286,6 +303,8 @@ REGISTER_NODE(
       const bool inv = n.attrs.get_b("invert_mask", false);
       const float rval = n.attrs.get_f("rough_value", 0.8f);
       const float naddw = n.attrs.get_f("normal_add", 1.f);
+      const float damount = n.attrs.get_f("disp_amount", 1.f);
+      const float dadd = n.attrs.get_f("disp_add", 1.f);
       const bool ua = n.attrs.get_b("use_altitude", false);
       const int amode = n.attrs.get_choice("altitude_mode");
       const float sea = n.attrs.get_f("sea_level", 0.f);
@@ -325,6 +344,8 @@ REGISTER_NODE(
       TextureRGBA &onm = n.out_tex("normal");
       TextureRGBA &orh = n.out_tex("roughness");
       Heightmap &opz = n.out_hmap("presence");
+      Heightmap &odp = n.out_hmap("displacement");
+      odp = Heightmap(oa.w, oa.h);
 
       parallel_rows(oa.h, [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
@@ -443,6 +464,13 @@ REGISTER_NODE(
             float *pr = orh.px(x, y);
             pr[0] = pr[1] = pr[2] = r;
             pr[3] = 1.f;
+
+            // displacement: this layer's relief where it is present, over
+            // (or instead of) what the layers below raised; terrain space,
+            // so the layer's own tiling does not move the stones
+            float bd = BD ? BD->sample(u, v) : 0.f;
+            float ld = LD ? LD->sample(u, v) : 0.f;
+            odp.at(x, y) = bd * (1.f - p * (1.f - dadd)) + ld * damount * p;
           }
       });
     })

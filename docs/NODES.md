@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 235 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 237 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -9,7 +9,7 @@ Every node in Geekatplay TerraForge — 235 across 31 categories. Generated from
 | [Atmosphere](#atmosphere) | 4 |
 | [Camera](#camera) | 6 |
 | [Cloud](#cloud) | 4 |
-| [Effect](#effect) | 7 |
+| [Effect](#effect) | 8 |
 | [Erosion](#erosion) | 11 |
 | [Export](#export) | 8 |
 | [Field Bridge](#field-bridge) | 2 |
@@ -30,7 +30,7 @@ Every node in Geekatplay TerraForge — 235 across 31 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 9 |
-| [Primitive](#primitive) | 21 |
+| [Primitive](#primitive) | 22 |
 | [Render](#render) | 8 |
 | [Scene](#scene) | 7 |
 | [Texture](#texture) | 3 |
@@ -533,6 +533,26 @@ Clip altitudes — flat tops above, holes below
 | Below low mark | choice: Leave alone / Flatten / Cut away (hole) |  |
 | Above high mark | choice: Leave alone / Flatten |  |
 | Edge softness | float, 0 to 0.2, default 0 | Blends the cut instead of leaving a hard step. |
+
+### TerrainImprint
+
+Mould the ground to the objects standing on it - flat under each, blended around it
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+| imprint_mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Footprints | text | Written by the studio from the objects placed on the terrain (Properties > Ground). One per line: base sink margin blend, then the base's convex hull. |
+| Blend width | float, 0 to 6, default 1.5 | How far around an object the ground responds, as a multiple of the footprint's radius - for objects that do not set their own blend distance. |
+| Smoothness | float, 0 to 1, default 0.5 | The shape of the blend: 0 is a firm shoulder, 1 a long soft tail. |
+| Keep relief | float, 0 to 1, default 0.35 | How much of the terrain's own small relief survives inside the blend, so the mould still looks like the same ground. |
+| Flatten under | float, 0 to 1, default 1 | How flat the ground is made inside the footprint itself. |
+| Strength | float, 0 to 1, default 1 | Dial the whole effect back without losing it. |
 
 ### TerrainSculpt
 
@@ -2613,10 +2633,13 @@ One layer of a material stack: its own maps, its own mask, and its own reaction 
 | roughness | in (optional) | texture |
 | mask | in (optional) | heightmap |
 | terrain | in (optional) | heightmap |
+| below displacement | in (optional) | heightmap |
+| displacement | in (optional) | heightmap |
 | albedo | out | texture |
 | normal | out | texture |
 | roughness | out | texture |
 | presence | out | heightmap |
+| displacement | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
@@ -2627,6 +2650,8 @@ One layer of a material stack: its own maps, its own mask, and its own reaction 
 | Invert mask | toggle, default off |  |
 | Roughness | float, 0 to 1, default 0.8 | Used where this layer has no roughness map connected. |
 | Add to normals below | float, 0 to 1, default 1 | 1: this layer's relief adds to the layer beneath, the way lichen sits on rock. 0: it replaces it, the way snow flattens what it covers. |
+| Displacement | float, 0 to 4, default 1 | Multiplies the displacement input - a FakeStones or GrassDisplacement 'displacement' output, or any relief in heightmap units - where this layer is present. |
+| Add to displacement below | float, 0 to 1, default 1 | 1 stacks this layer's relief on the layers below; 0 replaces theirs where this layer is present. |
 | Alpha boost | float, -1 to 1, default 0 | The layer's overall presence, within what the constraints below allow. Positive: stronger. |
 | Highlight (solid color) | toggle, default off | Shows the layer as a flat colour so you can see where it lands. Shading is off while highlighted. |
 | Highlight color | color |  |
@@ -2659,6 +2684,7 @@ The material: base color, normal, roughness, metallic, height and AO channels
 | height | in (optional) | texture |
 | ambient occlusion | in (optional) | texture |
 | alpha | in (optional) | texture |
+| displacement | in (optional) | heightmap |
 | preview | out | texture |
 
 | Parameter | Kind | Notes |
@@ -2816,7 +2842,7 @@ Combine two normal maps (whiteout blend)
 
 ### PBRMaterial
 
-Download a CC0 photoscanned PBR material set from ambientCG (albedo/normal/roughness/AO)
+A PBR material set (albedo/normal/roughness/AO): a folder of maps on disk, or a CC0 photoscan downloaded from ambientCG
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -2827,6 +2853,8 @@ Download a CC0 photoscanned PBR material set from ambientCG (albedo/normal/rough
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
+| Source | choice: ambientCG download / Folder on disk | Where the maps come from. A folder holds the set's images; the maps are found by name (color/albedo/diffuse, normal, roughness, ao/ambientocclusion) - the layout every PBR library ships. |
+| Material folder (or any map in it) | file path | Pick any image of the set; the folder it is in is scanned for the other maps. |
 | ambientCG asset ID | text |  |
 | Resolution | choice: 1K / 2K / 4K / 8K |  |
 | Mapping | choice: Stretch / Tile |  |
@@ -3358,6 +3386,7 @@ Terragen-style fake stones: boulders/rocks as displacement
 | density_mask | in (optional) | heightmap |
 | output | out | heightmap |
 | stone_mask | out | heightmap |
+| displacement | out | heightmap |
 | blend | in (optional) | heightmap |
 
 | Parameter | Kind | Notes |
@@ -3439,6 +3468,30 @@ Layered rock strata from an input heightmap
 | Gain (gamma) | float, 0.05 to 4, default 1 |  |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### GrassDisplacement
+
+Grass as displacement: a field of tufts in clumps, on ground flat enough to hold it
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+| displacement | out | heightmap |
+| grass_mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Tuft size | float, 0.0005 to 0.05, default 0.004 | The size of one tuft as a fraction of the terrain's width. Smaller is denser grass. |
+| Height | float, 0 to 0.05, default 0.004 | How tall the tufts stand, as a fraction of the terrain's own height range. |
+| Density | float, 0 to 1, default 0.75 | How much of the ground the clumps cover. |
+| Clumping | float, 0 to 1, default 0.5 | 0 an even lawn, 1 tufts gathered into patches with bare ground between. |
+| Clump size | float, 1 to 64, default 12 | Size of the patches, in tufts. |
+| Raggedness | float, 0 to 1, default 0.5 | How uneven the tops of the tufts are. |
+| Seed | seed |  |
+| Grows on slopes | range | Grass takes only ground whose slope is inside this band (0 flat .. 1 vertical). |
+| Slope fade | float, 0 to 0.5, default 0.1 |  |
 
 ### HeightmapFile
 
@@ -3912,11 +3965,11 @@ Offline render engine, resolution and sampling
 
 ### ImportObject
 
-An imported 3D object (OBJ) placed in the scene, with its transform and colour
+An imported 3D model (FBX, glTF/GLB, OBJ, STL, PLY, OFF) placed in the scene, with its textures, transform and colour
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| OBJ file | file path |  |
+| Model file | file path | FBX, glTF and GLB with their textures; OBJ with its MTL pictures; STL, PLY and OFF. The Load button on the node card opens the dialog. |
 | Scene object | text | Name in the Objects tree. Empty: the file name. |
 | Colour | color |  |
 | X (m) | float, -100000 to 100000, default 2500 |  |

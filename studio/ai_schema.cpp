@@ -73,6 +73,13 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    "jitter":0.4,"seed":7,"sway":0.1}
    (copies of the mesh appear at every point of the Points node's cloud,
    standing on the terrain; node "" or 0 unbinds)
+- {"op":"place_on_terrain","object":"House"}  (the object stands on the terrain
+   and the ground moulds to its base through a TerrainImprint node)
+- {"op":"set_ground","object":"House","lock":true,"offset_m":0,"margin_m":0.5,
+   "blend_m":6,"sink_m":0.3}  (flat margin past the walls, blend distance
+   around it, how deep it may sit before the ground is dug out)
+- {"op":"probe_height","x":0.5,"z":0.5}  (the ground's height at a point of the
+   tile, displayed and graph, in heightmap units and metres - in "reply")
 - {"op":"assign_material","node":"MaterialOutput","object":"Terrain"}
    (binds a MaterialOutput to an object; omit object for the terrain)
 - {"op":"show_panel","panel":"Material Editor","visible":true}

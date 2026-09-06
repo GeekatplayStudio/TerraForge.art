@@ -165,6 +165,26 @@ void ground_ui(App &a, SceneObject &o) {
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Negative sinks the object into a hollow, positive lifts it\n"
                       "onto a mound. Zero rests the base on the natural ground.");
+  const float tile_m = render_settings().terrain_size_m;
+  float margin_m = o.ground_margin * tile_m;
+  if (ImGui::DragFloat("Flat margin", &margin_m, 0.1f, 0.f, 10000.f, "%.2f m"))
+    o.ground_margin = std::max(margin_m, 0.f) / tile_m;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How far past the base's walls the flat patch reaches -\n"
+                      "the ground under the whole base, and a little around it.");
+  float blend_m = o.ground_blend * tile_m;
+  if (ImGui::DragFloat("Blend distance", &blend_m, 0.1f, 0.f, 100000.f, blend_m > 0.f ? "%.2f m" : "auto"))
+    o.ground_blend = std::max(blend_m, 0.f) / tile_m;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How far around the object the ground responds. Zero lets the\n"
+                      "TerrainImprint node choose a multiple of the footprint's size.");
+  float sink_m = o.ground_sink * m;
+  if (ImGui::DragFloat("May sink", &sink_m, 0.05f, 0.f, 10000.f, "%.2f m"))
+    o.ground_sink = std::max(sink_m, 0.f) / m;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How deep the object may sit in the ground before the ground is\n"
+                      "dug out under it. A boulder half buried keeps the slope it sits in;\n"
+                      "zero makes the ground exactly flat at the base.");
   // the node's settings, right here where the object is
   std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
   gpx::Node *node = nullptr;
@@ -187,7 +207,7 @@ void ground_ui(App &a, SceneObject &o) {
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
   };
-  slider("width", "Blend width", "How far around the object the ground responds,\nas a multiple of its footprint.");
+  slider("width", "Blend width", "How far around an object the ground responds, as a multiple\nof its footprint - for objects whose Blend distance is auto.");
   slider("smoothness", "Smoothness", "0 is a firm shoulder, 1 a long soft tail.");
   slider("retain", "Keep relief", "How much of the ground's own small relief survives\ninside the blend.");
   slider("flatten", "Flatten under", "How flat the ground is made under the object itself.");

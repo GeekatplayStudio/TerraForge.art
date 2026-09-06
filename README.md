@@ -566,6 +566,14 @@ wanted his students to have.
   covers the ridges) into albedo and per-layer roughness for `MaterialOutput`.
   `examples/macros/erosion_materials.json` builds the whole
   erosion → layers → material chain and assigns it to the terrain.
+- **Rocks and grass as displacement layers**, Terragen's way: a
+  `MaterialLayer` carries a displacement channel composited by its presence
+  (slope, altitude, mask), `FakeStones` hands it the boulders alone and the
+  new `GrassDisplacement` a field of clumped tufts, and the material's
+  relief rides on the terrain it is assigned to — stones that cast shadows,
+  meadows on the flats. `examples/macros/rocks_grass_layers.json` builds
+  it; [docs/DISPLACEMENT_LAYERS.md](docs/DISPLACEMENT_LAYERS.md) says how it
+  maps to Terragen and where a heightmap's resolution ends.
 - **Materials on objects:** any mesh (a primitive or an import) can be
   assigned a `MaterialOutput` — from the Materials panel or
   `{"op":"assign_material","node":"...","object":"..."}` — and is lit by the
@@ -591,9 +599,13 @@ wanted his students to have.
 - **Objects stand on the ground.** Make a mesh a child of the terrain and it
   is *grounded*: its base follows the surface as it is moved, and a
   `TerrainImprint` node in the graph moulds the ground to it — flat under
-  the footprint, blended back to the natural terrain around it, a hollow
-  when the object is pushed down and a mound when it is lifted. A house on
-  a hillside no longer floats over one edge and sinks into the other.
+  the **whole base** (the convex hull of the object's lowest vertices, not a
+  box or an ellipse, so every corner of a house sits on the ground), out to
+  a *flat margin* you set in metres, blended back to the natural terrain
+  over a *blend distance* you set in metres, a hollow when the object is
+  pushed down and a mound when it is lifted. *May sink* lets a boulder sit
+  that deep in the slope before the ground is dug out under it. Properties
+  ▸ Ground, or `place_on_terrain` / `set_ground` from the API.
 
 ### Environment and rendering
 - **Volumetric clouds** raymarched with Perlin-Worley noise, cloud types

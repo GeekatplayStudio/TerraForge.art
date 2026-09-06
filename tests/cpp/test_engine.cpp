@@ -3111,6 +3111,203 @@ static void test_basalt() {
 // turns the far end by its angle and the base not at all; a skew slides the
 // top by a fraction of the width; a taper narrows the top; a bend moves the
 // tip and keeps the base; the GLSL twin in shaders_scene.cpp does the same.
+// ------------------------------------------------------------ terrain imprint
+// The ground moulds to a footprint: a square base is flat at every corner
+// (an ellipse missed them), the margin widens the patch, the blend reaches
+// its distance and no further, an object pushed down digs a hollow, one
+// lifted raises a mound, and `sink` lets it sit in the ground untouched
+// until it is deeper than that.
+static void test_terrain_imprint() {
+  std::printf("terrain imprint...\n");
+  gpx::Graph g;
+  g.resolution = 128;
+  gpx::Node *ter = g.add_node("Constant");
+  ter->attrs.find("value")->f = 0.5f;
+  gpx::Node *im = g.add_node("TerrainImprint");
+  g.add_link(ter->id, "output", im->id, "input");
+  auto footprint = [&](float base, float sink, float margin, float blend) {
+    // a square 0.2 wide centred on the tile, the corners listed
+    char buf[256];
+    std::snprintf(buf, sizeof buf, "%f %f %f %f 4 0.4 0.4 0.6 0.4 0.6 0.6 0.4 0.6\n", base, sink, margin, blend);
+    im->attrs.find("footprints")->s = buf;
+    g.mark_dirty(im->id);
+    CHECK(g.evaluate(), "imprint evaluates");
+    return im->port("output", gpx::PortDir::Out)->hmap.get();
+  };
+  auto at = [&](const gpx::Heightmap *h, float u, float v) {
+    return h->at(std::min((int)(u * h->w), h->w - 1), std::min((int)(v * h->h), h->h - 1));
+  };
+  im->attrs.find("retain")->f = 0.f;
+  // a mound: base above the ground
+  const gpx::Heightmap *h = footprint(0.7f, 0.f, 0.f, 0.05f);
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.7f) < 1e-4f, "the centre is raised to the base");
+  CHECK(std::fabs(at(h, 0.405f, 0.405f) - 0.7f) < 1e-4f && std::fabs(at(h, 0.595f, 0.405f) - 0.7f) < 1e-4f,
+        "every corner of a square base is flat at the base, not only the inscribed ellipse");
+  CHECK(std::fabs(at(h, 0.2f, 0.2f) - 0.5f) < 1e-6f, "far away the ground is untouched");
+  float mid = at(h, 0.5f, 0.625f); // 0.025 into the 0.05 blend
+  CHECK(mid > 0.5f + 1e-3f && mid < 0.7f - 1e-3f, "the blend is between ground and base");
+  CHECK(std::fabs(at(h, 0.5f, 0.66f) - 0.5f) < 1e-6f, "and reaches exactly the blend distance");
+  const gpx::Heightmap *mk = im->port("imprint_mask", gpx::PortDir::Out)->hmap.get();
+  CHECK(mk && mk->at(64, 64) > 0.999f && mk->at(20, 20) == 0.f, "the imprint mask says where it acted");
+  // a hollow: base below the ground
+  h = footprint(0.3f, 0.f, 0.f, 0.05f);
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.3f) < 1e-4f && std::fabs(at(h, 0.595f, 0.595f) - 0.3f) < 1e-4f, "a base below the ground digs a hollow to the base, corners included");
+  // sink: the object may sit 0.25 into the ground without the ground moving
+  h = footprint(0.3f, 0.25f, 0.f, 0.05f);
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.5f) < 1e-6f, "within the sink allowance the ground keeps its height");
+  h = footprint(0.3f, 0.1f, 0.f, 0.05f);
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.4f) < 1e-4f, "deeper than the allowance the ground is dug to base + sink");
+  h = footprint(0.7f, 0.25f, 0.f, 0.05f);
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.7f) < 1e-4f, "sink never stops a mound rising to a base above the ground");
+  // margin: the flat patch reaches past the walls
+  h = footprint(0.7f, 0.f, 0.05f, 0.05f);
+  CHECK(std::fabs(at(h, 0.64f, 0.5f) - 0.7f) < 1e-4f, "0.04 outside the wall is still flat with a 0.05 margin");
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.7f) < 1e-4f, "and the inside is still flat");
+  // blend 0 = the node's multiple of the footprint's radius
+  im->attrs.find("width")->f = 1.f;
+  h = footprint(0.7f, 0.f, 0.f, 0.f);
+  const float r = std::sqrt(0.04f / 3.14159265f);
+  CHECK(at(h, 0.5f, 0.6f + r * 0.5f) > 0.5f + 1e-3f && std::fabs(at(h, 0.5f, 0.6f + r * 1.5f) - 0.5f) < 1e-6f, "auto blend is width times the footprint's radius");
+  // strength dials it back; a bad line is ignored, not a crash
+  im->attrs.find("strength")->f = 0.5f;
+  h = footprint(0.7f, 0.f, 0.f, 0.05f);
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.6f) < 1e-4f, "half strength moves halfway");
+  im->attrs.find("strength")->f = 1.f;
+  im->attrs.find("footprints")->s = "garbage\n0.7 0 0 0.05 2 0.4 0.4 0.6 0.6\n";
+  g.mark_dirty(im->id);
+  CHECK(g.evaluate(), "bad lines evaluate");
+  h = im->port("output", gpx::PortDir::Out)->hmap.get();
+  CHECK(std::fabs(at(h, 0.5f, 0.5f) - 0.5f) < 1e-6f, "and change nothing");
+  // determinism
+  footprint(0.7f, 0.1f, 0.01f, 0.05f);
+  std::vector<float> a1 = im->port("output", gpx::PortDir::Out)->hmap->v;
+  footprint(0.7f, 0.1f, 0.01f, 0.05f);
+  CHECK(a1 == im->port("output", gpx::PortDir::Out)->hmap->v, "the same footprints give the same ground");
+}
+
+// ------------------------------------------------------ displacement layers
+// Terragen's model: a surface layer carries a displacement shader and raises
+// it where the layer is present. A MaterialLayer's displacement channel
+// composites the same way as its colour: by presence, on top of or instead
+// of what is below; a FakeStones or GrassDisplacement node hands a layer
+// the stones or the tufts alone; the MaterialOutput carries the result.
+static void test_displacement_layers() {
+  std::printf("displacement layers...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+  gpx::Node *flat = g.add_node("Constant");
+  flat->attrs.find("value")->f = 0.5f;
+  gpx::Node *relief = g.add_node("Constant");
+  relief->attrs.find("value")->f = 0.02f; // a uniform 0.02 rise
+  gpx::Node *col = g.add_node("FlatColor");
+  gpx::Node *layer = g.add_node("MaterialLayer");
+  g.add_link(col->id, "texture", layer->id, "albedo");
+  g.add_link(relief->id, "output", layer->id, "displacement");
+  g.add_link(flat->id, "output", layer->id, "terrain");
+  gpx::Node *mat = g.add_node("MaterialOutput");
+  g.add_link(layer->id, "albedo", mat->id, "base color");
+  g.add_link(layer->id, "displacement", mat->id, "displacement");
+  CHECK(g.evaluate(), "a layer with displacement evaluates");
+  const gpx::Heightmap *d = layer->port("displacement", gpx::PortDir::Out)->hmap.get();
+  CHECK(d && !d->empty() && std::fabs(d->at(5, 5) - 0.02f) < 1e-5f, "a fully present layer passes its relief through");
+  const gpx::Heightmap *md = mat->in_hmap("displacement");
+  CHECK(md && std::fabs(md->at(5, 5) - 0.02f) < 1e-5f, "the material carries the layer's displacement");
+  // amount scales, opacity (presence) scales
+  layer->attrs.find("disp_amount")->f = 2.f;
+  layer->attrs.find("opacity")->f = 0.5f;
+  g.mark_dirty(layer->id);
+  g.evaluate();
+  d = layer->port("displacement", gpx::PortDir::Out)->hmap.get();
+  CHECK(std::fabs(d->at(5, 5) - 0.02f) < 1e-5f, "amount 2 at half presence is the same rise");
+  // a hidden layer raises nothing
+  layer->attrs.find("enabled")->b = false;
+  g.mark_dirty(layer->id);
+  g.evaluate();
+  CHECK(layer->port("displacement", gpx::PortDir::Out)->hmap->at(5, 5) == 0.f, "a hidden layer raises nothing");
+  layer->attrs.find("enabled")->b = true;
+  layer->attrs.find("opacity")->f = 1.f;
+  layer->attrs.find("disp_amount")->f = 1.f;
+  g.mark_dirty(layer->id); // the cached output was the hidden one
+  // stacking: a second layer adds to, or replaces, what is below
+  gpx::Node *relief2 = g.add_node("Constant");
+  relief2->attrs.find("value")->f = 0.05f;
+  gpx::Node *top = g.add_node("MaterialLayer");
+  g.add_link(col->id, "texture", top->id, "albedo");
+  g.add_link(layer->id, "albedo", top->id, "below albedo");
+  g.add_link(layer->id, "displacement", top->id, "below displacement");
+  g.add_link(relief2->id, "output", top->id, "displacement");
+  g.evaluate();
+  d = top->port("displacement", gpx::PortDir::Out)->hmap.get();
+  CHECK(std::fabs(d->at(5, 5) - 0.07f) < 1e-5f, "add: both layers' relief stacks");
+  top->attrs.find("disp_add")->f = 0.f;
+  g.mark_dirty(top->id);
+  g.evaluate();
+  d = top->port("displacement", gpx::PortDir::Out)->hmap.get();
+  CHECK(std::fabs(d->at(5, 5) - 0.05f) < 1e-5f, "replace: the top layer's relief alone where it is present");
+  top->attrs.find("opacity")->f = 0.f;
+  g.mark_dirty(top->id);
+  g.evaluate();
+  d = top->port("displacement", gpx::PortDir::Out)->hmap.get();
+  CHECK(std::fabs(d->at(5, 5) - 0.02f) < 1e-5f, "an absent top layer leaves the relief below untouched");
+  // presence by slope keeps the stones off the flats
+  gpx::Graph g2;
+  g2.resolution = 64;
+  gpx::Node *ramp = g2.add_node("Noise");
+  gpx::Node *stones = g2.add_node("FakeStones");
+  g2.add_link(ramp->id, "output", stones->id, "input");
+  g2.evaluate();
+  const gpx::Heightmap *so = stones->port("output", gpx::PortDir::Out)->hmap.get();
+  const gpx::Heightmap *si = ramp->port("output", gpx::PortDir::Out)->hmap.get();
+  const gpx::Heightmap *sd = stones->port("displacement", gpx::PortDir::Out)->hmap.get();
+  bool delta_ok = sd && !sd->empty();
+  float sum = 0.f;
+  for (size_t i = 0; delta_ok && i < sd->v.size(); ++i) { delta_ok = std::fabs(sd->v[i] - (so->v[i] - si->v[i])) < 1e-5f; sum += sd->v[i]; }
+  CHECK(delta_ok && sum > 0.f, "FakeStones' displacement port is the stones alone: output minus input, and there are stones");
+  // grass
+  gpx::Graph g3;
+  g3.resolution = 96;
+  gpx::Node *ground = g3.add_node("Constant");
+  ground->attrs.find("value")->f = 0.3f;
+  gpx::Node *grass = g3.add_node("GrassDisplacement");
+  g3.add_link(ground->id, "output", grass->id, "input");
+  CHECK(g3.evaluate(), "grass evaluates on a flat ground");
+  const gpx::Heightmap *gd = grass->port("displacement", gpx::PortDir::Out)->hmap.get();
+  const gpx::Heightmap *gm = grass->port("grass_mask", gpx::PortDir::Out)->hmap.get();
+  float gmax = 0.f, gmin = 1e30f; int covered = 0;
+  for (size_t i = 0; i < gd->v.size(); ++i) { gmax = std::max(gmax, gd->v[i]); gmin = std::min(gmin, gd->v[i]); if (gm->v[i] > 0.05f) ++covered; }
+  CHECK(gmin >= 0.f && gmax > 0.f, "tufts only rise, never dig");
+  CHECK(covered > (int)(gd->v.size() / 10), "the flat ground is covered in tufts");
+  const gpx::Heightmap *go = grass->port("output", gpx::PortDir::Out)->hmap.get();
+  CHECK(std::fabs((go->at(10, 10) - 0.3f) - gd->at(10, 10)) < 1e-6f, "output is the ground plus the tufts");
+  std::vector<float> first = gd->v;
+  g3.mark_dirty(grass->id);
+  g3.evaluate();
+  CHECK(first == grass->port("displacement", gpx::PortDir::Out)->hmap->v, "grass is deterministic");
+  grass->attrs.find("seed")->seed = 7;
+  g3.mark_dirty(grass->id);
+  g3.evaluate();
+  CHECK(first != grass->port("displacement", gpx::PortDir::Out)->hmap->v, "a different seed is a different meadow");
+  // slope band: the slope is measured against the terrain's own range (as
+  // FakeStones measures it), so a curved ramp - flat on the left, steep on
+  // the right - grows grass on the left and none on the right
+  gpx::Node *steep = g3.add_node("Noise");
+  g3.add_link(steep->id, "output", grass->id, "input");
+  g3.evaluate();
+  {
+    gpx::Heightmap *h = steep->port("output", gpx::PortDir::Out)->hmap.get();
+    for (int y = 0; y < h->h; ++y)
+      for (int x = 0; x < h->w; ++x) { float t = x / float(h->w - 1); h->at(x, y) = t * t * t * t; }
+    steep->dirty = false;
+    g3.mark_dirty(grass->id);
+    g3.evaluate();
+  }
+  gd = grass->port("displacement", gpx::PortDir::Out)->hmap.get();
+  float left = 0.f, right = 0.f;
+  for (int y = 0; y < gd->h; ++y) { for (int x = 2; x < 12; ++x) left = std::max(left, gd->at(x, y)); right = std::max(right, gd->at(gd->w - 3, y)); }
+  CHECK(left > 0.f, "the flat end of the ramp grows grass");
+  CHECK(right < 1e-6f, "the steep end grows none");
+}
+
 static void test_deformers() {
   std::printf("deformers...\n");
   const float bmin[3] = {-1.f, 0.f, -1.f}, bmax[3] = {1.f, 2.f, 1.f};
@@ -4880,6 +5077,8 @@ int main() {
   test_material_types();
   test_material_params();
   test_deformers();
+  test_terrain_imprint();
+  test_displacement_layers();
   test_material_layers();
   test_fractal_color();
   test_vue_fractals();

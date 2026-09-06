@@ -56,6 +56,8 @@ layout(location=0) in vec3 in_pos;
 layout(location=1) in vec3 in_nrm;
 layout(location=2) in vec4 in_instance;
 layout(location=3) in vec4 in_instance_rot;
+layout(location=6) in vec2 in_uv;
+out vec2 v_uv;
 uniform mat4 u_light_mvp, u_model;
 uniform int u_inst_on;
 uniform float u_inst_sway, u_inst_time;
@@ -78,7 +80,18 @@ void main(){
       p.z += lean * 0.35;
     }
   } else p = u_model * vec4(pos, 1.0);
+  v_uv = in_uv;
   gl_Position = u_light_mvp * p;
+})GLSL";
+
+// Depth only, but a textured part discards where its picture is
+// transparent, so a leaf card shadows as a leaf and not as a rectangle.
+const char *const FS_DEPTH_MESH = R"GLSL(#version 430 core
+in vec2 v_uv;
+uniform sampler2D u_albedo_tex;
+uniform int u_has_tex;
+void main(){
+  if (u_has_tex == 1 && texture(u_albedo_tex, v_uv).a < 0.5) discard;
 })GLSL";
 
 } // namespace studio

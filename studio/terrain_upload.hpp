@@ -12,6 +12,9 @@ struct TerrainUpload {
   gpx::Heightmap picking;
   std::vector<float> bounds;
   PlaceResult placement;
+  // the placed ground before the objects' imprint (after the material's
+  // relief): what a grounded object's base rests on
+  std::shared_ptr<gpx::Heightmap> natural;
   float mean = 0.f;
   uint64_t serial = 0, key = 0;
 };

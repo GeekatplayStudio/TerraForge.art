@@ -1035,6 +1035,7 @@ static void test_autosave() {
 int test_undo_render_run(); // test_undo_render.cpp
 int test_scene_tree_run();  // test_scene_tree.cpp
 int test_anim_scene_run();  // test_anim_scene.cpp
+int test_imprint_run();     // test_imprint.cpp
 int test_material_stack_ops_run(); // test_material_stack_ops.cpp
 
 int test_material_channel_ops_run();
@@ -1043,6 +1044,7 @@ int main() {
   g_failures += test_undo_render_run();
   g_failures += test_scene_tree_run();
   g_failures += test_anim_scene_run();
+  g_failures += test_imprint_run();
   g_failures += test_material_stack_ops_run();
   g_failures += test_material_channel_ops_run();
   test_graph_view_sanity();

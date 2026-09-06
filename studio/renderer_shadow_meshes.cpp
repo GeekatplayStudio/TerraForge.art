@@ -9,6 +9,7 @@
 #include "renderer_internal.hpp"
 #include "scene.hpp"
 #include "uniform_cache.hpp"
+#include <algorithm>
 #include <cstring>
 
 namespace studio {
@@ -63,7 +64,9 @@ void pass_shadow_meshes(const FrameCtx &F) {
     uni3(prog_depth_mesh, "u_bmin", o.bmin);
     uni3(prog_depth_mesh, "u_bmax", o.bmax);
     glBindVertexArray(o.vao);
-    if (!o.inst.empty()) {
+    const bool instanced = !o.inst.empty();
+    const int copies = instanced ? (int)(o.inst.size() / 8) : 1;
+    if (instanced) {
       // the instance stream is attached to the mesh's VAO by the colour
       // pass; the first frame after a scatter rebuild draws the copies at
       // the model's origin until that pass has uploaded it
@@ -71,11 +74,40 @@ void pass_shadow_meshes(const FrameCtx &F) {
       uni1(prog_depth_mesh, "u_inst_sway", o.scatter_sway);
       uni1(prog_depth_mesh, "u_inst_time", F.time_acc);
       glUniform3f(uniform_location(prog_depth_mesh, "u_inst_base"), model[12], model[13], model[14]);
-      glDrawArraysInstanced(GL_TRIANGLES, 0, o.vert_count, (int)(o.inst.size() / 8));
     } else {
       unii(prog_depth_mesh, "u_inst_on", 0);
-      glDrawArrays(GL_TRIANGLES, 0, o.vert_count);
     }
+    auto draw = [&](int first, int count) {
+      if (instanced) glDrawArraysInstanced(GL_TRIANGLES, first, count, copies);
+      else glDrawArrays(GL_TRIANGLES, first, count);
+    };
+    // part by part where a part has a picture, so its alpha cuts the shadow
+    const bool have_uv = o.uvs.size() == (size_t)o.vert_count * 2;
+    if (o.parts.empty() || !have_uv) {
+      unii(prog_depth_mesh, "u_has_tex", 0);
+      draw(0, o.vert_count);
+      continue;
+    }
+    glActiveTexture(GL_TEXTURE3);
+    int covered = 0;
+    for (const SceneObject::Part &part : o.parts) {
+      if (part.first < 0 || part.count <= 0 || part.first + part.count > o.vert_count) continue;
+      if (part.tex) {
+        glBindTexture(GL_TEXTURE_2D, part.tex);
+        unii(prog_depth_mesh, "u_albedo_tex", 3);
+        unii(prog_depth_mesh, "u_has_tex", 1);
+      } else {
+        unii(prog_depth_mesh, "u_has_tex", 0);
+      }
+      draw(part.first, part.count);
+      covered = std::max(covered, part.first + part.count);
+    }
+    if (covered < o.vert_count) {
+      unii(prog_depth_mesh, "u_has_tex", 0);
+      draw(covered, o.vert_count - covered);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
   }
   glBindVertexArray(0);
 }

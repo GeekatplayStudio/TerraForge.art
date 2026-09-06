@@ -7,6 +7,7 @@
 #include "scene.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/planet_math.hpp"
+#include "surface_features.hpp"
 #include "terrain_upload.hpp"
 #include "terrain_cull.hpp"
 #include <future>
@@ -28,8 +29,38 @@ struct PlacementRequest {
   std::shared_ptr<const gpx::TextureRGBA> albedo;
   std::vector<gpx::planet::Layer> layers;
   PlaceSettings settings;
+  SurfaceFeatures features; // the material's relief and the objects' imprint, applied after placement
   uint64_t serial, key;
 };
+static SurfaceFeatures g_last_features;
+static std::shared_ptr<gpx::Heightmap> g_natural_ground;
+
+const gpx::Heightmap *app_natural_ground() {
+  return g_natural_ground && !g_natural_ground->empty() ? g_natural_ground.get() : nullptr;
+}
+
+// What rides on the placed ground: the assigned material's displacement and
+// the TerrainImprint node's footprints and settings. Caller holds graph_mtx.
+static SurfaceFeatures collect_features(App &a) {
+  SurfaceFeatures f;
+  gpx::Node *mat_out = nullptr;
+  for (const SceneObject &o : scene().objects)
+    if (o.type == SceneObject::Terrain && o.material_node) mat_out = a.graph.find_node(o.material_node);
+  if (mat_out && mat_out->type == "MaterialOutput")
+    if (const gpx::Heightmap *d = mat_out->in_hmap("displacement"))
+      if (!d->empty()) f.displacement = std::make_shared<gpx::Heightmap>(*d);
+  for (auto &n : a.graph.nodes)
+    if (n->type == "TerrainImprint") {
+      f.footprints = n->attrs.get_s("footprints");
+      f.imprint.width = n->attrs.get_f("width", 1.5f);
+      f.imprint.smoothness = n->attrs.get_f("smoothness", 0.5f);
+      f.imprint.retain = n->attrs.get_f("retain", 0.35f);
+      f.imprint.flatten = n->attrs.get_f("flatten", 1.f);
+      f.imprint.strength = n->attrs.get_f("strength", 1.f);
+      break;
+    }
+  return f;
+}
 static std::optional<PlacementRequest> g_placement_next;
 static std::future<TerrainUpload> g_placement_work;
 
@@ -72,7 +103,7 @@ static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> 
   g_place_key = placement_key();
   g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(),
       {rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence, rs.place_ground},
-      a.eval_serial, g_place_key};
+      g_last_features, a.eval_serial, g_place_key};
 }
 
 static void service_placement(App &a) {
@@ -85,6 +116,7 @@ static void service_placement(App &a) {
         renderer_set_terrain_base(ready.placement.ground);
         renderer_set_terrain_prepared(ready);
         app_set_overlay_terrain(ready.height);
+        g_natural_ground = ready.natural;
         a.uploaded_serial = ready.serial;
       } else if (!g_placement_next && ready.serial != a.eval_serial &&
                  g_prepared_serial == a.eval_serial) {
@@ -108,6 +140,11 @@ static void service_placement(App &a) {
     ready.albedo = request.albedo;
     ready.height = std::make_shared<gpx::Heightmap>(planet_place_tile(
         *request.tile, request.layers, request.settings, &ready.placement));
+    // rocks, grass and the objects' imprint on the placed ground - features
+    // too small for the placement's own threshold, and measured against
+    // the ground the viewport shows
+    ready.natural = std::make_shared<gpx::Heightmap>();
+    surface_features_apply(*ready.height, request.features, ready.natural.get());
     const auto &h = *ready.height;
     ready.picking = h.w > 256 ? h.resampled(256, 256) : h;
     ready.bounds = patch_height_bounds(h, TERRAIN_PATCHES_PER_EDGE);
@@ -298,8 +335,17 @@ void app_service_upload(App &a) {
           }
         }
         if (ph && ph->hmap && !ph->hmap->empty()) {
-          // Detach from mutable graph buffers before the worker reads them.
-          g_last_tile = std::make_shared<gpx::Heightmap>(*ph->hmap);
+          // The tile to place is the ground before the objects' imprint:
+          // the imprint (and the material's relief) is applied after
+          // placement, on the ground the viewport shows. Detach from the
+          // mutable graph buffers before the worker reads them.
+          const gpx::Heightmap *tile_src = ph->hmap.get();
+          for (auto &cand : a.graph.nodes)
+            if (cand->type == "TerrainImprint")
+              if (const gpx::Heightmap *pre = cand->in_hmap("input"))
+                if (!pre->empty() && pre->w == ph->hmap->w && pre->h == ph->hmap->h) tile_src = pre;
+          g_last_tile = std::make_shared<gpx::Heightmap>(*tile_src);
+          g_last_features = collect_features(a);
           g_last_albedo = albedo ? std::make_shared<gpx::TextureRGBA>(*albedo) : nullptr;
           upload_placed_terrain(a, g_last_tile, g_last_albedo);
         }

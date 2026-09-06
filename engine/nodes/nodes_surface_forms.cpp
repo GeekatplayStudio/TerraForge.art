@@ -91,6 +91,7 @@ REGISTER_NODE(
       n.add_in("density_mask", DataType::Heightmap, true);
       n.add_out("output");
       n.add_out("stone_mask");
+      n.add_out("displacement"); // the stones alone: output - input
       add_float(n.attrs, "stone_scale", "Stone scale", 0.03f, 0.004f, 0.25f,
                 "Stones")
           .tooltip = "Stone size as a fraction of terrain width;\n"
@@ -189,6 +190,12 @@ REGISTER_NODE(
           }
       });
       smask.remap(0.f, 1.f);
+      // the stones alone, for a material layer to raise where it is present
+      {
+        Heightmap &dsp = n.out_hmap("displacement");
+        dsp = Heightmap(out.w, out.h);
+        for (size_t q = 0; q < dsp.v.size() && q < in->v.size(); ++q) dsp.v[q] = out.v[q] - in->v[q];
+      }
     })
 
 // ------------------------------------------------------------------ Crater

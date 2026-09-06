@@ -5,6 +5,8 @@
 #include "ai_actions_internal.hpp"
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "render_settings.hpp"
+#include "imprint.hpp"
 #include "scene.hpp"
 #include <algorithm>
 #include <json.hpp>
@@ -51,6 +53,33 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         ++applied;
         break;
       }
+    } else if (op == "place_on_terrain") {
+      std::string want = act.value("object", act.value("name", std::string()));
+      int idx = -1;
+      for (int i = 0; i < (int)sc.objects.size(); ++i)
+        if (sc.objects[i].type == SceneObject::Mesh && (want.empty() || sc.objects[i].name == want)) { idx = i; break; }
+      if (idx < 0) err = "place_on_terrain: no mesh object '" + want + "'";
+      else if (imprint_place_on_terrain(a, idx) < 0) err = "place_on_terrain: no terrain object";
+      else ++applied;
+    } else if (op == "set_ground") {
+      // the grounded object's settings, in metres
+      std::string want = act.value("object", act.value("name", std::string()));
+      const RenderSettings &rs = render_settings();
+      const float tile_m = std::max(rs.terrain_size_m, 1e-3f);
+      const float hm_m = std::max(rs.height_scale, 1e-6f) * tile_m;
+      bool found = false;
+      for (SceneObject &o : sc.objects) {
+        if (o.type != SceneObject::Mesh || (!want.empty() && o.name != want)) continue;
+        found = true;
+        if (act.contains("lock")) o.ground_lock = act["lock"].get<bool>();
+        if (act.contains("offset_m")) o.ground_offset = act["offset_m"].get<float>() / hm_m;
+        if (act.contains("margin_m")) o.ground_margin = std::max(act["margin_m"].get<float>(), 0.f) / tile_m;
+        if (act.contains("blend_m")) o.ground_blend = std::max(act["blend_m"].get<float>(), 0.f) / tile_m;
+        if (act.contains("sink_m")) o.ground_sink = std::max(act["sink_m"].get<float>(), 0.f) / hm_m;
+        ++applied;
+        if (!want.empty()) break;
+      }
+      if (!found) err = "set_ground: no mesh object '" + want + "'";
     } else if (op == "add_light" || op == "set_light") {
       int idx = -1;
       if (op == "set_light") {

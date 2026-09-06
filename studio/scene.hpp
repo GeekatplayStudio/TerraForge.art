@@ -148,6 +148,14 @@ struct SceneObject {
   // locked, `ground_offset` heightmap units above (or below) it.
   bool ground_lock = true;
   float ground_offset = 0.f;
+  // How the ground moulds to it: the flat patch reaches `ground_margin`
+  // past the base's walls and blends back over `ground_blend` (tile
+  // fractions; blend 0 = the node's own multiple of the footprint), and the
+  // object may sink `ground_sink` (heightmap units) into the ground before
+  // the ground is dug out under it.
+  float ground_margin = 0.f;
+  float ground_blend = 0.f;
+  float ground_sink = 0.f;
   // What the driver node last handed this object (its transform attributes,
   // as the node had them). While the node still says the same, the object's
   // own edits - a gizmo drag, a typed value, the ground lock - are kept and

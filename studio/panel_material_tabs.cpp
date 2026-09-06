@@ -102,6 +102,16 @@ void layer_bump(App &a, gpx::Node *l) {
 void layer_highlights(App &a, gpx::Node *l) {
   material_channel_ui(a, l, "roughness", "Roughness", CHAN_VALUE, "rough_value");
 }
+void layer_displacement(App &a, gpx::Node *l) {
+  ImGui::TextWrapped("%s", "The relief this layer raises where it is present: connect a FakeStones "
+                           "or GrassDisplacement node's 'displacement' output (or any relief in "
+                           "heightmap units) to the layer's displacement input.");
+  bool linked = false;
+  for (const gpx::Link &lk : a.graph.links)
+    if (lk.to_node == l->id && lk.to_port == "displacement") linked = true;
+  ImGui::TextDisabled("%s", linked ? "displacement input: connected" : "displacement input: nothing connected");
+  keys(a, l, {"disp_amount", "disp_add"});
+}
 void layer_effects(App &a, gpx::Node *l) {
   ImGui::SeparatorText("Placement");
   group(a, l, "Placement");
@@ -166,6 +176,7 @@ void material_tabs_ui(App &a, gpx::Node *mat) {
               {{"Color", layer_color},
                {"Alpha", layer_alpha},
                {"Bump", layer_bump},
+               {"Displacement", layer_displacement},
                {"Highlights", layer_highlights},
                {"Effects", layer_effects}});
     if (ImGui::BeginTabItem("Presence")) {

@@ -1,16 +1,24 @@
 // Geekatplay TerraForge - objects standing on the terrain. See the header.
+//
+// The footprint itself (the convex hull of the base, the margin, the blend
+// distance) is computed in imprint_footprint.cpp, which has no App and so
+// is tested on its own. This file is the studio's side: the node in the
+// chain, the lock that holds the base on the surface, and the footprints
+// text the node reads.
 #include "imprint.hpp"
 #include "app.hpp"
 #include "gizmo.hpp"
+#include "imprint_footprint.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "undo.hpp"
 #include <cmath>
-#include <cstdio>
 #include <mutex>
 #include <string>
 
 namespace studio {
+
+const gpx::Heightmap *app_natural_ground(); // app_upload.cpp
 
 int imprint_ground_of(const SceneObject &o) {
   if (o.type != SceneObject::Mesh) return -1;
@@ -39,29 +47,6 @@ int imprint_place_on_terrain(App &a, int object) {
 }
 
 namespace {
-
-// The footprint of a mesh on the tile, in tile fractions: the bounds'
-// half-extents scaled, centred on the object, turned by its heading.
-struct Print {
-  float cx, cz, rx, rz, rot, base_rel; // base_rel: base below pos.y, heightmap units
-};
-
-Print print_of(const SceneObject &o) {
-  const float hs = std::max(render_settings().height_scale, 1e-5f);
-  const float sx = o.scale * o.scl[0], sy = o.scale * o.scl[1], sz = o.scale * o.scl[2];
-  const float bcx = 0.5f * (o.bmin[0] + o.bmax[0]) * sx;
-  const float bcz = 0.5f * (o.bmin[2] + o.bmax[2]) * sz;
-  const float r = o.yaw * 0.017453292519943295f;
-  Print p;
-  // a touch of margin, so the flat patch reaches just past the walls
-  p.rx = 0.5f * (o.bmax[0] - o.bmin[0]) * std::fabs(sx) * 1.06f;
-  p.rz = 0.5f * (o.bmax[2] - o.bmin[2]) * std::fabs(sz) * 1.06f;
-  p.cx = o.pos[0] + bcx * std::cos(r) + bcz * std::sin(r);
-  p.cz = o.pos[2] - bcx * std::sin(r) + bcz * std::cos(r);
-  p.rot = o.yaw;
-  p.base_rel = o.bmin[1] * sy / hs;
-  return p;
-}
 
 // The TerrainImprint node, spliced before TerrainOutput's heightmap the way
 // the sculpt layer is. Caller holds graph_mtx.
@@ -103,6 +88,20 @@ gpx::Node *find_or_make_node(App &a) {
   return im;
 }
 
+// Every grounded object's line, as the node reads them.
+std::string footprints_text(const SceneState &sc, float hs, bool &any) {
+  std::string text;
+  any = false;
+  for (const SceneObject &o : sc.objects) {
+    if (imprint_ground_of(o) < 0 || !o.enabled) continue;
+    Footprint f = imprint_footprint(o, hs);
+    if (!f.valid()) continue;
+    any = true;
+    text += imprint_footprint_line(f, o.ground_sink, o.ground_margin, o.ground_blend);
+  }
+  return text;
+}
+
 } // namespace
 
 unsigned long long imprint_node(App &a) {
@@ -115,19 +114,9 @@ unsigned long long imprint_node(App &a) {
 
 void app_service_imprint(App &a) {
   SceneState &sc = scene();
-  // the footprints, as the node reads them
-  std::string text;
+  const float hs = std::max(render_settings().height_scale, 1e-6f);
   bool any = false;
-  for (int i = 0; i < (int)sc.objects.size(); ++i) {
-    const SceneObject &o = sc.objects[i];
-    if (imprint_ground_of(o) < 0 || !o.enabled) continue;
-    any = true;
-    Print p = print_of(o);
-    char line[160];
-    std::snprintf(line, sizeof line, "%.6f %.6f %.6f %.6f %.3f %.6f\n", p.cx, p.cz, p.rx, p.rz,
-                  p.rot, o.pos[1] + p.base_rel);
-    text += line;
-  }
+  std::string text = footprints_text(sc, hs, any);
   static std::string last;
   if (text == last && !any) return;
 
@@ -141,33 +130,37 @@ void app_service_imprint(App &a) {
   // The lock: a grounded object's base rides on the natural ground - the
   // node's input, so the mould it makes cannot lift it. Dragging it up or
   // down in Y sets how far above or below the ground it sits.
-  const gpx::Heightmap *ground = node ? node->in_hmap("input") : nullptr;
+  // the natural ground: the placed surface before the imprint (what the
+  // viewport shows), else the node's own input
+  const gpx::Heightmap *ground = app_natural_ground();
+  if (!ground && node) ground = node->in_hmap("input");
   if (ground && !ground->v.empty()) {
     int drag_obj = -1, drag_axis = -1;
     const bool dragging = gizmo_dragging(drag_obj, drag_axis);
+    bool moved = false;
     for (int i = 0; i < (int)sc.objects.size(); ++i) {
       SceneObject &o = sc.objects[i];
       if (imprint_ground_of(o) < 0 || !o.ground_lock) continue;
-      Print p = print_of(o);
-      const float h = ground->sample(std::clamp(p.cx, 0.f, 1.f), std::clamp(p.cz, 0.f, 1.f));
-      const float rest = h - p.base_rel; // pos.y that puts the base on the ground
+      Footprint f = imprint_footprint(o, hs);
+      if (!f.valid()) continue;
+      // the ground under the footprint: its highest point, so no corner of
+      // the base is ever below the natural surface unless the user sinks it
+      float h = -1e30f;
+      const size_t n = f.xz.size() / 2;
+      for (size_t k = 0; k < n; ++k)
+        h = std::max(h, ground->sample(std::clamp(f.xz[k * 2], 0.f, 1.f), std::clamp(f.xz[k * 2 + 1], 0.f, 1.f)));
+      h = std::max(h, ground->sample(std::clamp(f.cx, 0.f, 1.f), std::clamp(f.cz, 0.f, 1.f)));
+      const float base_rel = f.base - o.pos[1]; // the base below the pivot, heightmap units
+      const float rest = h - base_rel;          // pos.y that puts the base on the ground
       if (dragging && drag_obj == i && drag_axis == 1) {
         o.ground_offset = o.pos[1] - rest; // the user is choosing the offset
       } else if (std::fabs(o.pos[1] - (rest + o.ground_offset)) > 1e-6f) {
         o.pos[1] = rest + o.ground_offset;
+        moved = true;
       }
     }
     // the bases may have moved: rebuild the text so the node sees them
-    text.clear();
-    for (int i = 0; i < (int)sc.objects.size(); ++i) {
-      const SceneObject &o = sc.objects[i];
-      if (imprint_ground_of(o) < 0 || !o.enabled) continue;
-      Print p = print_of(o);
-      char line[160];
-      std::snprintf(line, sizeof line, "%.6f %.6f %.6f %.6f %.3f %.6f\n", p.cx, p.cz, p.rx, p.rz,
-                    p.rot, o.pos[1] + p.base_rel);
-      text += line;
-    }
+    if (moved) text = footprints_text(sc, hs, any);
   }
   if (text == last) return;
   last = text;

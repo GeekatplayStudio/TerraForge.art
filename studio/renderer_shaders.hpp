@@ -35,6 +35,7 @@ extern const char *const FS_TERRAIN_SRC;
 
 extern const char *const VS_DEPTH_SRC;
 extern const char *const VS_DEPTH_MESH;
+extern const char *const FS_DEPTH_MESH;
 extern const char *const DEFORM_FN_GLSL;
 
 extern const char *const FS_DEPTH;

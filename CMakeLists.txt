@@ -199,6 +199,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_terrain_fx.cpp
     engine/nodes/nodes_sculpt_layer.cpp
     engine/nodes/nodes_imprint.cpp
+    engine/nodes/nodes_grass.cpp
     engine/nodes/nodes_export.cpp
 )
 
@@ -428,6 +429,8 @@ set(STUDIO_SOURCES
     studio/scene_io.cpp
     studio/scene_io_object.cpp
     studio/scene_io_anim.cpp
+    studio/imprint_footprint.cpp
+    studio/surface_features.cpp
     studio/anim_targets.cpp
     studio/render_settings.cpp
     studio/cloud_noise.cpp
@@ -564,6 +567,7 @@ add_executable(undo_tests
     tests/cpp/test_undo_render.cpp
     tests/cpp/test_scene_tree.cpp
     tests/cpp/test_anim_scene.cpp
+    tests/cpp/test_imprint.cpp
     tests/cpp/test_material_stack_ops.cpp
     tests/cpp/test_material_channel_ops.cpp
     studio/material_stack_ops.cpp
@@ -577,6 +581,8 @@ add_executable(undo_tests
     studio/scene_io.cpp
     studio/scene_io_object.cpp
     studio/scene_io_anim.cpp
+    studio/imprint_footprint.cpp
+    studio/surface_features.cpp
     studio/anim_targets.cpp
     studio/render_settings.cpp
     studio/autosave.cpp

@@ -18,6 +18,10 @@ bool renderer_render_to_file(const std::string &path, int w, int h);
 static std::shared_ptr<gpx::Heightmap> g_overlay_terrain;
 static uint64_t g_overlay_revision = 0;
 
+const gpx::Heightmap *app_placed_terrain() {
+  return g_overlay_terrain && !g_overlay_terrain->empty() ? g_overlay_terrain.get() : nullptr;
+}
+
 void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm) {
   g_overlay_terrain = std::move(hm);
   ++g_overlay_revision;

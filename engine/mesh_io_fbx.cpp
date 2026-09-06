@@ -171,24 +171,49 @@ void mat_mul(const double *a, const double *b, double *o) {
 }
 void identity(double *m) { for (int i = 0; i < 16; ++i) m[i] = i % 5 == 0 ? 1.0 : 0.0; }
 
-// T * R(z) * R(y) * R(x) * S, FBX's default XYZ order, degrees
-void local_matrix(const Rec &model, double *m) {
-  double t[3], r[3], s[3];
-  prop70_vec3(model, "Lcl Translation", t, 0.0);
-  prop70_vec3(model, "Lcl Rotation", r, 0.0);
-  prop70_vec3(model, "Lcl Scaling", s, 1.0);
+// R(z) * R(y) * R(x) for degrees, column-major 3x3
+void rot_xyz(const double *r, double *R) {
   const double D = 3.14159265358979323846 / 180.0;
   double cx = std::cos(r[0] * D), sx = std::sin(r[0] * D);
   double cy = std::cos(r[1] * D), sy = std::sin(r[1] * D);
   double cz = std::cos(r[2] * D), sz = std::sin(r[2] * D);
-  // R = Rz * Ry * Rx, column-major
-  double R[9] = {cy * cz, cy * sz, -sy,
-                 sx * sy * cz - cx * sz, sx * sy * sz + cx * cz, sx * cy,
-                 cx * sy * cz + sx * sz, cx * sy * sz - sx * cz, cx * cy};
+  const double M[9] = {cy * cz, cy * sz, -sy,
+                       sx * sy * cz - cx * sz, sx * sy * sz + cx * cz, sx * cy,
+                       cx * sy * cz + sx * sz, cx * sy * sz - sx * cz, cx * cy};
+  for (int i = 0; i < 9; ++i) R[i] = M[i];
+}
+void trs(const double *t, const double *r, const double *s, double *m) {
+  double R[9];
+  rot_xyz(r, R);
   identity(m);
   for (int c = 0; c < 3; ++c)
     for (int rr = 0; rr < 3; ++rr) m[c * 4 + rr] = R[c * 3 + rr] * s[c];
   m[12] = t[0]; m[13] = t[1]; m[14] = t[2];
+}
+
+// T * Rpre * R * S * (Tg * Rg * Sg): FBX's default XYZ order, degrees.
+// PreRotation is where an exporter bakes a Z-up model's turn to Y-up - a
+// model read without it lies on its side; the Geometric* terms move the
+// mesh alone, not the node's children.
+void local_matrix(const Rec &model, double *m) {
+  double t[3], r[3], s[3], pre[3], gt[3], gr[3], gs[3];
+  prop70_vec3(model, "Lcl Translation", t, 0.0);
+  prop70_vec3(model, "Lcl Rotation", r, 0.0);
+  prop70_vec3(model, "Lcl Scaling", s, 1.0);
+  prop70_vec3(model, "PreRotation", pre, 0.0);
+  prop70_vec3(model, "GeometricTranslation", gt, 0.0);
+  prop70_vec3(model, "GeometricRotation", gr, 0.0);
+  prop70_vec3(model, "GeometricScaling", gs, 1.0);
+  const double zero[3] = {0, 0, 0}, one[3] = {1, 1, 1};
+  double T[16], P[16], RS[16], G[16], tmp[16];
+  trs(t, zero, one, T);
+  trs(zero, pre, one, P);
+  trs(zero, r, s, RS);
+  trs(gt, gr, gs, G);
+  mat_mul(T, P, tmp);
+  mat_mul(tmp, RS, m);
+  mat_mul(m, G, tmp);
+  for (int i = 0; i < 16; ++i) m[i] = tmp[i];
 }
 
 std::string basename_of(const std::string &p) {
@@ -218,6 +243,16 @@ bool mesh_load_fbx(const std::string &path, TriMesh &out, std::string &err) {
     auto k = std::make_unique<Rec>();
     if (!read_rec(r, *k, 0)) break;
     root.kids.push_back(std::move(k));
+  }
+  // the file's up axis: 1 = Y (ours), 2 = Z (Max, Blender exports) - a Z-up
+  // model is turned to stand up, (x, y, z) -> (x, z, -y), sign respected
+  bool z_up = false;
+  double up_sign = 1.0;
+  if (const Rec *gs = root.child("GlobalSettings")) {
+    if (const Rec *ua = prop70(*gs, "UpAxis"); ua && ua->props.size() >= 5)
+      z_up = (ua->props[4].d != 0 ? ua->props[4].d : (double)ua->props[4].i) == 2.0;
+    if (const Rec *us = prop70(*gs, "UpAxisSign"); us && us->props.size() >= 5)
+      up_sign = (us->props[4].d != 0 ? us->props[4].d : (double)us->props[4].i) < 0 ? -1.0 : 1.0;
   }
   const Rec *objects = root.child("Objects");
   if (!objects) { err = "FBX has no Objects section"; return false; }
@@ -273,20 +308,33 @@ bool mesh_load_fbx(const std::string &path, TriMesh &out, std::string &err) {
     size_t s = path.find_last_of("/\\");
     return s == std::string::npos ? std::string() : path.substr(0, s);
   }();
-  std::map<int64_t, int> image_of_material; // material id -> TriMesh image
-  auto material_image = [&](int64_t mat_id) -> int {
-    auto it = image_of_material.find(mat_id);
+  // material id -> TriMesh image, for the colour picture and, separately,
+  // for the opacity picture a leaf card's material carries
+  std::map<std::pair<int64_t, bool>, int> image_of_material;
+  auto material_image = [&](int64_t mat_id, bool alpha) -> int {
+    auto it = image_of_material.find({mat_id, alpha});
     if (it != image_of_material.end()) return it->second;
     int result = -1;
-    // prefer the texture wired to DiffuseColor; else any texture on it
     std::vector<int64_t> texs;
-    for (const Conn &c : conns)
-      if (c.parent == mat_id && by_id.count(c.child) && by_id[c.child]->name == "Texture" &&
-          (c.prop == "DiffuseColor" || c.prop.empty()))
-        texs.push_back(c.child);
-    for (const Conn &c : conns)
-      if (c.parent == mat_id && by_id.count(c.child) && by_id[c.child]->name == "Texture")
-        texs.push_back(c.child);
+    if (alpha) {
+      // only a texture wired to the material's transparency counts
+      for (const Conn &c : conns)
+        if (c.parent == mat_id && by_id.count(c.child) && by_id[c.child]->name == "Texture" &&
+            (c.prop == "TransparentColor" || c.prop == "TransparencyFactor" || c.prop == "Opacity"))
+          texs.push_back(c.child);
+    } else {
+      // prefer the texture wired to DiffuseColor; else any texture on it
+      // that is not an opacity, normal or specular map
+      for (const Conn &c : conns)
+        if (c.parent == mat_id && by_id.count(c.child) && by_id[c.child]->name == "Texture" &&
+            (c.prop == "DiffuseColor" || c.prop.empty()))
+          texs.push_back(c.child);
+      for (const Conn &c : conns)
+        if (c.parent == mat_id && by_id.count(c.child) && by_id[c.child]->name == "Texture" &&
+            c.prop != "TransparentColor" && c.prop != "TransparencyFactor" && c.prop != "Opacity" &&
+            c.prop != "NormalMap" && c.prop != "Bump" && c.prop != "SpecularColor" && c.prop != "ShininessExponent")
+          texs.push_back(c.child);
+    }
     for (int64_t tid : texs) {
       const Rec *tex = by_id[tid];
       MeshImage mi;
@@ -320,7 +368,7 @@ bool mesh_load_fbx(const std::string &path, TriMesh &out, std::string &err) {
         break;
       }
     }
-    image_of_material[mat_id] = result;
+    image_of_material[{mat_id, alpha}] = result;
     return result;
   };
 
@@ -372,6 +420,7 @@ bool mesh_load_fbx(const std::string &path, TriMesh &out, std::string &err) {
       double w[3] = {v[0], v[1], v[2]};
       if (M)
         for (int rr = 0; rr < 3; ++rr) w[rr] = M[rr] * v[0] + M[4 + rr] * v[1] + M[8 + rr] * v[2] + M[12 + rr];
+      if (z_up) { double y = w[1]; w[1] = w[2] * up_sign; w[2] = -y * up_sign; }
       uint32_t idx = (uint32_t)out.vert_count();
       out.v.push_back((float)w[0]);
       out.v.push_back((float)w[1]);
@@ -409,7 +458,8 @@ bool mesh_load_fbx(const std::string &path, TriMesh &out, std::string &err) {
           double dc[3];
           prop70_vec3(*m, "DiffuseColor", dc, 1.0);
           for (int k = 0; k < 3; ++k) part.color[k] = (float)dc[k];
-          part.image = material_image(mats[(size_t)mat_slot]);
+          part.image = material_image(mats[(size_t)mat_slot], false);
+          part.alpha_image = material_image(mats[(size_t)mat_slot], true);
         }
         out.parts.push_back(part);
       }
