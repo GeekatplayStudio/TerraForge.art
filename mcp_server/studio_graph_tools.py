@@ -211,7 +211,13 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "settings you want to change. cloud_scatter_octaves (1-4) sets "
                        "how many multiple-scattering bounces the cloud march "
                        "approximates and cloud_scatter_depth (0.4-0.99) how "
-                       "far each reaches into the cloud.",
+                       "far each reaches into the cloud. Level of detail "
+                       "(docs/LOD.md): scatter_lod_full_m (every scattered "
+                       "copy inside this), scatter_lod_far_m (the far share "
+                       "is reached here), scatter_lod_cull_m (nothing beyond), "
+                       "scatter_lod_min_keep (0-1, the far crowd's share), "
+                       "terrain_lod (0-1, far ground reads a calmer relief). "
+                       "Read viewport.instances_drawn / instances_total back.",
         "params": {"tessellation": "bool", "tess_pixels": "float",
                    "tess_min": "float", "tess_max": "float",
                    "frustum_cull": "bool", "height_scale": "float",
@@ -222,7 +228,10 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                    "use_albedo": "bool", "layout": "int", "engine": "int",
                    "graph_memory_mb": "int",
                    "cloud_scatter_octaves": "int",
-                   "cloud_scatter_depth": "float"},
+                   "cloud_scatter_depth": "float",
+                   "scatter_lod_full_m": "float", "scatter_lod_far_m": "float",
+                   "scatter_lod_cull_m": "float", "scatter_lod_min_keep": "float",
+                   "terrain_lod": "float"},
     },
     "studio_capture": {
         "description": "Render the active camera's viewport to a PNG at "
@@ -279,11 +288,13 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
     "studio_set_scatter": {
         "description": "Bind a mesh object to a Points node: instanced copies "
                        "stand on the terrain at every point. Fields: object, "
-                       "node (empty unbinds), size, jitter, seed, sway, "
-                       "size_from_value.",
+                       "node (empty unbinds; an EcosystemLayer, ScatterArea or "
+                       "any Points node), size, jitter, seed, sway, "
+                       "size_from_value, species (1-based; 0 = every species "
+                       "of an EcosystemLayer).",
         "params": {"object": "str", "node": "str", "size": "float",
                    "jitter": "float", "seed": "int", "sway": "float",
-                   "size_from_value": "float"},
+                   "size_from_value": "float", "species": "int"},
     },
     "studio_import_object": {
         "description": "Import an OBJ as a scene mesh. Fields: path, name, "

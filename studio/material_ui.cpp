@@ -13,7 +13,8 @@ namespace studio {
 
 const char *material_type_name(int t) {
   static const char *N[MAT_TYPE_COUNT] = {"Simple",  "PBR textures", "Mixed",
-                                          "Layered", "Distribution", "Effector"};
+                                          "Layered", "Distribution", "Effector",
+                                          "Ecosystem"};
   return N[std::clamp(t, 0, MAT_TYPE_COUNT - 1)];
 }
 
@@ -26,7 +27,9 @@ const char *material_type_blurb(int t) {
       "A layer whose presence also decides where objects stand - the material "
       "and the population share one rule.",
       "A typed field - pressure, wind, light, heat, moisture - other systems "
-      "read; this material influences rather than colours."};
+      "read; this material influences rather than colours.",
+      "A layer stack with an ecosystem on top: a population per hectare placed "
+      "by the layer's presence, attracted to or kept off the layer below."};
   return B[std::clamp(t, 0, MAT_TYPE_COUNT - 1)];
 }
 
@@ -47,6 +50,7 @@ int material_type_of(gpx::Graph &g, gpx::Node *mat) {
   // follow it in every scaffold this file builds.
   gpx::Node *src = g.upstream_node(*mat, "base color");
   if (!src) return MAT_SIMPLE;
+  if (src->type == "EcosystemLayer") return MAT_ECOSYSTEM;
   if (src->type == "MaterialLayer") return MAT_LAYERED;
   if (src->type == "MaterialStack") return MAT_MIXED;
   if (src->type == "PBRMaterial") return MAT_PBR;
@@ -83,6 +87,10 @@ gpx::Node *material_set_type(App &a, gpx::Node *mat, int type) {
     case MAT_LAYERED: {
       std::vector<gpx::Node *> layers = collect_layers(g, mat);
       added = add_material_layer(g, mat, layers);
+    } break;
+    case MAT_ECOSYSTEM: {
+      std::vector<gpx::Node *> layers = collect_layers(g, mat);
+      added = add_ecosystem_layer(g, mat, layers);
     } break;
     case MAT_MIXED: {
       added = g.add_node("MaterialStack", x, y);

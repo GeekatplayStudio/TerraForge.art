@@ -56,6 +56,8 @@ layout(location=0) in vec3 in_pos;
 layout(location=1) in vec3 in_nrm;
 layout(location=2) in vec4 in_instance;
 layout(location=3) in vec4 in_instance_rot;
+layout(location=4) in vec4 in_instance_axes;
+layout(location=5) in vec4 in_instance_ground;
 layout(location=6) in vec2 in_uv;
 out vec2 v_uv;
 uniform mat4 u_light_mvp, u_model;
@@ -63,18 +65,18 @@ uniform int u_inst_on;
 uniform float u_inst_sway, u_inst_time;
 uniform vec3 u_inst_base;
 DEFORM_FN_PLACEHOLDER
+INSTANCE_FN_PLACEHOLDER
 void main(){
   vec3 pos = in_pos;
+  vec3 nrm = in_nrm;
   if (u_def_on == 1) pos = deform(pos);
   vec4 p;
   if (u_inst_on == 1) {
     vec4 I = in_instance;
-    vec2 r = in_instance_rot.xy;
-    pos = vec3(pos.x*r.x - pos.z*r.y, pos.y, pos.x*r.y + pos.z*r.x) * I.w;
-    p = u_model * vec4(pos, 1.0);
+    p = instance_place(pos, nrm, I, in_instance_rot, in_instance_axes, in_instance_ground, u_model);
     p.xyz += I.xyz - u_inst_base;
     if (u_inst_sway > 0.0) {
-      float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0;
+      float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0 + in_instance_rot.w * 6.2831853;
       float lean = sin(ph) * u_inst_sway * max(p.y - I.y, 0.0);
       p.x += lean;
       p.z += lean * 0.35;

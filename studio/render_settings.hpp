@@ -126,6 +126,14 @@ struct RenderSettings {
   int units = 0;              // 0 metric, 1 imperial
   float terrain_size_m = 5000.f; // world width of the tile in meters
 
+  // level of detail (docs/LOD.md): scattered copies are thinned by distance,
+  // the terrain's baked relief is read from calmer mip levels far away
+  float scatter_lod_full_m = 150.f;  // every copy inside this
+  float scatter_lod_far_m = 1500.f;  // the far share is reached here
+  float scatter_lod_cull_m = 6000.f; // nothing beyond
+  float scatter_lod_min_keep = 0.15f; // the far crowd's share of the copies
+  float terrain_lod = 0.5f;          // 0 off .. 1 the relief calms early
+
   // volumetric clouds
   bool clouds_on = true;
   float cloud_coverage = 0.55f;   // 0 clear .. 1 overcast

@@ -23,6 +23,7 @@ enum MaterialType {
   MAT_LAYERED,      // a MaterialLayer stack with presence per layer
   MAT_DISTRIBUTION, // presence also places objects (DistributionLayer)
   MAT_EFFECTOR,     // a typed influence field for other systems
+  MAT_ECOSYSTEM,    // a layer stack topped by an EcosystemLayer: it populates
   MAT_TYPE_COUNT
 };
 const char *material_type_name(int t);
@@ -76,6 +77,9 @@ void material_tabs_ui(App &a, gpx::Node *mat);
 void material_tabs_mix_ui(App &a, gpx::Node *stack);
 void material_tab_presence_ui(App &a, gpx::Node *layer);
 void material_tab_population_ui(App &a, gpx::Node *src);
+// An EcosystemLayer's tabs (panel_material_tabs_eco.cpp): General, Density,
+// Interaction, Scaling & Orientation, Color, Presence - Vue's, in its order.
+void material_tabs_ecosystem_ui(App &a, gpx::Node *eco);
 
 // The studio's editing state: which material is open, and whether it has
 // changed since it was opened or last saved - so switching away can ask.

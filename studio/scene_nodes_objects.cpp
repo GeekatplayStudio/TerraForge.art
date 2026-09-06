@@ -309,6 +309,27 @@ void apply_object_nodes(App &a) {
     else if (n.type == "InfiniteTerrain") apply_surface(a, n);
     else if (n.type == "AnimationSequence") apply_sequence(a, n);
     else if (n.type == "CameraPath") apply_camera_path(a, n, size_m);
+    else if (n.type == "EcosystemLayer" || n.type == "ScatterArea" ||
+             n.type == "PointsInteract" || n.type == "PointsTransform") {
+      // a population's dials are in metres; the node learns the tile's
+      // width here so "20 per hectare" means what it says
+      bool moved = false;
+      if (gpx::Attribute *s = n.attrs.find("size_m"))
+        if (std::fabs(s->f - size_m) > 1e-3f) {
+          s->f = size_m;
+          moved = true;
+        }
+      // and the height of a heightmap unit, so slope bands are degrees
+      if (gpx::Attribute *h = n.attrs.find("height_scale"))
+        if (std::fabs(h->f - render_settings().height_scale) > 1e-5f) {
+          h->f = render_settings().height_scale;
+          moved = true;
+        }
+      if (moved) {
+        a.graph.mark_dirty(n.id);
+        a.request_eval(); // the population is wrong until it is redone
+      }
+    }
   }
 }
 

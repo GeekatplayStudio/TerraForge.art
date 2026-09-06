@@ -294,6 +294,13 @@ MCP_TOOLS = {
                        "answer from the state's `reply`.",
         "params": {"x": "float", "z": "float"},
     },
+    "studio_points_stats": {
+        "description": "How many instances a Points node or an EcosystemLayer "
+                       "placed, per species, and their mean scale. `node` is "
+                       "an id, a macro alias or a type. Read the answer from "
+                       "the state's `reply`.",
+        "params": {"node": "str"},
+    },
     "studio_place_on_terrain": {
         "description": "Make a mesh object stand on the terrain: it becomes a "
                        "child of the terrain, its base rides on the surface and "
@@ -405,6 +412,8 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.place_object(**params)}
     if tool == "studio_probe_height":
         return {"status": "success", "sent": s.send({"op": "probe_height", **params})}
+    if tool == "studio_points_stats":
+        return {"status": "success", "sent": s.send({"op": "points_stats", **params})}
     if tool == "studio_place_on_terrain":
         return {"status": "success", "sent": s.send({"op": "place_on_terrain", **params})}
     if tool == "studio_set_ground":

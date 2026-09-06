@@ -70,9 +70,15 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"import_object","path":"C:/models/rock.obj","name":"Rock",
    "position":[x,y,z],"scale":0.1}
 - {"op":"set_scatter","object":"Rock","node":"ScatterPoints","size":0.5,
-   "jitter":0.4,"seed":7,"sway":0.1}
+   "jitter":0.4,"seed":7,"sway":0.1,"species":1}
    (copies of the mesh appear at every point of the Points node's cloud,
-   standing on the terrain; node "" or 0 unbinds)
+   standing on the terrain; node "" or 0 unbinds; for an EcosystemLayer,
+   species 1..8 says which of its species this mesh is, 0 = all)
+- An ecosystem: add_node "EcosystemLayer" in the material stack (density per
+   hectare, presence by mask/altitude/slope/orientation, species, affinity
+   and repulsion against its "below" points input, decay near objects from
+   TerrainImprint's "objects" output), then set_scatter a mesh per species.
+   See examples/macros/ecosystem_layers.json.
 - {"op":"place_on_terrain","object":"House"}  (the object stands on the terrain
    and the ground moulds to its base through a TerrainImprint node)
 - {"op":"set_ground","object":"House","lock":true,"offset_m":0,"margin_m":0.5,
@@ -80,6 +86,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    around it, how deep it may sit before the ground is dug out)
 - {"op":"probe_height","x":0.5,"z":0.5}  (the ground's height at a point of the
    tile, displayed and graph, in heightmap units and metres - in "reply")
+- {"op":"points_stats","node":"trees"}  (how many instances a Points node or an
+   EcosystemLayer placed, per species, and their mean scale - in "reply")
 - {"op":"assign_material","node":"MaterialOutput","object":"Terrain"}
    (binds a MaterialOutput to an object; omit object for the terrain)
 - {"op":"show_panel","panel":"Material Editor","visible":true}

@@ -144,16 +144,10 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       // bind a mesh object to a Points node: copies of the mesh appear at
       // every point, standing on the terrain
       std::string want = act.value("object", std::string());
+      // by id, by a macro's alias, by a numeric string or by type - the
+      // same resolution every graph op uses
       uint64_t node_id = 0;
-      if (act.contains("node")) {
-        if (act["node"].is_number()) node_id = act["node"].get<uint64_t>();
-        else {
-          std::string t = act["node"].get<std::string>();
-          for (auto &cand : a.graph.nodes)
-            if (cand->type == t || std::to_string(cand->id) == t)
-              node_id = cand->id;
-        }
-      }
+      if (gpx::Node *sn = find_node(a, act, "node")) node_id = sn->id;
       for (auto &o : sc.objects) {
         if (o.type != SceneObject::Mesh) continue;
         if (!want.empty() && o.name != want) continue;
@@ -164,6 +158,7 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         if (act.contains("size_from_value"))
           o.scatter_value_size = act["size_from_value"].get<float>();
         if (act.contains("seed")) o.scatter_seed = act["seed"].get<uint32_t>();
+        if (act.contains("species")) o.scatter_species = std::max(act["species"].get<int>() - 1, -1);
         if (!node_id) o.inst.clear();
         ++applied;
         if (!want.empty()) break;

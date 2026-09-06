@@ -24,4 +24,9 @@ struct ImprintParams {
 void imprint_apply(Heightmap &ground, const std::string &footprints, const ImprintParams &p,
                    Heightmap *mask);
 
+// Distance from every texel to the nearest footprint's wall, in tile
+// fractions, 0 inside and clamped at 1; a 128x128 raster (all 1 with no
+// footprints). What a population reads to keep clear of the objects.
+void imprint_distance(const std::string &footprints, Heightmap &out);
+
 } // namespace gpx

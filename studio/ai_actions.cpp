@@ -227,12 +227,13 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
           err = "cannot write " + path;
           break;
         }
-        f << "x,y,z,scale,yaw\n";
-        const size_t per = 8;
+        f << "x,y,z,scale,yaw,sx,sy,sz,lean,nx,ny,nz\n";
+        const size_t per = SceneObject::INST_FLOATS;
         for (size_t i = 0; i + per <= o.inst.size(); i += per) {
           const float *s = o.inst.data() + i;
           f << s[0] << ',' << s[1] << ',' << s[2] << ',' << s[3] << ','
-            << std::atan2(s[5], s[4]) << '\n';
+            << std::atan2(s[5], s[4]) << ',' << s[8] << ',' << s[9] << ',' << s[10] << ','
+            << s[11] << ',' << s[12] << ',' << s[13] << ',' << s[14] << '\n';
         }
         ++applied;
         if (!want.empty()) break;

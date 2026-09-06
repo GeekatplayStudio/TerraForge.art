@@ -80,7 +80,7 @@ int ai_material_op(App &a, const std::string &op, const json &act,
     }
     if (type < 0) {
       err = "set_material_type: 'type' must be one of simple, pbr, mixed, "
-            "layered, distribution, effector";
+            "layered, distribution, effector, ecosystem";
       return 0;
     }
     undo_push(a, std::string("material type: ") + material_type_name(type));

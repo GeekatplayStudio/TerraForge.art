@@ -188,7 +188,41 @@ static void test_presence_summary_says_what_constrains_the_layer() {
   CHECK(layer_display_name(l, 0) == "Layer 1", "a layer has a readable name");
 }
 
+static void test_ecosystem_layers_react_to_the_population_below() {
+  std::printf("  material layers: ecosystem layers in the stack...\n");
+  gpx::Graph g;
+  gpx::Node *mat = g.add_node("MaterialOutput");
+  gpx::Node *col = g.add_node("FlatColor");
+  g.add_link(col->id, "texture", mat->id, "base color");
+  // trees, then grass on top
+  gpx::Node *trees = add_ecosystem_layer(g, mat, collect_layers(g, mat));
+  CHECK(trees && trees->type == "EcosystemLayer", "an ecosystem layer is created");
+  CHECK(feeds_material(g, mat, trees), "and drives the material");
+  gpx::Link *pass = layer_incoming(g, trees->id, "below albedo");
+  CHECK(pass && pass->from_node == col->id, "the colour that was there passes through underneath it");
+  CHECK(!layer_incoming(g, trees->id, "below"), "the first population has nothing below to react to");
+  gpx::Node *grass = add_ecosystem_layer(g, mat, collect_layers(g, mat));
+  auto ls = collect_layers(g, mat);
+  CHECK(ls.size() == 2 && ls[0] == grass && ls[1] == trees, "both are stack layers, top first");
+  gpx::Link *b = layer_incoming(g, grass->id, "below");
+  CHECK(b && b->from_node == trees->id && b->from_port == "points", "the top ecosystem reacts to the one beneath it");
+  // a colour layer in between does not break the chain of populations
+  gpx::Node *moss = add_material_layer(g, mat, collect_layers(g, mat));
+  swap_material_layers(g, moss, grass); // moss below grass
+  ls = collect_layers(g, mat);
+  CHECK(ls.size() == 3 && ls[0] == grass && ls[1] == moss && ls[2] == trees, "layers of different kinds trade places");
+  CHECK(feeds_material(g, mat, grass), "the material is still driven from the top");
+  wire_populations_below(g, ls);
+  b = layer_incoming(g, grass->id, "below");
+  CHECK(b && b->from_node == trees->id, "grass still reacts to the trees through the moss");
+  // removing the trees leaves the grass with nothing below
+  delete_material_layer(g, trees, mat, collect_layers(g, mat));
+  CHECK(!layer_incoming(g, grass->id, "below"), "deleting the population below unlinks the one above");
+  CHECK(collect_layers(g, mat).size() == 2, "and the stack closes the gap");
+}
+
 int run_all() {
+  test_ecosystem_layers_react_to_the_population_below();
   test_first_layer_adopts_the_existing_material();
   test_stack_grows_downward_and_reads_top_first();
   test_delete_closes_the_gap();

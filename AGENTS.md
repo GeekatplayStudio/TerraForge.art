@@ -281,6 +281,38 @@ each one was a bug we already paid for. Do not regress them.
    crashed every battery. Locate by the node's own registration, never by a
    call several nodes share.
 
+## Populations and level of detail
+
+1. **Candidates first, masks second.** A population's lattice is fixed by
+   its spacing, never by its density or its masks (`gpx::scatter`,
+   docs/ECOSYSTEM.md). Every instance's identity is `hash(seed, cell,
+   index)`; a decision is `u(id, channel) < probability`. Raising the
+   density is then a superset and a mask edit moves nothing outside its
+   area - tested. A sequential RNG, a count that changes the lattice, or a
+   decision that reads the camera, the clock or the thread count breaks
+   that and reshuffles the forest under the user.
+2. **Interaction is measured to the footprint's edge, and the search
+   window must reach past the widest one.** `nearest_distance` subtracts
+   the neighbour's radius; its grid cell is `reach + max radius`, because
+   a broad canopy just outside a `reach`-wide window read as farther than
+   it was and the grass grew under the trees.
+3. **Stack surgery: remove every link before adding any.** Trading two
+   layers' places rewires three channels; while one still runs the old way
+   the new way is a cycle and `add_link` refuses it. An ecosystem's `below`
+   is re-derived from the stack after every add, delete or swap
+   (`wire_populations_below`), never edited by hand.
+4. **A population's dials are metres; the node learns the tile's width and
+   the height scale.** `size_m` and `height_scale` on `EcosystemLayer` /
+   `ScatterArea` / `PointsInteract` / `PointsTransform` are written by
+   `apply_object_nodes`, like the scene nodes' transforms, so a slope band
+   in degrees is the slope the viewport shows (MaterialLayer's slope still
+   assumes a height scale of 1 - a 1500 m noise block reads as all cliff
+   there). An engine test sets both explicitly.
+5. **LOD thins, it never re-scatters.** Cells are sorted by a per-instance
+   key at rebuild; a pass draws a prefix. Both passes take the decision
+   from the *view* camera, so a copy's shadow is where the copy is. A mesh
+   with material parts is never decimated (its pictures would tear).
+
 ## Performance rules
 
 1. **Never upload a GPU texture per frame.** Uploads are versioned

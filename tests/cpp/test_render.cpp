@@ -5,6 +5,7 @@
 // the safety direction is asserted directly: every point that projects inside
 // the frustum must lie in a patch the culler kept.
 #include "blue_noise.hpp"
+#include "scatter_lod.hpp"
 #include "terrain_cull.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/heightmap.hpp"
@@ -400,8 +401,77 @@ static void test_lens_distortion() {
         "the falloff stays within 0..1");
 }
 
+// ------------------------------------------------- scattered-instance LOD
+// The cells must partition the population, each sorted by its key so any
+// prefix is a uniform subsample; the keep fraction must be 1 near, monotone,
+// min_keep at far and 0 past cull.
+static void test_scatter_lod() {
+  std::printf("  scatter LOD...\n");
+  const int stride = 16, key_at = 15;
+  std::vector<float> inst;
+  uint32_t h = 12345u;
+  auto rnd = [&]() { h = h * 1664525u + 1013904223u; return (h >> 8) / 16777216.f; };
+  const int n = 5000;
+  for (int i = 0; i < n; ++i) {
+    float row[16] = {rnd(), rnd() * 0.1f, rnd(), 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, rnd()};
+    row[3] = (float)i; // remember who this was
+    inst.insert(inst.end(), row, row + 16);
+  }
+  std::vector<studio::InstanceCell> cells;
+  studio::scatter_bucket(inst, stride, key_at, 16, cells);
+  CHECK(inst.size() == (size_t)n * stride, "bucketing keeps every instance");
+  int covered = 0;
+  bool contiguous = true, sorted = true, bounded = true, subsample = true;
+  std::vector<bool> seen((size_t)n, false);
+  for (const studio::InstanceCell &c : cells) {
+    contiguous &= c.first == covered;
+    covered += c.count;
+    double lo_key = 0, hi_key = 0;
+    for (int k = 0; k < c.count; ++k) {
+      const float *s = &inst[(size_t)(c.first + k) * stride];
+      seen[(size_t)s[3]] = true;
+      if (k > 0) sorted &= s[key_at] >= inst[(size_t)(c.first + k - 1) * stride + key_at];
+      bounded &= s[0] >= c.lo[0] && s[0] <= c.hi[0] && s[2] >= c.lo[2] && s[2] <= c.hi[2];
+      (k < c.count / 2 ? lo_key : hi_key) += s[key_at];
+    }
+    if (c.count >= 8) subsample &= lo_key / (c.count / 2) < hi_key / (c.count - c.count / 2);
+  }
+  bool all = covered == n;
+  for (bool b : seen) all &= b;
+  CHECK(all && contiguous, "the cells partition the population, contiguously");
+  CHECK(sorted, "each cell is sorted by its LOD key");
+  CHECK(bounded, "each cell's bounds hold its instances");
+  CHECK(subsample, "a cell's first half has the lower keys: a prefix is a uniform subsample");
+  CHECK(cells.size() > 200 && cells.size() <= 256, "a 16x16 lattice of a full tile has most cells occupied");
+
+  studio::LodParams p;
+  p.full_m = 100; p.far_m = 1000; p.cull_m = 5000; p.min_keep = 0.2f;
+  CHECK(studio::scatter_keep(0, p) == 1.f && studio::scatter_keep(100, p) == 1.f, "everything inside full");
+  CHECK(std::fabs(studio::scatter_keep(1000, p) - 0.2f) < 1e-6f, "min_keep at far");
+  CHECK(std::fabs(studio::scatter_keep(3000, p) - 0.2f) < 1e-6f, "min_keep between far and cull");
+  CHECK(studio::scatter_keep(5000, p) == 0.f && studio::scatter_keep(9000, p) == 0.f, "nothing past cull");
+  bool mono = true;
+  float prev = 1.f;
+  for (float d = 0; d <= 6000; d += 25) {
+    float k = studio::scatter_keep(d, p);
+    mono &= k <= prev + 1e-6f;
+    prev = k;
+  }
+  CHECK(mono, "keep is monotone non-increasing");
+  p.scale = 0.5f;
+  CHECK(std::fabs(studio::scatter_keep(500, p) - 0.2f) < 1e-6f, "the governor's scale pulls far in");
+  CHECK(studio::scatter_grow(1.f) == 1.f && studio::scatter_grow(0.25f) == 2.f && studio::scatter_grow(0.01f) == 2.f,
+        "survivors grow by sqrt(1/keep), capped at 2");
+  p.scale = 1.f;
+  CHECK(studio::scatter_lod_level(50, p) == 0 && studio::scatter_lod_level(300, p) == 1 && studio::scatter_lod_level(2000, p) == 2,
+        "mesh level by distance");
+  const float q[3] = {0, 0, 0}, lo[3] = {1, 0, 0}, hi[3] = {2, 1, 1};
+  CHECK(std::fabs(studio::aabb_distance(q, lo, hi) - 1.f) < 1e-6f, "distance to a box");
+}
+
 int main() {
   std::printf("renderer maths tests\n");
+  test_scatter_lod();
   test_lens_distortion();
   g_failures += test_render_hdr_run();
   g_failures += test_planet_place_run();

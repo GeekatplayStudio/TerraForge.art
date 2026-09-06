@@ -6,6 +6,7 @@
 // a twisted tree. The map is redrawn only when a mesh actually moved:
 // mesh_shadow_key() hashes the fields that place a mesh (never the struct
 // bytes - AGENTS.md, Performance 1).
+#include "renderer_instances.hpp"
 #include "renderer_internal.hpp"
 #include "scene.hpp"
 #include "uniform_cache.hpp"
@@ -50,7 +51,7 @@ void pass_shadow_meshes(const FrameCtx &F) {
   SceneState &sc = scene();
   glUseProgram(prog_depth_mesh);
   glUniformMatrix4fv(uniform_location(prog_depth_mesh, "u_light_mvp"), 1, GL_FALSE, F.light_mvp);
-  for (const SceneObject &o : sc.objects) {
+  for (SceneObject &o : sc.objects) {
     if (o.type != SceneObject::Mesh || !o.vao || o.vert_count <= 0 || !sc.object_visible(o)) continue;
     float model[16], nrm[9];
     scene_object_matrix(o, F.RS.height_scale, model, nrm);
@@ -65,11 +66,14 @@ void pass_shadow_meshes(const FrameCtx &F) {
     uni3(prog_depth_mesh, "u_bmax", o.bmax);
     glBindVertexArray(o.vao);
     const bool instanced = !o.inst.empty();
-    const int copies = instanced ? (int)(o.inst.size() / 8) : 1;
+    std::vector<InstanceRun> runs;
     if (instanced) {
-      // the instance stream is attached to the mesh's VAO by the colour
-      // pass; the first frame after a scatter rebuild draws the copies at
-      // the model's origin until that pass has uploaded it
+      // the same stream and the same per-cell thinning the colour pass
+      // uses, measured from the view camera, so a copy shadows exactly
+      // where it stands; the sun sees every cell, so no frustum here
+      instances_upload(o);
+      instance_runs(o, F.view_eye, nullptr, F.RS.height_scale, F.RS.terrain_size_m,
+                    instance_lod_params(), runs);
       unii(prog_depth_mesh, "u_inst_on", 1);
       uni1(prog_depth_mesh, "u_inst_sway", o.scatter_sway);
       uni1(prog_depth_mesh, "u_inst_time", F.time_acc);
@@ -78,7 +82,7 @@ void pass_shadow_meshes(const FrameCtx &F) {
       unii(prog_depth_mesh, "u_inst_on", 0);
     }
     auto draw = [&](int first, int count) {
-      if (instanced) glDrawArraysInstanced(GL_TRIANGLES, first, count, copies);
+      if (instanced) instances_draw_range(prog_depth_mesh, runs, first, count);
       else glDrawArrays(GL_TRIANGLES, first, count);
     };
     // part by part where a part has a picture, so its alpha cuts the shadow
@@ -86,6 +90,10 @@ void pass_shadow_meshes(const FrameCtx &F) {
     if (o.parts.empty() || !have_uv) {
       unii(prog_depth_mesh, "u_has_tex", 0);
       draw(0, o.vert_count);
+      if (instanced) {
+        instances_draw_lods(prog_depth_mesh, o, runs);
+        uni1(prog_depth_mesh, "u_inst_grow", 1.f);
+      }
       continue;
     }
     glActiveTexture(GL_TEXTURE3);
@@ -108,6 +116,11 @@ void pass_shadow_meshes(const FrameCtx &F) {
     }
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
+    if (instanced) {
+      unii(prog_depth_mesh, "u_has_tex", 0);
+      instances_draw_lods(prog_depth_mesh, o, runs);
+      uni1(prog_depth_mesh, "u_inst_grow", 1.f);
+    }
   }
   glBindVertexArray(0);
 }

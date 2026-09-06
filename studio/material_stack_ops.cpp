@@ -25,6 +25,14 @@ gpx::Link *layer_incoming(gpx::Graph &g, uint64_t node, const char *port) {
   return nullptr;
 }
 
+bool is_stack_layer(const gpx::Node *n) {
+  return n && (n->type == "MaterialLayer" || n->type == "EcosystemLayer");
+}
+
+bool is_population_layer(const gpx::Node *n) {
+  return n && (n->type == "EcosystemLayer" || n->type == "DistributionLayer");
+}
+
 std::vector<gpx::Node *> collect_layers(gpx::Graph &g, gpx::Node *mat) {
   std::vector<gpx::Node *> out;
   if (!mat) return out;
@@ -32,11 +40,27 @@ std::vector<gpx::Node *> collect_layers(gpx::Graph &g, gpx::Node *mat) {
   // the guard is against a malformed file, not against a cycle: add_link
   // already refuses those
   int guard = 0;
-  while (n && n->type == "MaterialLayer" && guard++ < 64) {
+  while (is_stack_layer(n) && guard++ < 64) {
     out.push_back(n);
     n = g.upstream_node(*n, "below albedo");
   }
   return out;
+}
+
+void wire_populations_below(gpx::Graph &g, const std::vector<gpx::Node *> &layers) {
+  // an ecosystem reacts to the nearest population beneath it in the stack -
+  // Vue's "only available if there is another EcoSystem below this one"
+  for (size_t i = 0; i < layers.size(); ++i) {
+    gpx::Node *eco = layers[i];
+    if (eco->type != "EcosystemLayer") continue;
+    gpx::Node *below = nullptr;
+    for (size_t j = i + 1; j < layers.size() && !below; ++j)
+      if (is_population_layer(layers[j])) below = layers[j];
+    gpx::Link *cur = layer_incoming(g, eco->id, "below");
+    if (cur && below && cur->from_node == below->id) continue;
+    if (cur) g.remove_link(cur->id);
+    if (below) g.add_link(below->id, "points", eco->id, "below");
+  }
 }
 
 void wire_layer_to_material(gpx::Graph &g, gpx::Node *layer, gpx::Node *mat) {
@@ -49,26 +73,48 @@ void wire_layer_to_material(gpx::Graph &g, gpx::Node *layer, gpx::Node *mat) {
 
 gpx::Node *add_material_layer(gpx::Graph &g, gpx::Node *mat,
                               const std::vector<gpx::Node *> &layers) {
+  return add_stack_layer(g, mat, layers, "MaterialLayer");
+}
+
+gpx::Node *add_ecosystem_layer(gpx::Graph &g, gpx::Node *mat,
+                               const std::vector<gpx::Node *> &layers) {
+  gpx::Node *nl = add_stack_layer(g, mat, layers, "EcosystemLayer");
+  if (nl) {
+    std::vector<gpx::Node *> now = collect_layers(g, mat);
+    wire_populations_below(g, now);
+  }
+  return nl;
+}
+
+gpx::Node *add_stack_layer(gpx::Graph &g, gpx::Node *mat,
+                           const std::vector<gpx::Node *> &layers, const char *type) {
   if (!mat) return nullptr;
   float x = mat->pos_x - 300, y = mat->pos_y;
   for (gpx::Node *l : layers) {
     x = std::min(x, l->pos_x);
     y = std::max(y, l->pos_y + 40);
   }
-  gpx::Node *nl = g.add_node("MaterialLayer", x, y);
+  gpx::Node *nl = g.add_node(type, x, y);
   if (!nl) return nullptr;
-  if (gpx::Attribute *na = nl->attrs.find("name"))
-    na->s = "Layer " + std::to_string(layers.size() + 1);
+  if (gpx::Attribute *na = nl->attrs.find("name")) {
+    size_t kin = 0;
+    for (gpx::Node *l : layers) kin += l->type == type;
+    na->s = (nl->type == "EcosystemLayer" ? "Ecosystem " : "Layer ") + std::to_string(kin + 1);
+  }
 
   if (layers.empty()) {
     // adopt whatever was driving the material, so the first Add turns a flat
-    // material into the bottom of a stack instead of discarding it
-    for (auto &p : kChannelPairs)
-      if (gpx::Link *l = layer_incoming(g, mat->id, p[1])) {
+    // material into the bottom of a stack instead of discarding it. A colour
+    // layer makes it its own albedo; an ecosystem, which colours nothing,
+    // passes it through from below.
+    const bool eco = nl->type == "EcosystemLayer";
+    static const char *kBelow[3] = {"below albedo", "below normal", "below rough"};
+    for (size_t k = 0; k < 3; ++k)
+      if (gpx::Link *l = layer_incoming(g, mat->id, kChannelPairs[k][1])) {
         uint64_t fn = l->from_node;
         std::string fp = l->from_port;
         g.remove_link(l->id);
-        g.add_link(fn, fp, nl->id, p[0]);
+        g.add_link(fn, fp, nl->id, eco ? kBelow[k] : kChannelPairs[k][0]);
       }
   } else {
     gpx::Node *below = layers.front();
@@ -109,10 +155,17 @@ void delete_material_layer(gpx::Graph &g, gpx::Node *victim, gpx::Node *mat,
     }
   }
   g.remove_node(victim->id);
+  wire_populations_below(g, collect_layers(g, mat));
 }
 
 void swap_material_layers(gpx::Graph &g, gpx::Node *x, gpx::Node *y) {
   if (!x || !y || x == y) return;
+  if (x->type != y->type) {
+    // an ecosystem and a colour layer cannot trade settings: trade places
+    // in the chain instead. x is directly above y.
+    swap_chain_places(g, x, y);
+    return;
+  }
   std::swap(x->attrs, y->attrs);
   for (const char *p : kOwnPorts) {
     // read both ends first: removing a link can move the link vector, so the
@@ -127,6 +180,47 @@ void swap_material_layers(gpx::Graph &g, gpx::Node *x, gpx::Node *y) {
     if ((ly = layer_incoming(g, y->id, p))) g.remove_link(ly->id);
     if (fy) g.add_link(fy, py, x->id, p);
     if (fx) g.add_link(fx, px, y->id, p);
+  }
+  x->dirty = y->dirty = true;
+}
+
+// Two adjacent layers change places: whatever fed x's "below *" now feeds
+// y's, y feeds x, and x feeds what y fed. Ecosystem wiring is redone after.
+void swap_chain_places(gpx::Graph &g, gpx::Node *x, gpx::Node *y) {
+  static const char *kChain[3] = {"below albedo", "below normal", "below rough"};
+  static const char *kOut[3] = {"albedo", "normal", "roughness"};
+  // who reads x (the material or the layer above it)
+  struct Reader { uint64_t node; std::string port; };
+  std::vector<Reader> readers;
+  for (const gpx::Link &l : g.links)
+    if (l.from_node == x->id)
+      for (int k = 0; k < 3; ++k)
+        if (l.from_port == kOut[k]) readers.push_back({l.to_node, l.to_port});
+  // every removal before any addition: while one channel still runs the
+  // old way, the new way is a cycle and add_link refuses it
+  uint64_t under[3] = {0, 0, 0};
+  std::string under_port[3];
+  for (int k = 0; k < 3; ++k) {
+    if (gpx::Link *ly = layer_incoming(g, y->id, kChain[k])) {
+      under[k] = ly->from_node;
+      under_port[k] = ly->from_port;
+      g.remove_link(ly->id);
+    }
+    if (gpx::Link *lx = layer_incoming(g, x->id, kChain[k])) g.remove_link(lx->id);
+  }
+  std::vector<uint64_t> drop;
+  for (const gpx::Link &l : g.links)
+    if (l.from_node == x->id || (l.from_node == y->id && l.to_node == x->id)) drop.push_back(l.id);
+  for (uint64_t id : drop) g.remove_link(id);
+  for (int k = 0; k < 3; ++k) {
+    if (under[k]) g.add_link(under[k], under_port[k], x->id, kChain[k]);
+    g.add_link(x->id, kOut[k], y->id, kChain[k]);
+  }
+  for (const Reader &r : readers) {
+    const char *out = r.port == "base color" || r.port == "below albedo" ? "albedo"
+                      : r.port == "normal" || r.port == "below normal" ? "normal"
+                                                                       : "roughness";
+    if (r.node != y->id) g.add_link(y->id, out, r.node, r.port);
   }
   x->dirty = y->dirty = true;
 }

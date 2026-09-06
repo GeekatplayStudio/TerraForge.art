@@ -574,6 +574,27 @@ wanted his students to have.
   meadows on the flats. `examples/macros/rocks_grass_layers.json` builds
   it; [docs/DISPLACEMENT_LAYERS.md](docs/DISPLACEMENT_LAYERS.md) says how it
   maps to Terragen and where a heightmap's resolution ends.
+- **Ecosystems - intelligent distribution of objects**, Vue's EcoSystem as
+  a layer in the material stack: `EcosystemLayer` places a population per
+  hectare by the layer's presence (mask, altitude, slope, orientation,
+  slope influence, decay near the objects standing on the terrain), in
+  clumps, with up to eight species by relative presence or a driver map,
+  each instance sized, turned, leaned into the slope and tinted from its
+  own stable id - and a layer stacked above another has *affinity* with
+  and *repulsion* from the population beneath it, so grass gathers near
+  the trees but not under the canopy and pebbles collect at a boulder's
+  feet. Deterministic and stable under editing: raising the density adds
+  instances and moves none. `ScatterArea`, `PointsTransform` and
+  `PointsInteract` are the same stages as Points nodes.
+  `examples/macros/ecosystem_layers.json` builds a meadow;
+  [docs/ECOSYSTEM.md](docs/ECOSYSTEM.md) maps it to Vue.
+- **Level of detail** for scattered copies and for the terrain's baked
+  relief: copies are bucketed by cell and thinned by distance (the
+  survivors grow to keep the cover), drawn from reduced meshes far away
+  and culled beyond a distance, in the shadow map too; far ground reads a
+  calmer mip level of the relief so stone fields stop shimmering at the
+  horizon. `instances_drawn` / `instances_total` in the API state are the
+  proof; [docs/LOD.md](docs/LOD.md).
 - **Materials on objects:** any mesh (a primitive or an import) can be
   assigned a `MaterialOutput` — from the Materials panel or
   `{"op":"assign_material","node":"...","object":"..."}` — and is lit by the

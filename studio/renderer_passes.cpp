@@ -48,6 +48,10 @@ void pass_shadow(const FrameCtx &F) {
     glUniformMatrix4fv(uniform_location(prog_depth, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);
     uni1(prog_depth, "u_hscale", RS.height_scale);
+    // the same relief level the view reads, so the shadow lies on the
+    // surface the viewer sees
+    uni3(prog_depth, "u_lod_cam", F.view_eye);
+    uni1(prog_depth, "u_height_lod_k", RS.terrain_lod * 32.f);
     uni1(prog_depth, "u_field_strength",
          g_field_glsl.empty() ? 0.f : RS.field_displacement);
     bind_field_textures(prog_depth);
@@ -185,6 +189,8 @@ void pass_terrain(const FrameCtx &F) {
     uni1(PT, "u_ambient", RS.ambient_intensity);
     uni1(PT, "u_atmo", RS.atmosphere_density);
     uni3(PT, "u_cam", view_eye);
+    uni3(PT, "u_lod_cam", view_eye);
+    uni1(PT, "u_height_lod_k", RS.terrain_lod * 32.f);
     uni1(PT, "u_exposure", (RS.exposure) * g_exposure_mult);
     uni3(PT, "u_grade", g_grade);
     uni1(PT, "u_sat", g_saturation);

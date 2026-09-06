@@ -41,6 +41,7 @@ DistanceField|Mask
 DistributionLayer|Material
 Dunes|Primitive
 Dynamics|Animation
+EcosystemLayer|Material
 EffectorLayer|Material
 Equalize|Filter
 ErosionLayers|Erosion
@@ -151,6 +152,7 @@ Planet|Scene
 Plateau|Filter
 PointsFilter|Points
 PointsFromCsv|Points
+PointsInteract|Points
 PointsMerge|Points
 PointsRelax|Points
 PointsSDF|Points
@@ -158,6 +160,7 @@ PointsSetValues|Points
 PointsShuffle|Points
 PointsToMask|Points
 PointsToPath|Path
+PointsTransform|Points
 PostProcess|Render
 PowerFractal|Filter
 Primitive|Scene
@@ -177,6 +180,7 @@ Resample|Analysis
 Rivers|Erosion
 RockyMountains|Primitive
 Sample|Field Bridge
+ScatterArea|Points
 ScatterPoints|Points
 SceneCamera|Camera
 SedimentDeposit|Erosion

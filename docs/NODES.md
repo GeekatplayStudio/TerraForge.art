@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 237 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 241 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -26,10 +26,10 @@ Every node in Geekatplay TerraForge — 237 across 31 categories. Generated from
 | [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 14 |
-| [Material](#material) | 25 |
+| [Material](#material) | 26 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
-| [Points](#points) | 9 |
+| [Points](#points) | 12 |
 | [Primitive](#primitive) | 22 |
 | [Render](#render) | 8 |
 | [Scene](#scene) | 7 |
@@ -544,6 +544,7 @@ Mould the ground to the objects standing on it - flat under each, blended around
 | mask | in (optional) | heightmap |
 | output | out | heightmap |
 | imprint_mask | out | heightmap |
+| objects | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
@@ -2512,6 +2513,92 @@ Distribution layer: the presence that shades also places objects
 | Seed | seed |  |
 | Instance size from | choice: Uniform / Presence / Power law | The point value: the same for all, following the presence (strong presence, big plant), or many small and a few large. |
 
+### EcosystemLayer
+
+Ecosystem layer: a population placed by the layer's presence, reacting to the layer below
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| below albedo | in (optional) | texture |
+| below normal | in (optional) | texture |
+| below rough | in (optional) | texture |
+| mask | in (optional) | heightmap |
+| terrain | in (optional) | heightmap |
+| below | in (optional) | ? |
+| objects | in (optional) | heightmap |
+| driver | in (optional) | heightmap |
+| albedo | out | texture |
+| normal | out | texture |
+| roughness | out | texture |
+| presence | out | heightmap |
+| points | out | ? |
+| density | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text |  |
+| Populate | toggle, default on |  |
+| Invert presence | toggle, default off |  |
+| Density (per hectare) | float, 0.01 to 100000, default 20 | Instances per hectare (100 m x 100 m) at full presence. A rate, not a count: the same setting fills a 1 km tile and a 20 km one to the same look. |
+| Minimum spacing (m) | float, 0.05 to 1000, default 5 | The lattice the candidates stand on. Changing the density never moves an instance; changing this reseeds them all. |
+| Placement | choice: Jittered / Random / Regular |  |
+| Clumping | float, 0 to 1, default 0 | Groups instances together as species do in nature. |
+| Clump size (m) | float, 0.5 to 5000, default 60 |  |
+| Seed | seed |  |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the rate above means what it says. |
+| Presence threshold | float, 0 to 1, default 0.05 | Presence below this places nothing at all. |
+| Slope influence | float, 0 to 1, default 0.5 | 1: instances thin out on steep ground. 0: the same density whatever the slope. |
+| By altitude | toggle, default off |  |
+| Range of altitudes | choice: By terrain / Absolute / Relative to sea |  |
+| Altitude band | range | As a fraction of the terrain's own height range. |
+| Sea level | float, 0 to 1, default 0 |  |
+| Fade | float, 0 to 0.5, default 0.08 |  |
+| By slope | toggle, default off |  |
+| Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
+| Fade | float, 0 to 45, default 6 |  |
+| By orientation | toggle, default off |  |
+| Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards. 0 is north. |
+| Arc | float, 5 to 180, default 60 |  |
+| Fade | float, 0 to 90, default 20 |  |
+| Decay near objects | float, 0 to 1, default 0 | Thins the population around the objects standing on the terrain (the 'objects' input: 0 at an object, 1 far away). 1 leaves a void right at them. |
+| Reach | float, 0.001 to 0.5, default 0.05 | How far from the objects the decay extends, as a fraction of the terrain. |
+| Falloff | float, -1 to 1, default 0 | 0 linear. Positive: the void is larger and more sudden. Negative: gentler. |
+| Affinity with layer below | float, -1 to 1, default 0 | Positive: instances gather around the instances of the layer below (primroses around the trees) and thin out elsewhere. Negative: everywhere except near them. |
+| Affinity radius (m) | float, 0.1 to 2000, default 25 |  |
+| Repulsion from layer below | float, -1 to 1, default 0 | Sudden. Positive: a void around each instance below (no grass under the canopy). Negative: only inside that void (small stones at the foot of the boulder). Use both: near the trees but not under them. |
+| Repulsion radius (m) | float, 0.1 to 2000, default 8 |  |
+| Avoid overlapping instances | toggle, default on | No two instances closer than their footprints allow. |
+| Species | int, 1 to 8, default 1 | How many kinds of object this layer places. Each scene object bound to the layer picks the species it stands for. |
+| Species 1 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 1 scale | float, 0.05 to 10, default 1 |  |
+| Species 2 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 2 scale | float, 0.05 to 10, default 1 |  |
+| Species 3 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 3 scale | float, 0.05 to 10, default 1 |  |
+| Species 4 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 4 scale | float, 0.05 to 10, default 1 |  |
+| Species 5 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 5 scale | float, 0.05 to 10, default 1 |  |
+| Species 6 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 6 scale | float, 0.05 to 10, default 1 |  |
+| Species 7 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 7 scale | float, 0.05 to 10, default 1 |  |
+| Species 8 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 8 scale | float, 0.05 to 10, default 1 |  |
+| Overall scaling | float, 0.05 to 10, default 1 |  |
+| Size variation | float, 0 to 1, default 0.3 | 1: instances range from half to twice the size. |
+| Keep proportions | float, 0 to 1, default 1 | 1: the three axes scale together. 0: each on its own. |
+| Direction from surface | float, 0 to 1, default 0 | 0: instances grow vertically whatever the slope. 1: perpendicular to the ground (rocks); trees want 0. |
+| Rotation | choice: Up axis / None / Driven |  |
+| Maximum angle | float, 0 to 1, default 1 | As a fraction of a half turn either way. |
+| Offset from surface (m) | float, -50 to 50, default 0 | Negative buries the instance. |
+| Footprint radius (m) | float, 0.01 to 500, default 2 | The ground one instance claims at scale 1; what overlap avoidance and the layer above measure against. |
+| Shrink at low density | float, -1 to 1, default 0 | Lone instances are smaller (negative: larger), as at the edge of a wood. |
+| Low-density radius (m) | float, 0.1 to 2000, default 30 |  |
+| Lean out at low density | float, 0 to 1, default 0 | Lone instances lean into the slope, as plants reaching for light. |
+| Color variation | float, 0 to 1, default 0.3 |  |
+| Time offset range (s) | float, 0 to 10, default 1 | Each instance's wind phase is shifted by up to this, so a field sways as a crowd, not a marching army. |
+
 ### EffectorLayer
 
 Effector layer: a typed influence field for other systems to read
@@ -3167,6 +3254,25 @@ Read points from a CSV file
 | :--- | :--- | :--- |
 | File | file path |  |
 
+### PointsInteract
+
+Attract to, repel from another cloud; keep instances from overlapping
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| below | in (optional) | ? |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Affinity with layer below | float, -1 to 1, default 0 | Positive: instances gather around the instances of the layer below (primroses around the trees) and thin out elsewhere. Negative: everywhere except near them. |
+| Affinity radius (m) | float, 0.1 to 2000, default 25 |  |
+| Repulsion from layer below | float, -1 to 1, default 0 | Sudden. Positive: a void around each instance below (no grass under the canopy). Negative: only inside that void (small stones at the foot of the boulder). Use both: near the trees but not under them. |
+| Repulsion radius (m) | float, 0.1 to 2000, default 8 |  |
+| Avoid overlapping instances | toggle, default on | No two instances closer than their footprints allow. |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 |  |
+
 ### PointsMerge
 
 Combine two point clouds
@@ -3252,6 +3358,89 @@ Stamp points into a raster
 | Amplitude | float, 0 to 4, default 1 |  |
 | Scale by point value | toggle, default off |  |
 | Blend | choice: Max / Add |  |
+
+### PointsTransform
+
+Species, size, rotation, lean and tint per instance
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| points | in | ? |
+| driver | in (optional) | heightmap |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Species | int, 1 to 8, default 1 | How many kinds of object this layer places. Each scene object bound to the layer picks the species it stands for. |
+| Species 1 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 1 scale | float, 0.05 to 10, default 1 |  |
+| Species 2 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 2 scale | float, 0.05 to 10, default 1 |  |
+| Species 3 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 3 scale | float, 0.05 to 10, default 1 |  |
+| Species 4 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 4 scale | float, 0.05 to 10, default 1 |  |
+| Species 5 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 5 scale | float, 0.05 to 10, default 1 |  |
+| Species 6 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 6 scale | float, 0.05 to 10, default 1 |  |
+| Species 7 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 7 scale | float, 0.05 to 10, default 1 |  |
+| Species 8 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
+| Species 8 scale | float, 0.05 to 10, default 1 |  |
+| Overall scaling | float, 0.05 to 10, default 1 |  |
+| Size variation | float, 0 to 1, default 0.3 | 1: instances range from half to twice the size. |
+| Keep proportions | float, 0 to 1, default 1 | 1: the three axes scale together. 0: each on its own. |
+| Direction from surface | float, 0 to 1, default 0 | 0: instances grow vertically whatever the slope. 1: perpendicular to the ground (rocks); trees want 0. |
+| Rotation | choice: Up axis / None / Driven |  |
+| Maximum angle | float, 0 to 1, default 1 | As a fraction of a half turn either way. |
+| Offset from surface (m) | float, -50 to 50, default 0 | Negative buries the instance. |
+| Footprint radius (m) | float, 0.01 to 500, default 2 | The ground one instance claims at scale 1; what overlap avoidance and the layer above measure against. |
+| Shrink at low density | float, -1 to 1, default 0 | Lone instances are smaller (negative: larger), as at the edge of a wood. |
+| Low-density radius (m) | float, 0.1 to 2000, default 30 |  |
+| Lean out at low density | float, 0 to 1, default 0 | Lone instances lean into the slope, as plants reaching for light. |
+| Color variation | float, 0 to 1, default 0.3 |  |
+| Time offset range (s) | float, 0 to 10, default 1 | Each instance's wind phase is shifted by up to this, so a field sways as a crowd, not a marching army. |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 |  |
+
+### ScatterArea
+
+Scatter by density per hectare and the presence of the ground
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| presence | in (optional) | heightmap |
+| terrain | in (optional) | heightmap |
+| objects | in (optional) | heightmap |
+| points | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Invert presence | toggle, default off |  |
+| Density (per hectare) | float, 0.01 to 100000, default 20 | Instances per hectare (100 m x 100 m) at full presence. A rate, not a count: the same setting fills a 1 km tile and a 20 km one to the same look. |
+| Minimum spacing (m) | float, 0.05 to 1000, default 5 | The lattice the candidates stand on. Changing the density never moves an instance; changing this reseeds them all. |
+| Placement | choice: Jittered / Random / Regular |  |
+| Clumping | float, 0 to 1, default 0 | Groups instances together as species do in nature. |
+| Clump size (m) | float, 0.5 to 5000, default 60 |  |
+| Seed | seed |  |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the rate above means what it says. |
+| Presence threshold | float, 0 to 1, default 0.05 | Presence below this places nothing at all. |
+| Slope influence | float, 0 to 1, default 0.5 | 1: instances thin out on steep ground. 0: the same density whatever the slope. |
+| By altitude | toggle, default off |  |
+| Range of altitudes | choice: By terrain / Absolute / Relative to sea |  |
+| Altitude band | range | As a fraction of the terrain's own height range. |
+| Sea level | float, 0 to 1, default 0 |  |
+| Fade | float, 0 to 0.5, default 0.08 |  |
+| By slope | toggle, default off |  |
+| Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
+| Fade | float, 0 to 45, default 6 |  |
+| By orientation | toggle, default off |  |
+| Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards. 0 is north. |
+| Arc | float, 5 to 180, default 60 |  |
+| Fade | float, 0 to 90, default 20 |  |
+| Decay near objects | float, 0 to 1, default 0 | Thins the population around the objects standing on the terrain (the 'objects' input: 0 at an object, 1 far away). 1 leaves a void right at them. |
+| Reach | float, 0.001 to 0.5, default 0.05 | How far from the objects the decay extends, as a fraction of the terrain. |
+| Falloff | float, -1 to 1, default 0 | 0 linear. Positive: the void is larger and more sudden. Negative: gentler. |
 
 ### ScatterPoints
 

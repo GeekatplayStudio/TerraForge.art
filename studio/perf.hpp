@@ -69,6 +69,7 @@ struct PerfQuality {
   bool shadows_primary = true;
   int cloud_quality_cap = 2;   // 0 draft .. 2 high
   float tess_scale = 1.f;      // multiplies the subdivision limit
+  float lod_scale = 1.f;       // multiplies the scatter LOD distances
   int preview_quality_cap = 2; // the Preview panel's render scale index
   int preview_fps_cap = 60;
 };

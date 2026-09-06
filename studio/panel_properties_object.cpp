@@ -447,8 +447,29 @@ void object_properties_ui(App &a) {
             o.scatter_seed = (unsigned)sd;
             ch = true;
           }
+          // a population with species: this mesh stands for one of them
+          {
+            gpx::Node *sn = a.graph.find_node(o.scatter_node);
+            const int species = sn ? sn->attrs.get_i("species", 0) : 0;
+            if (species > 1) {
+              int sp = o.scatter_species + 1; // 0 = every species
+              std::string lbl = sp == 0 ? "All" : "Species " + std::to_string(sp);
+              if (ImGui::BeginCombo("Species", lbl.c_str())) {
+                for (int s = 0; s <= species; ++s) {
+                  std::string l = s == 0 ? "All" : "Species " + std::to_string(s);
+                  if (ImGui::Selectable(l.c_str(), sp == s)) {
+                    o.scatter_species = s - 1;
+                    ch = true;
+                  }
+                }
+                ImGui::EndCombo();
+              }
+              if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Which of the layer's species this mesh is. Bind one mesh per species.");
+            }
+          }
           if (ch) a.request_eval();
-          ImGui::TextDisabled("%d copies", (int)(o.inst.size() / 8));
+          ImGui::TextDisabled("%d copies", o.inst_count());
         }
       }
       if (prop_filter_match("Info")) {

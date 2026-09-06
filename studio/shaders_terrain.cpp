@@ -19,6 +19,11 @@ uniform float u_frac_amount;   // fractal detail height, world units
 uniform float u_frac_scale;    // base frequency of the detail
 uniform float u_planet_radius; // 0 = flat, else the tile lies on a sphere
 uniform float u_field_strength; // graph-authored displacement, 0 = none
+// Level of detail for the baked relief (docs/LOD.md): far from the camera
+// the height is read from a calmer mip level, so a field of stones at the
+// horizon is a texture, not a shimmer. 0 = every vertex reads level 0.
+uniform float u_height_lod_k;
+uniform vec3 u_lod_cam;
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
 out vec2 v_uv;
@@ -44,7 +49,12 @@ vec3 gpx_sphere_place(vec2 uv, float h){
   return pl_sphere_place(uv, h, u_planet_radius);
 }
 void terrain_place(vec2 uv){
-  float h = texture(u_height, uv).r * u_hscale;
+  float lod = 0.0;
+  if (u_height_lod_k > 0.0) {
+    float dl = length(u_lod_cam - vec3(uv.x, u_lod_cam.y, uv.y));
+    lod = clamp(log2(max(dl * u_height_lod_k, 1.0)), 0.0, 4.0);
+  }
+  float h = textureLod(u_height, uv, lod).r * u_hscale;
   if (u_has_disp == 1)
     h += (texture(u_disp, uv).r - 0.5) * 2.0 * u_disp_strength;
   vec3 p = vec3(uv.x, h, uv.y);

@@ -9,6 +9,7 @@
 #include "gpu_timer.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
+#include "renderer_instances.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
 #include <imgui.h>
@@ -141,6 +142,8 @@ static void publish_state(App &a) {
   // performance claim can be checked from a script instead of asserted: the
   // frame time is the renderer's own, and patches_visible is the count the
   // culling shader arrived at.
+  int inst_drawn = 0, inst_total = 0;
+  renderer_instance_stats(inst_drawn, inst_total);
   j["viewport"] = {{"tessellation", rs.tessellation},
                    {"tess_pixels", rs.tess_pixels},
                    {"tess_min", rs.tess_min},
@@ -152,6 +155,13 @@ static void publish_state(App &a) {
                    {"terrain_gpu_ms", gpu_timer_ms("terrain")},
                    {"sky_gpu_ms", gpu_timer_ms("sky+clouds")},
                    {"cloud_scatter_octaves", rs.cloud_scatter_octaves},
+                   {"scatter_lod_full_m", rs.scatter_lod_full_m},
+                   {"scatter_lod_far_m", rs.scatter_lod_far_m},
+                   {"scatter_lod_cull_m", rs.scatter_lod_cull_m},
+                   {"scatter_lod_min_keep", rs.scatter_lod_min_keep},
+                   {"terrain_lod", rs.terrain_lod},
+                   {"instances_drawn", inst_drawn},
+                   {"instances_total", inst_total},
                    {"planet_radius", rs.planet_radius},
                    {"fractal_detail", rs.fractal_detail},
                    {"field_displacement", rs.field_displacement},

@@ -200,6 +200,11 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_sculpt_layer.cpp
     engine/nodes/nodes_imprint.cpp
     engine/nodes/nodes_grass.cpp
+    engine/scatter_candidates.cpp
+    engine/scatter_rules.cpp
+    engine/scatter_resolve.cpp
+    engine/nodes/nodes_ecosystem.cpp
+    engine/nodes/nodes_scatter_area.cpp
     engine/nodes/nodes_export.cpp
 )
 
@@ -329,6 +334,11 @@ set(STUDIO_SOURCES
     studio/renderer_matparams.cpp
     studio/panel_material_tabs.cpp
     studio/panel_material_tabs_mix.cpp
+    studio/panel_material_tabs_eco.cpp
+    studio/scatter_lod.cpp
+    studio/renderer_instances.cpp
+    studio/renderer_mesh_upload.cpp
+    studio/mesh_lod.cpp
     studio/panel_material_hierarchy.cpp
     studio/material_channel_ui.cpp
     studio/asset_store.cpp
@@ -609,6 +619,12 @@ add_executable(anim_tests tests/cpp/test_anim.cpp)
 target_link_libraries(anim_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# The distribution engine: candidates, presence, interaction with the layer
+# below, transforms, and the EcosystemLayer / Points nodes built on them.
+add_executable(ecosystem_tests tests/cpp/test_ecosystem.cpp)
+target_link_libraries(ecosystem_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(node_tests tests/cpp/test_nodes.cpp tests/cpp/test_nodes_convert.cpp)
 target_link_libraries(node_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -618,6 +634,7 @@ target_link_libraries(node_tests PRIVATE
 add_executable(render_tests tests/cpp/test_render.cpp tests/cpp/test_render_hdr.cpp
                             tests/cpp/test_planet_place.cpp
                             studio/terrain_cull.cpp studio/blue_noise.cpp
+                            studio/scatter_lod.cpp
                             studio/hdr_image.cpp studio/planet_place.cpp)
 target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
@@ -699,6 +716,7 @@ add_test(NAME PerfGuard COMMAND node_bench)
 add_test(NAME RegressionLock COMMAND regression_tests)
 add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AnimTests COMMAND anim_tests)
+add_test(NAME EcosystemTests COMMAND ecosystem_tests)
 add_test(NAME I18nTests COMMAND i18n_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)

@@ -1,0 +1,32 @@
+{ "actions": [
+  { "op": "add_node", "type": "Noise", "x": 40, "y": 300, "alias": "base", "attrs": { "octaves": 6 } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "TerrainOutput", "to_port": "heightmap" },
+
+  { "op": "add_node", "type": "FlatColor", "x": 320, "y": 300, "alias": "soil", "attrs": { "r": 0.30, "g": 0.27, "b": 0.20 } },
+
+  { "op": "add_node", "type": "EcosystemLayer", "x": 640, "y": 200, "alias": "trees",
+    "attrs": { "name": "Trees", "density": 6, "spacing_m": 18, "species": 2, "sp1_presence": 1.0, "sp2_presence": 0.5,
+               "sp2_scale": 0.6, "scale": 1.0, "variation": 0.4, "footprint_m": 8, "clump_amount": 0.5, "clump_size_m": 160,
+               "use_slope": true, "slope": [0, 28], "slope_fuzz": 6, "slope_influence": 0.6 } },
+  { "op": "connect", "from": "soil", "from_port": "texture", "to": "trees", "to_port": "below albedo" },
+  { "op": "connect", "from": "base", "from_port": "output",  "to": "trees", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "EcosystemLayer", "x": 940, "y": 300, "alias": "grass",
+    "attrs": { "name": "Grass", "density": 600, "spacing_m": 3, "scale": 0.35, "variation": 0.5, "footprint_m": 1.5,
+               "repulsion": 1.0, "repulsion_radius_m": 12, "affinity": 0.6, "affinity_radius_m": 60,
+               "use_slope": true, "slope": [0, 20], "slope_fuzz": 5, "direction": 0.8 } },
+  { "op": "connect", "from": "trees", "from_port": "albedo", "to": "grass", "to_port": "below albedo" },
+  { "op": "connect", "from": "trees", "from_port": "points", "to": "grass", "to_port": "below" },
+  { "op": "connect", "from": "base",  "from_port": "output", "to": "grass", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "MaterialOutput", "x": 1240, "y": 300, "alias": "mat", "attrs": { "name": "Meadow with trees" } },
+  { "op": "connect", "from": "grass", "from_port": "albedo", "to": "mat", "to_port": "base color" },
+  { "op": "assign_material", "node": "mat" },
+
+  { "op": "add_primitive", "kind": "cone",   "name": "Pine",  "position": [0.5, 0.0, 0.5], "scale": 0.0016, "color": [0.12, 0.30, 0.12] },
+  { "op": "set_scatter", "object": "Pine",  "node": "trees", "species": 1, "size": 1.0, "jitter": 0.0 },
+  { "op": "add_primitive", "kind": "sphere", "name": "Bush",  "position": [0.5, 0.0, 0.5], "scale": 0.0010, "color": [0.20, 0.36, 0.14] },
+  { "op": "set_scatter", "object": "Bush",  "node": "trees", "species": 2, "size": 1.0, "jitter": 0.0 },
+  { "op": "add_primitive", "kind": "cone",   "name": "Tuft",  "position": [0.5, 0.0, 0.5], "scale": 0.0004, "color": [0.35, 0.55, 0.18] },
+  { "op": "set_scatter", "object": "Tuft",  "node": "grass", "size": 1.0, "jitter": 0.0, "sway": 0.05 }
+] }

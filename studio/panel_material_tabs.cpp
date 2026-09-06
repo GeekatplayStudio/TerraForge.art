@@ -171,6 +171,8 @@ void material_tabs_ui(App &a, gpx::Node *mat) {
       ImGui::EndChild();
       ImGui::EndTabItem();
     }
+  } else if (sel->type == "EcosystemLayer") {
+    material_tabs_ecosystem_ui(a, sel);
   } else if (sel->type == "MaterialLayer") {
     draw_tabs(a, sel,
               {{"Color", layer_color},

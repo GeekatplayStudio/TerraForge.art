@@ -134,6 +134,33 @@ void main(){
 // renderer, picking and the selection outline all read one definition of
 // where an object is. u_nrm is R*S^-1, so a squeezed object still shades
 // correctly.
+// One copy of a scattered mesh, in the model's frame: sized per axis,
+// turned about its up axis, then leaned from vertical towards the ground's
+// normal by the instance's lean (0 a tree, 1 a stone lying on the slope).
+// Shared by the colour and the shadow pass through INSTANCE_FN_PLACEHOLDER,
+// so a copy shadows exactly where it stands. The normal is turned the same
+// way (a scale does not change it up to normalisation).
+const char *const INSTANCE_FN = R"GLSL(
+uniform float u_inst_grow; // far cells are thinned; the survivors grow to cover
+vec4 instance_place(inout vec3 pos, inout vec3 nrm, vec4 I, vec4 R, vec4 A, vec4 G, mat4 model) {
+  vec2 r = R.xy;
+  pos = vec3(pos.x*r.x - pos.z*r.y, pos.y, pos.x*r.y + pos.z*r.x) * (A.xyz * I.w * max(u_inst_grow, 1.0));
+  nrm = vec3(nrm.x*r.x - nrm.z*r.y, nrm.y, nrm.x*r.y + nrm.z*r.x);
+  if (A.w > 0.0) {
+    vec3 up = normalize(mix(vec3(0.0, 1.0, 0.0), G.xyz, A.w));
+    // rotate y onto `up` (Rodrigues about y x up)
+    vec3 ax = cross(vec3(0.0, 1.0, 0.0), up);
+    float s = length(ax), c = up.y;
+    if (s > 1e-5) {
+      ax /= s;
+      pos = pos * c + cross(ax, pos) * s + ax * dot(ax, pos) * (1.0 - c);
+      nrm = nrm * c + cross(ax, nrm) * s + ax * dot(ax, nrm) * (1.0 - c);
+    }
+  }
+  return model * vec4(pos, 1.0);
+}
+)GLSL";
+
 const char *const VS_MESH = R"GLSL(#version 430 core
 layout(location=0) in vec3 in_pos;
 layout(location=1) in vec3 in_nrm;
@@ -141,15 +168,19 @@ uniform mat4 u_mvp;
 uniform mat4 u_model;
 uniform mat3 u_nrm;
 // scattering: when on, each copy replaces the model's translation with its
-// own position and adds a yaw+scale of its own. 256 copies per draw call.
+// own position and adds a size, a turn, a lean into the ground and a tint
+// of its own - the instance stream studio/app_services.cpp builds.
 uniform int u_inst_on;
 uniform float u_inst_sway;            // wind lean at the mesh's top
 uniform float u_inst_time;
 uniform vec3 u_inst_base;             // the model matrix's own translation
 layout(location=2) in vec4 in_instance; // x,y,z,scale per copy
-layout(location=3) in vec4 in_instance_rot; // cos(yaw), sin(yaw), brightness
+layout(location=3) in vec4 in_instance_rot; // cos(yaw), sin(yaw), tint, wind phase
+layout(location=4) in vec4 in_instance_axes; // per-axis scale, lean into the surface
+layout(location=5) in vec4 in_instance_ground; // the ground's normal, LOD key
 layout(location=6) in vec2 in_uv;          // texture coordinates, when the model has them
 DEFORM_FN_PLACEHOLDER
+INSTANCE_FN_PLACEHOLDER
 out vec3 v_nrm;
 out float v_tint;
 out vec3 v_world;
@@ -171,17 +202,13 @@ void main(){
   }
   if (u_inst_on == 1) {
     vec4 I = in_instance;
-    vec4 R = in_instance_rot;
-    vec2 r = R.xy;
-    v_tint = R.z;
-    pos = vec3(pos.x*r.x - pos.z*r.y, pos.y, pos.x*r.y + pos.z*r.x) * I.w;
-    nrm = vec3(nrm.x*r.x - nrm.z*r.y, nrm.y, nrm.x*r.y + nrm.z*r.x);
-    vec4 p = u_model * vec4(pos, 1.0);
+    v_tint = in_instance_rot.z;
+    vec4 p = instance_place(pos, nrm, I, in_instance_rot, in_instance_axes, in_instance_ground, u_model);
     p.xyz += I.xyz - u_inst_base;
     if (u_inst_sway > 0.0) {
       // each copy leans on its own phase; the lean grows with height above
       // the copy's foot so trunks stay planted and crowns ride the wind
-      float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0;
+      float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0 + in_instance_rot.w * 6.2831853;
       float lean = sin(ph) * u_inst_sway * max(p.y - I.y, 0.0);
       p.x += lean;
       p.z += lean * 0.35;

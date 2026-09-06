@@ -92,7 +92,7 @@ void material_hierarchy_ui(App &a, gpx::Node *mat, float height) {
   // Vue's buttons beside the hierarchy
   std::vector<gpx::Node *> layers = collect_layers(a.graph, mat);
   gpx::Node *sel = a.graph.find_node(st.selected);
-  const bool sel_is_layer = sel && sel->type == "MaterialLayer";
+  const bool sel_is_layer = is_stack_layer(sel);
   if (ImGui::SmallButton("Add layer")) {
     undo_push_locked(a, "add material layer");
     gpx::Node *nl = add_material_layer(a.graph, mat, layers);
@@ -101,6 +101,16 @@ void material_hierarchy_ui(App &a, gpx::Node *mat, float height) {
   }
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("A new layer on top of the stack. A simple material becomes a layered one.");
+  ImGui::SameLine();
+  if (ImGui::SmallButton("Add ecosystem")) {
+    undo_push_locked(a, "add ecosystem layer");
+    gpx::Node *nl = add_ecosystem_layer(a.graph, mat, layers);
+    if (nl) st.selected = nl->id;
+    after_edit(a);
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("A population on top of the stack: objects placed by this layer's presence,\n"
+                      "reacting to the ecosystem below it. Bind meshes to it in Properties > Scatter.");
   ImGui::SameLine();
   ImGui::BeginDisabled(!sel_is_layer);
   if (ImGui::SmallButton("Remove")) {

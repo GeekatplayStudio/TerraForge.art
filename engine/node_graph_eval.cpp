@@ -247,8 +247,10 @@ void Graph::release_dead_buffers(const std::vector<Node *> &order,
       if (p.dir != PortDir::Out) continue; // input buffers are injected values
       if (p.hmap) freed += p.hmap->v.size() * sizeof(float);
       if (p.tex) freed += p.tex->v.size() * sizeof(float);
+      if (p.pts) freed += p.pts->bytes();
       p.hmap.reset();
       p.tex.reset();
+      p.pts.reset();
     }
     if (!freed) continue;
     n->dirty = true;
@@ -270,6 +272,7 @@ size_t Graph::buffer_bytes() const {
     for (const Port &p : n->ports) {
       if (p.hmap) bytes += p.hmap->v.size() * sizeof(float);
       if (p.tex) bytes += p.tex->v.size() * sizeof(float);
+      if (p.pts) bytes += p.pts->bytes(); // a forest is not free either
     }
   return bytes;
 }

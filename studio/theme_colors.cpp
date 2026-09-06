@@ -22,6 +22,7 @@ ImU32 node_color(const std::string &t, const std::string &c) {
       return IM_COL32(0x6f, 0x8f, 0x4a, 0xff); // the green of every other source
     // the material and its layers: what the renderer takes
     if (t == "MaterialOutput" || t == "MaterialLayer" || t == "DistributionLayer" ||
+        t == "EcosystemLayer" ||
         t == "EffectorLayer" || t == "SplatMaterial")
       return IM_COL32(0xa8, 0x6a, 0x2e, 0xff);
     // everything else changes pixels: a processor

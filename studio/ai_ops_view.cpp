@@ -10,11 +10,13 @@
 //
 // They also happen to be the settings a performance measurement needs to turn
 // on and off, which is how the omission was noticed.
+#include "ai_assist.hpp"
 #include "app.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include <algorithm>
 #include <json.hpp>
+#include <map>
 #include <string>
 
 using nlohmann::json;
@@ -70,6 +72,32 @@ int ai_view_op(App &a, const std::string &op, const json &act,
           }
     a.api_reply = out.dump();
     a.status = "probe " + std::to_string(x) + ", " + std::to_string(z);
+    return 1;
+  }
+  if (op == "points_stats") {
+    // How many instances a Points node placed, and how many of each species
+    // - what a script reads to check a density, a slope band or a repulsion
+    // did what it said, instead of squinting at a capture.
+    gpx::Node *n = find_node(a, act, "node");
+    if (!n) {
+      err = "points_stats needs 'node' (an id, alias or type with a Points output)";
+      return 0;
+    }
+    const gpx::PointCloud *pc = nullptr;
+    for (const gpx::Port &p : n->ports)
+      if (p.dir == gpx::PortDir::Out && p.type == gpx::DataType::Points && p.pts) { pc = p.pts.get(); break; }
+    nlohmann::json out = {{"node", n->id}, {"type", n->type}, {"count", pc ? (int)pc->size() : 0}};
+    if (pc && pc->has_attrs()) {
+      std::map<int, int> per;
+      double sx = 0;
+      for (size_t i = 0; i < pc->size(); ++i) { ++per[pc->species[i]]; sx += pc->sx[i]; }
+      nlohmann::json sp = nlohmann::json::object();
+      for (const auto &kv : per) sp[std::to_string(kv.first + 1)] = kv.second;
+      out["species"] = sp;
+      out["mean_scale"] = pc->size() ? sx / (double)pc->size() : 0.0;
+    }
+    a.api_reply = out.dump();
+    a.status = n->type + " #" + std::to_string(n->id) + ": " + std::to_string(pc ? pc->size() : 0) + " points";
     return 1;
   }
   if (op == "capture") {
@@ -169,6 +197,12 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   }
 
   n += take_f(act, "cloud_scatter_depth", rs.cloud_scatter_depth, 0.05f, 0.99f);
+  // level of detail (docs/LOD.md)
+  n += take_f(act, "scatter_lod_full_m", rs.scatter_lod_full_m, 0.f, 1e6f);
+  n += take_f(act, "scatter_lod_far_m", rs.scatter_lod_far_m, 1.f, 1e7f);
+  n += take_f(act, "scatter_lod_cull_m", rs.scatter_lod_cull_m, 1.f, 1e8f);
+  n += take_f(act, "scatter_lod_min_keep", rs.scatter_lod_min_keep, 0.f, 1.f);
+  n += take_f(act, "terrain_lod", rs.terrain_lod, 0.f, 1.f);
 
   // Shading mode, per view or for every view at once. Scripting could set
   // every other display option but not this one, so no automated check could

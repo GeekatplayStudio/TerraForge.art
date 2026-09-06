@@ -54,6 +54,8 @@ std::string inject_sky(const char *src) {
   {
     extern const char *const DEFORM_FN_GLSL; // shaders_scene.cpp
     sub("DEFORM_FN_PLACEHOLDER", DEFORM_FN_GLSL);
+    extern const char *const INSTANCE_FN; // shaders_scene.cpp
+    sub("INSTANCE_FN_PLACEHOLDER", INSTANCE_FN);
   }
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);

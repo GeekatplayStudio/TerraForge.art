@@ -200,6 +200,24 @@ void imprint_apply(Heightmap &ground, const std::string &footprints, const Impri
   });
 }
 
+void imprint_distance(const std::string &footprints, Heightmap &out) {
+  // 0 at an object's wall, rising to 1 one tile-width away - coarse, since
+  // a decay reach is a smooth function of it and the sampler is bilinear
+  const int res = 128;
+  out = Heightmap(res, res, 1.f);
+  const std::vector<Footprint> fps = parse_footprints(footprints, 1.f);
+  if (fps.empty()) return;
+  parallel_rows(res, [&](int y0, int y1) {
+    for (int y = y0; y < y1; ++y)
+      for (int x = 0; x < res; ++x) {
+        const float u = (x + 0.5f) / res, v = (y + 0.5f) / res;
+        float best = 1.f;
+        for (const Footprint &f : fps) best = std::min(best, std::max(f.distance(u, v), 0.f));
+        out.at(x, y) = best;
+      }
+  });
+}
+
 REGISTER_NODE(
     TerrainImprint, "Effect",
     "Mould the ground to the objects standing on it - flat under each, blended around it",
@@ -208,6 +226,9 @@ REGISTER_NODE(
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("output");
       n.add_out("imprint_mask");
+      // distance to the nearest object, for a population that keeps clear
+      // of the house (EcosystemLayer's 'objects' input)
+      n.add_out("objects");
       add_text(n.attrs, "footprints", "Footprints", "", "Imprint")
           .tooltip = "Written by the studio from the objects placed on the\n"
                      "terrain (Properties > Ground). One per line: base sink\n"
@@ -242,6 +263,7 @@ REGISTER_NODE(
       prm.strength = n.attrs.get_f("strength", 1.f);
       imprint_apply(out, n.attrs.get_s("footprints"), prm, &imask);
       apply_mask_blend(n.in_hmap("mask"), *in, out);
+      imprint_distance(n.attrs.get_s("footprints"), n.out_hmap("objects"));
     })
 
 } // namespace gpx

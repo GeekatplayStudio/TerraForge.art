@@ -130,6 +130,7 @@ void apply_level(int level) {
       q.shadows_secondary = false;
       q.cloud_quality_cap = 0;
       q.tess_scale = 0.5f;
+      q.lod_scale = 0.6f;
       break;
     case 4:
       q.scale_secondary = 0.25f;
@@ -140,6 +141,7 @@ void apply_level(int level) {
       q.shadows_primary = false;
       q.cloud_quality_cap = 0;
       q.tess_scale = 0.25f;
+      q.lod_scale = 0.35f;
       break;
     default:
       break;

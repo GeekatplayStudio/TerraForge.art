@@ -6,6 +6,7 @@
 // shadows, outlines and the grid. Split from renderer.cpp for the 500-line
 // module rule; state lives in renderer_internal.hpp.
 #include "perf.hpp"
+#include "renderer_instances.hpp"
 #include "renderer_internal.hpp"
 #include "app.hpp"
 #include "console.hpp"
@@ -244,10 +245,10 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
 
   // A mesh is drawn part by part: each run of vertices with its own picture
   // (bound on unit 3) and colour, or in one go when it has none.
+  std::vector<InstanceRun> runs; // this mesh's copies to draw, by LOD cell
   auto draw_mesh_parts = [&](SceneObject &o, bool instanced) {
-    const int copies = instanced ? (int)(o.inst.size() / 8) : 1;
     auto draw = [&](int first, int count) {
-      if (instanced) glDrawArraysInstanced(GL_TRIANGLES, first, count, copies);
+      if (instanced) instances_draw_range(prog_mesh, runs, first, count);
       else glDrawArrays(GL_TRIANGLES, first, count);
     };
     const bool have_uv = o.uvs.size() == (size_t)o.vert_count * 2;
@@ -292,48 +293,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   // scene meshes
   for (SceneObject &o : sc.objects) {
     if (o.type != SceneObject::Mesh || !sc.object_visible(o)) continue;
-    if (o.gpu_dirty) {
-      if (!o.vao) {
-        glGenVertexArrays(1, &o.vao);
-        glGenBuffers(1, &o.vbo);
-      }
-      glBindVertexArray(o.vao);
-      glBindBuffer(GL_ARRAY_BUFFER, o.vbo);
-      glBufferData(GL_ARRAY_BUFFER, o.verts.size() * 4, o.verts.data(),
-                   GL_STATIC_DRAW);
-      glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 24, nullptr);
-      glEnableVertexAttribArray(1);
-      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, (void *)12);
-      // texture coordinates in their own buffer, so a mesh without any keeps
-      // the six-float layout every other reader of `verts` expects
-      if (o.uvs.size() == (size_t)o.vert_count * 2) {
-        if (!o.uvbo) glGenBuffers(1, &o.uvbo);
-        glBindBuffer(GL_ARRAY_BUFFER, o.uvbo);
-        glBufferData(GL_ARRAY_BUFFER, o.uvs.size() * 4, o.uvs.data(), GL_STATIC_DRAW);
-        glEnableVertexAttribArray(6);
-        glVertexAttribPointer(6, 2, GL_FLOAT, GL_FALSE, 8, nullptr);
-      } else {
-        glDisableVertexAttribArray(6);
-      }
-      glBindVertexArray(0);
-      // the parts' pictures, decoded on load, become textures here
-      for (SceneObject::Part &part : o.parts) {
-        if (part.tex || part.rgba.empty() || part.w <= 0) continue;
-        glGenTextures(1, &part.tex);
-        glBindTexture(GL_TEXTURE_2D, part.tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, part.w, part.h, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                     part.rgba.data());
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-      }
-      glBindTexture(GL_TEXTURE_2D, 0);
-      o.gpu_dirty = false;
-      scene_object_bounds(o);
-    }
+    mesh_upload(o); // renderer_mesh_upload.cpp, when the geometry changed
     bool is_sel = (&o - sc.objects.data()) == sc.selected;
     glUseProgram(prog_mesh);
     glUniformMatrix4fv(uniform_location(prog_mesh, "u_mvp"), 1, GL_FALSE, mvp);
@@ -386,41 +346,26 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     if (!o.inst.empty()) {
       // A resident instance stream is shared by every view. Only an actual
       // scatter rebuild uploads it; the shader retains the same transforms.
+      // Each view decides its own level of detail per cell of the population
+      // (renderer_instances.cpp): near cells whole, far cells thinned and
+      // drawn from the reduced mesh, off-screen cells not at all.
       unii(prog_mesh, "u_inst_on", 1);
       uni1(prog_mesh, "u_inst_sway", o.scatter_sway);
       uni1(prog_mesh, "u_inst_time", time_acc);
       glUniform3f(uniform_location(prog_mesh, "u_inst_base"), model[12],
                   model[13], model[14]);
-      struct InstanceBuffer { GLuint vbo = 0; unsigned long long revision = ~0ull; };
-      static std::map<GLuint, InstanceBuffer> buffers;
-      // Retire buffers whose owning mesh VAO is no longer in the scene.
-      static int cleanup_frame = -1;
-      if (cleanup_frame != ImGui::GetFrameCount()) {
-        cleanup_frame = ImGui::GetFrameCount();
-        std::set<GLuint> live;
-        for (const auto &mesh : sc.objects) if (mesh.vao) live.insert(mesh.vao);
-        for (auto it = buffers.begin(); it != buffers.end();) {
-          if (!live.count(it->first)) {
-            glDeleteBuffers(1, &it->second.vbo);
-            it = buffers.erase(it);
-          } else ++it;
-        }
-      }
-      auto &buffer = buffers[o.vao];
-      if (!buffer.vbo) glGenBuffers(1, &buffer.vbo);
-      if (buffer.revision != o.inst_revision) {
-        glBindBuffer(GL_ARRAY_BUFFER, buffer.vbo);
-        glBufferData(GL_ARRAY_BUFFER, o.inst.size() * sizeof(float),
-                     o.inst.data(), GL_STATIC_DRAW);
-        for (unsigned k = 0; k < 2; ++k) {
-          glEnableVertexAttribArray(2 + k);
-          glVertexAttribPointer(2 + k, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
-                                (const void *)(uintptr_t)(k * 4 * sizeof(float)));
-          glVertexAttribDivisor(2 + k, 1);
-        }
-        buffer.revision = o.inst_revision;
-      }
+      instances_upload(o);
+      const Frustum fr = frustum_from_mvp(mvp);
+      instance_runs(o, view_eye, &fr, RS.height_scale, RS.terrain_size_m,
+                    instance_lod_params(), runs);
+      int drawn = 0;
+      for (const InstanceRun &r : runs) drawn += r.count;
+      instances_count(drawn, o.inst_count());
       draw_mesh_parts(o, true);
+      uni3(prog_mesh, "u_color", o.color);
+      unii(prog_mesh, "u_has_tex", 0);
+      instances_draw_lods(prog_mesh, o, runs);
+      uni1(prog_mesh, "u_inst_grow", 1.f);
       unii(prog_mesh, "u_inst_on", 0);
     } else {
       unii(prog_mesh, "u_inst_on", 0);

@@ -200,11 +200,13 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
       jm["ypr"] = {o.yaw, o.pitch, o.roll};
       if (!o.inst.empty()) {
         json inst = json::array();
-        const size_t per = 8;
+        const size_t per = SceneObject::INST_FLOATS;
         for (size_t i = 0; i + per <= o.inst.size(); i += per) {
           const float *s = o.inst.data() + i;
-          // x, y, z, scale, yaw (radians, from the stored cos/sin)
-          inst.push_back({s[0], s[1], s[2], s[3], std::atan2(s[5], s[4])});
+          // x, y, z, scale, yaw (radians, from the stored cos/sin), then the
+          // per-axis scale, the lean into the ground and the ground's normal
+          inst.push_back({s[0], s[1], s[2], s[3], std::atan2(s[5], s[4]),
+                          s[8], s[9], s[10], s[11], s[12], s[13], s[14]});
         }
         jm["instances"] = std::move(inst);
       }

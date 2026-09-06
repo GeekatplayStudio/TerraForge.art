@@ -89,6 +89,12 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"cloud_anvil", 'f', &rs.cloud_anvil},
       {"cloud_scatter_octaves", 'i', &rs.cloud_scatter_octaves},
       {"cloud_scatter_depth", 'f', &rs.cloud_scatter_depth},
+      // level of detail
+      {"scatter_lod_full_m", 'f', &rs.scatter_lod_full_m},
+      {"scatter_lod_far_m", 'f', &rs.scatter_lod_far_m},
+      {"scatter_lod_cull_m", 'f', &rs.scatter_lod_cull_m},
+      {"scatter_lod_min_keep", 'f', &rs.scatter_lod_min_keep},
+      {"terrain_lod", 'f', &rs.terrain_lod},
       // terrain surface material
       {"mat_roughness", 'f', &rs.mat_roughness},
       {"mat_metallic", 'f', &rs.mat_metallic},
@@ -232,6 +238,7 @@ json scene_to_json() {
       jo["scatter_seed"] = o.scatter_seed;
       jo["scatter_sway"] = o.scatter_sway;
       jo["scatter_value_size"] = o.scatter_value_size;
+      jo["scatter_species"] = o.scatter_species;
     } else if (o.type == SceneObject::Camera) {
       const CameraData &c = o.cam;
       jo["camera"] = {
@@ -346,6 +353,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       o.scatter_seed = jo.value("scatter_seed", 0u);
       o.scatter_sway = jo.value("scatter_sway", 0.f);
       o.scatter_value_size = jo.value("scatter_value_size", 0.f);
+      o.scatter_species = jo.value("scatter_species", -1);
       std::string err;
       if (o.path.rfind("primitive:", 0) == 0 &&
           scene_primitive_verts(o.path.substr(10), o.verts)) {

@@ -3,6 +3,7 @@
 #include "gpx/animation.hpp"
 #include "gpx/planet_math.hpp"
 #include "gpx/deform.hpp"
+#include "scatter_lod.hpp"
 #include <map>
 #include <cstdint>
 #include <string>
@@ -188,8 +189,24 @@ struct SceneObject {
   float scatter_sway = 0.f;         // wind: top-of-mesh lean, world units
   float scatter_value_size = 0.f;   // 0 ignore point values, 1 value = size
   unsigned scatter_seed = 0;
-  // transient, rebuilt after every evaluation: x,y,z,scale,cos,sin per copy
+  // which species of the cloud this mesh stands for (-1: every point); an
+  // EcosystemLayer with three species is three meshes bound to it
+  int scatter_species = -1;
+  // transient, rebuilt after every evaluation, INST_FLOATS per copy:
+  //   x, y, z, scale | cos, sin, tint, phase | sx, sy, sz, tilt |
+  //   nx, ny, nz, lod key
+  static constexpr int INST_FLOATS = 16;
   std::vector<float> inst;
+  int inst_count() const { return (int)(inst.size() / INST_FLOATS); }
+  // the copies bucketed by tile cell for distance LOD (studio/scatter_lod.hpp);
+  // transient like `inst`
+  std::vector<InstanceCell> inst_cells;
+  // reduced copies of the mesh for far instances (built on load for meshes
+  // without material parts; transient GL handles, rebuilt on demand)
+  std::vector<float> lod_verts[2];
+  unsigned lod_vao[2] = {0, 0}, lod_vbo[2] = {0, 0};
+  int lod_count[2] = {0, 0};
+  bool lod_tried = false;
   unsigned long long inst_revision = 0; // transient, never serialized
   // Animation: one track per keyed property component, keyed by the path
   // studio/anim_targets.hpp defines ("pos.x", "light.intensity"...). Empty

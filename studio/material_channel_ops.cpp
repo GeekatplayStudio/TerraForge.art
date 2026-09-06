@@ -30,7 +30,7 @@ int channel_mode_of(gpx::Graph &g, gpx::Node *owner, const char *port) {
   if (src->type == "NaturalGrain") return CH_GRAIN;
   if (src->type == "MaterialLayer" || src->type == "MaterialStack" ||
       src->type == "PBRMaterial" || src->type == "DistributionLayer" ||
-      src->type == "EffectorLayer")
+      src->type == "EffectorLayer" || src->type == "EcosystemLayer")
     return CH_OTHER;
   return CH_PROCEDURAL;
 }

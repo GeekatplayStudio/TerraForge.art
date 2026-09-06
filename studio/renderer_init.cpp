@@ -275,7 +275,7 @@ bool renderer_init() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   };
-  mktex(tex_height, false);
+  mktex(tex_height, true); // mipmapped: the far ground reads a calmer level (docs/LOD.md)
   mktex(tex_albedo, true);
   mktex(tex_normal, true);
   mktex(tex_rough, true);
@@ -345,6 +345,7 @@ void renderer_set_terrain_prepared(TerrainUpload &upload) {
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, norm.w, norm.h, 0, GL_RED, GL_FLOAT,
                norm.v.data());
+  glGenerateMipmap(GL_TEXTURE_2D);
   // keep a CPU copy (downsampled) for picking
   cpu_height = std::move(upload.picking);
   // Bounds for per-patch culling. Built from the full-resolution map, not the

@@ -14,10 +14,29 @@ namespace studio {
 // unambiguous.
 gpx::Link *layer_incoming(gpx::Graph &g, uint64_t node, const char *port);
 
-// The MaterialLayer chain feeding a MaterialOutput, top of the stack first.
-// Stops at the first node that is not a MaterialLayer, so a plain material
-// returns an empty stack rather than nonsense.
+// A node that can stand in the stack: a MaterialLayer or an EcosystemLayer.
+bool is_stack_layer(const gpx::Node *n);
+// A layer that places instances (EcosystemLayer, DistributionLayer).
+bool is_population_layer(const gpx::Node *n);
+
+// The layer chain feeding a MaterialOutput, top of the stack first. Stops at
+// the first node that is not a stack layer, so a plain material returns an
+// empty stack rather than nonsense.
 std::vector<gpx::Node *> collect_layers(gpx::Graph &g, gpx::Node *mat);
+
+// An ecosystem layer reacts to the nearest population beneath it: link each
+// one's "below" to that layer's points (or unlink it when there is none).
+void wire_populations_below(gpx::Graph &g, const std::vector<gpx::Node *> &layers);
+
+// Add a layer of `type` on top of the stack (the general form of the two
+// below).
+gpx::Node *add_stack_layer(gpx::Graph &g, gpx::Node *mat,
+                           const std::vector<gpx::Node *> &layers, const char *type);
+// An EcosystemLayer on top, wired to the population beneath it.
+gpx::Node *add_ecosystem_layer(gpx::Graph &g, gpx::Node *mat,
+                               const std::vector<gpx::Node *> &layers);
+// Two adjacent layers of different kinds trade places in the chain.
+void swap_chain_places(gpx::Graph &g, gpx::Node *x, gpx::Node *y);
 
 // Point a layer's three outputs at the material's three inputs, replacing
 // whatever was there.

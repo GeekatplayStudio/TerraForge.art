@@ -1345,6 +1345,46 @@
       "description": "Surface features ride on the placed ground: the assigned material's displacement is added and the objects' imprint moulded (gpx::imprint_apply, the node's own function) after the tile is placed on its planet, so relief below the placement's presence threshold - every stone, every house-sized mould - is no longer swallowed; the ground between the two steps is the natural ground a grounded object's base rests on; probe_height reports the displayed and the graph height at a point",
       "test_file": "test_imprint.cpp",
       "test_symbol": "test_surface_features"
+    },
+    {
+      "id": "scatter.engine",
+      "area": "engine",
+      "phase": "38",
+      "description": "The distribution engine (gpx::scatter): a spacing-fixed lattice of hashed candidates with stable ids, presence filtering by mask, altitude, slope, orientation, slope influence and decay near objects, species by weights or a driver map, per-instance size/axes/direction/rotation/offset/tint/phase, shrink and lean where thin; deterministic, stable under density and mask edits, thread-count independent; PointCloud gained optional channels",
+      "test_file": "test_ecosystem.cpp",
+      "test_symbol": "test_filter_stability"
+    },
+    {
+      "id": "scatter.interaction",
+      "area": "engine",
+      "phase": "38",
+      "description": "Vue's affinity with and repulsion from the layer below, measured to the footprint's edge (positive affinity gathers, negative avoids; positive repulsion opens a sudden void, negative keeps only the void; both give a ring), and overlap avoidance in id order that does not depend on arrival order",
+      "test_file": "test_ecosystem.cpp",
+      "test_symbol": "test_interaction"
+    },
+    {
+      "id": "materials.ecosystem_layer",
+      "area": "engine",
+      "phase": "38",
+      "description": "EcosystemLayer: a material-stack layer that populates - density per hectare, spacing, placement, clumping, seed, the presence rule, interaction with the 'below' population, up to eight species, the transform dials, a density map output; TerrainImprint's 'objects' distance output for decay near objects; ScatterArea, PointsTransform and PointsInteract are the same stages as Points nodes and equal the layer",
+      "test_file": "test_ecosystem.cpp",
+      "test_symbol": "test_layer_node"
+    },
+    {
+      "id": "materials.ecosystem_stack",
+      "area": "studio",
+      "phase": "38",
+      "description": "Ecosystem layers in the Material Studio stack: Add ecosystem, a stack layer of either kind collected top first, the 'below' points wired to the nearest population beneath through colour layers and re-derived after add, delete and swap; layers of different kinds trade places by chain rewiring; Ecosystem material type; Vue's tabs (General, Density, Scaling & Orientation, Color, Presence); a mesh binds to one species (scatter_species, set_scatter species)",
+      "test_file": "test_material_stack_ops.cpp",
+      "test_symbol": "test_ecosystem_layers_react_to_the_population_below"
+    },
+    {
+      "id": "render.scatter_lod",
+      "area": "studio",
+      "phase": "38",
+      "description": "Level of detail for scattered copies: bucketed by 16x16 tile cell and sorted by a per-instance key at rebuild, per view a keep fraction by distance (1 inside full, min_keep at far, 0 past cull) draws a prefix of each cell with base-instance draws, survivors grow to keep the cover, reduced meshes (quadric, 25% and 6%) by distance for meshes without parts, frustum-skipped cells, the shadow pass thins identically from the view camera, the governor scales the distances, instances_drawn/total in the API; the terrain height texture is mipmapped and read at a distance-chosen level (terrain_lod) in both passes",
+      "test_file": "test_render.cpp",
+      "test_symbol": "test_scatter_lod"
     }
   ]
 }

@@ -175,6 +175,11 @@ static void section_subdivision(RenderSettings &rs) {
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The ceiling, for when detail is not worth the cost.");
     ImGui::TextDisabled("%s", renderer_tess_status().c_str());
+    ImGui::SliderFloat("Relief detail by distance", &rs.terrain_lod, 0.f, 1.f, "%.2f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Far ground reads a calmer, averaged relief so stone fields\n"
+                        "and grass at the horizon stop shimmering. 0 keeps every\n"
+                        "texel at every distance.");
     Checkbox("Cull patches off screen", &rs.frustum_cull);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Discard a patch before subdividing it when its whole\n"

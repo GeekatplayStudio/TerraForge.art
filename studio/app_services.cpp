@@ -5,6 +5,8 @@
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpx/planet_math.hpp"
+#include "gpx/scatter.hpp"
+#include "scatter_lod.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -27,6 +29,11 @@ void app_set_overlay_terrain(std::shared_ptr<gpx::Heightmap> hm) {
   ++g_overlay_revision;
 }
 
+
+// The most copies one mesh draws. A population past this is thinned by the
+// renderer's LOD long before it is reached; the cap is against a runaway
+// density taking the GPU with it.
+static constexpr size_t SCATTER_MAX_INSTANCES = 1 << 18;
 
 // Rebuild every scattered object's copy list from its bound Points node.
 // Called when the evaluation moves, and again by the render exporter so a
@@ -54,19 +61,31 @@ void scene_rebuild_scatter_instances(App &a) {
         }
     o.inst.clear();
     if (!pc) continue;
-    size_t count = std::min(pc->size(), (size_t)4096);
-    o.inst.reserve(count * 8);
-    for (size_t i = 0; i < count; ++i) {
+    // A population carries its own per-instance channels (species, size,
+    // turn, lean, tint, phase - engine/gpx/points.hpp); a plain cloud gets
+    // the hashed jitter it always had.
+    const bool attrs = pc->has_attrs();
+    const size_t total = std::min(pc->size(), (size_t)SCATTER_MAX_INSTANCES);
+    o.inst.reserve(total * SceneObject::INST_FLOATS);
+    for (size_t i = 0; i < total; ++i) {
+      if (attrs && o.scatter_species >= 0 && pc->species[i] != o.scatter_species) continue;
       float px = pc->x[i], pz = pc->y[i], py = 0.f;
+      float nx = 0.f, ny = 1.f, nz = 0.f;
       if (hm) {
         int ix = std::clamp((int)(px * hm->w), 0, hm->w - 1);
         int iy = std::clamp((int)(pz * hm->h), 0, hm->h - 1);
         py = hm->v[(size_t)iy * hm->w + ix] * hs;
+        // the ground's normal, for instances that grow from the surface
+        float dx = 0, dz = 0;
+        hm->gradient_at(ix, iy, dx, dz);
+        nx = -dx * hm->w * hs;
+        nz = -dz * hm->h * hs;
+        float len = std::sqrt(nx * nx + 1.f + nz * nz);
+        nx /= len; ny = 1.f / len; nz /= len;
       }
       uint32_t hb = gpx::planet::pl_hash_bits((int)i, 11, 0, o.scatter_seed);
-      float yaw = (hb & 0xffffu) / 65535.f * 6.2831853f;
-      float sj =
-          1.f + (((hb >> 16) & 0xffu) / 255.f - 0.5f) * o.scatter_jitter;
+      float yaw = attrs ? pc->yaw[i] : (hb & 0xffffu) / 65535.f * 6.2831853f;
+      float sj = attrs ? 1.f : 1.f + (((hb >> 16) & 0xffu) / 255.f - 0.5f) * o.scatter_jitter;
       float sc = o.scatter_scale * sj;
       // point values scale the copies when asked: a power-law cloud then
       // reads as many saplings and a few grown trees
@@ -75,16 +94,19 @@ void scene_rebuild_scatter_instances(App &a) {
         sc *= 1.f + (vv - 1.f) * o.scatter_value_size;
         sc = std::max(sc, 0.02f * o.scatter_scale);
       }
-      o.inst.push_back(px);
-      o.inst.push_back(py);
-      o.inst.push_back(pz);
-      o.inst.push_back(sc);
-      o.inst.push_back(std::cos(yaw));
-      o.inst.push_back(std::sin(yaw));
-      // a per-copy brightness so a stand of one mesh reads as many
-      o.inst.push_back(0.85f + ((hb >> 24) & 0xffu) / 255.f * 0.3f);
-      o.inst.push_back(0.f);
+      if (attrs) py += pc->offset[i];
+      const float tint = attrs ? pc->tint[i] : 0.85f + ((hb >> 24) & 0xffu) / 255.f * 0.3f;
+      const float key = attrs ? gpx::scatter::unit(pc->id[i], 77)
+                              : (gpx::planet::pl_hash_bits((int)i, 13, 0, o.scatter_seed) & 0xffffffu) / 16777216.f;
+      const float row[SceneObject::INST_FLOATS] = {
+          px, py, pz, sc,
+          std::cos(yaw), std::sin(yaw), tint, attrs ? pc->phase[i] : 0.f,
+          attrs ? pc->sx[i] : 1.f, attrs ? pc->sy[i] : 1.f, attrs ? pc->sz[i] : 1.f, attrs ? pc->tilt[i] : 0.f,
+          nx, ny, nz, key};
+      o.inst.insert(o.inst.end(), row, row + SceneObject::INST_FLOATS);
     }
+    // bucketed by cell and sorted by key, so the passes can thin by distance
+    scatter_bucket(o.inst, SceneObject::INST_FLOATS, 15, 16, o.inst_cells);
   }
 }
 
