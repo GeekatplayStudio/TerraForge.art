@@ -76,6 +76,10 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         if (act.contains("margin_m")) o.ground_margin = std::max(act["margin_m"].get<float>(), 0.f) / tile_m;
         if (act.contains("blend_m")) o.ground_blend = std::max(act["blend_m"].get<float>(), 0.f) / tile_m;
         if (act.contains("sink_m")) o.ground_sink = std::max(act["sink_m"].get<float>(), 0.f) / hm_m;
+        // How far the ground may travel to meet it. Absent leaves the
+        // default, which is unlimited and is how it behaved before.
+        if (act.contains("lift_m")) o.ground_lift = std::max(act["lift_m"].get<float>(), 0.f) / hm_m;
+        if (act.contains("dig_m")) o.ground_dig = std::max(act["dig_m"].get<float>(), 0.f) / hm_m;
         ++applied;
         if (!want.empty()) break;
       }
@@ -113,7 +117,8 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       ++applied;
     } else if (op == "add_primitive") {
       std::string kind = act.value("kind", std::string("cube"));
-      int idx = scene_add_primitive(kind, act.value("name", std::string()));
+      int idx = scene_add_primitive(kind, act.value("name", std::string()),
+                                    act.value("detail", 24));
       if (idx < 0) {
         err = "unknown primitive '" + kind +
               "' (cube, sphere, plane, cylinder, cone)";

@@ -384,9 +384,13 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
     },
     "studio_add_primitive": {
         "description": "Add a built-in mesh: cube, sphere, plane, cylinder "
-                       "or cone. Fields: kind, name, position, scale, color.",
+                       "or cone. Fields: kind, name, position, scale, color, "
+                       "and detail (3..512) - the segment count round a round "
+                       "primitive and the grid size across a flat one. Raise "
+                       "detail before putting a displacement material on it: "
+                       "a displacement can only move vertices that exist.",
         "params": {"kind": "str", "name": "str", "position": "list",
-                   "scale": "float", "color": "list"},
+                   "scale": "float", "color": "list", "detail": "int"},
     },
 }
 

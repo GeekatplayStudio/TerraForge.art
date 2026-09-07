@@ -357,7 +357,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       o.scatter_species = jo.value("scatter_species", -1);
       std::string err;
       if (o.path.rfind("primitive:", 0) == 0 &&
-          scene_primitive_verts(o.path.substr(10), o.verts)) {
+          scene_primitive_verts(o.path.substr(10), o.verts, o.primitive_detail)) {
         // a built-in primitive regenerates from its kind, no file needed
       } else if (o.path.empty() || !scene_load_mesh(o.path, o, err)) {
         // The geometry is gone but the object is not: its place in the scene,

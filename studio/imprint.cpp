@@ -97,7 +97,9 @@ std::string footprints_text(const SceneState &sc, float hs, bool &any) {
     Footprint f = imprint_footprint(o, hs);
     if (!f.valid()) continue;
     any = true;
-    text += imprint_footprint_line(f, o.ground_sink, o.ground_margin, o.ground_blend);
+    text += imprint_footprint_line(f, o.ground_sink, o.ground_margin,
+                                    o.ground_blend, o.ground_lift,
+                                    o.ground_dig);
   }
   return text;
 }

@@ -115,6 +115,30 @@ void transform_ui(App &a, SceneObject &o) {
   // the deformers for a mesh, and this object's own gizmo switch. The same
   // buttons are in the left tool column; here they sit beside the numbers
   // they drive.
+  // Built-in primitives can be rebuilt at any resolution. They used to be
+  // fixed at 24 segments, which is a sphere whose facets you can count as
+  // soon as it fills any part of the frame - and which has nowhere near
+  // enough vertices for a displacement material to have anything to move.
+  if (o.type == SceneObject::Mesh && o.path.rfind("primitive:", 0) == 0 &&
+      prop_filter_match("Resolution")) {
+    ImGui::SeparatorText("Resolution");
+    int detail = o.primitive_detail;
+    if (ImGui::SliderInt("Segments", &detail, 3, 512)) {
+      detail = std::clamp(detail, 3, 512);
+      if (detail != o.primitive_detail &&
+          scene_primitive_verts(o.path.substr(10), o.verts, detail)) {
+        o.primitive_detail = detail;
+        o.vert_count = (int)(o.verts.size() / 6);
+        o.gpu_dirty = true;
+      }
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How finely the shape is built: segments round a round\n"
+                        "one, grid squares across a flat one. Raise it before\n"
+                        "putting a displacement material on the object - a\n"
+                        "displacement can only move vertices that are there.");
+    ImGui::TextDisabled("%d triangles", o.vert_count / 3);
+  }
   ImGui::SeparatorText("Transform tool");
   gizmo_transform_tools();
   if (o.type == SceneObject::Mesh) {
@@ -159,32 +183,83 @@ void ground_ui(App &a, SceneObject &o) {
                       "Drag it up or down to set how far above or below the ground\n"
                       "it sits; the ground rises or dips to meet it.");
   const float m = std::max(render_settings().height_scale, 1e-5f) * render_settings().terrain_size_m;
+  const float tile_m = render_settings().terrain_size_m;
+  // Drag speeds scaled to the world, not to a number somebody typed once.
+  // A flat margin whose slider moves 0.1 m per pixel needs five thousand
+  // pixels of dragging to reach 500 m on a 5 km tile, which is why these
+  // controls read as though they had no range: they had the range and no
+  // way to get there.
+  const float dh = std::max(m * 0.002f, 0.01f);   // heights
+  const float dt = std::max(tile_m * 0.002f, 0.01f); // distances across the tile
+
   float off_m = o.ground_offset * m;
-  if (ImGui::DragFloat("Above ground", &off_m, 0.5f, -5000.f, 5000.f, "%.1f m"))
+  if (ImGui::DragFloat("Height over surface", &off_m, dh, -1e6f, 1e6f, "%.2f m"))
     o.ground_offset = off_m / m;
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Negative sinks the object into a hollow, positive lifts it\n"
-                      "onto a mound. Zero rests the base on the natural ground.");
-  const float tile_m = render_settings().terrain_size_m;
+    ImGui::SetTooltip("Where the object sits relative to the ground under it.\n"
+                      "Zero rests its base on the natural surface; negative\n"
+                      "puts it below, positive above. Whether the ground comes\n"
+                      "with it is the next two settings' business.");
   float margin_m = o.ground_margin * tile_m;
-  if (ImGui::DragFloat("Flat margin", &margin_m, 0.1f, 0.f, 10000.f, "%.2f m"))
+  if (ImGui::DragFloat("Flat margin", &margin_m, dt, 0.f, 1e6f, "%.2f m"))
     o.ground_margin = std::max(margin_m, 0.f) / tile_m;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How far past the base's walls the flat patch reaches -\n"
-                      "the ground under the whole base, and a little around it.");
+                      "the ground under the whole base, and a little around it.\n"
+                      "Widen it for a terrace, a courtyard, a road bed.");
   float blend_m = o.ground_blend * tile_m;
-  if (ImGui::DragFloat("Blend distance", &blend_m, 0.1f, 0.f, 100000.f, blend_m > 0.f ? "%.2f m" : "auto"))
+  if (ImGui::DragFloat("Blend distance", &blend_m, dt, 0.f, 1e6f, blend_m > 0.f ? "%.2f m" : "auto"))
     o.ground_blend = std::max(blend_m, 0.f) / tile_m;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How far around the object the ground responds. Zero lets the\n"
                       "TerrainImprint node choose a multiple of the footprint's size.");
   float sink_m = o.ground_sink * m;
-  if (ImGui::DragFloat("May sink", &sink_m, 0.05f, 0.f, 10000.f, "%.2f m"))
+  if (ImGui::DragFloat("May sink", &sink_m, dh, 0.f, 1e6f, "%.2f m"))
     o.ground_sink = std::max(sink_m, 0.f) / m;
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("How deep the object may sit in the ground before the ground is\n"
-                      "dug out under it. A boulder half buried keeps the slope it sits in;\n"
-                      "zero makes the ground exactly flat at the base.");
+    ImGui::SetTooltip("A dead band: the ground is left alone while the object sits\n"
+                      "no deeper than this into it. A boulder half buried keeps the\n"
+                      "slope it settled into; zero makes the ground meet the base\n"
+                      "exactly.");
+
+  // How far the ground is allowed to travel to meet the object at all. This
+  // is what makes "put it where I said" possible: with both at zero the
+  // object holds its height and the terrain simply passes through it.
+  ImGui::Separator();
+  const float BIG = 1e8f;
+  bool free_lift = o.ground_lift >= BIG, free_dig = o.ground_dig >= BIG;
+  float lift_m = free_lift ? 0.f : o.ground_lift * m;
+  float dig_m = free_dig ? 0.f : o.ground_dig * m;
+
+  if (studio::Checkbox("Ground may rise to meet it", &free_lift))
+    o.ground_lift = free_lift ? 1e9f : std::max(lift_m, 0.f) / m;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("On: lifting the object raises a mound under it.\n"
+                      "Off, or limited below: the object hangs in the air where\n"
+                      "you put it - an arch, a bridge deck, a boulder perched on\n"
+                      "a ledge.");
+  if (!free_lift) {
+    if (ImGui::DragFloat("  Rise at most", &lift_m, dh, 0.f, 1e6f, "%.2f m"))
+      o.ground_lift = std::max(lift_m, 0.f) / m;
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The mound reaches this far up and no further. Past it the\n"
+                        "object floats and the ground keeps its own shape.");
+  }
+  if (studio::Checkbox("Ground may dig out under it", &free_dig))
+    o.ground_dig = free_dig ? 1e9f : std::max(dig_m, 0.f) / m;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("On: lowering the object hollows the ground out around it.\n"
+                      "Off, or limited below: the object stays buried where you put\n"
+                      "it and the ground closes over it - a half-sunk ruin, a rock\n"
+                      "with only its cap showing.");
+  if (!free_dig) {
+    if (ImGui::DragFloat("  Dig at most", &dig_m, dh, 0.f, 1e6f, "%.2f m"))
+      o.ground_dig = std::max(dig_m, 0.f) / m;
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The hollow reaches this far down and no further. Past it\n"
+                        "the object is simply buried.");
+  }
+  ImGui::Separator();
   // the node's settings, right here where the object is
   std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
   gpx::Node *node = nullptr;

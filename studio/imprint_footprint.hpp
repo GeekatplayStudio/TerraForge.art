@@ -31,7 +31,8 @@ Footprint imprint_footprint(const SceneObject &o, float height_scale, float band
 //   "base sink margin blend n x0 z0 x1 z1 ..."
 // base and sink in heightmap units, margin and blend in tile fractions
 // (blend <= 0 lets the node choose from the footprint's radius).
-std::string imprint_footprint_line(const Footprint &f, float sink, float margin, float blend);
+std::string imprint_footprint_line(const Footprint &f, float sink, float margin,
+                                   float blend, float lift, float dig);
 
 // Andrew's monotone chain; points in, hull out (counter-clockwise). Exposed
 // for the tests.

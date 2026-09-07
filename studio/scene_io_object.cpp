@@ -35,6 +35,11 @@ void object_transform_to_json(json &jo, const SceneObject &o) {
   if (o.ground_margin != 0.f) jo["ground_margin"] = o.ground_margin;
   if (o.ground_blend != 0.f) jo["ground_blend"] = o.ground_blend;
   if (o.ground_sink != 0.f) jo["ground_sink"] = o.ground_sink;
+  // Written only when limited, so a scene that never touched them stays
+  // byte-identical and reads back with the unlimited default.
+  if (o.primitive_detail != 24) jo["primitive_detail"] = o.primitive_detail;
+  if (o.ground_lift < 1e8f) jo["ground_lift"] = o.ground_lift;
+  if (o.ground_dig < 1e8f) jo["ground_dig"] = o.ground_dig;
   if (!o.deform.identity()) {
     jo["twist"] = v3(o.deform.twist);
     jo["bend"] = o.deform.bend;
@@ -64,6 +69,9 @@ void object_transform_from_json(const json &jo, SceneObject &o) {
   o.ground_margin = jo.value("ground_margin", 0.f);
   o.ground_blend = jo.value("ground_blend", 0.f);
   o.ground_sink = jo.value("ground_sink", 0.f);
+  o.primitive_detail = jo.value("primitive_detail", 24);
+  o.ground_lift = jo.value("ground_lift", 1e9f);
+  o.ground_dig = jo.value("ground_dig", 1e9f);
   if (jo.contains("twist")) v3_from(jo["twist"], o.deform.twist);
   o.deform.bend = jo.value("bend", 0.f);
   o.deform.bend_axis = jo.value("bend_axis", 0);

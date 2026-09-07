@@ -109,7 +109,7 @@ static void test_band_and_fallbacks() {
   Footprint b = imprint_footprint(box, 0.25f);
   CHECK(b.valid() && b.xz.size() == 8 && has_point(b, 0.4f, 0.4f), "no vertices: the bounding box's corners");
   // the line the node reads
-  std::string line = imprint_footprint_line(b, 0.01f, 0.002f, 0.f);
+  std::string line = imprint_footprint_line(b, 0.01f, 0.002f, 0.f, 1e9f, 1e9f);
   float base, sink, margin, blend; int n;
   CHECK(std::sscanf(line.c_str(), "%f %f %f %f %d", &base, &sink, &margin, &blend, &n) == 5 && n == 4 && near(sink, 0.01f) && near(margin, 0.002f), "the line carries base, sink, margin, blend and the point count");
 }
@@ -118,6 +118,89 @@ static void test_band_and_fallbacks() {
 // added, the natural ground is the result, the imprint is measured against
 // that natural ground (a boulder half-buried in the rocks stays put), and
 // nothing is applied twice.
+// An object may be placed at a height and stay there.
+//
+// It could not before: the mould's target was clamp(h, base, base + sink),
+// so lifting an object raised a mound to meet it and lowering it dug a pit
+// to follow it. The object was always on the surface, because the surface
+// always came along - which made "put it two metres up" impossible to
+// express, and an arch, a bridge deck or a half-buried ruin impossible to
+// place.
+//
+// The line's trailing lift and dig cap how far the ground may travel. Absent
+// they are unlimited, which is exactly the old behaviour, and the first case
+// here is what proves that.
+static void test_ground_may_be_told_to_stay_put() {
+  std::printf("imprint: lift and dig limits...\n");
+  // flat ground at 0.5, a square base at 0.8 - the object floats 0.3 above
+  const char *hull = "4 0.4 0.4 0.6 0.4 0.6 0.6 0.4 0.6";
+  auto run = [&](const std::string &line) {
+    gpx::Heightmap g(64, 64);
+    for (float &v : g.v) v = 0.5f;
+    gpx::ImprintParams prm;
+    prm.retain = 0.f;
+    gpx::imprint_apply(g, line, prm, nullptr);
+    return g;
+  };
+
+  // no limits given: the ground rises to meet it, as it always did
+  {
+    gpx::Heightmap g = run(std::string("0.8 0 0 0.05 ") + hull + "\n");
+    CHECK(near(g.at(32, 32), 0.8f),
+          "with no limit the ground still rises to a floating base");
+  }
+  // lift 0: the object hangs there and the ground keeps its own height
+  {
+    gpx::Heightmap g = run(std::string("0.8 0 0 0.05 ") + hull + " 0 0\n");
+    CHECK(near(g.at(32, 32), 0.5f),
+          "lift 0 leaves the ground alone under a floating object, got " +
+              std::to_string(g.at(32, 32)));
+  }
+  // lift 0.1: it comes a tenth of the way and stops
+  {
+    gpx::Heightmap g = run(std::string("0.8 0 0 0.05 ") + hull + " 0.1 0\n");
+    CHECK(near(g.at(32, 32), 0.6f),
+          "lift 0.1 raises the ground by exactly that, got " +
+              std::to_string(g.at(32, 32)));
+  }
+
+  // and the other direction: a base *below* the ground
+  {
+    // base 0.2 under ground at 0.5 - the object is buried by 0.3
+    gpx::Heightmap g = run(std::string("0.2 0 0 0.05 ") + hull + "\n");
+    CHECK(near(g.at(32, 32), 0.2f),
+          "with no limit the ground still digs out to a sunken base");
+  }
+  {
+    gpx::Heightmap g = run(std::string("0.2 0 0 0.05 ") + hull + " 0 0\n");
+    CHECK(near(g.at(32, 32), 0.5f),
+          "dig 0 leaves the ground closed over a buried object, got " +
+              std::to_string(g.at(32, 32)));
+  }
+  {
+    gpx::Heightmap g = run(std::string("0.2 0 0 0.05 ") + hull + " 0 0.1\n");
+    CHECK(near(g.at(32, 32), 0.4f),
+          "dig 0.1 hollows by exactly that, got " +
+              std::to_string(g.at(32, 32)));
+  }
+
+  // the two are independent: a mound may be forbidden while digging is not
+  {
+    gpx::Heightmap g = run(std::string("0.8 0 0 0.05 ") + hull + " 0 9\n");
+    CHECK(near(g.at(32, 32), 0.5f), "lift 0 with dig free still does not lift");
+    gpx::Heightmap d = run(std::string("0.2 0 0 0.05 ") + hull + " 0 9\n");
+    CHECK(near(d.at(32, 32), 0.2f), "and digging still digs");
+  }
+
+  // sink is unchanged: a dead band in which nothing moves at all
+  {
+    // base 0.45, sink 0.1: ground at 0.5 is inside [0.45, 0.55], left alone
+    gpx::Heightmap g = run(std::string("0.45 0.1 0 0.05 ") + hull + " 0 0\n");
+    CHECK(near(g.at(32, 32), 0.5f),
+          "inside the sink band the ground is untouched");
+  }
+}
+
 static void test_surface_features() {
   std::printf("imprint: surface features after placement...\n");
   gpx::Heightmap ground(64, 64);
@@ -150,6 +233,7 @@ int test_imprint_run() {
   test_hull();
   test_cube_footprint();
   test_band_and_fallbacks();
+  test_ground_may_be_told_to_stay_put();
   test_surface_features();
   return g_fail;
 }

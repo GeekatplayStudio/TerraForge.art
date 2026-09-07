@@ -322,12 +322,20 @@ MCP_TOOLS = {
     },
     "studio_set_ground": {
         "description": "A grounded object's settings, in metres: lock (base "
-                       "follows the surface), offset_m above/below it, margin_m "
-                       "the flat patch reaches past the walls, blend_m how far "
-                       "the ground responds (0 = auto), sink_m how deep it may "
-                       "sit before the ground is dug out.",
+                       "follows the surface), offset_m the height over the "
+                       "surface (negative for below it), margin_m the flat "
+                       "patch past the walls, blend_m how far the ground "
+                       "responds (0 = auto), sink_m a dead band before "
+                       "digging starts. lift_m and dig_m cap how far the "
+                       "ground may travel to meet the object - set both to 0 "
+                       "and it holds the height you gave it, hanging in the "
+                       "air or buried with the ground closed over it, which "
+                       "is how an arch, a bridge deck or a half-sunk ruin is "
+                       "placed. Omit them for the unlimited default, where "
+                       "the ground always follows.",
         "params": {"object": "str", "lock": "bool", "offset_m": "float",
-                   "margin_m": "float", "blend_m": "float", "sink_m": "float"},
+                   "margin_m": "float", "blend_m": "float", "sink_m": "float",
+                   "lift_m": "float", "dig_m": "float"},
     },
     "studio_graph": {
         "description": "Merge a node-graph spec (terrain or material) into the "

@@ -34,6 +34,10 @@ namespace {
 struct Footprint {
   std::vector<float> xz; // hull, counter-clockwise
   float base = 0.f, sink = 0.f, margin = 0.f, blend = 0.f;
+  // How far the ground may travel to meet this object. Huge by
+  // default, which is the behaviour before they existed; zero lets
+  // the object float or stay buried while the ground ignores it.
+  float lift = 1e30f, dig = 1e30f;
   float radius = 0.f;                   // sqrt(area / pi)
   float x0 = 0, z0 = 0, x1 = 0, z1 = 0; // bounds, margin and blend included
   // signed distance to the polygon: negative inside
@@ -87,6 +91,13 @@ std::vector<Footprint> parse_footprints(const std::string &text, float width_mul
       A = -A;
     }
     f.radius = (float)std::sqrt(0.5 * A / 3.14159265358979);
+    // Trailing, so a line written before these existed still parses: the
+    // read simply fails and the defaults stand.
+    float lift = 0, dig = 0;
+    if (ls >> lift >> dig) {
+      f.lift = std::max(lift, 0.f);
+      f.dig = std::max(dig, 0.f);
+    }
     f.margin = std::max(f.margin, 0.f);
     f.sink = std::max(f.sink, 0.f);
     if (f.blend <= 0.f) f.blend = width_mult * std::max(f.radius, 1e-4f);
@@ -181,10 +192,30 @@ void imprint_apply(Heightmap &ground, const std::string &footprints, const Impri
           if (w > best_w) {
             best_w = w;
             best_inside = inside;
-            // the ground may keep its height while the object sits no
-            // deeper than `sink` into it; below the base it rises to meet
-            // it, above base + sink it is dug down
-            target = std::clamp(h, f.base, f.base + f.sink);
+            // Where the ground goes to meet the object.
+            //
+            // It used to be clamp(h, base, base + sink), and that clamp is
+            // why an object could not be placed at a chosen height at all:
+            // lift it and the ground rose with it into a mound, lower it and
+            // the ground dug itself out into a pit. The object was always on
+            // the surface because the surface always came along.
+            //
+            // Now the ground is *allowed* to move, up to a distance the
+            // object sets, and past that the object simply floats or is
+            // buried. `lift` 0 leaves a hovering object hovering; `dig` 0
+            // leaves a sunken one sunk, with the ground closing over it. The
+            // defaults are effectively unlimited, which is the old
+            // behaviour exactly.
+            //
+            // `sink` keeps its meaning: a dead band in which the ground is
+            // not touched at all, so a boulder settled into a slope keeps
+            // the slope it settled into.
+            if (h < f.base)
+              target = std::min(f.base, h + f.lift);
+            else if (h > f.base + f.sink)
+              target = std::max(f.base + f.sink, h - f.dig);
+            else
+              target = h;
           }
         }
         if (best_w <= 0.f) continue;
@@ -233,7 +264,7 @@ REGISTER_NODE(
           .tooltip = "Written by the studio from the objects placed on the\n"
                      "terrain (Properties > Ground). One per line: base sink\n"
                      "margin blend, then the base's convex hull.";
-      add_float(n.attrs, "width", "Blend width", 1.5f, 0.f, 6.f, "Imprint")
+      add_float(n.attrs, "width", "Blend width", 1.5f, 0.f, 64.f, "Imprint")
           .tooltip = "How far around an object the ground responds, as a\n"
                      "multiple of the footprint's radius - for objects that\n"
                      "do not set their own blend distance.";

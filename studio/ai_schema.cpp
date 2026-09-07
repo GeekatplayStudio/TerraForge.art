@@ -66,7 +66,10 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"add_light","name":"Lantern","position":[x,y,z],"color":[r,g,b],
    "intensity":2.0,"reach":0.4}   (a point light; set_light edits by name)
 - {"op":"add_primitive","kind":"cube"|"sphere"|"plane"|"cylinder"|"cone",
-   "name":"Box","position":[x,y,z],"scale":0.1,"color":[r,g,b]}
+   "name":"Box","position":[x,y,z],"scale":0.1,"color":[r,g,b],"detail":24}
+   (detail 3..512 is the segment count round a round primitive and the grid
+   size across a flat one; raise it before putting a displacement material
+   on the object, since a displacement can only move vertices that exist)
 - {"op":"import_object","path":"C:/models/rock.obj","name":"Rock",
    "position":[x,y,z],"scale":0.1}
 - {"op":"set_scatter","object":"Rock","node":"ScatterPoints","size":0.5,
@@ -82,8 +85,14 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"place_on_terrain","object":"House"}  (the object stands on the terrain
    and the ground moulds to its base through a TerrainImprint node)
 - {"op":"set_ground","object":"House","lock":true,"offset_m":0,"margin_m":0.5,
-   "blend_m":6,"sink_m":0.3}  (flat margin past the walls, blend distance
-   around it, how deep it may sit before the ground is dug out)
+   "blend_m":6,"sink_m":0.3,"lift_m":0,"dig_m":0}
+   (offset_m is the height over the surface, negative for below it. margin_m
+   is the flat patch past the walls, blend_m how far the ground responds,
+   sink_m a dead band before digging starts. lift_m and dig_m cap how far the
+   ground may travel to meet the object: both 0 and it holds the height you
+   gave it - hanging in the air, or buried with the ground closed over it -
+   which is how you get an arch, a bridge deck or a half-sunk ruin. Omit them
+   for the old unlimited behaviour, where the ground always follows)
 - {"op":"find_nodes","query":"rocks","limit":8}
    (WHICH node does the thing you are describing. Searches by meaning, not
    spelling: "rocks" finds the stone nodes, "wear the mountains down" finds

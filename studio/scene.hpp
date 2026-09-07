@@ -164,6 +164,17 @@ struct SceneObject {
   float ground_margin = 0.f;
   float ground_blend = 0.f;
   float ground_sink = 0.f;
+  // How far the ground is allowed to travel to meet the object, in
+  // heightmap units. Effectively unlimited by default, which is how it
+  // behaved before these existed. Set either to zero and the object keeps
+  // the height you gave it: `ground_lift` 0 leaves it hovering rather than
+  // raising a mound under it, `ground_dig` 0 leaves it buried rather than
+  // hollowing the ground out around it.
+  // Built-in primitives only: how finely the shape is tessellated, so it
+  // can carry a displacement material rather than read as a facet count.
+  int primitive_detail = 24;
+  float ground_lift = 1e9f;
+  float ground_dig = 1e9f;
   // What the driver node last handed this object (its transform attributes,
   // as the node had them). While the node still says the same, the object's
   // own edits - a gizmo drag, a typed value, the ground lock - are kept and
@@ -290,8 +301,12 @@ void scene_init_builtins();
 // normals); shared by import and by scene reload
 // built-in primitives (scene_primitives.cpp): cube, sphere, plane, cylinder,
 // cone; recorded as "primitive:<kind>" so saved scenes regenerate them
-bool scene_primitive_verts(const std::string &kind, std::vector<float> &verts);
-int scene_add_primitive(const std::string &kind, const std::string &name);
+// `detail` is the segment count round a round primitive's equator, and
+// the grid size of a flat one. 24 is what these were fixed at.
+bool scene_primitive_verts(const std::string &kind, std::vector<float> &verts,
+                           int detail = 24);
+int scene_add_primitive(const std::string &kind, const std::string &name,
+                        int detail = 24);
 int scene_add_light(const std::string &name);
 // Load any model file (OBJ, FBX, glTF/GLB, STL, PLY, OFF) into the object:
 // geometry, uvs, materials and their pictures. Keeps the object's transform.

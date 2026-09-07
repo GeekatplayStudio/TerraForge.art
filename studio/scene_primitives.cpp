@@ -4,6 +4,7 @@
 // prop, and records a "primitive:<kind>" pseudo-path so a saved scene can
 // regenerate it without any file on disk.
 #include "scene.hpp"
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -31,9 +32,16 @@ void quad(std::vector<float> &v, const float *a, const float *b,
 
 } // namespace
 
-bool scene_primitive_verts(const std::string &kind, std::vector<float> &v) {
+bool scene_primitive_verts(const std::string &kind, std::vector<float> &v,
+                           int detail) {
   v.clear();
-  const int N = 24; // segments for the round ones
+  // `detail` is the segment count round the equator. It used to be a fixed
+  // 24 with 16 rings, which is a sphere you can count the facets on the
+  // moment it fills any part of the frame - and the reason to have it low
+  // was never measured, it was just never raised. A sphere at 256 is 130k
+  // triangles, which the renderer draws without noticing.
+  const int N = std::clamp(detail, 3, 512);
+  const int R = std::max(2, N / 2); // rings: half the segments reads round
   if (kind == "cube") {
     float p[8][3];
     for (int i = 0; i < 8; ++i) {
@@ -50,13 +58,20 @@ bool scene_primitive_verts(const std::string &kind, std::vector<float> &v) {
     return true;
   }
   if (kind == "plane") {
-    float a[3] = {-0.5f, 0, -0.5f}, b[3] = {0.5f, 0, -0.5f},
-          c[3] = {0.5f, 0, 0.5f}, d[3] = {-0.5f, 0, 0.5f};
-    quad(v, a, d, c, b);
+    // Subdivided, not a single quad. A plane is the natural thing to put a
+    // displacement material on, and a displacement needs vertices to move.
+    const int G = std::max(1, N / 2);
+    for (int j = 0; j < G; ++j)
+      for (int i = 0; i < G; ++i) {
+        const float x0 = -0.5f + (float)i / G, x1 = -0.5f + (float)(i + 1) / G;
+        const float z0 = -0.5f + (float)j / G, z1 = -0.5f + (float)(j + 1) / G;
+        float a[3] = {x0, 0, z0}, b[3] = {x1, 0, z0},
+              c[3] = {x1, 0, z1}, d[3] = {x0, 0, z1};
+        quad(v, a, d, c, b);
+      }
     return true;
   }
   if (kind == "sphere") {
-    const int R = 16;
     auto at = [&](int ring, int seg, float *out) {
       float th = 3.14159265f * ring / R;
       float ph = 6.2831853f * seg / N;
@@ -98,13 +113,15 @@ bool scene_primitive_verts(const std::string &kind, std::vector<float> &v) {
   return false;
 }
 
-int scene_add_primitive(const std::string &kind, const std::string &name) {
+int scene_add_primitive(const std::string &kind, const std::string &name,
+                        int detail) {
   std::vector<float> verts;
-  if (!scene_primitive_verts(kind, verts)) return -1;
+  if (!scene_primitive_verts(kind, verts, detail)) return -1;
   SceneState &s = scene();
   SceneObject o;
   o.type = SceneObject::Mesh;
   o.path = "primitive:" + kind;
+  o.primitive_detail = detail;
   o.name = name.empty()
                ? (char)std::toupper((unsigned char)kind[0]) + kind.substr(1)
                : name;
