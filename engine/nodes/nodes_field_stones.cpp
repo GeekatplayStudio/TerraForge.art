@@ -18,6 +18,7 @@
 #include "gpx/node_helpers.hpp"
 #include "gpx/stones.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace gpx {
 
@@ -46,6 +47,10 @@ stones::Params read(const Node &n) {
   p.facet = n.attrs.get_f("facet", 0.55f);
   p.bumpy = n.attrs.get_f("bumpy", 0.4f);
   p.variation = n.attrs.get_f("variation", 0.6f);
+  p.height_var = n.attrs.get_f("height_var", 0.5f);
+  // One pow here, on the CPU, once per evaluation - rather than one in
+  // the shader per octave per cell per pixel.
+  p.size_step = std::pow(2.f, -n.attrs.get_f("size_mix", 0.f));
   p.cluster = n.attrs.get_f("cluster", 0.5f);
   // a drift is given in metres and held in cells, because the cell is the
   // stone: "drifts about 2 m across" survives a change of stone size
@@ -94,6 +99,18 @@ REGISTER_NODE(
                      "to end with no bare earth left between.";
       add_float(n.attrs, "tallness", "Tallness", 0.6f, 0.05f, 2.f, "Stones")
           .tooltip = "A stone's height as a fraction of its radius.";
+      add_float(n.attrs, "height_var", "Height variation", 0.5f, 0.f, 1.f,
+                "Stones")
+          .tooltip = "How much stones differ in height from one another,\n"
+                     "about the average. The average is unchanged\n"
+                     "whatever this is, so widening the spread does not\n"
+                     "quietly raise or lower the whole field.";
+      add_float(n.attrs, "size_mix", "Size mix", 0.f, -1.f, 1.f, "Stones")
+          .tooltip = "Which sizes the field is actually made of, across the\n"
+                     "octaves it has. Below zero leans toward the large and\n"
+                     "the small become an accent; above zero the small take\n"
+                     "over and the large are the accent. 0 gives every size\n"
+                     "the same share, which is what it always did.";
       add_float(n.attrs, "spread", "Size variation", 0.7f, 0.f, 1.f, "Shape")
           .tooltip = "0: every stone the same size. 1: the power-law\n"
                      "spectrum a scree slope has - many small, a few large.";
@@ -206,6 +223,7 @@ std::string emit_stones(const Node &n, const glslgen::InputFn &in,
           ", " + f2s(sp.bury) + ", " + f2s(sp.tilt) + ", " + f2s(sp.spread) +
           ", " + f2s(sp.elongation) + ", " + f2s(sp.rough) + ", " +
           f2s(sp.facet) + ", " + f2s(sp.bumpy) + ", " + f2s(sp.variation) +
+          ", " + f2s(sp.height_var) + ", " + f2s(sp.size_step) +
           ", " + f2s(sp.cluster) + ", " + f2s(sp.cluster_cells) + ", " +
           std::to_string((unsigned)sp.seed) + "u, " + oct + ")");
   const char *lane = component == 0 ? ".x" : (component == 1 ? ".y" : ".z");

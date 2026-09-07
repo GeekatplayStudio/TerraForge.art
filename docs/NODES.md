@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 244 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 245 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -19,7 +19,7 @@ Every node in Geekatplay TerraForge — 244 across 32 categories. Generated from
 | [Field Input](#field-input) | 9 |
 | [Field Material](#field-material) | 1 |
 | [Field Math](#field-math) | 6 |
-| [Field Noise](#field-noise) | 4 |
+| [Field Noise](#field-noise) | 5 |
 | [Filter](#filter) | 23 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 3 |
@@ -1504,6 +1504,40 @@ Vector maths: length, dot, distance, normalize, cross, add, subtract, multiply, 
 
 ## Field Noise
 
+### FieldGrass
+
+A sward of grass - tufts, blades and bare ground - as a function, at any scale
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| position | in (optional) | field (vector) |
+| out | out | field (number) |
+| mask | out | field (number) |
+| shade | out | field (number) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Tuft size (m) | float, 0.004 to 20, default 0.12 | How far across one tuft of grass is, in metres. 0.12 is a clump of meadow grass, 0.03 is a lawn, 1 is tussock.  Below about a centimetre on a 5 km tile the tile's own coordinates run out of precision and the tufts go blocky. Shrink the terrain, not the grass. |
+| Blade height (m) | float, 0.002 to 20, default 0.16 | How tall the longest blades stand, in metres. Grass is taller than it is wide, which is most of what tells it apart from a field of small stones. |
+| Sizes | int, 1 to 5, default 3 | How many halvings of the tuft size to add, so how wide a range of sizes one sward holds - big clumps with finer grass filling between them. |
+| Amount | float, 0 to 1, default 0.85 | How much grass there is. Up to about three quarters it thins the sward; past that every cell holds a tuft and they grow into one another, so 1 closes it completely with no ground showing through. |
+| Seed | seed |  |
+| Pointedness | float, 0 to 1, default 0.6 | How sharply a tuft comes to a point. This is the one control that most decides whether the field reads as grass or as gravel: 0 gives domes, which is what a stone is, and no amount of blade detail rescues that. |
+| Blade relief | float, 0 to 1, default 0.7 | How strongly the individual blades show against the tuft they belong to. 0 is a smooth mound. |
+| Blade count | float, 0 to 1, default 0.5 | 0 a few broad blades, 1 many fine ones. |
+| Size variation | float, 0 to 1, default 0.55 | 0: every tuft the same size. 1: many small tufts and a few large, which is what a real sward has. |
+| Shape variation | float, 0 to 1, default 0.6 | How much tufts differ from one another. 0 shapes every tuft in the field alike, which is the look of a texture; 1 puts fine soft grass and coarse spiky clumps side by side. |
+| Height variation | float, 0 to 1, default 0.5 | How much tufts differ in height from one another, about the average. The average is unchanged whatever this is set to. |
+| Size mix | float, -1 to 1, default 0 | Which sizes the field is actually made of, across the octaves it has. Below zero leans toward the large and the small become an accent; above zero the small take over and the large are the accent. 0 gives every size the same share, which is what it always did. |
+| Wind | float, 0 to 1, default 0.35 | How far the blades lean. The whole field leans one way, which is the strongest single cue that what you are looking at is grass and not small stones - those each lean whichever way they fell. |
+| Wind direction | float, -180 to 180, default 0 | Which way the wind is blowing across the ground. |
+| Tall blades bend more | float, 0 to 1, default 0.5 | How much further the tall blades lean than the short ones. They do, so this is 0.5 rather than 0. |
+| Cluster / repel | float, -1 to 1, default 0.3 | Above zero the tufts gather into patches and are pulled together inside one; below zero they stand off from one another. The count is unchanged either way. |
+| Patch size (m) | float, 0.02 to 500, default 1.2 | How far across one patch of tufts is, in metres. |
+| Bare ground | float, 0 to 1, default 0.2 | How much ground is bare of grass altogether. Grass is not a carpet - it gives out where it is trodden, dry or shaded - and a sward that only ever thins a little reads as one. |
+| Bare patch size (m) | float, 0.05 to 2000, default 7 | How far across a bare patch is, in metres. |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the sizes above mean metres. |
+
 ### FieldNoise
 
 3D coherent noise — the basis of procedural terrain and texture
@@ -1559,6 +1593,8 @@ A field of stones - boulders, cobbles and gravel - as a function, at any scale
 | Sizes | int, 1 to 6, default 4 | How many halvings of the stone size to add, so how wide a range of sizes one field holds. 1 is a single size; 6 spans thirty-two to one, boulders down to grit. Distance takes octaves away again, so this is a ceiling, not a cost. |
 | Amount | float, 0 to 1, default 0.55 | How much stone there is. Up to about three quarters it thins the field; past that every cell holds a stone and they grow into one another, so 1 paves the ground end to end with no bare earth left between. |
 | Tallness | float, 0.05 to 2, default 0.6 | A stone's height as a fraction of its radius. |
+| Height variation | float, 0 to 1, default 0.5 | How much stones differ in height from one another, about the average. The average is unchanged whatever this is, so widening the spread does not quietly raise or lower the whole field. |
+| Size mix | float, -1 to 1, default 0 | Which sizes the field is actually made of, across the octaves it has. Below zero leans toward the large and the small become an accent; above zero the small take over and the large are the accent. 0 gives every size the same share, which is what it always did. |
 | Size variation | float, 0 to 1, default 0.7 | 0: every stone the same size. 1: the power-law spectrum a scree slope has - many small, a few large. |
 | Shape variation | float, 0 to 1, default 0.6 | How much stones differ from one another. 0 breaks, flattens and pits every stone in the field to exactly the same degree, which is the look of a texture; 1 puts rounded cobbles and shattered blocks side by side, the way real scree does. |
 | Flatten | float, 0 to 1, default 0.25 | Raises the top into a plateau while keeping the footprint: 0 boulders, 1 slabs. |

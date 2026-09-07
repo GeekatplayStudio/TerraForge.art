@@ -88,6 +88,8 @@ viewport:
 | **Shape variation** | How much stones differ *from one another*. 0 breaks, flattens and pits every stone to the same degree, which is the look of a texture; 1 puts rounded cobbles and shattered blocks side by side. |
 | **Cluster / repel** | Above zero, stones collect in drifts *and are pulled together inside a drift until they touch*. Below zero they push apart and stand off from one another. The count is unchanged either way. |
 | **Drift size (m)** | How far across one clump is. |
+| **Height variation** | How much stones differ in height from one another, about the average. The average is unchanged whatever this is, so widening the spread does not quietly raise or lower the whole field. |
+| **Size mix** | Which sizes the field is actually made of, across the octaves it has: below zero a boulder field with a little gravel, above zero gravel with the odd boulder. It is a geometric weight per octave, and the node computes it on the CPU so the shader never runs a `pow`. |
 
 **Clustering moves stones, it does not just count them.** Thinning a field
 by a slow noise says how many stones a patch of ground gets and nothing
@@ -220,4 +222,6 @@ it all from the API with `{"op":"verify_field_gpu"}`.
   fractal micro-relief has always worked - but a stone on the horizon of
   the terrain will not break its outline.
 - **Grass is not this node.** Blade-scale relief wants a different
-  function; near grass wants instances (see [ECOSYSTEM.md](ECOSYSTEM.md)).
+  function - see [GRASS.md](GRASS.md), which is this node's argument one
+  scale down and shares its lattice. Near grass wants instances (see
+  [ECOSYSTEM.md](ECOSYSTEM.md)).

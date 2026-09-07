@@ -107,7 +107,8 @@ vec3 gpxf_cluster_at(float gx, float gz, uint seed){
 vec3 gpxf_stones(vec2 xz, float cell, float density, float tallness,
                  float flatten, float bury, float tilt, float spread,
                  float elongation, float rough, float facet, float bumpy,
-                 float variation, float cluster, float cluster_cells,
+                 float variation, float height_var, float size_step,
+                 float cluster, float cluster_cells,
                  uint seed, int oct){
   float total = 0.0, cover = 0.0, tone = 0.0;
   float cs = max(cell, 1e-9);
@@ -115,6 +116,7 @@ vec3 gpxf_stones(vec2 xz, float cell, float density, float tallness,
   float chance = min(fill * (4.0/3.0), 1.0);
   float packt = clamp((fill - 0.75) * 4.0, 0.0, 1.0);
   float pack = 1.0 + 0.5 * packt;
+  float ow = 1.0;
   for (int o = 0; o < 6; ++o){
     if (o >= oct) break;
     uint oseed = seed + uint(o) * 7919u;
@@ -125,7 +127,7 @@ vec3 gpxf_stones(vec2 xz, float cell, float density, float tallness,
     for (int dx = -1; dx <= 1; ++dx){
       float cxi = ix + float(dx), czi = iz + float(dz);
       uint h = gpxf_hash_bits(vec3(cxi, 0.0, czi), oseed);
-      float local_density = chance;
+      float local_density = chance * ow;
       float cgx = 0.0, cgz = 0.0;
       if (cluster > 0.0){
         float inv_cc = 1.0 / max(cluster_cells, 1.0);
@@ -214,7 +216,8 @@ vec3 gpxf_stones(vec2 xz, float cell, float density, float tallness,
       float lean = (ex * lx * inv_ll + ez * lz * inv_ll) / rad;
       prof += tilt * lean * base * 0.5;
       float hv = float(h4 & 0x3fu) * (1.0/63.0);
-      float H = rad * cs * tallness * (0.6 + 0.8 * hv);
+      float tall = 1.0 + height_var * (hv - 0.5) * 1.6;
+      float H = rad * cs * tallness * tall;
       float hs = H * prof - bury * H;
       if (hs <= 0.0) continue;
       if (hs > total){
@@ -224,6 +227,123 @@ vec3 gpxf_stones(vec2 xz, float cell, float density, float tallness,
       cover = max(cover, min(base * 3.0, 1.0));
     }
     cs *= 0.5;
+    ow *= size_step;
+  }
+  return vec3(total, cover, tone);
+}
+// A sward of grass, mirroring gpx::grass::field (gpx/grass.hpp) line for
+// line. Returns (height, coverage, per-tuft shade). Built on the stones'
+// lattice and reusing gpxf_remix / gpxf_remix2 / gpxf_cluster_at above,
+// because the placement problem is the same one; what differs is the tuft.
+vec3 gpxf_grass(vec2 xz, float cell, float density, float height,
+                float sharp, float blade, float fineness, float wind,
+                float wind_x, float wind_z, float bend, float spread,
+                float variation, float height_var, float size_step,
+                float cluster, float cluster_cells,
+                float bare, float bare_cells, uint seed, int oct){
+  float total = 0.0, cover = 0.0, tone = 0.0;
+  float cs = max(cell, 1e-9);
+  float fill = clamp(density, 0.0, 1.0);
+  float chance = min(fill * (4.0/3.0), 1.0);
+  float packt = clamp((fill - 0.75) * 4.0, 0.0, 1.0);
+  float pack = 1.0 + 0.5 * packt;
+  float fn = clamp(fineness, 0.0, 1.0) * 2.0;
+  float w3 = max(0.0, 1.0 - fn);
+  float w5 = max(0.0, 1.0 - abs(fn - 1.0));
+  float w7 = max(0.0, fn - 1.0);
+  float wl = sqrt(wind_x * wind_x + wind_z * wind_z);
+  float inv_wl = wl > 1e-6 ? 1.0 / wl : 1.0;
+  float wx = wind_x * inv_wl, wz = wind_z * inv_wl;
+  float ow = 1.0;
+  for (int o = 0; o < 5; ++o){
+    if (o >= oct) break;
+    uint oseed = seed + uint(o) * 7919u;
+    float inv = 1.0 / cs;
+    float fx = xz.x * inv, fz = xz.y * inv;
+    float ix = floor(fx), iz = floor(fz);
+    for (int dz = -1; dz <= 1; ++dz)
+    for (int dx = -1; dx <= 1; ++dx){
+      float cxi = ix + float(dx), czi = iz + float(dz);
+      uint h = gpxf_hash_bits(vec3(cxi, 0.0, czi), oseed);
+      float local_density = chance * ow;
+      float cgx = 0.0, cgz = 0.0;
+      if (cluster > 0.0){
+        float inv_cc = 1.0 / max(cluster_cells, 1.0);
+        vec3 cn = gpxf_cluster_at(cxi * inv_cc, czi * inv_cc, oseed ^ 0x5bd1u);
+        cgx = cn.y; cgz = cn.z;
+        local_density *= 1.0 - cluster + cluster * cn.x * 2.0;
+      }
+      if (bare > 0.0){
+        float inv_bc = 1.0 / max(bare_cells, 1.0);
+        vec3 bn = gpxf_cluster_at(cxi * inv_bc, czi * inv_bc, oseed ^ 0x1a7du);
+        float open = clamp((bn.x - 0.35) * 3.0, 0.0, 1.0);
+        local_density *= 1.0 - bare + bare * open;
+      }
+      float exist = float(h & 0xfffu) * (1.0/4095.0);
+      if (exist > local_density) continue;
+      uint h2 = gpxf_hash_bits(vec3(cxi, 1.0, czi), oseed);
+      float ox = float((h >> 12u) & 0x3ffu) * (1.0/1023.0);
+      float oz = float((h >> 22u) & 0x3ffu) * (1.0/1023.0);
+      if (cluster > 0.0){
+        float tx = 0.5 + 0.5 * clamp(cgx * 2.0, -1.0, 1.0);
+        float tz = 0.5 + 0.5 * clamp(cgz * 2.0, -1.0, 1.0);
+        ox += (tx - ox) * cluster * 0.75;
+        oz += (tz - oz) * cluster * 0.75;
+      } else if (cluster < 0.0){
+        float k = 1.0 + cluster * 0.85;
+        ox = 0.5 + (ox - 0.5) * k;
+        oz = 0.5 + (oz - 0.5) * k;
+      }
+      float t = float(h2 & 0x3ffu) * (1.0/1023.0);
+      float sz = 1.0 - spread + spread * t * t * t;
+      sz += (1.0 - sz) * 0.5 * packt;
+      float rad = 0.5 * sz * pack;
+      uint h3 = gpxf_hash_bits(vec3(cxi, 2.0, czi), oseed);
+      float ddx = fx - (cxi + ox), ddz = fz - (czi + oz);
+      float rr = sqrt(ddx*ddx + ddz*ddz);
+      float r2 = (rr*rr) / (rad*rad);
+      if (r2 >= 1.0) continue;
+      float base = 1.0 - r2;
+      float inv_rr = rr > 1e-9 ? 1.0/rr : 0.0;
+      float c1 = ddx * inv_rr, s1 = ddz * inv_rr;
+      float c2 = c1*c1 - s1*s1, s2 = 2.0*c1*s1;
+      float c3 = c1*c2 - s1*s2, s3 = s1*c2 + c1*s2;
+      float c5 = c3*c2 - s3*s2, s5 = s3*c2 + c3*s2;
+      float c7 = c5*c2 - s5*s2, s7 = s5*c2 + c5*s2;
+      uint h4 = gpxf_remix(h2), h5 = gpxf_remix(h3), h6 = gpxf_remix2(h4);
+      float vA = float(h5 & 0xffu) * (1.0/255.0);
+      float vB = float(h6 & 0xffu) * (1.0/255.0);
+      float s_sharp = clamp(sharp * (1.0 - variation + variation * 2.0 * vA), 0.0, 1.0);
+      float s_blade = min(blade * (1.0 - variation + variation * 2.0 * vB), 1.0);
+      float e = 0.5 + s_sharp * 3.0;
+      float prof = pow(base, e);
+      if (blade > 0.0){
+        float q1 = float((h3 >> 30u) & 0x3u) * (2.0/3.0) - 1.0;
+        float q2 = float((h2 >> 30u) & 0x3u) * (2.0/3.0) - 1.0;
+        float aq = 1.0 - abs(q1);
+        float ripple = w3 * (s3 * aq + c3 * q1) +
+                       w5 * (s5 * aq + c5 * q1) +
+                       w7 * (s7 * (1.0 - abs(q2)) + c7 * q2);
+        prof *= 1.0 + s_blade * 0.55 * ripple * base * (1.0 - base) * 4.0;
+      }
+      float hv = float(h4 & 0x3fu) * (1.0/63.0);
+      float tall = 1.0 + height_var * (hv - 0.5) * 2.2;
+      if (wind > 0.0){
+        float along = (ddx * wx + ddz * wz) / rad;
+        float lean = wind * (1.0 - bend + bend * tall);
+        prof += lean * along * base * 0.5;
+      }
+      float H = rad * cs * height * tall;
+      float hs = H * prof;
+      if (hs <= 0.0) continue;
+      if (hs > total){
+        total = hs;
+        tone = float((h6 >> 8u) & 0xffffu) * (1.0/65535.0);
+      }
+      cover = max(cover, min(base * 3.0, 1.0));
+    }
+    cs *= 0.5;
+    ow *= size_step;
   }
   return vec3(total, cover, tone);
 }

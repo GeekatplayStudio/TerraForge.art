@@ -1,0 +1,32 @@
+{ "actions": [
+  { "op": "set_viewport", "shading": "textured", "use_albedo": true, "tessellation": true, "tess_pixels": 3, "tess_max": 64 },
+
+  { "op": "add_node", "type": "Constant", "x": 40, "y": 460, "alias": "base", "attrs": { "value": 0.5 } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "TerrainOutput", "to_port": "heightmap" },
+
+  { "op": "add_node", "type": "FieldGrass", "x": 340, "y": 460, "alias": "grass",
+    "attrs": { "tuft_m": 0.14, "blade_m": 0.18, "octaves": 3, "density": 0.9,
+               "sharp": 0.65, "blade": 0.75, "fineness": 0.55, "variation": 0.7,
+               "wind": 0.4, "wind_deg": 30, "bend": 0.6,
+               "cluster": 0.4, "cluster_m": 1.5, "bare": 0.25, "bare_m": 6.0 } },
+
+  { "op": "add_node", "type": "TerrainDisplacement", "x": 660, "y": 460, "alias": "disp", "attrs": { "strength": 1.0 } },
+  { "op": "connect", "from": "grass", "from_port": "out", "to": "disp", "to_port": "field" },
+
+  { "op": "add_node", "type": "FieldColorConstant", "x": 40, "y": 60,  "alias": "earth", "attrs": { "color": [0.24, 0.18, 0.11] } },
+  { "op": "add_node", "type": "FieldColorConstant", "x": 40, "y": 160, "alias": "green", "attrs": { "color": [0.16, 0.35, 0.10] } },
+  { "op": "add_node", "type": "FieldColorConstant", "x": 40, "y": 260, "alias": "dry",   "attrs": { "color": [0.52, 0.47, 0.20] } },
+
+  { "op": "add_node", "type": "FieldColorMix", "x": 340, "y": 160, "alias": "blade" },
+  { "op": "connect", "from": "green", "from_port": "out",   "to": "blade", "to_port": "a" },
+  { "op": "connect", "from": "dry",   "from_port": "out",   "to": "blade", "to_port": "b" },
+  { "op": "connect", "from": "grass", "from_port": "shade", "to": "blade", "to_port": "factor" },
+
+  { "op": "add_node", "type": "FieldColorMix", "x": 640, "y": 100, "alias": "ground" },
+  { "op": "connect", "from": "earth", "from_port": "out",  "to": "ground", "to_port": "a" },
+  { "op": "connect", "from": "blade", "from_port": "out",  "to": "ground", "to_port": "b" },
+  { "op": "connect", "from": "grass", "from_port": "mask", "to": "ground", "to_port": "factor" },
+
+  { "op": "add_node", "type": "TerrainSurface", "x": 940, "y": 100, "alias": "surface" },
+  { "op": "connect", "from": "ground", "from_port": "out", "to": "surface", "to_port": "color" }
+] }

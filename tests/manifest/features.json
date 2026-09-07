@@ -1411,6 +1411,14 @@
       "test_symbol": "test_scatter_lod"
     },
     {
+      "id": "field.grass",
+      "area": "engine",
+      "phase": "44",
+      "description": "FieldGrass: a sward of grass as a function of position, sized in metres, built on the stones' lattice but with what makes grass grass - tufts that come to a point rather than domes (the one control that decides grass from gravel), one wind direction for the whole field with the tall blades bending further, blades as an angular ripple whose count blends across three harmonics rather than looping over a count inside a per-pixel evaluation, and bare ground sharpened so it actually reaches zero; amount is a coverage target that closes the sward at 1, clustering gathers tufts into patches and pulls them together inside one, and out, mask and per-tuft shade outputs let a material colour each tuft; height variation and size mix on both grass and stones give per-octave and per-instance granularity, the size mix computed on the CPU so the shader never runs a pow",
+      "test_file": "test_nodes.cpp",
+      "test_symbol": "check_field_transpiles"
+    },
+    {
       "id": "terrain.shape",
       "area": "engine",
       "phase": "44",

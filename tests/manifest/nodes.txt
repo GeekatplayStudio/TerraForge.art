@@ -65,6 +65,7 @@ FieldCurve|Field Math
 FieldDisplace|Field Displace
 FieldDistribution|Field Material
 FieldGradient|Field Color
+FieldGrass|Field Noise
 FieldMath|Field Math
 FieldMix|Field Math
 FieldNoise|Field Noise
@@ -114,6 +115,7 @@ InfiniteTerrain|Scene
 KMeans|Mask
 KeyframeCurve|Animation
 Kuwahara|Filter
+Lake|Hydrology
 Landform|Primitive
 LensFlare|Light
 Levels|Material
@@ -223,6 +225,7 @@ TerrainMetrics|Analysis
 TerrainObject|Scene
 TerrainOutput|Export
 TerrainSculpt|Effect
+TerrainShape|Shape
 TerrainSurface|Export
 TerrainTexture|Texture
 TextureBlend|Material

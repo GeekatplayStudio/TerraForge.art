@@ -54,6 +54,12 @@ struct Params {
   float facet = 0.55f;     // flat broken faces cut into the form
   float bumpy = 0.4f;      // relief across a stone's own surface
   float variation = 0.6f;  // 0 every stone shaped alike .. 1 cobbles to blocks
+  float height_var = 0.5f; // spread of heights about the average, 0 all alike
+  // How the population is split between the big stones and the small. Each
+  // octave's density is multiplied by this again, so it is a geometric
+  // weighting across the size range; the node computes it from a -1..1 dial
+  // so the shader never runs a pow.
+  float size_step = 1.f;
   float cluster = 0.5f;    // -1 evenly spaced .. 0 scattered .. 1 heaped
   float cluster_cells = 14.f; // a drift is this many cells across
   uint32_t seed = 0;
@@ -123,6 +129,11 @@ inline void field(const Params &p, float x, float z, int oct, float &height,
   const float chance = std::min(fill * (4.f / 3.f), 1.f);
   const float packt = std::clamp((fill - 0.75f) * 4.f, 0.f, 1.f);
   const float pack = 1.f + 0.5f * packt;
+  // Which sizes the field is made of. Every octave's share is multiplied by
+  // this again, so it weights the whole size range geometrically: a boulder
+  // field with a little gravel, or gravel with the odd boulder in it, out of
+  // the same octaves.
+  float ow = 1.f;
   for (int o = 0; o < octaves; ++o) {
     const uint32_t oseed = p.seed + (uint32_t)o * 7919u;
     const float inv = 1.f / cs;
@@ -137,7 +148,7 @@ inline void field(const Params &p, float x, float z, int oct, float &height,
         // chance is modulated by a slow field over the cell lattice. The
         // mean is preserved, so raising the clustering rearranges a field
         // without thinning it.
-        float local_density = chance;
+        float local_density = chance * ow;
         float cgx = 0.f, cgz = 0.f;
         if (p.cluster > 0.f) {
           const float inv_cc = 1.f / std::max(p.cluster_cells, 1.f);
@@ -284,7 +295,12 @@ inline void field(const Params &p, float x, float z, int oct, float &height,
         // this stone's own height (its own bits: the old ones overlapped
         // the lean's, so tall stones leaned the same way)
         const float hv = (float)(h4 & 0x3fu) * (1.f / 63.f);
-        const float H = rad * cs * p.tallness * (0.6f + 0.8f * hv);
+        // The spread of heights about the average. 0.5 reproduces the old
+        // fixed 0.6..1.4, which is why it is the default: the mean is 1
+        // whatever this is set to, so widening the spread does not quietly
+        // raise or lower the whole field.
+        const float tall = 1.f + p.height_var * (hv - 0.5f) * 1.6f;
+        const float H = rad * cs * p.tallness * tall;
         const float hs = H * prof - p.bury * H;
         if (hs <= 0.f) continue;
         // stones meet in a crease rather than blending into one another
@@ -299,6 +315,7 @@ inline void field(const Params &p, float x, float z, int oct, float &height,
         cover = std::max(cover, std::min(base * 3.f, 1.f));
       }
     cs *= 0.5f;
+    ow *= p.size_step;
   }
   height = total;
   mask = cover;

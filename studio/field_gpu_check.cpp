@@ -435,6 +435,10 @@ std::string field_gpu_verify_all(App &a) {
         // the coverage remap: past three quarters the stones grow into one
         // another and the smallest are lifted, which is a different branch
         {"stones paving the ground", "density", 1.f},
+        {"stones all one height", "height_var", 0.f},
+        {"stones wildly varied heights", "height_var", 1.f},
+        {"stones leaning large", "size_mix", -1.f},
+        {"stones leaning small", "size_mix", 1.f},
         {"stones at the packing knee", "density", 0.75f},
     };
     for (const Case &c : cases) {
@@ -488,6 +492,83 @@ std::string field_gpu_verify_all(App &a) {
       n->attrs.find("size_m")->f = 1000.f;
       n->attrs.find("cluster_m")->f = 1600.f;
       run_port("stones shade", g, n, "shade");
+    }
+  }
+
+  // ---- grass ---------------------------------------------------------
+  // Same shape of test as the stones: every control gets a case, because a
+  // control with no case is a line of the mirror nobody is checking.
+  {
+    struct Case { const char *name; const char *key; float value; };
+    const Case cases[] = {
+        {"grass (defaults)", nullptr, 0.f},
+        {"grass thick", "density", 1.f},
+        {"grass sparse", "density", 0.2f},
+        {"grass domed (no point)", "sharp", 0.f},
+        {"grass needle sharp", "sharp", 1.f},
+        {"grass smooth tufts", "blade", 0.f},
+        {"grass strong blades", "blade", 1.f},
+        {"grass few broad blades", "fineness", 0.f},
+        {"grass many fine blades", "fineness", 1.f},
+        {"grass still air", "wind", 0.f},
+        {"grass gale", "wind", 1.f},
+        {"grass crosswind", "wind_deg", 90.f},
+        {"grass no extra bend", "bend", 0.f},
+        {"grass all bend", "bend", 1.f},
+        {"grass one size", "spread", 0.f},
+        {"grass all alike", "variation", 0.f},
+        {"grass every shape", "variation", 1.f},
+        {"grass scattered", "cluster", 0.f},
+        {"grass in patches", "cluster", 1.f},
+        {"grass pushed apart", "cluster", -1.f},
+        {"grass no bare ground", "bare", 0.f},
+        {"grass mostly bare", "bare", 1.f},
+        {"grass tall blades", "blade_m", 900.f},
+        {"grass all one height", "height_var", 0.f},
+        {"grass wildly varied heights", "height_var", 1.f},
+        {"grass leaning large", "size_mix", -1.f},
+        {"grass leaning small", "size_mix", 1.f},
+    };
+    for (const Case &c : cases) {
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldGrass");
+      // a tuft about a tenth of the sampled span, so the grid sees whole
+      // tufts and their edges rather than the inside of one
+      n->attrs.find("tuft_m")->f = 400.f;
+      n->attrs.find("blade_m")->f = 300.f;
+      n->attrs.find("size_m")->f = 1000.f;
+      n->attrs.find("cluster_m")->f = 1600.f;
+      n->attrs.find("bare_m")->f = 8000.f;
+      if (c.key) n->attrs.find(c.key)->f = c.value;
+      run(c.name, g, n);
+    }
+    {   // every octave, which is where the cell halving and reseeding live
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldGrass");
+      n->attrs.find("tuft_m")->f = 400.f;
+      // Without this the blades are a fraction of a millimetre against a
+      // 400 m tuft, every height is ~1e-6, and the case "agrees" because
+      // there is nothing there to disagree about.
+      n->attrs.find("blade_m")->f = 300.f;
+      n->attrs.find("size_m")->f = 1000.f;
+      n->attrs.find("cluster_m")->f = 1600.f;
+      n->attrs.find("bare_m")->f = 8000.f;
+      n->attrs.find("octaves")->i = 5;
+      run("grass x5 octaves", g, n);
+    }
+    {   // the other two outputs. The per-tuft shade is a step function, so
+        // it is the sharpest test that both sides pick the same tuft.
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldGrass");
+      n->attrs.find("tuft_m")->f = 400.f;
+      n->attrs.find("size_m")->f = 1000.f;
+      n->attrs.find("cluster_m")->f = 1600.f;
+      n->attrs.find("bare_m")->f = 8000.f;
+      n->attrs.find("octaves")->i = 1;
+      run_port("grass mask x1 octave (tight bar)", g, n, "mask");
+      n->attrs.find("octaves")->i = 3;
+      run_port_tol("grass mask x3 octaves", g, n, "mask", 6e-4f);
+      run_port("grass shade", g, n, "shade");
     }
   }
 

@@ -589,6 +589,14 @@ wanted his students to have.
   `examples/macros/stone_field_material.json` wires it in one go. CPU and
   GPU verified identical over 33 cases.
   [docs/STONE_FIELDS.md](docs/STONE_FIELDS.md).
+- **Grass that is a function, not a texture:** `FieldGrass` is the stones'
+  argument one scale down - a sward evaluated per vertex and per pixel, with
+  no resolution of its own. Tufts that come to a point rather than domes, a
+  wind that leans the whole field one way with the tall blades bending
+  further, blades as an angular ripple whose count blends across three
+  harmonics rather than looping, and bare ground that actually reaches zero.
+  Mask and per-tuft shade outputs so a material can colour each tuft.
+  [docs/GRASS.md](docs/GRASS.md).
 - **The shape of the ground, and the water on it:** `TerrainShape` gives
   the tile an outline - rectangle, rounded rectangle, round, diamond or
   your own mask - with a fractal rim that only ever eats inward, so the
