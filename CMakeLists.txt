@@ -136,6 +136,7 @@ set(ENGINE_SOURCES
     engine/mesh_repair.cpp
     engine/mesh_topology.cpp
     engine/node_graph.cpp
+    engine/node_names.cpp
     engine/node_graph_eval.cpp
     engine/field_glsl_emitters_convert.cpp
     engine/node.cpp
@@ -636,6 +637,10 @@ target_link_libraries(ecosystem_tests PRIVATE
 
 # The shape of the ground and the water on it: TerrainShape's outlines and
 # three-part edge blend, and the Lake object's radius, shore and bed.
+add_executable(node_name_tests tests/cpp/test_node_names.cpp)
+target_link_libraries(node_name_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(shape_lake_tests tests/cpp/test_shape_lake.cpp)
 target_link_libraries(shape_lake_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -741,6 +746,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AnimTests COMMAND anim_tests)
 add_test(NAME EcosystemTests COMMAND ecosystem_tests)
 add_test(NAME ShapeLakeTests COMMAND shape_lake_tests)
+add_test(NAME NodeNameTests COMMAND node_name_tests)
 add_test(NAME I18nTests COMMAND i18n_tests)
 add_test(NAME AllTests COMMAND nodeterrain_tests)
 add_test(NAME EngineTests COMMAND engine_tests)

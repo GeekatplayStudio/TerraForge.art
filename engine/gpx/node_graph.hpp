@@ -146,6 +146,20 @@ struct NodeDef {
   std::function<void(Node &)> compute;
 };
 
+// What a node is called on screen, as against what it is called in a file.
+//
+// `type` is identity: it is written into every saved project and the
+// regression lock forbids ever removing or renaming one. That makes it the
+// wrong thing to show a person - it is a C++ identifier, and it reads like
+// one ("AOFromHeight", "TerrainFractal2", "PathSDF"). The display name is
+// free to be whatever is clearest, and free to change, because nothing
+// depends on it.
+//
+// Derived from the type by default (engine/node_names.cpp splits the case and
+// knows the acronyms), overridden where splitting is not enough. Sentence
+// case, to match the parameter labels.
+const std::string &node_display_name(const std::string &type);
+
 class NodeRegistry {
 public:
   static NodeRegistry &instance();

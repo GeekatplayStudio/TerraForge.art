@@ -6,6 +6,7 @@
   "nodes": [
     {
       "type": "FlowAccumulation",
+      "display_name": "Flow accumulation",
       "category": "Analysis",
       "description": "How much water passes through each point — the basis of streams and erosion patterns",
       "ports": [
@@ -86,6 +87,7 @@
     },
     {
       "type": "RelativeElevation",
+      "display_name": "Height above the surroundings",
       "category": "Analysis",
       "description": "Height relative to the neighborhood",
       "ports": [
@@ -105,6 +107,7 @@
     },
     {
       "type": "Resample",
+      "display_name": "Change the sampling",
       "category": "Analysis",
       "description": "Rebuilds the terrain at a coarser or finer sampling — detail control, not size",
       "ports": [
@@ -185,6 +188,7 @@
     },
     {
       "type": "TerrainMetrics",
+      "display_name": "Measure the terrain",
       "category": "Analysis",
       "description": "Surface statistics: rugosity, TRI, shape index",
       "ports": [
@@ -212,6 +216,7 @@
     },
     {
       "type": "WetnessIndex",
+      "display_name": "Wetness index",
       "category": "Analysis",
       "description": "Where water collects — high in flat hollows fed from above, low on steep ground",
       "ports": [
@@ -292,6 +297,7 @@
     },
     {
       "type": "AnimationClip",
+      "display_name": "Animation clip",
       "category": "Animation",
       "description": "[Planned] Reusable clip of keyed attributes: paste, shift, stretch, reverse",
       "ports": [
@@ -315,6 +321,7 @@
     },
     {
       "type": "AnimationSequence",
+      "display_name": "Animation sequence",
       "category": "Animation",
       "description": "The shot: frame range, frame rate, output size and folder for the sequence renderer",
       "ports": [
@@ -411,6 +418,7 @@
     },
     {
       "type": "Dynamics",
+      "display_name": "Dynamics",
       "category": "Animation",
       "description": "[Planned] Forward dynamics, linking and tracking between objects",
       "ports": [
@@ -434,6 +442,7 @@
     },
     {
       "type": "KeyframeCurve",
+      "display_name": "Keyframe curve",
       "category": "Animation",
       "description": "[Planned] Editable time spline: keys, tangents, interpolation per segment",
       "ports": [
@@ -457,6 +466,7 @@
     },
     {
       "type": "Oscillator",
+      "display_name": "Oscillator",
       "category": "Animation",
       "description": "A wave of time: sine, triangle, square or sawtooth, for anything that should pulse",
       "ports": [
@@ -503,6 +513,7 @@
     },
     {
       "type": "TimeRemap",
+      "display_name": "Time remap",
       "category": "Animation",
       "description": "Speeds, offsets, loops or ping-pongs time before it reaches a graph",
       "ports": [
@@ -542,6 +553,7 @@
     },
     {
       "type": "AtmosphereSettings",
+      "display_name": "Atmosphere settings",
       "category": "Atmosphere",
       "description": "Sky colors, density, haze/fog and light absorption",
       "ports": [
@@ -680,6 +692,7 @@
     },
     {
       "type": "CloudLayer",
+      "display_name": "Cloud layer",
       "category": "Atmosphere",
       "description": "Volumetric cloud layer: type, coverage, altitude, wind",
       "ports": [
@@ -810,6 +823,7 @@
     },
     {
       "type": "SunLight",
+      "display_name": "Sun light",
       "category": "Atmosphere",
       "description": "Sun: direction (manual or geographic), color, intensity",
       "ports": [
@@ -932,6 +946,7 @@
     },
     {
       "type": "WaterLayer",
+      "display_name": "Water layer",
       "category": "Atmosphere",
       "description": "Water body: level, colors, waves and foam",
       "ports": [
@@ -1078,6 +1093,7 @@
     },
     {
       "type": "CameraPath",
+      "display_name": "Camera path",
       "category": "Camera",
       "description": "Fly a camera along a path for the rendered sequence",
       "ports": [
@@ -1104,6 +1120,7 @@
     },
     {
       "type": "CameraSwitch",
+      "display_name": "Camera switch",
       "category": "Camera",
       "description": "[Planned] Cut between cameras over the timeline",
       "ports": [
@@ -1127,6 +1144,7 @@
     },
     {
       "type": "CameraTarget",
+      "display_name": "Camera target",
       "category": "Camera",
       "description": "[Planned] Aim a camera at a scene object and keep tracking it",
       "ports": [
@@ -1150,6 +1168,7 @@
     },
     {
       "type": "DepthOfField",
+      "display_name": "Depth of field",
       "category": "Camera",
       "description": "[Planned] Focus distance and bokeh from the camera's aperture",
       "ports": [
@@ -1173,6 +1192,7 @@
     },
     {
       "type": "MotionBlur",
+      "display_name": "Motion blur",
       "category": "Camera",
       "description": "[Planned] Shutter-time motion blur for camera and object movement",
       "ports": [
@@ -1196,6 +1216,7 @@
     },
     {
       "type": "SceneCamera",
+      "display_name": "Scene camera",
       "category": "Camera",
       "description": "A camera in the scene: position, aim, lens, exposure triangle, film",
       "ports": [
@@ -1308,6 +1329,7 @@
     },
     {
       "type": "CloudDensityField",
+      "display_name": "Cloud density field",
       "category": "Cloud",
       "description": "[Planned] Drive a cloud layer's density from a field graph",
       "ports": [
@@ -1332,6 +1354,7 @@
     },
     {
       "type": "CloudMaterial",
+      "display_name": "Cloud material",
       "category": "Cloud",
       "description": "[Planned] Shade clouds through the material system",
       "ports": [
@@ -1355,6 +1378,7 @@
     },
     {
       "type": "CloudZone",
+      "display_name": "Cloud zone",
       "category": "Cloud",
       "description": "[Planned] Confine a cloud layer to a region of the sky",
       "ports": [
@@ -1378,6 +1402,7 @@
     },
     {
       "type": "SpectralClouds",
+      "display_name": "Spectral clouds",
       "category": "Cloud",
       "description": "[Planned] Spectral / high-altitude cloud model and morphing clouds",
       "ports": [
@@ -1401,6 +1426,7 @@
     },
     {
       "type": "Cracks",
+      "display_name": "Cracks and fissures",
       "category": "Effect",
       "description": "Narrow fissures cut into the surface, as after a quake",
       "ports": [
@@ -1452,6 +1478,7 @@
     },
     {
       "type": "Gravel",
+      "display_name": "Gravel",
       "category": "Effect",
       "description": "Loose debris that gathers on slopes and leaves flats clean",
       "ports": [
@@ -1495,6 +1522,7 @@
     },
     {
       "type": "Grit",
+      "display_name": "Fine surface grit",
       "category": "Effect",
       "description": "Fine random bumps and holes over the whole surface",
       "ports": [
@@ -1530,6 +1558,7 @@
     },
     {
       "type": "Peaks",
+      "display_name": "Sharpen the summits",
       "category": "Effect",
       "description": "Lifts high ground and digs the valleys deeper",
       "ports": [
@@ -1558,6 +1587,7 @@
     },
     {
       "type": "Sharpen",
+      "display_name": "Sharpen",
       "category": "Effect",
       "description": "Makes steep ground steeper — crisp ridges and crests",
       "ports": [
@@ -1594,6 +1624,7 @@
     },
     {
       "type": "TerrainClip",
+      "display_name": "Terrain clip",
       "category": "Effect",
       "description": "Clip altitudes — flat tops above, holes below",
       "ports": [
@@ -1638,6 +1669,7 @@
     },
     {
       "type": "TerrainImprint",
+      "display_name": "Terrain imprint",
       "category": "Effect",
       "description": "Mould the ground to the objects standing on it - flat under each, blended around it",
       "ports": [
@@ -1699,6 +1731,7 @@
     },
     {
       "type": "TerrainSculpt",
+      "display_name": "Terrain sculpt",
       "category": "Effect",
       "description": "Hand-sculpted layer — brush strokes kept separate from the procedural terrain",
       "ports": [
@@ -1735,6 +1768,7 @@
     },
     {
       "type": "Coast",
+      "display_name": "Beaches and sea cliffs",
       "category": "Erosion",
       "description": "Coastal shaping: flat beach band, wave planation, bluff",
       "ports": [
@@ -1796,6 +1830,7 @@
     },
     {
       "type": "Dissolve",
+      "display_name": "Dissolution and karst",
       "category": "Erosion",
       "description": "Rainwater dissolves the surface into streams, strongest low down",
       "ports": [
@@ -1841,6 +1876,7 @@
     },
     {
       "type": "ErosionLayers",
+      "display_name": "Erosion layers",
       "category": "Erosion",
       "description": "Erode the terrain and derive material layer masks from what the water and rock did",
       "ports": [
@@ -1966,6 +2002,7 @@
     },
     {
       "type": "Glaciation",
+      "display_name": "Glacial carving",
       "category": "Erosion",
       "description": "Glacial carving — broad U-shaped valleys, ridges left intact",
       "ports": [
@@ -2010,6 +2047,7 @@
     },
     {
       "type": "Hydraulic",
+      "display_name": "Water erosion",
       "category": "Erosion",
       "description": "Hydraulic erosion: particle droplets or shallow-water pipe model",
       "ports": [
@@ -2160,6 +2198,7 @@
     },
     {
       "type": "HydraulicBlur",
+      "display_name": "Hydraulic blur",
       "category": "Erosion",
       "description": "The erosion look at one percent of the cost",
       "ports": [
@@ -2204,6 +2243,7 @@
     },
     {
       "type": "Rivers",
+      "display_name": "Rivers",
       "category": "Erosion",
       "description": "Trace rivers from headwaters and carve channels; outputs river + depth masks",
       "ports": [
@@ -2272,6 +2312,7 @@
     },
     {
       "type": "SedimentDeposit",
+      "display_name": "Sediment deposit",
       "category": "Erosion",
       "description": "Fill valleys with smooth sediment",
       "ports": [
@@ -2300,6 +2341,7 @@
     },
     {
       "type": "StreamPower",
+      "display_name": "River incision",
       "category": "Erosion",
       "description": "Fluvial erosion E=K·A^m·S^n — explicit incision or implicit solver with tectonic uplift",
       "ports": [
@@ -2381,6 +2423,7 @@
     },
     {
       "type": "Thermal",
+      "display_name": "Scree and talus",
       "category": "Erosion",
       "description": "Thermal weathering — talus slopes to angle of repose",
       "ports": [
@@ -2438,6 +2481,7 @@
     },
     {
       "type": "Wind",
+      "display_name": "Wind erosion",
       "category": "Erosion",
       "description": "Aeolian erosion — windward abrasion, leeward deposition (dunes)",
       "ports": [
@@ -2488,6 +2532,7 @@
     },
     {
       "type": "ExportHeightmap",
+      "display_name": "Export heightmap",
       "category": "Export",
       "description": "Write 16-bit PNG / RAW heightmap",
       "ports": [
@@ -2519,6 +2564,7 @@
     },
     {
       "type": "ExportMesh",
+      "display_name": "Export mesh",
       "category": "Export",
       "description": "Write OBJ mesh",
       "ports": [
@@ -2556,6 +2602,7 @@
     },
     {
       "type": "ExportPoints",
+      "display_name": "Export points",
       "category": "Export",
       "description": "Write a point cloud or path to CSV / PLY",
       "ports": [
@@ -2595,6 +2642,7 @@
     },
     {
       "type": "ExportTexture",
+      "display_name": "Export texture",
       "category": "Export",
       "description": "Write albedo/texture PNG",
       "ports": [
@@ -2618,6 +2666,7 @@
     },
     {
       "type": "SurfaceDisplacement",
+      "display_name": "Surface displacement",
       "category": "Export",
       "description": "Shapes planets and the infinite ground plane from a field graph",
       "ports": [
@@ -2642,6 +2691,7 @@
     },
     {
       "type": "TerrainDisplacement",
+      "display_name": "Terrain displacement",
       "category": "Export",
       "description": "Displaces the viewport terrain on the GPU from a field graph",
       "ports": [
@@ -2666,6 +2716,7 @@
     },
     {
       "type": "TerrainOutput",
+      "display_name": "Terrain output",
       "category": "Export",
       "description": "Final terrain: combines height layers + material, zero edges",
       "ports": [
@@ -2728,6 +2779,7 @@
     },
     {
       "type": "TerrainSurface",
+      "display_name": "Terrain surface",
       "category": "Export",
       "description": "Shades the viewport terrain from a field graph, per pixel on the GPU",
       "ports": [
@@ -2761,6 +2813,7 @@
     },
     {
       "type": "Rasterize",
+      "display_name": "Rasterize",
       "category": "Field Bridge",
       "description": "Bakes a field into a heightmap so raster nodes (erosion, blur) can work on it",
       "ports": [
@@ -2834,6 +2887,7 @@
     },
     {
       "type": "Sample",
+      "display_name": "Sample",
       "category": "Field Bridge",
       "description": "Reads a heightmap as a field, so sculpted or eroded terrain can drive a shader",
       "ports": [
@@ -2874,6 +2928,7 @@
     },
     {
       "type": "FieldColorAdjust",
+      "display_name": "Field color adjust",
       "category": "Field Color",
       "description": "Colour correction: hue shift, saturation, contrast, brightness, gamma, invert",
       "ports": [
@@ -2927,6 +2982,7 @@
     },
     {
       "type": "FieldColorFromHSV",
+      "display_name": "Field color from HSV",
       "category": "Field Color",
       "description": "Builds a colour from hue, saturation, value and alpha numbers",
       "ports": [
@@ -2969,6 +3025,7 @@
     },
     {
       "type": "FieldColorHSV",
+      "display_name": "Field color HSV",
       "category": "Field Color",
       "description": "Takes a colour apart as hue, saturation and value (each 0..1)",
       "ports": [
@@ -2982,6 +3039,7 @@
     },
     {
       "type": "FieldColorMix",
+      "display_name": "Field color mix",
       "category": "Field Color",
       "description": "Blends two colours — mix, add, multiply, screen, overlay, darken, lighten",
       "ports": [
@@ -3009,6 +3067,7 @@
     },
     {
       "type": "FieldGradient",
+      "display_name": "Field gradient",
       "category": "Field Color",
       "description": "Turns a number into a colour through a gradient",
       "ports": [
@@ -3032,6 +3091,7 @@
     },
     {
       "type": "FieldColorCombine",
+      "display_name": "Field color combine",
       "category": "Field Convert",
       "description": "Builds a colour from red, green, blue and alpha numbers",
       "ports": [
@@ -3074,6 +3134,7 @@
     },
     {
       "type": "FieldColorSplit",
+      "display_name": "Field color split",
       "category": "Field Convert",
       "description": "Takes a colour apart: luminance, red, green, blue and alpha as numbers",
       "ports": [
@@ -3089,6 +3150,7 @@
     },
     {
       "type": "FieldTexCoordCombine",
+      "display_name": "Combine texture coordinates",
       "category": "Field Convert",
       "description": "Builds texture coordinates from u and v numbers",
       "ports": [
@@ -3115,6 +3177,7 @@
     },
     {
       "type": "FieldTexCoordSplit",
+      "display_name": "Split texture coordinates",
       "category": "Field Convert",
       "description": "Takes texture coordinates apart into u and v numbers",
       "ports": [
@@ -3127,6 +3190,7 @@
     },
     {
       "type": "FieldToColor",
+      "display_name": "Field to color",
       "category": "Field Convert",
       "description": "Any value as a colour: grey from a number, RGB from a vector, with an alpha",
       "ports": [
@@ -3152,6 +3216,7 @@
     },
     {
       "type": "FieldToNumber",
+      "display_name": "Field to number",
       "category": "Field Convert",
       "description": "Any value as a number: luminance / length, one lane, alpha, max or average",
       "ports": [
@@ -3170,6 +3235,7 @@
     },
     {
       "type": "FieldToTexCoord",
+      "display_name": "Field to texture coordinates",
       "category": "Field Convert",
       "description": "Any value as texture coordinates: a vector projected on a plane, RG, or n,n",
       "ports": [
@@ -3188,6 +3254,7 @@
     },
     {
       "type": "FieldToVector",
+      "display_name": "Field to vector",
       "category": "Field Convert",
       "description": "Any value as a vector: a number broadcast, RGB of a colour, UV on a plane",
       "ports": [
@@ -3206,6 +3273,7 @@
     },
     {
       "type": "FieldVectorCombine",
+      "display_name": "Field vector combine",
       "category": "Field Convert",
       "description": "Builds a vector from x, y and z numbers",
       "ports": [
@@ -3240,6 +3308,7 @@
     },
     {
       "type": "FieldVectorSplit",
+      "display_name": "Field vector split",
       "category": "Field Convert",
       "description": "Takes a vector apart: x, y, z and its length as numbers",
       "ports": [
@@ -3254,6 +3323,7 @@
     },
     {
       "type": "FieldComputeNormal",
+      "display_name": "Field compute normal",
       "category": "Field Displace",
       "description": "Recovers the surface normal after displacement, so later nodes see the real shape",
       "ports": [
@@ -3287,6 +3357,7 @@
     },
     {
       "type": "FieldDisplace",
+      "display_name": "Field displace",
       "category": "Field Displace",
       "description": "Turns a value into relief: displaces along the normal, up, or any direction",
       "ports": [
@@ -3383,6 +3454,7 @@
     },
     {
       "type": "FieldRedirect",
+      "display_name": "Field redirect",
       "category": "Field Displace",
       "description": "Moves where another field is evaluated — warp, flow and distortion, on anything",
       "ports": [
@@ -3433,6 +3505,7 @@
     },
     {
       "type": "FieldZone",
+      "display_name": "Field zone",
       "category": "Field Displace",
       "description": "Confines one field to a region, fading into another outside it",
       "ports": [
@@ -3491,6 +3564,7 @@
     },
     {
       "type": "FieldAltitude",
+      "display_name": "Field altitude",
       "category": "Field Input",
       "description": "Height of this point above the reference plane",
       "ports": [
@@ -3501,6 +3575,7 @@
     },
     {
       "type": "FieldColorConstant",
+      "display_name": "Field color constant",
       "category": "Field Input",
       "description": "A fixed colour, to feed any colour input",
       "ports": [
@@ -3517,6 +3592,7 @@
     },
     {
       "type": "FieldConstant",
+      "display_name": "Field constant",
       "category": "Field Input",
       "description": "A fixed number, to feed any field input",
       "ports": [
@@ -3534,6 +3610,7 @@
     },
     {
       "type": "FieldNormal",
+      "display_name": "Field normal",
       "category": "Field Input",
       "description": "Direction the surface faces at this point",
       "ports": [
@@ -3544,6 +3621,7 @@
     },
     {
       "type": "FieldOrientation",
+      "display_name": "Field orientation",
       "category": "Field Input",
       "description": "Compass direction the surface faces, as -1 to 1",
       "ports": [
@@ -3554,6 +3632,7 @@
     },
     {
       "type": "FieldPosition",
+      "display_name": "Field position",
       "category": "Field Input",
       "description": "Position of the point being evaluated — the root of most graphs",
       "ports": [
@@ -3564,6 +3643,7 @@
     },
     {
       "type": "FieldSlope",
+      "display_name": "Field slope",
       "category": "Field Input",
       "description": "Steepness here: 1 flat, 0 vertical, -1 flat facing down",
       "ports": [
@@ -3574,6 +3654,7 @@
     },
     {
       "type": "FieldTexCoord",
+      "display_name": "Field texture coordinates",
       "category": "Field Input",
       "description": "Texture coordinates for this point — the input to any mapped texture",
       "ports": [
@@ -3610,6 +3691,7 @@
     },
     {
       "type": "FieldTime",
+      "display_name": "Field time",
       "category": "Field Input",
       "description": "Current time in seconds — the hook for animation",
       "ports": [
@@ -3620,6 +3702,7 @@
     },
     {
       "type": "FieldDistribution",
+      "display_name": "Field distribution",
       "category": "Field Material",
       "description": "Where a material belongs: by altitude, steepness and which way the ground faces",
       "ports": [
@@ -3709,6 +3792,7 @@
     },
     {
       "type": "FieldCurve",
+      "display_name": "Field curve",
       "category": "Field Math",
       "description": "Shapes a value with a curve: gain, bias, step or smoothstep",
       "ports": [
@@ -3740,6 +3824,7 @@
     },
     {
       "type": "FieldMath",
+      "display_name": "Field math",
       "category": "Field Math",
       "description": "Combines two values: add, subtract, multiply, and the rest",
       "ports": [
@@ -3775,6 +3860,7 @@
     },
     {
       "type": "FieldMix",
+      "display_name": "Field mix",
       "category": "Field Math",
       "description": "Blends between two inputs by a factor",
       "ports": [
@@ -3795,6 +3881,7 @@
     },
     {
       "type": "FieldRemap",
+      "display_name": "Field remap",
       "category": "Field Math",
       "description": "Rescales a value from one range into another",
       "ports": [
@@ -3825,6 +3912,7 @@
     },
     {
       "type": "FieldTrig",
+      "display_name": "Field trig",
       "category": "Field Math",
       "description": "Trigonometry: sine, cosine, tangent and their inverses",
       "ports": [
@@ -3857,6 +3945,7 @@
     },
     {
       "type": "FieldVectorOp",
+      "display_name": "Field vector maths",
       "category": "Field Math",
       "description": "Vector maths: length, dot, distance, normalize, cross, add, subtract, multiply, reflect",
       "ports": [
@@ -3877,6 +3966,7 @@
     },
     {
       "type": "FieldGrass",
+      "display_name": "Grass sward",
       "category": "Field Noise",
       "description": "A sward of grass - tufts, blades and bare ground - as a function, at any scale",
       "ports": [
@@ -4049,6 +4139,7 @@
     },
     {
       "type": "FieldNoise",
+      "display_name": "Field noise",
       "category": "Field Noise",
       "description": "3D coherent noise — the basis of procedural terrain and texture",
       "ports": [
@@ -4106,6 +4197,7 @@
     },
     {
       "type": "FieldShape",
+      "display_name": "Field shape",
       "category": "Field Noise",
       "description": "Analytic shapes - waves, bands, bumps, cones and steps, as a function",
       "ports": [
@@ -4179,6 +4271,7 @@
     },
     {
       "type": "FieldStones",
+      "display_name": "Stone field",
       "category": "Field Noise",
       "description": "A field of stones - boulders, cobbles and gravel - as a function, at any scale",
       "ports": [
@@ -4343,6 +4436,7 @@
     },
     {
       "type": "FieldVoronoi",
+      "display_name": "Field voronoi",
       "category": "Field Noise",
       "description": "Cellular (Worley) noise - cracks, plates, scree and crater fields",
       "ports": [
@@ -4425,6 +4519,7 @@
     },
     {
       "type": "Clamp",
+      "display_name": "Clamp",
       "category": "Filter",
       "description": "Clamp with optional smooth shoulders",
       "ports": [
@@ -4450,6 +4545,7 @@
     },
     {
       "type": "Convolve",
+      "display_name": "Convolve",
       "category": "Filter",
       "description": "Convolution by a preset or typed kernel",
       "ports": [
@@ -4500,6 +4596,7 @@
     },
     {
       "type": "Craggy",
+      "display_name": "Craggy",
       "category": "Filter",
       "description": "Slope-targeted rocky detail; flats stay clean",
       "ports": [
@@ -4553,6 +4650,7 @@
     },
     {
       "type": "Curve",
+      "display_name": "Curve",
       "category": "Filter",
       "description": "Remaps elevations through a drawn curve - the gradient's brightness is the transfer function",
       "ports": [
@@ -4617,6 +4715,7 @@
     },
     {
       "type": "DetailEqualizer",
+      "display_name": "Detail equalizer",
       "category": "Filter",
       "description": "Per-band detail gains, like an audio EQ",
       "ports": [
@@ -4669,6 +4768,7 @@
     },
     {
       "type": "Detrend",
+      "display_name": "Detrend",
       "category": "Filter",
       "description": "Subtract the best-fit plane",
       "ports": [
@@ -4697,6 +4797,7 @@
     },
     {
       "type": "DirectionalBlur",
+      "display_name": "Directional blur",
       "category": "Filter",
       "description": "Streak the surface along a direction",
       "ports": [
@@ -4741,6 +4842,7 @@
     },
     {
       "type": "Equalize",
+      "display_name": "Equalize",
       "category": "Filter",
       "description": "Spreads elevations across the full range - contrast back after a long chain",
       "ports": [
@@ -4799,6 +4901,7 @@
     },
     {
       "type": "ExpandShrink",
+      "display_name": "Grow or shrink a mask",
       "category": "Filter",
       "description": "Morphological dilate / erode",
       "ports": [
@@ -4825,6 +4928,7 @@
     },
     {
       "type": "Fold",
+      "display_name": "Fold the range back",
       "category": "Filter",
       "description": "Fold values around midline — creates ridged detail",
       "ports": [
@@ -4844,6 +4948,7 @@
     },
     {
       "type": "GammaCorrection",
+      "display_name": "Gamma correction",
       "category": "Filter",
       "description": "Power-curve contrast",
       "ports": [
@@ -4863,6 +4968,7 @@
     },
     {
       "type": "Kuwahara",
+      "display_name": "Kuwahara",
       "category": "Filter",
       "description": "Edge-preserving smoothing (painterly flats)",
       "ports": [
@@ -4899,6 +5005,7 @@
     },
     {
       "type": "MeanShift",
+      "display_name": "Mean shift",
       "category": "Filter",
       "description": "Mode-seeking smoothing (flattens toward plateaus)",
       "ports": [
@@ -4943,6 +5050,7 @@
     },
     {
       "type": "Median",
+      "display_name": "Median",
       "category": "Filter",
       "description": "Removes single-cell spikes and pits without softening edges",
       "ports": [
@@ -5008,6 +5116,7 @@
     },
     {
       "type": "Morphology",
+      "display_name": "Open and close a mask",
       "category": "Filter",
       "description": "Dilate, erode and their compositions",
       "ports": [
@@ -5052,6 +5161,7 @@
     },
     {
       "type": "Plateau",
+      "display_name": "Flatten to plateaux",
       "category": "Filter",
       "description": "Flatten tops above a level",
       "ports": [
@@ -5078,6 +5188,7 @@
     },
     {
       "type": "PowerFractal",
+      "display_name": "Power fractal",
       "category": "Filter",
       "description": "Terragen-style multi-scale fractal displacement",
       "ports": [
@@ -5185,6 +5296,7 @@
     },
     {
       "type": "Remap",
+      "display_name": "Remap",
       "category": "Filter",
       "description": "Remap value range",
       "ports": [
@@ -5211,6 +5323,7 @@
     },
     {
       "type": "Smooth",
+      "display_name": "Smooth",
       "category": "Filter",
       "description": "Gaussian-like smoothing",
       "ports": [
@@ -5230,6 +5343,7 @@
     },
     {
       "type": "SmoothFill",
+      "display_name": "Smooth fill",
       "category": "Filter",
       "description": "Fill hollows up to the smoothed surface",
       "ports": [
@@ -5275,6 +5389,7 @@
     },
     {
       "type": "Snow",
+      "display_name": "Snow",
       "category": "Filter",
       "description": "Snow cover: snowline, settle-thaw, slip-off; outputs depth mask",
       "ports": [
@@ -5344,6 +5459,7 @@
     },
     {
       "type": "Stratify",
+      "display_name": "Sedimentary strata",
       "category": "Filter",
       "description": "Tilted rock strata exposed on cliff faces",
       "ports": [
@@ -5426,6 +5542,7 @@
     },
     {
       "type": "Terrace",
+      "display_name": "Terraces and steps",
       "category": "Filter",
       "description": "Stratified terraces: uneven layers, warped edges, altitude band",
       "ports": [
@@ -5516,6 +5633,7 @@
     },
     {
       "type": "MetaNode",
+      "display_name": "Grouped subgraph",
       "category": "Group",
       "description": "A sub-graph collapsed into one node — group, name and reuse",
       "ports": [
@@ -5546,6 +5664,7 @@
     },
     {
       "type": "FillBasins",
+      "display_name": "Fill closed basins",
       "category": "Hydrology",
       "description": "Floods closed basins to their outlet - filled terrain for flow routing, plus lake depth and mask",
       "ports": [
@@ -5592,6 +5711,7 @@
     },
     {
       "type": "Flood",
+      "display_name": "Standing water",
       "category": "Hydrology",
       "description": "Standing water at a set level",
       "ports": [
@@ -5639,6 +5759,7 @@
     },
     {
       "type": "Lake",
+      "display_name": "Lake",
       "category": "Hydrology",
       "description": "A body of water at a place: centre, max radius and water level, with a wandering shore, a carved bed and a beach mask",
       "ports": [
@@ -5781,6 +5902,7 @@
     },
     {
       "type": "AreaLight",
+      "display_name": "Area light",
       "category": "Light",
       "description": "[Planned] Rectangular and disc area lights with soft shadows",
       "ports": [
@@ -5804,6 +5926,7 @@
     },
     {
       "type": "LensFlare",
+      "display_name": "Lens flare",
       "category": "Light",
       "description": "[Planned] Lens flare and reflections editor per light",
       "ports": [
@@ -5827,6 +5950,7 @@
     },
     {
       "type": "LightGel",
+      "display_name": "Light gel",
       "category": "Light",
       "description": "[Planned] Projected texture (gel / gobo) on a spot light",
       "ports": [
@@ -5850,6 +5974,7 @@
     },
     {
       "type": "LightSource",
+      "display_name": "Light source",
       "category": "Light",
       "description": "A point or spot light in the scene: position, colour, intensity, reach, cone",
       "ports": [
@@ -5961,6 +6086,7 @@
     },
     {
       "type": "Skylight",
+      "display_name": "Skylight",
       "category": "Light",
       "description": "[Planned] Global illumination model: ambient, hemispherical sky light, GI",
       "ports": [
@@ -5984,6 +6110,7 @@
     },
     {
       "type": "VolumetricLight",
+      "display_name": "Volumetric light",
       "category": "Light",
       "description": "[Planned] Visible light shafts through haze and cloud",
       "ports": [
@@ -6007,6 +6134,7 @@
     },
     {
       "type": "Compare",
+      "display_name": "Compare",
       "category": "Logic",
       "description": "Compare two inputs into a mask",
       "ports": [
@@ -6040,6 +6168,7 @@
     },
     {
       "type": "Repeat",
+      "display_name": "Repeat",
       "category": "Logic",
       "description": "Loop: apply an operation N times",
       "ports": [
@@ -6072,6 +6201,7 @@
     },
     {
       "type": "Select",
+      "display_name": "Select",
       "category": "Logic",
       "description": "Select one of four inputs by index or selector map",
       "ports": [
@@ -6101,6 +6231,7 @@
     },
     {
       "type": "Switch",
+      "display_name": "Switch",
       "category": "Logic",
       "description": "Route input A or B to output",
       "ports": [
@@ -6120,6 +6251,7 @@
     },
     {
       "type": "Threshold",
+      "display_name": "Threshold",
       "category": "Logic",
       "description": "Binary/soft threshold to a mask",
       "ports": [
@@ -6152,6 +6284,7 @@
     },
     {
       "type": "Thru",
+      "display_name": "Thru",
       "category": "Logic",
       "description": "Pass-through / organization pin",
       "ports": [
@@ -6163,6 +6296,7 @@
     },
     {
       "type": "AreaRemove",
+      "display_name": "Remove small patches",
       "category": "Mask",
       "description": "Drop small connected blobs",
       "ports": [
@@ -6198,6 +6332,7 @@
     },
     {
       "type": "DistanceField",
+      "display_name": "Distance field",
       "category": "Mask",
       "description": "Distance to a shape - shoreline gradients, wetness falloffs, anything that happens near something",
       "ports": [
@@ -6280,6 +6415,7 @@
     },
     {
       "type": "KMeans",
+      "display_name": "Group into regions",
       "category": "Mask",
       "description": "Cluster the terrain into zones",
       "ports": [
@@ -6318,6 +6454,7 @@
     },
     {
       "type": "MaskPaint",
+      "display_name": "Mask paint",
       "category": "Mask",
       "description": "Paint a mask in the viewport",
       "ports": [
@@ -6343,6 +6480,7 @@
     },
     {
       "type": "SelectAltitude",
+      "display_name": "Select altitude",
       "category": "Mask",
       "description": "Select by height band",
       "ports": [
@@ -6377,6 +6515,7 @@
     },
     {
       "type": "SelectBlobs",
+      "display_name": "Select blobs",
       "category": "Mask",
       "description": "Find blob-shaped features at a size",
       "ports": [
@@ -6412,6 +6551,7 @@
     },
     {
       "type": "SelectBorder",
+      "display_name": "Select border",
       "category": "Mask",
       "description": "A band along a mask's boundary",
       "ports": [
@@ -6447,6 +6587,7 @@
     },
     {
       "type": "SelectCavities",
+      "display_name": "Select cavities",
       "category": "Mask",
       "description": "Ambient-occlusion-like cavity map",
       "ports": [
@@ -6482,6 +6623,7 @@
     },
     {
       "type": "SelectCurvature",
+      "display_name": "Select curvature",
       "category": "Mask",
       "description": "Select concave (valleys) or convex (ridges)",
       "ports": [
@@ -6525,6 +6667,7 @@
     },
     {
       "type": "SelectMidrange",
+      "display_name": "Select midrange",
       "category": "Mask",
       "description": "Select the middle elevations",
       "ports": [
@@ -6568,6 +6711,7 @@
     },
     {
       "type": "SelectSlope",
+      "display_name": "Select slope",
       "category": "Mask",
       "description": "Select by slope steepness",
       "ports": [
@@ -6602,6 +6746,7 @@
     },
     {
       "type": "SelectTransitions",
+      "display_name": "Select transitions",
       "category": "Mask",
       "description": "Select where two surfaces trade places",
       "ports": [
@@ -6630,6 +6775,7 @@
     },
     {
       "type": "Skeleton",
+      "display_name": "Reduce to a centre line",
       "category": "Mask",
       "description": "Thin a mask to its centerlines",
       "ports": [
@@ -6649,6 +6795,7 @@
     },
     {
       "type": "SkeletonDistance",
+      "display_name": "Distance from a centre line",
       "category": "Mask",
       "description": "How deep into the shape each cell sits",
       "ports": [
@@ -6668,6 +6815,7 @@
     },
     {
       "type": "AOFromHeight",
+      "display_name": "Ambient occlusion from height",
       "category": "Material",
       "description": "Ambient occlusion baked from a height input",
       "ports": [
@@ -6693,6 +6841,7 @@
     },
     {
       "type": "AlbedoToPBR",
+      "display_name": "Full material from a photo",
       "category": "Material",
       "description": "Derive normal + roughness maps from an albedo texture",
       "ports": [
@@ -6733,6 +6882,7 @@
     },
     {
       "type": "ChannelMix",
+      "display_name": "Channel mix",
       "category": "Material",
       "description": "Pack three grayscale inputs into one RGB texture",
       "ports": [
@@ -6753,6 +6903,7 @@
     },
     {
       "type": "ChannelSplit",
+      "display_name": "Channel split",
       "category": "Material",
       "description": "Split a texture into red, green, blue, alpha and luminance masks",
       "ports": [
@@ -6768,6 +6919,7 @@
     },
     {
       "type": "ColorAdjust",
+      "display_name": "Color adjust",
       "category": "Material",
       "description": "Color correction: brightness, contrast, saturation, hue, tint",
       "ports": [
@@ -6831,6 +6983,7 @@
     },
     {
       "type": "CurvatureFromHeight",
+      "display_name": "Curvature from height",
       "category": "Material",
       "description": "Convex/concave curvature map from height",
       "ports": [
@@ -6856,6 +7009,7 @@
     },
     {
       "type": "DistributionLayer",
+      "display_name": "Distribution layer",
       "category": "Material",
       "description": "Distribution layer: the presence that shades also places objects",
       "ports": [
@@ -6909,6 +7063,7 @@
     },
     {
       "type": "EcosystemLayer",
+      "display_name": "Ecosystem layer",
       "category": "Material",
       "description": "Ecosystem layer: a population placed by the layer's presence, reacting to the layer below",
       "ports": [
@@ -7448,6 +7603,7 @@
     },
     {
       "type": "EffectorLayer",
+      "display_name": "Effector layer",
       "category": "Material",
       "description": "Effector layer: a typed influence field for other systems to read",
       "ports": [
@@ -7501,6 +7657,7 @@
     },
     {
       "type": "FlatColor",
+      "display_name": "Flat color",
       "category": "Material",
       "description": "Solid color material (procedural function + color)",
       "ports": [
@@ -7533,6 +7690,7 @@
     },
     {
       "type": "FractalColor",
+      "display_name": "Fractal color",
       "category": "Material",
       "description": "A fractal through a colour map: RGBA texture out, and the same pattern as a mask",
       "ports": [
@@ -7640,6 +7798,7 @@
     },
     {
       "type": "GradientMap",
+      "display_name": "Gradient map",
       "category": "Material",
       "description": "Recolor a texture through a gradient by luminance",
       "ports": [
@@ -7664,6 +7823,7 @@
     },
     {
       "type": "Levels",
+      "display_name": "Levels",
       "category": "Material",
       "description": "Levels: remap input black/white/gamma to output range",
       "ports": [
@@ -7723,6 +7883,7 @@
     },
     {
       "type": "MaskToTexture",
+      "display_name": "Mask to texture",
       "category": "Material",
       "description": "Grayscale mask or heightmap as a texture channel",
       "ports": [
@@ -7755,6 +7916,7 @@
     },
     {
       "type": "MaterialLayer",
+      "display_name": "Material layer",
       "category": "Material",
       "description": "One layer of a material stack: its own maps, its own mask, and its own reaction to altitude, slope and orientation",
       "ports": [
@@ -7998,6 +8160,7 @@
     },
     {
       "type": "MaterialOutput",
+      "display_name": "Material output",
       "category": "Material",
       "description": "The material: base color, normal, roughness, metallic, height and AO channels",
       "ports": [
@@ -8584,6 +8747,7 @@
     },
     {
       "type": "MaterialStack",
+      "display_name": "Material stack",
       "category": "Material",
       "description": "Blend up to six material layers by mask, height-aware, into albedo + roughness",
       "ports": [
@@ -8744,6 +8908,7 @@
     },
     {
       "type": "NaturalGrain",
+      "display_name": "Natural grain",
       "category": "Material",
       "description": "Natural grain: one or two colours varied by a noise, for ground and rock",
       "ports": [
@@ -8825,6 +8990,7 @@
     },
     {
       "type": "NormalBlend",
+      "display_name": "Normal blend",
       "category": "Material",
       "description": "Combine two normal maps (whiteout blend)",
       "ports": [
@@ -8844,6 +9010,7 @@
     },
     {
       "type": "PBRMaterial",
+      "display_name": "PBR material",
       "category": "Material",
       "description": "A PBR material set (albedo/normal/roughness/AO): a folder of maps on disk, or a CC0 photoscan downloaded from ambientCG",
       "ports": [
@@ -8897,6 +9064,7 @@
     },
     {
       "type": "SplatMaterial",
+      "display_name": "Blend materials by channel",
       "category": "Material",
       "description": "Compose albedo from a splatmap and up to 4 layer textures",
       "ports": [
@@ -8912,6 +9080,7 @@
     },
     {
       "type": "Splatmap",
+      "display_name": "Split a mask into channels",
       "category": "Material",
       "description": "Pack up to 4 masks into RGBA splat weights (normalized)",
       "ports": [
@@ -8933,6 +9102,7 @@
     },
     {
       "type": "TextureBlend",
+      "display_name": "Texture blend",
       "category": "Material",
       "description": "Blend two textures by mask / mode / opacity",
       "ports": [
@@ -8960,6 +9130,7 @@
     },
     {
       "type": "TextureFile",
+      "display_name": "Texture file",
       "category": "Material",
       "description": "Load an image texture (PNG/JPG/TGA/BMP) with mapping modes",
       "ports": [
@@ -9063,6 +9234,7 @@
     },
     {
       "type": "TextureToMask",
+      "display_name": "Texture to mask",
       "category": "Material",
       "description": "Texture luminance back into a mask/heightmap",
       "ports": [
@@ -9081,6 +9253,7 @@
     },
     {
       "type": "TextureTransform",
+      "display_name": "Texture transform",
       "category": "Material",
       "description": "Tile, scale, offset and rotate a texture",
       "ports": [
@@ -9118,6 +9291,7 @@
     },
     {
       "type": "Blend",
+      "display_name": "Blend",
       "category": "Operator",
       "description": "Blend two heightmaps (many modes)",
       "ports": [
@@ -9152,6 +9326,7 @@
     },
     {
       "type": "Math",
+      "display_name": "Math",
       "category": "Operator",
       "description": "Per-pixel math on one input",
       "ports": [
@@ -9186,6 +9361,7 @@
     },
     {
       "type": "MathGradient",
+      "display_name": "Math gradient",
       "category": "Operator",
       "description": "Derivatives: dx, dy, slope magnitude, laplacian",
       "ports": [
@@ -9200,6 +9376,7 @@
     },
     {
       "type": "MixLayers",
+      "display_name": "Mix layers",
       "category": "Operator",
       "description": "Height-stack: stack up to 4 layers by max",
       "ports": [
@@ -9221,6 +9398,7 @@
     },
     {
       "type": "PathCarve",
+      "display_name": "Path carve",
       "category": "Path",
       "description": "Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds walls",
       "ports": [
@@ -9336,6 +9514,7 @@
     },
     {
       "type": "PathFind",
+      "display_name": "Path find",
       "category": "Path",
       "description": "Route a path across the terrain",
       "ports": [
@@ -9379,6 +9558,7 @@
     },
     {
       "type": "PathFractalize",
+      "display_name": "Path fractalize",
       "category": "Path",
       "description": "Midpoint-displace a path into a wander",
       "ports": [
@@ -9413,6 +9593,7 @@
     },
     {
       "type": "PathResample",
+      "display_name": "Path resample",
       "category": "Path",
       "description": "Even spacing along a path",
       "ports": [
@@ -9440,6 +9621,7 @@
     },
     {
       "type": "PathSDF",
+      "display_name": "Distance from a path",
       "category": "Path",
       "description": "Distance to a path",
       "ports": [
@@ -9484,6 +9666,7 @@
     },
     {
       "type": "PathSpline",
+      "display_name": "Path spline",
       "category": "Path",
       "description": "A smooth curve through the points",
       "ports": [
@@ -9511,6 +9694,7 @@
     },
     {
       "type": "PointsToPath",
+      "display_name": "Points to path",
       "category": "Path",
       "description": "Order a point cloud into a path",
       "ports": [
@@ -9522,6 +9706,7 @@
     },
     {
       "type": "PointsFilter",
+      "display_name": "Points filter",
       "category": "Points",
       "description": "Keep points by mask and chance",
       "ports": [
@@ -9556,6 +9741,7 @@
     },
     {
       "type": "PointsFromCsv",
+      "display_name": "Points from a CSV file",
       "category": "Points",
       "description": "Read points from a CSV file",
       "ports": [
@@ -9572,6 +9758,7 @@
     },
     {
       "type": "PointsInteract",
+      "display_name": "Points interact",
       "category": "Points",
       "description": "Attract to, repel from another cloud; keep instances from overlapping",
       "ports": [
@@ -9632,6 +9819,7 @@
     },
     {
       "type": "PointsMerge",
+      "display_name": "Points merge",
       "category": "Points",
       "description": "Combine two point clouds",
       "ports": [
@@ -9652,6 +9840,7 @@
     },
     {
       "type": "PointsRelax",
+      "display_name": "Points relax",
       "category": "Points",
       "description": "Even out point spacing",
       "ports": [
@@ -9679,6 +9868,7 @@
     },
     {
       "type": "PointsSDF",
+      "display_name": "Distance from points",
       "category": "Points",
       "description": "Distance to the nearest point",
       "ports": [
@@ -9706,6 +9896,7 @@
     },
     {
       "type": "PointsSetValues",
+      "display_name": "Points set values",
       "category": "Points",
       "description": "Point values from the terrain",
       "ports": [
@@ -9726,6 +9917,7 @@
     },
     {
       "type": "PointsShuffle",
+      "display_name": "Points shuffle",
       "category": "Points",
       "description": "Reorder a cloud deterministically",
       "ports": [
@@ -9744,6 +9936,7 @@
     },
     {
       "type": "PointsToMask",
+      "display_name": "Points to mask",
       "category": "Points",
       "description": "Stamp points into a raster",
       "ports": [
@@ -9795,6 +9988,7 @@
     },
     {
       "type": "PointsTransform",
+      "display_name": "Points transform",
       "category": "Points",
       "description": "Species, size, rotation, lean and tint per instance",
       "ports": [
@@ -10055,6 +10249,7 @@
     },
     {
       "type": "ScatterArea",
+      "display_name": "Scatter area",
       "category": "Points",
       "description": "Scatter by density per hectare and the presence of the ground",
       "ports": [
@@ -10289,6 +10484,7 @@
     },
     {
       "type": "ScatterPoints",
+      "display_name": "Scatter points",
       "category": "Points",
       "description": "Scatter points over the tile",
       "ports": [
@@ -10347,6 +10543,7 @@
     },
     {
       "type": "BasaltField",
+      "display_name": "Basalt field",
       "category": "Primitive",
       "description": "Columnar basalt: hexagonal steps and cracks",
       "ports": [
@@ -10435,6 +10632,7 @@
     },
     {
       "type": "Constant",
+      "display_name": "Constant",
       "category": "Primitive",
       "description": "Constant level",
       "ports": [
@@ -10452,6 +10650,7 @@
     },
     {
       "type": "Crater",
+      "display_name": "Crater",
       "category": "Primitive",
       "description": "Impact craters: bowl, rim lip, ejecta blanket (single or field)",
       "ports": [
@@ -10589,6 +10788,7 @@
     },
     {
       "type": "DiffusionLimited",
+      "display_name": "Diffusion limited",
       "category": "Primitive",
       "description": "Branching dendrites by particle aggregation",
       "ports": [
@@ -10630,6 +10830,7 @@
     },
     {
       "type": "Dunes",
+      "display_name": "Dunes",
       "category": "Primitive",
       "description": "Sand dunes: asymmetric slip faces, crest chaos, ripples",
       "ports": [
@@ -10734,6 +10935,7 @@
     },
     {
       "type": "FakeStones",
+      "display_name": "Stones in the heightmap",
       "category": "Primitive",
       "description": "Terragen-style fake stones: boulders/rocks as displacement",
       "ports": [
@@ -10827,6 +11029,7 @@
     },
     {
       "type": "Fractal",
+      "display_name": "Fractal terrain",
       "category": "Primitive",
       "description": "Non-noise fractals: diamond-square, fault lines",
       "ports": [
@@ -10910,6 +11113,7 @@
     },
     {
       "type": "GaborNoise",
+      "display_name": "Gabor noise",
       "category": "Primitive",
       "description": "Oriented sparse-kernel noise (streaked rock)",
       "ports": [
@@ -11013,6 +11217,7 @@
     },
     {
       "type": "GeologicalStrata",
+      "display_name": "Geological strata",
       "category": "Primitive",
       "description": "Layered rock strata from an input heightmap",
       "ports": [
@@ -11099,6 +11304,7 @@
     },
     {
       "type": "GrassDisplacement",
+      "display_name": "Grass displacement",
       "category": "Primitive",
       "description": "Grass as displacement: a field of tufts in clumps, on ground flat enough to hold it",
       "ports": [
@@ -11183,6 +11389,7 @@
     },
     {
       "type": "HeightmapFile",
+      "display_name": "Heightmap file",
       "category": "Primitive",
       "description": "Import a heightfield: 8/16-bit PNG, JPG, TGA, or SRTM .hgt real-world DEM",
       "ports": [
@@ -11238,6 +11445,7 @@
     },
     {
       "type": "Landform",
+      "display_name": "Landform",
       "category": "Primitive",
       "description": "Geological set pieces: island, mountain, caldera, rift, mesa",
       "ports": [
@@ -11327,6 +11535,7 @@
     },
     {
       "type": "LineNoise",
+      "display_name": "Line noise",
       "category": "Primitive",
       "description": "Cellular noise seeded by line segments",
       "ports": [
@@ -11423,6 +11632,7 @@
     },
     {
       "type": "Noise",
+      "display_name": "Noise",
       "category": "Primitive",
       "description": "Coherent noise: fBm, ridged, billow, swiss, value, cellular",
       "ports": [
@@ -11558,6 +11768,7 @@
     },
     {
       "type": "NoiseFractal",
+      "display_name": "Noise fractal",
       "category": "Primitive",
       "description": "Vue-class fractal: base noise over harmonics with stretch, combination modes, variable roughness, distortion and a filter profile; second output is the local roughness",
       "ports": [
@@ -11847,6 +12058,7 @@
     },
     {
       "type": "RockyMountains",
+      "display_name": "Rocky mountains",
       "category": "Primitive",
       "description": "Vue's Rocky Mountains fractal: irregular ridge networks added per iteration, as separate mountains or basins between ridges, stretched, with optional rocks and an eroded variant",
       "ports": [
@@ -12049,6 +12261,7 @@
     },
     {
       "type": "Shape",
+      "display_name": "Shape",
       "category": "Primitive",
       "description": "Geometric base shapes: slope, bump, crater, cone, ridge line",
       "ports": [
@@ -12139,6 +12352,7 @@
     },
     {
       "type": "Stamp",
+      "display_name": "Stamp",
       "category": "Primitive",
       "description": "Terrain modeling: stamp a heightfield shape onto the terrain",
       "ports": [
@@ -12207,6 +12421,7 @@
     },
     {
       "type": "TerrainFractal",
+      "display_name": "Terrain fractal",
       "category": "Primitive",
       "description": "Vue's Terrain Fractal: the fractal with a landscape type (plain, ridges, billows, mixes), ridge smoothness and bump surge; rough areas on the second output",
       "ports": [
@@ -12528,6 +12743,7 @@
     },
     {
       "type": "TerrainFractal2",
+      "display_name": "Rock and soil terrain",
       "category": "Primitive",
       "description": "Vue's Terrain Fractal 2: rocks emerging from sedimentary soil, with regions of rock density, soil thickness, buoyancy and relief-following strata",
       "ports": [
@@ -12730,6 +12946,7 @@
     },
     {
       "type": "WaveletNoise",
+      "display_name": "Wavelet noise",
       "category": "Primitive",
       "description": "Band-limited noise that stays crisp",
       "ports": [
@@ -12809,6 +13026,7 @@
     },
     {
       "type": "WhiteNoise",
+      "display_name": "White noise",
       "category": "Primitive",
       "description": "Raw per-cell white noise",
       "ports": [
@@ -12864,6 +13082,7 @@
     },
     {
       "type": "PostProcess",
+      "display_name": "Post process",
       "category": "Render",
       "description": "Image finishing after tone mapping: exposure, saturation, colour tint",
       "ports": [
@@ -12904,6 +13123,7 @@
     },
     {
       "type": "RenderBackdrop",
+      "display_name": "Render backdrop",
       "category": "Render",
       "description": "An HDR image dome at infinity behind the scene, hazed and clouded by the atmosphere",
       "ports": [
@@ -13007,6 +13227,7 @@
     },
     {
       "type": "RenderCamera",
+      "display_name": "Render camera",
       "category": "Render",
       "description": "Camera and tone mapping for the render",
       "ports": [
@@ -13041,6 +13262,7 @@
     },
     {
       "type": "RenderLayers",
+      "display_name": "Render layers",
       "category": "Render",
       "description": "[Planned] Objects and lights sorted into render layers for compositing",
       "ports": [
@@ -13064,6 +13286,7 @@
     },
     {
       "type": "RenderOutput",
+      "display_name": "Render output",
       "category": "Render",
       "description": "Master output: file, format, size, engine and samples of the render",
       "ports": [
@@ -13120,6 +13343,7 @@
     },
     {
       "type": "RenderPasses",
+      "display_name": "Render passes",
       "category": "Render",
       "description": "Which channels the render writes beside the beauty: depth, normal, id, light, atmosphere...",
       "ports": [
@@ -13225,6 +13449,7 @@
     },
     {
       "type": "RenderQuality",
+      "display_name": "Render quality",
       "category": "Render",
       "description": "Offline render engine, resolution and sampling",
       "ports": [
@@ -13274,6 +13499,7 @@
     },
     {
       "type": "RenderRegion",
+      "display_name": "Render region",
       "category": "Render",
       "description": "[Planned] Render only a rectangle of the frame",
       "ports": [
@@ -13297,6 +13523,7 @@
     },
     {
       "type": "BooleanObject",
+      "display_name": "Boolean object",
       "category": "Scene",
       "description": "[Planned] Union, intersection and difference of meshes",
       "ports": [
@@ -13320,6 +13547,7 @@
     },
     {
       "type": "ImportObject",
+      "display_name": "Import object",
       "category": "Scene",
       "description": "An imported 3D model (FBX, glTF/GLB, OBJ, STL, PLY, OFF) placed in the scene, with its textures, transform and colour",
       "ports": [
@@ -13414,6 +13642,7 @@
     },
     {
       "type": "InfiniteTerrain",
+      "display_name": "Infinite terrain",
       "category": "Scene",
       "description": "An endless procedural terrain layer: on the ground plane or shaping a planet",
       "ports": [
@@ -13500,6 +13729,7 @@
     },
     {
       "type": "ObjectGroup",
+      "display_name": "Object group",
       "category": "Scene",
       "description": "[Planned] Group objects under one transform, with instancing",
       "ports": [
@@ -13523,6 +13753,7 @@
     },
     {
       "type": "Planet",
+      "display_name": "Planet",
       "category": "Scene",
       "description": "A procedural planet: radius, relief, seas, snow, atmosphere and its surface layers",
       "ports": [
@@ -13654,6 +13885,7 @@
     },
     {
       "type": "Primitive",
+      "display_name": "Primitive",
       "category": "Scene",
       "description": "A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene",
       "ports": [
@@ -13749,6 +13981,7 @@
     },
     {
       "type": "TerrainObject",
+      "display_name": "Terrain object",
       "category": "Scene",
       "description": "[Planned] Several independent heightfield terrains in one scene",
       "ports": [
@@ -13772,6 +14005,7 @@
     },
     {
       "type": "TerrainShape",
+      "display_name": "Terrain shape",
       "category": "Shape",
       "description": "The outline of the ground - rectangle, round, or your own mask - with a wandering rim and an edge that gives way over a distance you set",
       "ports": [
@@ -13902,6 +14136,7 @@
     },
     {
       "type": "ColorizeGradient",
+      "display_name": "Colorize gradient",
       "category": "Texture",
       "description": "Map height to a color gradient",
       "ports": [
@@ -13926,6 +14161,7 @@
     },
     {
       "type": "NormalMap",
+      "display_name": "Normal map",
       "category": "Texture",
       "description": "Tangent-space normal map from height",
       "ports": [
@@ -13944,6 +14180,7 @@
     },
     {
       "type": "TerrainTexture",
+      "display_name": "Terrain texture",
       "category": "Texture",
       "description": "Physically-inspired layered terrain albedo",
       "ports": [
@@ -14034,6 +14271,7 @@
     },
     {
       "type": "FlowWarp",
+      "display_name": "Flow warp",
       "category": "Transform",
       "description": "Drag a mask downstream along the flow",
       "ports": [
@@ -14079,6 +14317,7 @@
     },
     {
       "type": "MakeTileable",
+      "display_name": "Make tileable",
       "category": "Transform",
       "description": "Blend the tile so it wraps seamlessly",
       "ports": [
@@ -14107,6 +14346,7 @@
     },
     {
       "type": "Quilt",
+      "display_name": "Tile a pattern seamlessly",
       "category": "Transform",
       "description": "Resynthesize the surface from its own patches",
       "ports": [
@@ -14157,6 +14397,7 @@
     },
     {
       "type": "SetBorders",
+      "display_name": "Set borders",
       "category": "Transform",
       "description": "Pin the tile's borders to a level",
       "ports": [
@@ -14193,6 +14434,7 @@
     },
     {
       "type": "Shear",
+      "display_name": "Shear",
       "category": "Transform",
       "description": "Directional rock shearing / folding (Gaea-style)",
       "ports": [
@@ -14254,6 +14496,7 @@
     },
     {
       "type": "Transform",
+      "display_name": "Transform",
       "category": "Transform",
       "description": "Translate / scale / rotate",
       "ports": [
@@ -14300,6 +14543,7 @@
     },
     {
       "type": "WarpDirectional",
+      "display_name": "Warp directional",
       "category": "Transform",
       "description": "Warp along gradient — wind-swept shapes",
       "ports": [
@@ -14341,6 +14585,7 @@
     },
     {
       "type": "WarpNoise",
+      "display_name": "Warp noise",
       "category": "Transform",
       "description": "Domain warp by internal fBm noise",
       "ports": [

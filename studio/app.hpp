@@ -56,6 +56,9 @@ struct App {
   struct NodeView {
     uint64_t id = 0;
     std::string type, category, error;
+    // What the header shows. The type is the identity a project file
+    // stores; this is the name a person reads (gpx::node_display_name).
+    std::string display;
     std::string file; // an ImportObject's model file, for its card
     float pos_x = 0, pos_y = 0;
     double ms = 0;

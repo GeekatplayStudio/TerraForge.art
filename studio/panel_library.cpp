@@ -87,7 +87,13 @@ void draw_panel_library(App &a) {
   bool open = true;
   for (const gpx::NodeDef *d : gpx::NodeRegistry::instance().all()) {
     if (domain_of_category(d->category) != a.workspace) continue;
-    if (!matches(d->type)) continue;
+    // Match the name a person reads as well as the identifier, so typing
+    // "stone" finds the node whose type happens to be FieldStones and whose
+    // label is "Stone field", and the description too - which is how you
+    // find a node when you know what you want and not what it is called.
+    const std::string &label = gpx::node_display_name(d->type);
+    if (!matches(d->type) && !matches(label) && !matches(d->description))
+      continue;
     if (d->category != last_cat) {
       open = ImGui::CollapsingHeader(d->category.c_str(),
                                      ImGuiTreeNodeFlags_DefaultOpen);
@@ -95,7 +101,7 @@ void draw_panel_library(App &a) {
     }
     if (!open) continue;
     ImGui::Indent(8);
-    if (ImGui::Selectable(d->type.c_str())) {
+    if (ImGui::Selectable(label.c_str())) {
       undo_push(a, "Add " + d->type);
       std::lock_guard<std::mutex> lk(a.graph_mtx);
       // place near last node or at origin

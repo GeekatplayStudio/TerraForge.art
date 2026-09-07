@@ -66,7 +66,7 @@ void draw_node(App &a, const App::NodeView &n) {
     if (p.is_input) { in_label_w = std::max(in_label_w, tw); ++in_n; }
     else { out_label_w = std::max(out_label_w, tw); ++out_n; }
   }
-  float head_w = ImGui::CalcTextSize(n.type.c_str()).x + CHEVRON_W + 4.f;
+  float head_w = ImGui::CalcTextSize(n.display.c_str()).x + CHEVRON_W + 4.f;
   if (!n.enabled) head_w += 6.f + ImGui::CalcTextSize(tr("bypassed")).x;
   const unsigned prev_tex = collapse == 0 ? previews_get(n.id) : 0;
   const float ports_w = (in_n ? dot_col + in_label_w : 0.f) +
@@ -84,7 +84,7 @@ void draw_node(App &a, const App::NodeView &n) {
   ImGui::SetCursorScreenPos(
       ImVec2(head_pos.x + PAD_X, head_pos.y + (HEADER_H - ImGui::GetFontSize()) * 0.5f));
   ImGui::PushStyleColor(ImGuiCol_Text, theme::text_on_header());
-  ImGui::TextUnformatted(n.type.c_str());
+  ImGui::TextUnformatted(n.display.c_str());
   ImGui::PopStyleColor();
   if (!n.enabled) {
     ImGui::SameLine(0, 6);

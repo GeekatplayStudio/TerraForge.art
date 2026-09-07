@@ -22,6 +22,7 @@ void App::refresh_snapshot() {
     NodeView v;
     v.id = n->id;
     v.type = n->type;
+    v.display = gpx::node_display_name(n->type);
     v.category = n->category;
     v.error = n->error;
     // Node errors used to live only on the node, as red text you had to be

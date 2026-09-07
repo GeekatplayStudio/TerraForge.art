@@ -69,28 +69,19 @@ bool port_name_miscased(const std::string &n) {
   return false;
 }
 
-// A type name a person would not have chosen. Two signals, both weak on their
-// own and reported rather than enforced: a digit suffix (Fractal2 is a
-// version, not a name), and a bare noun+noun compound with no display name to
-// put in front of it. The display name is the fix for all of them; this only
-// says which ones are worst without one.
+// What the user actually reads. The type is a C++ identifier and always will
+// be - it is written into every saved project - so the question is not
+// whether the type is friendly but whether the display name is
+// (engine/node_names.cpp). A display name still identical to a multi-word
+// type means the case splitter did nothing and the node needs an override.
 bool name_is_jargon(const std::string &t) {
-  if (!t.empty() && std::isdigit((unsigned char)t.back())) return true;
+  const std::string &shown = node_display_name(t);
+  if (shown.empty()) return true;
+  if (shown != t) return false; // it reads as something else: good enough
   int caps = 0;
   for (char c : t)
     if (std::isupper((unsigned char)c)) ++caps;
-  return caps >= 3; // three or more words jammed together
-}
-
-std::string words_of(const std::string &t) {
-  std::string o;
-  for (size_t i = 0; i < t.size(); ++i) {
-    if (i && std::isupper((unsigned char)t[i]) &&
-        !std::isupper((unsigned char)t[i - 1]))
-      o += ' ';
-    o += t[i];
-  }
-  return o;
+  return caps >= 2; // a multi-word identifier shown raw
 }
 
 // A [Planned] node is a placeholder: a name, a category and a sentence saying
@@ -154,9 +145,9 @@ void audit(const NodeDef *d, Node *n, std::vector<Finding> &out) {
 
   // ---- name (step 9) -------------------------------------------------
   if (name_is_jargon(n->type))
-    out.push_back({"NAME", "type '" + n->type + "' reads as \"" +
-                               words_of(n->type) +
-                               "\" - needs a display name"});
+    out.push_back({"NAME", "shown to the user as '" +
+                               node_display_name(n->type) +
+                               "' - needs an override in node_names.cpp"});
 }
 
 } // namespace

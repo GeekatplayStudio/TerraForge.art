@@ -151,6 +151,10 @@ int main() {
       first_node = false;
       f << "    {\n";
       f << "      \"type\": \"" << esc(n->type) << "\",\n";
+      // The name a person reads, as against the identifier a file stores.
+      // The search index ranks on this as much as on the type.
+      f << "      \"display_name\": \"" << esc(node_display_name(n->type))
+        << "\",\n";
       f << "      \"category\": \"" << esc(n->category) << "\",\n";
       f << "      \"description\": \""
         << esc(d ? d->description : std::string()) << "\",\n";
