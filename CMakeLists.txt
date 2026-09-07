@@ -176,6 +176,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_terrain_shape.cpp
     engine/nodes/nodes_lake.cpp
     engine/nodes/nodes_points.cpp
+    engine/nodes/nodes_analysis_sky.cpp
     engine/nodes/nodes_morphology.cpp
     engine/nodes/nodes_filters_local.cpp
     engine/nodes/nodes_segment.cpp
@@ -651,6 +652,10 @@ add_executable(shape_lake_tests tests/cpp/test_shape_lake.cpp)
 target_link_libraries(shape_lake_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+add_executable(horizon_tests tests/cpp/test_horizon.cpp)
+target_link_libraries(horizon_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(points_thumb_tests tests/cpp/test_points_thumb.cpp)
 target_link_libraries(points_thumb_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -760,6 +765,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AnimTests COMMAND anim_tests)
 add_test(NAME EcosystemTests COMMAND ecosystem_tests)
 add_test(NAME ShapeLakeTests COMMAND shape_lake_tests)
+add_test(NAME HorizonTests COMMAND horizon_tests)
 add_test(NAME PointsThumbTests COMMAND points_thumb_tests)
 add_test(NAME PointsPreviewTests COMMAND points_preview_tests)
 add_test(NAME NodeNameTests COMMAND node_name_tests)

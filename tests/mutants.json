@@ -50,6 +50,51 @@
           "why": "removing it is undefined behaviour ((int)floor(NaN)), not a wrong answer - on x86 the garbage index lands out of bounds and the picture is identical, so no test can kill it. It stays because UB is not a thing to leave in."
         }
       ]
+    },
+    {
+      "name": "horizon",
+      "file": "engine/gpx/horizon.hpp",
+      "target": "horizon_tests",
+      "run": "horizon_tests",
+      "timeout": 120,
+      "mutants": [
+        {
+          "name": "the hull is never popped (brute force would still be right)",
+          "find": "    while (stack.size() >= 2 &&",
+          "replace": "    while (false && stack.size() >= 2 &&"
+        },
+        {
+          "name": "a downhill horizon is reported instead of clamped to flat",
+          "find": "out[i] = stack.empty() ? 0.f : std::max(0.f, slope_to(stack.back()));",
+          "replace": "out[i] = stack.empty() ? 0.f : slope_to(stack.back());"
+        },
+        {
+          "name": "line offsets truncate instead of rounding",
+          "find": "off[a] = (int)std::lround(m * a);",
+          "replace": "off[a] = (int)(m * a);"
+        },
+        {
+          "name": "distance along the ray ignores the direction's obliqueness",
+          "find": "const float dt = 1.f / std::fabs(major);",
+          "replace": "const float dt = 1.f;"
+        },
+        {
+          "name": "heights scale with the cell, not the tile",
+          "find": "const float k = relief * (float)in.w / span;",
+          "replace": "const float k = relief / span;"
+        },
+        {
+          "name": "the line is read forwards whichever way the ray points",
+          "find": "        const int a = step > 0 ? a_first + k : a_last - k;",
+          "replace": "        const int a = a_first + k;"
+        }
+      ],
+      "not_mutated": [
+        {
+          "name": "the tangent pop's <= could be <",
+          "why": "output-equivalent, not untested. The two differ only when two hull candidates have exactly equal slope, and then both report the same value; the strict form just keeps the collinear point on the stack. The brute-force battery includes a pure ramp, which is collinear end to end, and it agrees under both."
+        }
+      ]
     }
   ]
 }

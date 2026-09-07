@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "generated_by": "tools/gen_node_index.cpp",
-  "node_count": 245,
+  "node_count": 248,
   "category_count": 32,
   "nodes": [
     {
@@ -175,6 +175,104 @@
         "group": "Output",
         "min": 0, "max": 0.5, "default": 0,
         "tooltip": "Fades the terrain to zero at the borders over this\nfraction of the map — clean edges for islands/tiles."
+      },
+      {
+        "key": "blend_invert",
+        "label": "Invert blend",
+        "type": "bool",
+        "group": "Blend",
+        "default": false,
+        "tooltip": "Applies this node where the blend input is dark instead of\nwhere it is bright."
+      }
+      ]
+    },
+    {
+      "type": "SkyExposure",
+      "display_name": "Sky exposure",
+      "category": "Analysis",
+      "description": "How much of the sky each point can see - open ridges near 1, valley floors shut in by their own walls near 0",
+      "ports": [
+        {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
+        {"name": "output", "dir": "out", "type": "heightmap", "optional": false},
+        {"name": "blend", "dir": "in", "type": "heightmap", "optional": true}
+      ],
+      "attrs": [
+      {
+        "key": "directions",
+        "label": "Directions",
+        "type": "int",
+        "group": "Horizon",
+        "min": 4, "max": 64, "default": 16,
+        "tooltip": "How many compass directions the horizon is measured in.\nEach one is a single linear pass over the terrain, so the\ncost is flatly proportional to this: 8 is enough for a\nsoft ambient look, 32 for hard terrain shadows that have\nto line up with the sun."
+      },
+      {
+        "key": "relief",
+        "label": "Vertical scale",
+        "type": "float",
+        "group": "Horizon",
+        "min": 0.01, "max": 4, "default": 0.25,
+        "tooltip": "The terrain's height range as a fraction of the tile's\nwidth - 0.25 means a kilometre of ground rising 250 m.\nThis is what turns the heightmap into real angles, so\nmatch it to the scene's own vertical scale or the\nshadows will be too long or too short."
+      },
+      {
+        "key": "blend_invert",
+        "label": "Invert blend",
+        "type": "bool",
+        "group": "Blend",
+        "default": false,
+        "tooltip": "Applies this node where the blend input is dark instead of\nwhere it is bright."
+      }
+      ]
+    },
+    {
+      "type": "SunExposure",
+      "display_name": "Sun exposure",
+      "category": "Analysis",
+      "description": "How much direct sun reaches each point - the ground a ridge keeps in shadow all day, which is where the snow stays",
+      "ports": [
+        {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
+        {"name": "output", "dir": "out", "type": "heightmap", "optional": false},
+        {"name": "blend", "dir": "in", "type": "heightmap", "optional": true}
+      ],
+      "attrs": [
+      {
+        "key": "azimuth",
+        "label": "Sun azimuth",
+        "type": "float",
+        "group": "Sun",
+        "min": 0, "max": 360, "default": 180,
+        "tooltip": "Which way the sun lies, in degrees around the\ncompass: 0 north, 90 east, 180 south, 270 west. Match\nit to the scene's sun and the shadows agree with the\nrender."
+      },
+      {
+        "key": "altitude",
+        "label": "Sun altitude",
+        "type": "float",
+        "group": "Sun",
+        "min": 1, "max": 89, "default": 30,
+        "tooltip": "How high the sun stands above the horizon, in\ndegrees. Low sun throws long shadows and picks out\nevery fold in the ground; overhead sun shadows almost\nnothing."
+      },
+      {
+        "key": "arc",
+        "label": "Sweep",
+        "type": "float",
+        "group": "Sun",
+        "min": 0, "max": 270, "default": 90,
+        "tooltip": "How far the sun travels, in degrees of azimuth, and\nthe result is the fraction of that journey each point\nis lit for. Zero is one instant - a hard shadow map.\nNinety is a morning, and gives the soft edges you\nwant for deciding where snow survives rather than\nwhere a shadow falls right now."
+      },
+      {
+        "key": "directions",
+        "label": "Directions",
+        "type": "int",
+        "group": "Horizon",
+        "min": 4, "max": 64, "default": 16,
+        "tooltip": "How many compass directions the horizon is measured in.\nEach one is a single linear pass over the terrain, so the\ncost is flatly proportional to this: 8 is enough for a\nsoft ambient look, 32 for hard terrain shadows that have\nto line up with the sun."
+      },
+      {
+        "key": "relief",
+        "label": "Vertical scale",
+        "type": "float",
+        "group": "Horizon",
+        "min": 0.01, "max": 4, "default": 0.25,
+        "tooltip": "The terrain's height range as a fraction of the tile's\nwidth - 0.25 means a kilometre of ground rising 250 m.\nThis is what turns the heightmap into real angles, so\nmatch it to the scene's own vertical scale or the\nshadows will be too long or too short."
       },
       {
         "key": "blend_invert",
@@ -6510,6 +6608,66 @@
         "type": "range",
         "group": "Selection",
         "tooltip": "The band of heights that is selected. Everything inside is\nchosen, everything outside rejected, with the edge\nsoftness above deciding how abruptly."
+      }
+      ]
+    },
+    {
+      "type": "SelectAspect",
+      "display_name": "Select aspect",
+      "category": "Mask",
+      "description": "Selects ground by the compass direction it faces - the shaded north sides that hold snow, the south sides that bake dry",
+      "ports": [
+        {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
+        {"name": "mask", "dir": "out", "type": "heightmap", "optional": false}
+      ],
+      "attrs": [
+      {
+        "key": "smoothing",
+        "label": "Edge softness",
+        "type": "float",
+        "group": "Selection",
+        "min": 0.001, "max": 1, "default": 0.1,
+        "tooltip": "How gradually the selection gives out at its edges.\nNear zero gives a hard cut, which reads as drawn on; a\nsoft edge is what lets one material give way to\nanother."
+      },
+      {
+        "key": "invert",
+        "label": "Invert",
+        "type": "bool",
+        "group": "Selection",
+        "default": false,
+        "tooltip": "Selects everything this node did not - the ground it\nrejected becomes the mask."
+      },
+      {
+        "key": "facing",
+        "label": "Facing",
+        "type": "float",
+        "group": "Selection",
+        "min": 0, "max": 360, "default": 0,
+        "tooltip": "The compass direction the selected slopes look\ntowards, in degrees: 0 north, 90 east, 180 south,\n270 west. This is the control nothing else in the\nmask set can stand in for - altitude and steepness\ncannot tell one side of a peak from the other."
+      },
+      {
+        "key": "spread",
+        "label": "Spread",
+        "type": "float",
+        "group": "Selection",
+        "min": 5, "max": 180, "default": 60,
+        "tooltip": "How wide an arc counts as facing that way, in\ndegrees either side. Narrow picks one face of a\nridge; 180 selects everything and is only useful\nwith the flatness cut below."
+      },
+      {
+        "key": "min_slope",
+        "label": "Ignore flatter than",
+        "type": "float",
+        "group": "Selection",
+        "min": 0, "max": 1, "default": 0.05,
+        "tooltip": "Flat ground faces nowhere in particular, and asking\nit which way it points returns noise. Ground gentler\nthan this is dropped from the selection, which is\nwhat keeps a valley floor from speckling."
+      },
+      {
+        "key": "scale",
+        "label": "Feature scale",
+        "type": "float",
+        "group": "Selection",
+        "min": 0.002, "max": 0.2, "default": 0.02,
+        "tooltip": "How large a feature has to be to count as facing\nsomewhere. Small scales read every pebble and give a\nspeckled mask; large ones read whole hillsides, which\nis what you want when the question is which side of\nthe mountain this is."
       }
       ]
     },

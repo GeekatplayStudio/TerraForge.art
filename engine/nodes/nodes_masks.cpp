@@ -9,25 +9,6 @@
 
 namespace gpx {
 
-static void setup_selector(Node &n) {
-  n.add_in("input");
-  n.add_out("mask");
-  add_float(n.attrs, "smoothing", "Edge softness", 0.1f, 0.001f, 1.f, "Selection")
-      .tooltip = "How gradually the selection gives out at its edges.\n"
-                 "Near zero gives a hard cut, which reads as drawn on; a\n"
-                 "soft edge is what lets one material give way to\n"
-                 "another.";
-  add_bool(n.attrs, "invert", "Invert", false, "Selection")
-      .tooltip = "Selects everything this node did not - the ground it\n"
-                 "rejected becomes the mask.";
-}
-
-static void finish_mask(Node &n, Heightmap &m) {
-  m.remap(0.f, 1.f);
-  if (n.attrs.get_b("invert"))
-    for (auto &v : m.v) v = 1.f - v;
-}
-
 REGISTER_NODE(
     SelectAltitude, "Mask", "Selects the ground that lies within a band of heights - the basis of a snow line or a shore",
     [](Node &n) {

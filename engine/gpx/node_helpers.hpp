@@ -118,6 +118,30 @@ inline void apply_mask_blend(const Heightmap *mask, const Heightmap &original,
   });
 }
 
+// Every selector wears the same two controls, and it matters that they are
+// the same two: a person learns "edge softness" once. Lived in nodes_masks.cpp
+// until a second module needed to make masks; the tooltips are the reason it
+// moved rather than being copied.
+inline void setup_selector(Node &n) {
+  n.add_in("input");
+  n.add_out("mask");
+  add_float(n.attrs, "smoothing", "Edge softness", 0.1f, 0.001f, 1.f,
+            "Selection")
+      .tooltip = "How gradually the selection gives out at its edges.\n"
+                 "Near zero gives a hard cut, which reads as drawn on; a\n"
+                 "soft edge is what lets one material give way to\n"
+                 "another.";
+  add_bool(n.attrs, "invert", "Invert", false, "Selection")
+      .tooltip = "Selects everything this node did not - the ground it\n"
+                 "rejected becomes the mask.";
+}
+
+inline void finish_mask(Node &n, Heightmap &m) {
+  m.remap(0.f, 1.f);
+  if (n.attrs.get_b("invert"))
+    for (auto &v : m.v) v = 1.f - v;
+}
+
 // require a connected input or record an error; returns null on failure
 inline const Heightmap *require_in(Node &n, const char *port) {
   const Heightmap *in = n.in_hmap(port);

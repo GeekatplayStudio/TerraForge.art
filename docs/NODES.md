@@ -1,10 +1,10 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 245 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 248 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
-| [Analysis](#analysis) | 5 |
+| [Analysis](#analysis) | 7 |
 | [Animation](#animation) | 6 |
 | [Atmosphere](#atmosphere) | 4 |
 | [Camera](#camera) | 6 |
@@ -25,7 +25,7 @@ Every node in Geekatplay TerraForge — 245 across 32 categories. Generated from
 | [Hydrology](#hydrology) | 3 |
 | [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
-| [Mask](#mask) | 14 |
+| [Mask](#mask) | 15 |
 | [Material](#material) | 26 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
@@ -94,6 +94,41 @@ Rebuilds the terrain at a coarser or finer sampling — detail control, not size
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
 | Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### SkyExposure
+
+How much of the sky each point can see - open ridges near 1, valley floors shut in by their own walls near 0
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Directions | int, 4 to 64, default 16 | How many compass directions the horizon is measured in. Each one is a single linear pass over the terrain, so the cost is flatly proportional to this: 8 is enough for a soft ambient look, 32 for hard terrain shadows that have to line up with the sun. |
+| Vertical scale | float, 0.01 to 4, default 0.25 | The terrain's height range as a fraction of the tile's width - 0.25 means a kilometre of ground rising 250 m. This is what turns the heightmap into real angles, so match it to the scene's own vertical scale or the shadows will be too long or too short. |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### SunExposure
+
+How much direct sun reaches each point - the ground a ridge keeps in shadow all day, which is where the snow stays
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Sun azimuth | float, 0 to 360, default 180 | Which way the sun lies, in degrees around the compass: 0 north, 90 east, 180 south, 270 west. Match it to the scene's sun and the shadows agree with the render. |
+| Sun altitude | float, 1 to 89, default 30 | How high the sun stands above the horizon, in degrees. Low sun throws long shadows and picks out every fold in the ground; overhead sun shadows almost nothing. |
+| Sweep | float, 0 to 270, default 90 | How far the sun travels, in degrees of azimuth, and the result is the fraction of that journey each point is lit for. Zero is one instant - a hard shadow map. Ninety is a morning, and gives the soft edges you want for deciding where snow survives rather than where a shadow falls right now. |
+| Directions | int, 4 to 64, default 16 | How many compass directions the horizon is measured in. Each one is a single linear pass over the terrain, so the cost is flatly proportional to this: 8 is enough for a soft ambient look, 32 for hard terrain shadows that have to line up with the sun. |
+| Vertical scale | float, 0.01 to 4, default 0.25 | The terrain's height range as a fraction of the tile's width - 0.25 means a kilometre of ground rising 250 m. This is what turns the heightmap into real angles, so match it to the scene's own vertical scale or the shadows will be too long or too short. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### TerrainMetrics
@@ -2366,6 +2401,24 @@ Selects the ground that lies within a band of heights - the basis of a snow line
 | Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
 | Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
 | Altitude band | range | The band of heights that is selected. Everything inside is chosen, everything outside rejected, with the edge softness above deciding how abruptly. |
+
+### SelectAspect
+
+Selects ground by the compass direction it faces - the shaded north sides that hold snow, the south sides that bake dry
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
+| Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
+| Facing | float, 0 to 360, default 0 | The compass direction the selected slopes look towards, in degrees: 0 north, 90 east, 180 south, 270 west. This is the control nothing else in the mask set can stand in for - altitude and steepness cannot tell one side of a peak from the other. |
+| Spread | float, 5 to 180, default 60 | How wide an arc counts as facing that way, in degrees either side. Narrow picks one face of a ridge; 180 selects everything and is only useful with the flatness cut below. |
+| Ignore flatter than | float, 0 to 1, default 0.05 | Flat ground faces nowhere in particular, and asking it which way it points returns noise. Ground gentler than this is dropped from the selection, which is what keeps a valley floor from speckling. |
+| Feature scale | float, 0.002 to 0.2, default 0.02 | How large a feature has to be to count as facing somewhere. Small scales read every pebble and give a speckled mask; large ones read whole hillsides, which is what you want when the question is which side of the mountain this is. |
 
 ### SelectBlobs
 

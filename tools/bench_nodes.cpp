@@ -19,6 +19,9 @@ struct Entry {
 // AreaRemove 4, Skeleton 61, Flood 10, Kuwahara 10, DirBlur 38, Detrend 5,
 // RelElev 11, SmoothFill 15, KMeans 52, Tileable 7, Gabor 63, DLA 52,
 // PathFind 186, PathSDF 8, White 2, Landform 73, Quilt (~40), Wavelet (~50)
+// 2026-09-07: SelectAspect 6, SkyExposure 30, SunExposure 15. SkyExposure is
+// sixteen horizon passes over a megapixel; the convex-hull sweep is what
+// makes that 30 ms instead of the second a marched ray would cost.
 static const Entry ENTRIES[] = {
     {"ScatterPoints", 50},    {"PointsRelax", 50},
     {"PointsToMask", 80},     {"PointsSDF", 60},
@@ -34,6 +37,8 @@ static const Entry ENTRIES[] = {
     {"WaveletNoise", 400},    {"DetailEqualizer", 250},
     {"LineNoise", 600},       {"HydraulicBlur", 150},
     {"FlowWarp", 400},        {"ErosionLayers", 8000},
+    {"SelectAspect", 35},     {"SkyExposure", 160},
+    {"SunExposure", 80},
     {"NoiseFractal", 600},    {"TerrainFractal", 600},
     {"TerrainFractal2", 1500}, {"RockyMountains", 1500},
 };

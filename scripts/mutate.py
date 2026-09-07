@@ -59,9 +59,13 @@ def run(suite):
     if not build(suite["target"]):
         print("  the unmutated source does not build - nothing to say")
         return False
-    code, _ = run_suite(suite["run"], timeout)
+    code, first = run_suite(suite["run"], timeout)
     if code != 0:
-        print("  the unmutated suite already fails - fix that first")
+        # Say what went wrong. A bare "it already fails" sent me looking for a
+        # bug in the code under test twice, when both times the binary was
+        # still being linked.
+        print(f"  the unmutated suite already fails - fix that first\n"
+              f"    exit {code}: {first or '(no FAIL line - it did not run)'}")
         return False
 
     shutil.copyfile(src, bak)
