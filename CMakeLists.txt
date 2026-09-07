@@ -135,6 +135,7 @@ set(ENGINE_SOURCES
     engine/mesh_reduce.cpp
     engine/mesh_repair.cpp
     engine/mesh_topology.cpp
+    engine/accel.cpp
     engine/node_graph.cpp
     engine/node_names.cpp
     engine/node_search.cpp
@@ -409,6 +410,9 @@ set(STUDIO_SOURCES
     studio/planet_shaders_common.cpp
     studio/planet_gpu_check.cpp
     studio/gpu_timer.cpp
+    studio/gpu_compute.cpp
+    studio/accel_gl.cpp
+    studio/accel_check.cpp
     studio/blue_noise.cpp
     studio/shaders_scene.cpp
     studio/shaders_mesh_depth.cpp

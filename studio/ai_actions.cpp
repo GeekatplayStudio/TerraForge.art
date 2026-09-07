@@ -7,6 +7,7 @@
 // it. The scripting API and the MCP server call the same function, so text,
 // script and tool calls all take one code path.
 #include "ai_assist.hpp"
+#include "gpu_compute.hpp"
 #include "ai_actions_internal.hpp"
 #include "app.hpp"
 #include "console.hpp"
@@ -278,6 +279,11 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       } else {
         err = "could not open " + path;
       }
+    } else if (op == "verify_accel") {
+      // does the GPU fractal draw the same terrain the CPU does?
+      a.status = "accelerator check:\n" + accel_verify_all();
+      log_info("accel", a.status);
+      ++applied;
     } else if (op == "verify_field_gpu") {
 
       // the load-bearing check of the dual-domain design: does the generated

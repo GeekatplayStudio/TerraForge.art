@@ -1,5 +1,6 @@
 // Geekatplay Studio — entry point: window, GL, ImGui docking shell
 #include "app.hpp"
+#include "gpu_compute.hpp"
 #include "prefs.hpp"
 #include "i18n.hpp"
 #include "console.hpp"
@@ -75,6 +76,15 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "OpenGL load failed\n");
     return 1;
   }
+
+  // A second, invisible context sharing objects with this one, so the
+  // evaluation worker can run compute shaders without borrowing the main
+  // thread's. Both calls are allowed to decline - on macOS they always will,
+  // since OpenGL stops at 4.1 there - and the engine then computes exactly
+  // what it computes today. Nothing else in the application changes.
+  studio::gpu_compute_init(win);
+  studio::accel_gl_install();
+  glfwMakeContextCurrent(win); // gpu_compute_init created a window; take it back
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();

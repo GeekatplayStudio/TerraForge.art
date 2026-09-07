@@ -1,6 +1,10 @@
 // Geekatplay Studio — hash-based coherent noise (no LUT allocations,
 // world-coordinate based so results are resolution-independent).
 #pragma once
+// <algorithm> for std::clamp, which this header uses and used to get by
+// accident from whatever included it first. The first translation unit to
+// include it on its own did not compile.
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 

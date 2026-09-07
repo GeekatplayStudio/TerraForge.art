@@ -55,6 +55,9 @@ the last two.
 **[What the terrain pass costs](docs/TERRAIN_PERFORMANCE.md)** — the measured
 baseline at six altitudes, how to take it yourself, and what it says about
 where the frame actually goes.
+**[Where the GPU is used](docs/GPU_USE.md)** — an honest audit of what runs
+on the GPU and what does not, the cost of the difference, and the first node
+family moved across.
 **[Developer guide](docs/DEVELOPER_GUIDE.md)** — goals, roadmap, architecture
 and how we work, for anyone who wants to join.
 **[Layered materials](docs/MATERIAL_LAYERS.md)** — how a material stacks,

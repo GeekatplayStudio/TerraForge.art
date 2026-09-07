@@ -44,11 +44,23 @@ static const Entry ENTRIES[] = {
 };
 
 int main(int argc, char **argv) {
-  bool record = argc > 1 && !std::strcmp(argv[1], "--record");
+  bool record = false;
+  int res = 1024;      // the ceilings below are recorded at this resolution
+  bool only_slow = false;
+  for (int i = 1; i < argc; ++i) {
+    if (!std::strcmp(argv[i], "--record")) record = true;
+    else if (!std::strcmp(argv[i], "--slow")) only_slow = true;
+    else if (!std::strncmp(argv[i], "--res=", 6)) res = std::atoi(argv[i] + 6);
+  }
+  // A resolution sweep answers a question a single number cannot: whether a
+  // node is linear in the pixels or worse. An O(n^2) that looks fine at 1024
+  // is what makes a 4k bake take minutes.
+  const bool sweeping = res != 1024;
   int failures = 0;
   for (const Entry &e : ENTRIES) {
+    if (only_slow && e.ceiling_ms < 300) continue;
     Graph g;
-    g.resolution = 1024;
+    g.resolution = res;
     Node *src = g.add_node("Noise", 0, 0);
     Node *n = g.add_node(e.type, 0, 0);
     if (!n) {
@@ -72,6 +84,14 @@ int main(int argc, char **argv) {
     double ms = std::chrono::duration<double, std::milli>(
                     std::chrono::steady_clock::now() - t0)
                     .count();
+    // A ceiling recorded at 1024 says nothing about another resolution, so a
+    // sweep reports rather than judges - and reports the per-megapixel rate,
+    // which is the number that says whether a node is linear in its pixels.
+    if (sweeping) {
+      const double mpix = (double)res * res / 1.0e6;
+      std::printf("%-18s %9.1f ms   %8.1f ms/Mpix\n", e.type, ms, ms / mpix);
+      continue;
+    }
     bool ok = ms <= e.ceiling_ms;
     if (!ok) ++failures;
     if (record)
@@ -79,6 +99,10 @@ int main(int argc, char **argv) {
     else
       std::printf("%-18s %8.1f ms  (ceiling %6.0f)  %s\n", e.type, ms,
                   e.ceiling_ms, ok ? "ok" : "TOO SLOW");
+  }
+  if (sweeping) {
+    std::printf("(no ceilings applied: they are recorded at 1024)\n");
+    return 0;
   }
   if (failures == 0) {
     std::printf("PERF GUARD PASSED\n");

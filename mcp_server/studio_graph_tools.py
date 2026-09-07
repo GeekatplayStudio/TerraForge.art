@@ -265,6 +265,15 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "state. Writes a report beside the API state file.",
         "params": {},
     },
+    "studio_verify_accel": {
+        "description": "Check that the GPU-accelerated fractal draws the same "
+                       "terrain the CPU does, over every parameter "
+                       "combination, and report the worst disagreement "
+                       "against the 2e-4 tolerance. Cases the accelerator "
+                       "declines are listed as such: those run on the CPU by "
+                       "design. Read the report from the state's `status`.",
+        "params": {},
+    },
     "studio_render_passes": {
         "description": "Render with the viewport engine: the beauty image in "
                        "format 0 PNG / 1 EXR / 2 HDR plus one linear EXR per "
@@ -415,6 +424,7 @@ _SIMPLE = {
     "studio_capture": "capture",
     "studio_evaluate": "evaluate",
     "studio_verify_field_gpu": "verify_field_gpu",
+    "studio_verify_accel": "verify_accel",
     "studio_render_passes": "render_passes",
     "studio_set_time": "set_time",
     "studio_set_key": "set_key",

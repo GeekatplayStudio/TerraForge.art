@@ -7,6 +7,7 @@
 // bump surge. Both give the second output every Vue fractal has: Rough
 // areas, the local roughness, to drive material distribution. The maths is
 // gpx/fractal_core.hpp; these declare parameters and run it per pixel.
+#include "gpx/accel.hpp"
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/fractal_core.hpp"
@@ -187,6 +188,29 @@ void run_fractal(Node &n, const fractal::Params &P) {
   const float dstr = n.attrs.get_f("distortion_map", 0.f);
   const uint32_t seed = n.attrs.get_seed("seed");
   const int w = out.w, h = out.h;
+  const bool warped = dmap && !dmap->empty() && dstr > 0.f;
+
+  // If something faster is installed, borrow it. Nothing is installed in the
+  // CLI, the tests or any golden run, so those compute exactly what they
+  // always have - which is what keeps a bake bit-identical while an
+  // interactive drag gets the GPU (engine/gpx/accel.hpp).
+  //
+  // Only the unwarped case is offered: a distortion map is a per-texel input
+  // the shader would have to be handed, and the envelope below still applies
+  // either way. Declining costs one branch.
+  if (!warped)
+    if (Accelerator *acc = accel_if_available())
+      if (acc->fractal(P, seed, out, rough)) {
+        if (env && !env->empty())
+          parallel_rows(h, [&](int y0, int y1) {
+            for (int y = y0; y < y1; ++y)
+              for (int x = 0; x < w; ++x)
+                out.at(x, y) *= std::clamp(env->atc(x, y), 0.f, 1.f);
+          });
+        apply_post(n, out);
+        return;
+      }
+
   parallel_rows(h, [&](int y0, int y1) {
     for (int y = y0; y < y1; ++y)
       for (int x = 0; x < w; ++x) {

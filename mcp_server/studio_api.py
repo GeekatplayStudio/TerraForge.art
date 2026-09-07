@@ -236,6 +236,9 @@ class Studio:
     def verify_field_gpu(self) -> Dict[str, Any]:
         return self.send({"op": "verify_field_gpu"})
 
+    def verify_accel(self) -> Dict[str, Any]:
+        return self.send({"op": "verify_accel"})
+
     def undo(self, steps: int = 1) -> Dict[str, Any]:
         """Revert the last change, including one made through this API."""
         return self.send({"op": "undo", "steps": steps})

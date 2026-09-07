@@ -7,6 +7,7 @@
 #include "perf.hpp"
 #include "console.hpp"
 #include "gpu_timer.hpp"
+#include "gpu_compute.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "renderer_instances.hpp"
@@ -147,6 +148,8 @@ static void publish_state(App &a) {
   renderer_instance_stats(inst_drawn, inst_total, &inst_cards);
   int view_w = 0, view_h = 0;
   renderer_view_size(view_w, view_h);
+  unsigned long long accel_taken = 0, accel_declined = 0;
+  accel_gl_stats(accel_taken, accel_declined);
   j["viewport"] = {{"tessellation", rs.tessellation},
                    {"tess_pixels", rs.tess_pixels},
                    {"tess_min", rs.tess_min},
@@ -163,7 +166,14 @@ static void publish_state(App &a) {
                    // tell a geometry-bound terrain pass from a
                    // fragment-bound one.
                    {"terrain_primitives", gpu_counter_primitives("terrain")},
-                   // the pixels that time was spent on
+                   // Whether node evaluation is taking the GPU path, and how
+                   // often it declines. A fast path nobody can see the use of
+                   // is a fast path nobody trusts.
+                   {"accel", std::string(gpu_compute_available() ? "gl-compute"
+                                                                : "cpu")},
+                   {"accel_taken", accel_taken},
+                   {"accel_declined", accel_declined},
+                   // the pixels the terrain time was spent on
                    {"view_w", view_w},
                    {"view_h", view_h},
                    {"sky_gpu_ms", gpu_timer_ms("sky+clouds")},
