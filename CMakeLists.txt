@@ -454,6 +454,7 @@ set(STUDIO_SOURCES
     studio/scene.cpp
     studio/mesh_load.cpp
     studio/scene_primitives.cpp
+    studio/scene_csg.cpp
     studio/scene_io.cpp
     studio/scene_io_object.cpp
     studio/scene_io_anim.cpp

@@ -115,6 +115,42 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       if (act.contains("pitch_deg")) o.pitch = act["pitch_deg"].get<float>();
       a.scene_selection_serial++;
       ++applied;
+    } else if (op == "combine_objects" || op == "metaball") {
+      // Both consume the selection and leave one object. `objects` names
+      // them explicitly, because a script has no pointer to click with.
+      SceneState &sc = scene();
+      if (act.contains("objects") && act["objects"].is_array()) {
+        std::vector<int> pick;
+        for (const auto &e : act["objects"]) {
+          const std::string want = e.is_string() ? e.get<std::string>() : "";
+          for (int i = 0; i < (int)sc.objects.size(); ++i)
+            if (e.is_number() ? i == e.get<int>() : sc.objects[i].name == want)
+              pick.push_back(i);
+        }
+        if (pick.size()) {
+          sc.selected = pick[0];
+          sc.selection = pick;
+        }
+      }
+      std::string why;
+      bool ok;
+      if (op == "metaball") {
+        ok = scene_metaball_from_selection(act.value("smoothness", 1.f),
+                                           act.value("detail", 64), why);
+      } else {
+        const std::string mode = act.value("mode", std::string("union"));
+        const int code = mode == "intersect" || mode == "intersection" ? 1
+                         : mode == "difference" || mode == "subtract"  ? 2
+                                                                       : 0;
+        ok = scene_boolean_selection(code, why);
+      }
+      if (!ok) {
+        err = why;
+        return 0;
+      }
+      a.scene_selection_serial++;
+      a.status = sc.objects[sc.selected].name;
+      ++applied;
     } else if (op == "add_primitive") {
       std::string kind = act.value("kind", std::string("cube"));
       int idx = scene_add_primitive(kind, act.value("name", std::string()),

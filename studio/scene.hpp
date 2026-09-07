@@ -251,6 +251,19 @@ void scene_object_matrix(const SceneObject &o, float height_scale, float *m16,
 // Largest of the three axis scales - the radius picking and outlines use.
 float scene_object_radius(const SceneObject &o);
 
+// Constructive solid geometry on the selection (studio/scene_csg.cpp).
+// op 0 union, 1 intersection, 2 difference: the primary object is the one
+// the others are combined into, and it is what survives. Every object's own
+// transform is baked into its vertices first, because two objects overlap in
+// the world and not in their own local spaces.
+bool scene_boolean_selection(int op, std::string &err);
+// Melt the selection into one smooth surface. Each object contributes a
+// blob at its centre, sized by its own bounds; `smoothness` decides how
+// readily neighbouring blobs join, `detail` is the voxel count across the
+// longest side. An object with a negative scale carves instead of adding.
+bool scene_metaball_from_selection(float smoothness, int detail,
+                                   std::string &err);
+
 // The tree's per-type glyph and label. Defined next to the panel that draws
 // the tree so a new object type is described in exactly one place.
 enum class Icon; // studio/icons.hpp

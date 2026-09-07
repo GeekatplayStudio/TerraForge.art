@@ -382,6 +382,30 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "lighting, cameras, animation, or all.",
         "params": {"domain": "int|str"},
     },
+    "studio_combine_objects": {
+        "description": "Constructive solid geometry on scene meshes: union, "
+                       "intersect or difference. Each object's own transform "
+                       "is baked in first, so they combine where they sit in "
+                       "the world. The first object survives, keeping its "
+                       "name and material; difference subtracts the later "
+                       "ones from it, which is how a doorway, a window or a "
+                       "cave mouth is cut. Omit `objects` to use the current "
+                       "selection.",
+        "params": {"mode": "str", "objects": "list"},
+    },
+    "studio_metaball": {
+        "description": "Melt several objects into one smooth surface. Each "
+                       "contributes a ball at its centre sized by its own "
+                       "bounds, and neighbouring balls merge rather than "
+                       "intersect. smoothness 0 keeps them nearly separate, "
+                       "2 pours them together; detail is the voxel count "
+                       "across the longest side, at a cubic cost. An object "
+                       "with a NEGATIVE scale carves instead of adding, "
+                       "which is how a hollow or a tunnel is made. The "
+                       "result is a solid and can go straight into "
+                       "studio_combine_objects.",
+        "params": {"objects": "list", "smoothness": "float", "detail": "int"},
+    },
     "studio_add_primitive": {
         "description": "Add a built-in mesh: cube, sphere, plane, cylinder "
                        "or cone. Fields: kind, name, position, scale, color, "
@@ -446,6 +470,8 @@ _SIMPLE = {
     "studio_export_instances": "export_instances",
     "studio_open_node_editor": "open_node_editor",
     "studio_add_primitive": "add_primitive",
+    "studio_combine_objects": "combine_objects",
+    "studio_metaball": "metaball",
 }
 # the Material Studio and the asset manager (studio_asset_tools.py)
 GRAPH_TOOLS.update(ASSET_TOOLS)

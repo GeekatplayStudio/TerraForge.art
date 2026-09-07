@@ -70,6 +70,22 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    (detail 3..512 is the segment count round a round primitive and the grid
    size across a flat one; raise it before putting a displacement material
    on the object, since a displacement can only move vertices that exist)
+- {"op":"combine_objects","mode":"union"|"intersect"|"difference",
+   "objects":["Wall","Arch"]}
+   (constructive solid geometry: the meshes are combined into one, each
+   object's own transform baked in first. The first named object is the one
+   that survives, keeping its name and material. Omit "objects" to use the
+   current selection. Difference subtracts the later ones from the first,
+   which is how a doorway, a window or a cave mouth is cut)
+- {"op":"metaball","objects":["Blob 1","Blob 2"],"smoothness":1.0,
+   "detail":64}
+   (melts the objects into ONE smooth surface: each contributes a ball at its
+   centre, sized by its own bounds, and neighbouring balls merge rather than
+   intersect. smoothness 0 keeps them nearly separate, 2 pours them together.
+   detail is the voxel count across the longest side - raise it for a finer
+   surface, at a cubic cost. An object with a NEGATIVE scale carves instead
+   of adding, which is how a hollow or a tunnel is made. The result is a
+   solid, so it can go straight into combine_objects)
 - {"op":"import_object","path":"C:/models/rock.obj","name":"Rock",
    "position":[x,y,z],"scale":0.1}
 - {"op":"set_scatter","object":"Rock","node":"ScatterPoints","size":0.5,

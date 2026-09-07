@@ -58,6 +58,43 @@ void tree_context_menu(App &a, SceneState &sc, int i) {
   if (o.type == SceneObject::Mesh && imprint_ground_of(o) < 0 &&
       IconMenuItem(Icon::Terrain, tr("om.menu.place_on_terrain")))
     imprint_place_on_terrain(a, i);
+  // Constructive solid geometry, on whatever is selected. Two or more meshes
+  // for a boolean; one or more for a metaball, which melts them together.
+  if (o.type == SceneObject::Mesh && ImGui::BeginMenu("Combine")) {
+    int meshes = 0;
+    for (int k = 0; k < (int)sc.objects.size(); ++k)
+      if (tree_is_selected(sc, k) && sc.objects[k].type == SceneObject::Mesh)
+        ++meshes;
+    auto run = [&](int op, const char *label, const char *undo) {
+      ImGui::BeginDisabled(meshes < 2);
+      if (ImGui::MenuItem(label)) {
+        undo_push(a, undo);
+        std::string why;
+        if (!scene_boolean_selection(op, why)) a.status = why;
+        a.scene_selection_serial++;
+      }
+      ImGui::EndDisabled();
+    };
+    run(0, "Union", "union");
+    run(1, "Intersection", "intersection");
+    run(2, "Difference (first minus the rest)", "difference");
+    ImGui::Separator();
+    if (ImGui::MenuItem("Melt into a metaball")) {
+      undo_push(a, "metaball");
+      std::string why;
+      if (!scene_metaball_from_selection(1.f, 64, why)) a.status = why;
+      a.scene_selection_serial++;
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Every selected object becomes a ball at its centre,\n"
+                        "sized by its own bounds, and neighbouring balls merge\n"
+                        "into one smooth surface rather than intersecting.\n"
+                        "An object with a negative scale carves instead of\n"
+                        "adding - a hollow, a tunnel, a cave mouth.\n\n"
+                        "The result is a solid, so it can go into a boolean.");
+    ImGui::TextDisabled("%d mesh%s selected", meshes, meshes == 1 ? "" : "es");
+    ImGui::EndMenu();
+  }
   if (o.parent >= 0 && IconMenuItem(Icon::Unlink, tr("om.menu.unparent"))) {
     undo_push(a, tr("om.undo.unparent"));
     for (int k = 0; k < (int)sc.objects.size(); ++k)
