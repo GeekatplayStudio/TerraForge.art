@@ -327,6 +327,10 @@ unsigned previews_get(uint64_t node_id, int *w = nullptr, int *h = nullptr);
 void previews_set_image(uint64_t node_id, std::vector<uint8_t> rgba, int w, int h);
 // Upload the pictures handed in since the last frame (main thread, GL bound).
 void previews_flush();
+// Write a preview out as a PNG, read back off the card so what lands in the
+// file is what the editor shows. Main thread, GL bound. Behind the
+// `save_node_preview` API op.
+bool preview_write_png(unsigned tex, int w, int h, const std::string &path);
 
 // renderer
 bool renderer_init();

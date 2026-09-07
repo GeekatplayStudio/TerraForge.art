@@ -301,6 +301,16 @@ MCP_TOOLS = {
                        "the state's `reply`.",
         "params": {"node": "str"},
     },
+    "studio_save_node_preview": {
+        "description": "Write out the 112 px thumbnail from a node's card as "
+                       "a PNG: what that node actually made. A scatter that "
+                       "clumped, a mask covering the wrong half, a fractal at "
+                       "the wrong scale - all visible here, and far cheaper "
+                       "than a render. The node must have been evaluated "
+                       "first (studio_evaluate). `node` is an id, a macro "
+                       "alias or a type.",
+        "params": {"node": "str", "path": "str"},
+    },
     "studio_place_on_terrain": {
         "description": "Make a mesh object stand on the terrain: it becomes a "
                        "child of the terrain, its base rides on the surface and "
@@ -414,6 +424,9 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.send({"op": "probe_height", **params})}
     if tool == "studio_points_stats":
         return {"status": "success", "sent": s.send({"op": "points_stats", **params})}
+    if tool == "studio_save_node_preview":
+        return {"status": "success",
+                "sent": s.send({"op": "save_node_preview", **params})}
     if tool == "studio_place_on_terrain":
         return {"status": "success", "sent": s.send({"op": "place_on_terrain", **params})}
     if tool == "studio_set_ground":

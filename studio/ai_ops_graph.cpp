@@ -373,6 +373,42 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  if (op == "save_node_preview") {
+    // The thumbnail on a node's card, written out as a PNG.
+    //
+    // A script can build a graph and set every parameter, and then has no way
+    // to find out what it made short of a full render. This is the cheap
+    // answer: the same 112 px picture the editor already draws, read back off
+    // the card. It is what makes "did the scatter clump" a question an agent
+    // can ask, and it is how the preview code itself is checked without
+    // somebody sitting in front of the screen.
+    gpx::Node *n = find_node(a, act, "node");
+    if (!n) {
+      err = "save_node_preview: no such node";
+      return 0;
+    }
+    const std::string path = act.value("path", std::string());
+    if (path.empty()) {
+      err = "save_node_preview needs a path";
+      return 0;
+    }
+    int w = 0, h = 0;
+    unsigned tex = previews_get(n->id, &w, &h);
+    if (!tex || w <= 0 || h <= 0) {
+      err = "save_node_preview: '" + n->type +
+            "' has no preview - it has not been evaluated, or its output is "
+            "not one the editor can draw";
+      return 0;
+    }
+    if (!preview_write_png(tex, w, h, path)) {
+      err = "save_node_preview: could not write " + path;
+      return 0;
+    }
+    a.status = "wrote " + path + " (" + std::to_string(w) + "x" +
+               std::to_string(h) + ") from " + n->type;
+    return 1;
+  }
+
   return ai_scene_op(a, op, act, err); // the rest live in ai_ops_scene.cpp
 }
 

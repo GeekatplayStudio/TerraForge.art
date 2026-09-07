@@ -94,6 +94,12 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    tile, displayed and graph, in heightmap units and metres - in "reply")
 - {"op":"points_stats","node":"trees"}  (how many instances a Points node or an
    EcosystemLayer placed, per species, and their mean scale - in "reply")
+- {"op":"save_node_preview","node":"scatter","path":"out.png"}
+   (the 112 px thumbnail from that node's card, written out. WHAT DID THAT
+   NODE ACTUALLY MAKE - a scatter that clumped, a mask covering the wrong
+   half, a fractal at the wrong scale. Far cheaper than a render, and it
+   answers the question the parameters cannot. The node must have been
+   evaluated first)
 - {"op":"assign_material","node":"MaterialOutput","object":"Terrain"}
    (binds a MaterialOutput to an object; omit object for the terrain)
 - {"op":"show_panel","panel":"Material Editor","visible":true}

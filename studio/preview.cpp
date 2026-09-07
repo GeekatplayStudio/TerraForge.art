@@ -8,7 +8,10 @@
 #include <map>
 #include <mutex>
 #include <stdexcept>
+#include <string>
 #include <vector>
+
+#include "stb_image_write.h"
 
 namespace studio {
 
@@ -200,6 +203,18 @@ void previews_clear() {
   for (auto &[id, p] : PREVIEWS)
     glDeleteTextures(1, &p.tex);
   PREVIEWS.clear();
+}
+
+// Read a preview back off the card and write it out. The picture comes from
+// the texture rather than from the port, so what lands in the file is what
+// the editor is showing - upload included. Must run on the GL thread.
+bool preview_write_png(unsigned tex, int w, int h, const std::string &path) {
+  if (!tex || w <= 0 || h <= 0) return false;
+  std::vector<uint8_t> px((size_t)w * h * 4);
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
+  return stbi_write_png(path.c_str(), w, h, 4, px.data(), w * 4) != 0;
 }
 
 unsigned previews_get(uint64_t node_id, int *w, int *h) {
