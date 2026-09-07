@@ -135,3 +135,41 @@ only way past it.
 So a quadtree is worth building for what it lets the surface *show*, not for
 what it saves. That is a different justification, a different success
 criterion, and it is the one to hold it to.
+
+## Why a quadtree cannot simply be dropped in
+
+The terrain's subdivision rests on one invariant, and it is worth stating
+plainly because everything else depends on it: **the level of an edge is
+computed from that edge's two endpoints and nothing else.** Two patches
+sharing an edge therefore compute the identical float, feed the tessellator
+the identical number, and get identical vertices. No gap can open between
+them.
+
+A quadtree breaks the premise, because a coarse patch beside two finer ones
+does not share an edge with either — it shares half an edge with each. The
+usual answer is to constrain neighbouring levels and let the shared-endpoint
+metric absorb the difference. It cannot, and the reason is arithmetic rather
+than tuning.
+
+`fractional_odd_spacing` always rounds up to an **odd** number of segments.
+Two fine neighbours contribute odd + odd, which is even. The coarse edge
+beside them contributes odd. An odd number can never equal an even one, so
+the two sides cannot place the same vertices — at any level, at any distance,
+on any hardware. On the natural case the coarse edge asks for 25 segments
+where its two halves ask for 13 + 13, and the seam opens by 2% of an edge:
+about 1.6 m on a 5 km tile.
+
+Note that the 2:1 level relation does not have to be arranged. The coarse
+edge is twice as long in pixels, so the metric already asks for twice the
+level, unprompted. The levels were never the problem.
+
+`tests/cpp/test_terrain_cracks.cpp` establishes all of that headlessly,
+against the spacing rules the hardware actually uses, and confirms the
+alternative: `equal_spacing` with an exact 2:1 relation is crack-free for
+every level tried. That trades away the reason `fractional_odd_spacing` was
+chosen — an integer level steps, and a stepping subdivision pops.
+
+Deciding between the pop, a skirt that hides the seam, and CDLOD-style
+morphing that closes it properly is the real design decision in front of a
+patch quadtree. It was worth a day's arithmetic to find that out before
+writing the shader.

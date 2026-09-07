@@ -652,6 +652,10 @@ add_executable(shape_lake_tests tests/cpp/test_shape_lake.cpp)
 target_link_libraries(shape_lake_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+add_executable(terrain_crack_tests tests/cpp/test_terrain_cracks.cpp)
+target_link_libraries(terrain_crack_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(horizon_tests tests/cpp/test_horizon.cpp)
 target_link_libraries(horizon_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -769,6 +773,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AnimTests COMMAND anim_tests)
 add_test(NAME EcosystemTests COMMAND ecosystem_tests)
 add_test(NAME ShapeLakeTests COMMAND shape_lake_tests)
+add_test(NAME TerrainCrackTests COMMAND terrain_crack_tests)
 add_test(NAME HorizonTests COMMAND horizon_tests)
 add_test(NAME PointsThumbTests COMMAND points_thumb_tests)
 add_test(NAME PointsPreviewTests COMMAND points_preview_tests)

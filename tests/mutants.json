@@ -95,6 +95,50 @@
           "why": "output-equivalent, not untested. The two differ only when two hull candidates have exactly equal slope, and then both report the same value; the strict form just keeps the collinear point on the stack. The brute-force battery includes a pure ramp, which is collinear end to end, and it agrees under both."
         }
       ]
+    },
+    {
+      "name": "tess_edge",
+      "file": "engine/gpx/tess_edge.hpp",
+      "target": "terrain_crack_tests",
+      "run": "terrain_crack_tests",
+      "timeout": 120,
+      "mutants": [
+        {
+          "name": "fractional odd rounds to even instead",
+          "find": "int n = 2 * (int)std::ceil((t - 1.f) * 0.5f - 1e-6f) + 1;",
+          "replace": "int n = 2 * (int)std::ceil((t - 1.f) * 0.5f - 1e-6f);"
+        },
+        {
+          "name": "the segment length uses the rounded count, not the level",
+          "find": "const float L = 1.f / t;",
+          "replace": "const float L = 1.f / (float)n;"
+        },
+        {
+          "name": "what is left over goes on one end, not split between two",
+          "find": "const float ends = (1.f - (n - 2) * L) * 0.5f;",
+          "replace": "const float ends = (1.f - (n - 2) * L);"
+        },
+        {
+          "name": "the floor stops tapering",
+          "find": "const float floor_here = std::min(min_level, std::max(px * 0.5f, 1.f));",
+          "replace": "const float floor_here = min_level;"
+        },
+        {
+          "name": "the gap is measured one way only",
+          "find": "  for (float y : mapped) worst = std::max(worst, nearest(a, y));",
+          "replace": ""
+        },
+        {
+          "name": "equal spacing rounds down",
+          "find": "if (sp == Spacing::Equal) return std::max(1, (int)std::ceil(t - 1e-6f));",
+          "replace": "if (sp == Spacing::Equal) return std::max(1, (int)(t + 1e-6f));"
+        },
+        {
+          "name": "an edge no longer ends at its far corner",
+          "find": "  v.push_back(1.f);",
+          "replace": "  v.push_back(0.99f);"
+        }
+      ]
     }
   ]
 }
