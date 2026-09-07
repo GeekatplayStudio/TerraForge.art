@@ -341,6 +341,7 @@ std::string renderer_tess_status();
 // How many terrain patches survived the frustum test on the last camera pass.
 std::string renderer_cull_status();
 int renderer_patches_visible();
+void renderer_view_size(int &w, int &h);
 // camera navigation for the active camera (scene camera or free viewport)
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);

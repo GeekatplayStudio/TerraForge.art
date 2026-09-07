@@ -275,6 +275,10 @@ void pass_terrain(const FrameCtx &F) {
     if (use_tess) {
       float vp[2] = {(float)w, (float)h};
       glUniform2fv(uniform_location(PT, "u_viewport"), 1, vp);
+      if (slot == 0) {
+        g_view_w = w;
+        g_view_h = h;
+      }
       // Wireframe subdivides to one quad per patch. At the shading levels
       // (8 to 32 an edge over 64x64 patches) the wires land within a pixel or
       // two of each other and the mode is indistinguishable from solid -
@@ -322,7 +326,13 @@ void pass_terrain(const FrameCtx &F) {
       // culling helped. Only the main view is timed — the other viewports
       // would interleave into the same measurement.
       if (slot == 0) {
+        // Time and triangle count together. With a tessellation shader the
+        // count is not knowable on the CPU - the tessellator decides it per
+        // patch, per frame - and the time alone cannot say whether the pass
+        // is geometry-bound or fragment-bound, which is the whole question
+        // a finer geometry LOD has to answer before it is worth building.
         GpuTimer::Scope s(gpu_timer("terrain"));
+        GpuCounter::Scope c(gpu_counter("terrain"));
         glDrawElements(GL_PATCHES, patch_index_count, GL_UNSIGNED_INT, nullptr);
       } else {
         glDrawElements(GL_PATCHES, patch_index_count, GL_UNSIGNED_INT, nullptr);
@@ -331,6 +341,7 @@ void pass_terrain(const FrameCtx &F) {
       glBindVertexArray(vao_grid);
       if (slot == 0) {
         GpuTimer::Scope s(gpu_timer("terrain"));
+        GpuCounter::Scope c(gpu_counter("terrain"));
         glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
       } else {
         glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);

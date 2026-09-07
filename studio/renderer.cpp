@@ -85,6 +85,11 @@ void renderer_set_points_overlay(const std::vector<float> &xyz) {
   g_points_overlay = xyz;
 }
 int g_patches_visible = -1; // -1 = not measured this frame
+// The main view's size in pixels. Published because the terrain pass is
+// fragment-bound - it costs what it costs per pixel - so a timing without
+// the pixel count beside it is a number that cannot be compared to another
+// machine, another window size, or itself last week.
+int g_view_w = 0, g_view_h = 0;
 int hm_w = 0;
 bool has_albedo = false;
 gpx::Heightmap cpu_height; // normalized copy, for picking

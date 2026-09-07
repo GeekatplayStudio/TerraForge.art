@@ -131,9 +131,23 @@ vec2 screen_of(vec2 uv){
 // and when the whole tile is small on screen, a purely screen-space metric
 // asks for exactly that. The floor keeps this at least as fine as the fixed
 // grid it replaces, so adaptive subdivision can only ever add detail.
+//
+// But a flat floor charges for relief on edges too small to show any. Measured
+// at orbital range, 2026-09-07: the metric asked for 8,192 triangles over the
+// tile and the floor of 8 delivered 663,552 — eighty-one times the work, for a
+// tile a few hundred pixels across. So the floor tapers with the edge: full
+// strength on an edge long enough to hold detail, and giving way on one that
+// is a handful of pixels long, where no subdivision can put relief anywhere
+// the eye could find it. Still well above what the metric itself asks for,
+// which is what keeps displacement from vanishing at middle distances.
+//
+// It depends on the two shared endpoints and nothing else, so both patches
+// along an edge still compute the identical number and the crack invariant is
+// untouched. That is not a detail — it is the reason this design works.
 float edge_tess(vec2 a, vec2 b){
   float px = distance(screen_of(a), screen_of(b));
-  return clamp(px / max(u_tess_px, 1.0), u_tess_min, u_tess_max);
+  float floor_here = min(u_tess_min, max(px * 0.5, 1.0));
+  return clamp(px / max(u_tess_px, 1.0), floor_here, u_tess_max);
 }
 // The mirror of studio::aabb_visible / patches_visible. The plane extraction
 // itself lives on the CPU and arrives in u_frustum, so there is only ever one

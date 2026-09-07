@@ -65,12 +65,81 @@ void GpuTimer::end() {
   smoothed_ms = smoothed_ms <= 0.0 ? ms : smoothed_ms * 0.85 + ms * 0.15;
 }
 
+// --------------------------------------------------------------- counter
+namespace {
+// A second in-flight query of the same target would end the first one's count
+// in the wrong place, exactly as for the timer. The two targets are
+// independent of each other, so a counter scope may sit inside a timer scope
+// - which is the point, since the question is always "how long, and for how
+// many triangles".
+bool g_count_open = false;
+} // namespace
+
+GpuCounter::GpuCounter(const char *name) : pass_name(name ? name : "?") {}
+
+bool GpuCounter::begin() {
+  if (open || g_count_open) return false;
+  if (!queries[slot]) glGenQueries(1, &queries[slot]);
+  if (!queries[slot]) return false;
+  if (issued[slot]) {
+    // this slot has come round again; take its result if the driver has it,
+    // and if not, leave the query alone rather than restarting it mid-flight
+    GLuint ready = 0;
+    glGetQueryObjectuiv(queries[slot], GL_QUERY_RESULT_AVAILABLE, &ready);
+    if (!ready) return false;
+    GLuint64 n = 0;
+    glGetQueryObjectui64v(queries[slot], GL_QUERY_RESULT, &n);
+    issued[slot] = false;
+    last = (unsigned long long)n;
+  }
+  glBeginQuery(GL_PRIMITIVES_GENERATED, queries[slot]);
+  open = true;
+  g_count_open = true;
+  return true;
+}
+
+void GpuCounter::end() {
+  if (!open) return;
+  glEndQuery(GL_PRIMITIVES_GENERATED);
+  open = false;
+  g_count_open = false;
+  issued[slot] = true;
+  slot = (slot + 1) % RING;
+  if (!issued[slot] || !queries[slot]) return;
+  GLuint ready = 0;
+  glGetQueryObjectuiv(queries[slot], GL_QUERY_RESULT_AVAILABLE, &ready);
+  if (!ready) return;
+  GLuint64 n = 0;
+  glGetQueryObjectui64v(queries[slot], GL_QUERY_RESULT, &n);
+  issued[slot] = false;
+  last = (unsigned long long)n;
+}
+
 namespace {
 std::map<std::string, GpuTimer *> &registry() {
   static std::map<std::string, GpuTimer *> m;
   return m;
 }
+std::map<std::string, GpuCounter *> &counters() {
+  static std::map<std::string, GpuCounter *> m;
+  return m;
+}
 } // namespace
+
+GpuCounter &gpu_counter(const char *name) {
+  auto &m = counters();
+  auto it = m.find(name);
+  if (it != m.end()) return *it->second;
+  GpuCounter *c = new GpuCounter(name); // process lifetime, as the timers are
+  m.emplace(name, c);
+  return *c;
+}
+
+unsigned long long gpu_counter_primitives(const char *name) {
+  auto &m = counters();
+  auto it = m.find(name);
+  return it == m.end() ? 0ull : it->second->primitives();
+}
 
 GpuTimer &gpu_timer(const char *name) {
   auto &m = registry();
@@ -87,6 +156,12 @@ std::string gpu_timer_report() {
   for (auto &[name, t] : registry()) {
     if (t->ms() <= 0.0) continue;
     std::snprintf(buf, sizeof buf, "%s: %.3f ms\n", name.c_str(), t->ms());
+    out += buf;
+  }
+  for (auto &[name, c] : counters()) {
+    if (!c->primitives()) continue;
+    std::snprintf(buf, sizeof buf, "%s: %llu primitives\n", name.c_str(),
+                  c->primitives());
     out += buf;
   }
   if (out.empty()) out = "no GPU timings yet\n";

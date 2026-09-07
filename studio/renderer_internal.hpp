@@ -84,6 +84,7 @@ extern std::vector<float> cpu_patch_bounds;
 // ticks so a scatter is visible before anything stamps it
 extern std::vector<float> g_points_overlay;
 extern int g_patches_visible;
+extern int g_view_w, g_view_h;
 extern const int patch_n;
 
 // --------------------------------------------------- generated field GLSL

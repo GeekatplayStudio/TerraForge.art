@@ -144,6 +144,8 @@ static void publish_state(App &a) {
   // culling shader arrived at.
   int inst_drawn = 0, inst_total = 0, inst_cards = 0;
   renderer_instance_stats(inst_drawn, inst_total, &inst_cards);
+  int view_w = 0, view_h = 0;
+  renderer_view_size(view_w, view_h);
   j["viewport"] = {{"tessellation", rs.tessellation},
                    {"tess_pixels", rs.tess_pixels},
                    {"tess_min", rs.tess_min},
@@ -153,6 +155,15 @@ static void publish_state(App &a) {
                    {"patches_total", 64 * 64},
                    {"frame_ms", ImGui::GetIO().DeltaTime * 1000.0f},
                    {"terrain_gpu_ms", gpu_timer_ms("terrain")},
+                   // What the tessellator actually emitted. The patch count
+                   // above is what survived culling; this is what those
+                   // patches cost, and the two together are the only way to
+                   // tell a geometry-bound terrain pass from a
+                   // fragment-bound one.
+                   {"terrain_primitives", gpu_counter_primitives("terrain")},
+                   // the pixels that time was spent on
+                   {"view_w", view_w},
+                   {"view_h", view_h},
                    {"sky_gpu_ms", gpu_timer_ms("sky+clouds")},
                    {"cloud_scatter_octaves", rs.cloud_scatter_octaves},
                    {"scatter_lod_full_m", rs.scatter_lod_full_m},

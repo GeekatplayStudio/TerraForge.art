@@ -52,6 +52,9 @@ what it is called: *rocks* finds stones, boulders, scree and talus.
 **[Terrain analysis](docs/TERRAIN_ANALYSIS.md)** — which way a slope faces,
 how much sky it sees and how much sun it gets, and the horizon sweep behind
 the last two.
+**[What the terrain pass costs](docs/TERRAIN_PERFORMANCE.md)** — the measured
+baseline at six altitudes, how to take it yourself, and what it says about
+where the frame actually goes.
 **[Developer guide](docs/DEVELOPER_GUIDE.md)** — goals, roadmap, architecture
 and how we work, for anyone who wants to join.
 **[Layered materials](docs/MATERIAL_LAYERS.md)** — how a material stacks,

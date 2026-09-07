@@ -305,4 +305,6 @@ const char *renderer_field_error() { return g_field_error.c_str(); }
 // last camera pass, or -1 when culling was not applied.
 int renderer_patches_visible() { return g_patches_visible; }
 
+void renderer_view_size(int &w, int &h) { w = g_view_w; h = g_view_h; }
+
 } // namespace studio
