@@ -1,6 +1,7 @@
 ﻿// Geekatplay Studio — node library panel (click to add at view center)
 #include "app.hpp"
 #include "node_library.hpp"
+#include "gpx/node_search.hpp"
 #include "undo.hpp"
 #include <vector>
 #include <imgui.h>
@@ -83,17 +84,70 @@ void draw_panel_library(App &a) {
     }
   }
 
+  // Adding a node, wherever the click came from.
+  auto add_node = [&](const std::string &type) {
+    undo_push(a, "Add " + type);
+    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    float x = 40, y = 40;
+    if (!a.graph.nodes.empty()) {
+      x = a.graph.nodes.back()->pos_x + 220;
+      y = a.graph.nodes.back()->pos_y;
+    }
+    if (gpx::Node *n = a.graph.add_node(type, x, y)) {
+      a.selected_node = n->id;
+      a.request_eval();
+    }
+  };
+  auto row = [&](const gpx::NodeDef *d, const std::string &label) {
+    if (ImGui::Selectable(label.c_str())) add_node(d->type);
+    if (ImGui::IsItemHovered() && !d->description.empty())
+      ImGui::SetTooltip("%s", d->description.c_str());
+  };
+
+  // Typing turns the list into a search. A substring filter can only find a
+  // node whose name you already know; this ranks the whole catalogue by what
+  // the words mean, so "rocks" finds the stone nodes and "wear down the
+  // mountains" finds the erosion ones. Ranked flat, because an ordering is
+  // the answer and re-grouping it by category would throw that away.
+  if (filter[0]) {
+    const auto hits = gpx::search::find_nodes(filter, 40);
+    int shown = 0;
+    for (const auto &h : hits) {
+      const gpx::NodeDef *d = gpx::NodeRegistry::instance().find(h.type);
+      if (!d || domain_of_category(d->category) != a.workspace) continue;
+      ++shown;
+      ImGui::Indent(8);
+      row(d, h.label);
+      ImGui::SameLine();
+      ImGui::TextDisabled("%s", d->category.c_str());
+      ImGui::Unindent(8);
+    }
+    if (!shown) {
+      ImGui::Indent(8);
+      ImGui::TextDisabled("nothing matches in this workspace");
+      ImGui::Unindent(8);
+    } else {
+      // Say what it searched for as well as what it found, so a surprising
+      // result is explainable rather than mysterious.
+      const auto words = gpx::search::expand_query(filter);
+      if (words.size() > 1) {
+        std::string also;
+        for (size_t i = 1; i < words.size() && i < 8; ++i)
+          also += (also.empty() ? "" : ", ") + words[i];
+        if (!also.empty()) {
+          ImGui::Separator();
+          ImGui::TextDisabled("also searched: %s", also.c_str());
+        }
+      }
+    }
+    ImGui::End();
+    return;
+  }
+
   std::string last_cat;
   bool open = true;
   for (const gpx::NodeDef *d : gpx::NodeRegistry::instance().all()) {
     if (domain_of_category(d->category) != a.workspace) continue;
-    // Match the name a person reads as well as the identifier, so typing
-    // "stone" finds the node whose type happens to be FieldStones and whose
-    // label is "Stone field", and the description too - which is how you
-    // find a node when you know what you want and not what it is called.
-    const std::string &label = gpx::node_display_name(d->type);
-    if (!matches(d->type) && !matches(label) && !matches(d->description))
-      continue;
     if (d->category != last_cat) {
       open = ImGui::CollapsingHeader(d->category.c_str(),
                                      ImGuiTreeNodeFlags_DefaultOpen);
@@ -101,23 +155,7 @@ void draw_panel_library(App &a) {
     }
     if (!open) continue;
     ImGui::Indent(8);
-    if (ImGui::Selectable(label.c_str())) {
-      undo_push(a, "Add " + d->type);
-      std::lock_guard<std::mutex> lk(a.graph_mtx);
-      // place near last node or at origin
-      float x = 40, y = 40;
-      if (!a.graph.nodes.empty()) {
-        x = a.graph.nodes.back()->pos_x + 220;
-        y = a.graph.nodes.back()->pos_y;
-      }
-      gpx::Node *n = a.graph.add_node(d->type, x, y);
-      if (n) {
-        a.selected_node = n->id;
-        a.request_eval();
-      }
-    }
-    if (ImGui::IsItemHovered() && !d->description.empty())
-      ImGui::SetTooltip("%s", d->description.c_str());
+    row(d, gpx::node_display_name(d->type));
     ImGui::Unindent(8);
   }
   ImGui::End();

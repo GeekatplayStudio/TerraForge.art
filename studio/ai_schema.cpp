@@ -84,6 +84,12 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"set_ground","object":"House","lock":true,"offset_m":0,"margin_m":0.5,
    "blend_m":6,"sink_m":0.3}  (flat margin past the walls, blend distance
    around it, how deep it may sit before the ground is dug out)
+- {"op":"find_nodes","query":"rocks","limit":8}
+   (WHICH node does the thing you are describing. Searches by meaning, not
+   spelling: "rocks" finds the stone nodes, "wear the mountains down" finds
+   the erosion ones. Returns type, display name, score and category in
+   "reply", strongest first. Reach for this before add_node whenever you
+   know the effect you want but not the node that produces it)
 - {"op":"probe_height","x":0.5,"z":0.5}  (the ground's height at a point of the
    tile, displayed and graph, in heightmap units and metres - in "reply")
 - {"op":"points_stats","node":"trees"}  (how many instances a Points node or an

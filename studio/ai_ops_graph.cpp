@@ -14,6 +14,7 @@
 // whole action document, so a script's changes revert as one edit.
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "gpx/node_search.hpp"
 #include "scene.hpp"
 #include "render_settings.hpp"
 #include "gpx/metanode.hpp"
@@ -333,6 +334,42 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     }
     a.view_node = n->id;
     a.request_eval();
+    return 1;
+  }
+
+  if (op == "find_nodes") {
+    // Which node does the thing you are describing. The assistant needs this
+    // to turn a sentence into a graph without being handed the whole
+    // catalogue, and a script needs it for the same reason a person does:
+    // you know what you want before you know what it is called.
+    const std::string q = act.value("query", std::string());
+    if (q.empty()) {
+      err = "find_nodes needs a query";
+      return 0;
+    }
+    const int limit = std::clamp(act.value("limit", 12), 1, 60);
+    const auto hits = gpx::search::find_nodes(q, limit);
+    std::string out = "nodes matching \"" + q + "\":\n";
+    if (hits.empty()) {
+      out += "  (nothing)\n";
+    } else {
+      for (const auto &h : hits) {
+        const gpx::NodeDef *d = gpx::NodeRegistry::instance().find(h.type);
+        char line[512];
+        std::snprintf(line, sizeof line, "  %-24s %-32s %.2f  %s\n",
+                      h.type.c_str(), h.label.c_str(), h.score,
+                      d ? d->category.c_str() : "");
+        out += line;
+      }
+      const auto words = gpx::search::expand_query(q);
+      if (words.size() > 1) {
+        out += "  also searched:";
+        for (size_t i = 1; i < words.size() && i < 10; ++i)
+          out += " " + words[i];
+        out += "\n";
+      }
+    }
+    a.status = out;
     return 1;
   }
 

@@ -76,6 +76,16 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
         "description": "Graph evaluation resolution, 64..8192.",
         "params": {"resolution": "int"},
     },
+    "studio_find_nodes": {
+        "description": "Find nodes by describing what you want rather than "
+                       "naming them: 'rocks', 'wear the mountains down', "
+                       "'put water in the low ground'. Ranked best first, "
+                       "with each node's type (to pass to studio_add_node), "
+                       "its display name, a 0..1 score and its category. "
+                       "Use this before add_node when you know the effect "
+                       "you are after but not which node produces it.",
+        "params": {"query": "str", "limit": "int"},
+    },
     "studio_view_node": {
         "description": "Choose which node the 3D viewport shows. Omit `node` "
                        "to go back to automatic (the terrain result).",
@@ -382,6 +392,7 @@ _SIMPLE = {
     "studio_move_node": "move_node",
     "studio_clear_graph": "clear_graph",
     "studio_set_resolution": "set_resolution",
+    "studio_find_nodes": "find_nodes",
     "studio_view_node": "view_node",
     "studio_select_node": "select_node",
     "studio_set_workspace": "set_workspace",
