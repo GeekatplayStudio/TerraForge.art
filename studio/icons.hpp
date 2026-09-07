@@ -21,6 +21,9 @@ enum class Icon {
   Plus, Minus, Trash, Gear, Search, Chevron, ChevronDown, Link, Unlink,
   Save, Open,
   Move, Rotate, Scale, Material, Node, Render, Scene, World, Object,
+  // the primitive set, each drawn as the solid it makes rather than as a
+  // cube with a letter on it (Object is the cube)
+  Sphere, Plane, Cylinder, Cone,
   // viewport: projection, then shading, then overlays
   ViewPersp, ViewTop, ViewFront, ViewRight, Shaded, Textured, Outline,
   // windows: float out of the main window / dock back into it
@@ -92,8 +95,12 @@ void icon_draw_tinted(ImDrawList *dl, Icon ic, ImVec2 centre, float size,
 // `size` is the square button edge; 0 means the toolbar size plus the frame
 // padding. Returns true when clicked. `tip` is shown on hover — always give
 // one, since an icon without a name is a puzzle.
+// `expandable` marks the button as holding a group of tools rather than one:
+// a small grey triangle in the bottom-right corner, Cinema 4D's sign that a
+// right-click opens the set. It only draws the mark - the caller supplies the
+// popup, because the caller is the one that knows what is in it.
 bool IconButton(Icon ic, const char *id, const char *tip, bool active = false,
-                float size = 0.f);
+                float size = 0.f, bool expandable = false);
 
 // Icon plus a label, for menus and lists.
 bool IconMenuItem(Icon ic, const char *label, bool selected = false);

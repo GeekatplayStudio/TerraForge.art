@@ -38,6 +38,7 @@ ImU32 icon_color(Icon ic) {
     // geometry: what stands in the world
     case Icon::Object: case Icon::Mesh: case Icon::Terrain: case Icon::Planet:
     case Icon::Grid: case Icon::Wireframe:
+    case Icon::Sphere: case Icon::Plane: case Icon::Cylinder: case Icon::Cone:
       return geometry();
     // generators and hierarchy: things that make or hold other things
     case Icon::Group: case Icon::Null: case Icon::Expression: case Icon::Bake:
@@ -102,7 +103,7 @@ void IconText(Icon ic, float size, ImU32 col) {
 }
 
 bool IconButton(Icon ic, const char *id, const char *tip, bool active,
-                float size) {
+                float size, bool expandable) {
   // The button is the glyph plus the frame padding, square, so a row of
   // tools sits at the palette size the user chose rather than at whatever
   // the font happens to be.
@@ -142,6 +143,18 @@ bool IconButton(Icon ic, const char *id, const char *tip, bool active,
   if (!active && !hovered) base = theme::shade(theme::text(), 0.85f);
   icon_draw_tinted(dl, ic, ImVec2(p.x + size * 0.5f, p.y + size * 0.5f), glyph,
                    base, hue);
+  // The group mark: a small grey triangle tucked into the bottom-right
+  // corner, which is how Cinema 4D says "there are more tools under this
+  // one". Grey rather than the functional colour, because it describes the
+  // button and not what the button makes.
+  if (expandable) {
+    const float t = std::max(4.f, std::round(size * 0.24f));
+    const float in = std::max(2.f, rounding * 0.5f);
+    ImVec2 corner(p1.x - in, p1.y - in);
+    dl->AddTriangleFilled(ImVec2(corner.x - t, corner.y), corner,
+                          ImVec2(corner.x, corner.y - t),
+                          theme::fade(theme::text_dim(), hovered ? 1.f : 0.7f));
+  }
   if (tip && hovered) ImGui::SetTooltip("%s", tip);
   return hit;
 }

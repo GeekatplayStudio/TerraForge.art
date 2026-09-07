@@ -141,6 +141,37 @@ bool paint_glyphs_a(const Pen &k, Icon ic) {
       k.hi().rect(-0.7f, -0.25f, 0.25f, 0.7f, true);
       k.dark().fill({0.25f, -0.25f, 0.7f, -0.7f, 0.7f, 0.25f, 0.25f, 0.7f});
       return true;
+    // The rest of the primitive set, each drawn as the solid it makes. They
+    // used to share the cube glyph with a letter in the corner, which is a
+    // label rather than an icon: you had to read it to tell a sphere from a
+    // cone. Same three tones as the cube - lit where the light falls, the
+    // functional colour on the body, shadow underneath - so the set reads as
+    // one family.
+    case Icon::Sphere: // a ball: a terminator arc and a specular highlight
+      k.hi().circle(0.f, 0.f, 0.74f, true);
+      k.dark().thick(2.2f).arc(0.f, 0.f, 0.58f, -ICON_PI * 0.28f,
+                               ICON_PI * 0.60f);
+      k.lit().circle(-0.26f, -0.28f, 0.20f, true);
+      return true;
+    case Icon::Plane: // a flat quad seen at an angle, with a grid across it
+      // Opened out from a flatter rhombus, which at menu size read as a
+      // sliver rather than as a surface. The near edges carry the shadow, so
+      // it still reads as a slab lying down when a menu draws it in one tone.
+      k.hi().fill({-0.92f, 0.10f, 0.f, -0.55f, 0.92f, -0.10f, 0.f, 0.55f});
+      k.lit().line(-0.46f, 0.33f, 0.46f, -0.33f);
+      k.lit().line(-0.46f, -0.22f, 0.46f, 0.22f);
+      k.dark().poly({-0.92f, 0.10f, 0.f, 0.55f, 0.92f, -0.10f});
+      return true;
+    case Icon::Cylinder: // a tube: shaded base, body, lit cap
+      k.dark().ellipse(0.f, 0.50f, 0.52f, 0.22f, true);
+      k.hi().fill({-0.52f, -0.42f, 0.52f, -0.42f, 0.52f, 0.50f, -0.52f, 0.50f});
+      k.lit().ellipse(0.f, -0.42f, 0.52f, 0.22f, true);
+      return true;
+    case Icon::Cone: // a cone: shaded base, the near face lit down one side
+      k.dark().ellipse(0.f, 0.52f, 0.60f, 0.24f, true);
+      k.hi().tri(0.f, -0.70f, -0.60f, 0.52f, 0.60f, 0.52f);
+      k.lit().tri(0.f, -0.70f, -0.60f, 0.52f, 0.f, 0.52f);
+      return true;
     case Icon::Mesh: // the same cube with its wire showing
       k.lit().fill({-0.7f, -0.25f, -0.25f, -0.7f, 0.7f, -0.7f, 0.25f, -0.25f});
       k.hi().rect(-0.7f, -0.25f, 0.25f, 0.7f, true);

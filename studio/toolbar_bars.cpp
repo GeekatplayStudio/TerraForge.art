@@ -68,8 +68,9 @@ void tool_gap(float px) {
   if (!g_vertical) ImGui::SameLine(0, px);
 }
 
-bool tool_icon(Icon ic, const char *id, const char *tip, bool active) {
-  bool hit = IconButton(ic, id, tip, active, tool_size());
+bool tool_icon(Icon ic, const char *id, const char *tip, bool active,
+               bool expandable) {
+  bool hit = IconButton(ic, id, tip, active, tool_size(), expandable);
   tool_gap(GAP);
   return hit;
 }

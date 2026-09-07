@@ -20,7 +20,9 @@
 #include "theme_colors.hpp"
 #include "toolbar_internal.hpp"
 #include "undo.hpp"
+#include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <imgui.h>
 #include <string>
 
@@ -74,30 +76,51 @@ void column_terrain(App &a) {
   }
 }
 
-// The five primitives share the Object glyph; a small type letter in the
-// corner tells them apart, and the tooltip names each.
+// One button for the whole primitive set.
+//
+// It used to be five, all wearing the cube glyph with a letter in the corner
+// - which is a label, not an icon: you had to read it to tell a sphere from
+// a cone, and five near-identical tiles is four of them wasted. Now it is one
+// tile showing the shape it will make, left-click to make it, right-click to
+// pick another, and the corner triangle to say so. Cinema 4D groups its
+// object tools exactly this way.
 void column_objects(App &a) {
   SceneState &sc = scene();
   gizmo_deform_tools();
   tool_sep();
   struct P {
-    const char *kind, *id, *tip;
-  } prims[] = {{"cube", "##addcube", "Add cube"},
-               {"sphere", "##addsphere", "Add sphere"},
-               {"plane", "##addplane", "Add plane"},
-               {"cylinder", "##addcyl", "Add cylinder"},
-               {"cone", "##addcone", "Add cone"}};
-  for (const P &p : prims) {
-    if (tool_icon(Icon::Object, p.id, tr(p.tip))) {
-      undo_push(a, std::string("Add ") + p.kind);
-      sc.selected = scene_add_primitive(p.kind, "");
-      a.scene_selection_serial++;
-    }
-    ImVec2 mx = ImGui::GetItemRectMax();
-    char letter[2] = {(char)std::toupper(p.kind[0]), 0};
-    ImVec2 ts = ImGui::CalcTextSize(letter);
-    ImGui::GetWindowDrawList()->AddText(ImVec2(mx.x - ts.x - 2.f, mx.y - ts.y - 1.f),
-                                        theme::text(), letter);
+    const char *kind, *label;
+    Icon icon;
+  };
+  static const P prims[] = {{"cube", "Cube", Icon::Object},
+                            {"sphere", "Sphere", Icon::Sphere},
+                            {"plane", "Plane", Icon::Plane},
+                            {"cylinder", "Cylinder", Icon::Cylinder},
+                            {"cone", "Cone", Icon::Cone}};
+  static const int PRIM_COUNT = (int)(sizeof prims / sizeof prims[0]);
+  // The kind the button makes, remembered for the session the way a grouped
+  // tool palette remembers which of its tools you last reached for.
+  static int chosen = 0;
+  auto add_primitive = [&](const P &p) {
+    undo_push(a, std::string("Add ") + p.kind);
+    sc.selected = scene_add_primitive(p.kind, "");
+    a.scene_selection_serial++;
+  };
+  const P &cur = prims[std::clamp(chosen, 0, PRIM_COUNT - 1)];
+  char tip[192];
+  std::snprintf(tip, sizeof tip,
+                "Add %s\n\nRight-click for the other shapes: cube, sphere,\n"
+                "plane, cylinder, cone. The one you pick becomes what this\n"
+                "button makes.",
+                cur.label);
+  if (tool_icon(cur.icon, "##addprim", tip, false, true)) add_primitive(cur);
+  if (ImGui::BeginPopupContextItem("##primset")) {
+    for (int i = 0; i < PRIM_COUNT; ++i)
+      if (IconMenuItem(prims[i].icon, prims[i].label, i == chosen)) {
+        chosen = i;
+        add_primitive(prims[i]);
+      }
+    ImGui::EndPopup();
   }
   tool_sep();
   if (tool_icon(Icon::Planet, "##addplanet", tr("om.add_planet_tip"))) {

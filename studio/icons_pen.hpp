@@ -101,6 +101,20 @@ struct Pen {
     if (filled) dl->AddCircleFilled(p(x, y), rad * r, col, 0);
     else dl->AddCircle(p(x, y), rad * r, col, 0, w);
   }
+  // A circle seen at an angle - the cap of a cylinder, the base of a cone.
+  // The centre is snapped and the rim is not, exactly as circle() does it,
+  // so a small one stays smooth instead of turning into a polygon.
+  void ellipse(float x, float y, float rx, float ry, bool filled = false) const {
+    const ImVec2 o = p(x, y);
+    dl->PathClear();
+    for (int i = 0; i < 24; ++i) {
+      const float a = ICON_PI * 2.f * i / 24.f;
+      dl->PathLineTo(
+          ImVec2(o.x + std::cos(a) * rx * r, o.y + std::sin(a) * ry * r));
+    }
+    if (filled) dl->PathFillConvex(col);
+    else dl->PathStroke(col, ImDrawFlags_Closed, w);
+  }
   void arc(float x, float y, float rad, float a0, float a1) const {
     dl->PathClear();
     dl->PathArcTo(p(x, y), rad * r, a0, a1, 24);

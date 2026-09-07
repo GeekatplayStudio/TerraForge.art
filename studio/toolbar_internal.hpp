@@ -18,7 +18,10 @@ void tool_pad(float px = 8.f);
 
 // A square icon button at tool_size(), followed by a 3 px gap along the
 // palette. Active = accent frame and warm fill. Returns true when clicked.
-bool tool_icon(Icon ic, const char *id, const char *tip, bool active = false);
+// `expandable` draws the corner triangle that marks a button holding a group
+// of tools; pair it with a BeginPopupContextItem right after the call.
+bool tool_icon(Icon ic, const char *id, const char *tip, bool active = false,
+               bool expandable = false);
 
 // A text button drawn as the same tile as an icon button (the resolution
 // presets: a number is its own icon). Same height, width to fit.
