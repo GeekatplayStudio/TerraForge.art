@@ -67,7 +67,7 @@ REGISTER_NODE(
           m.v[i] = std::exp(-t * t * 4.f); // gaussian bell over the band
         }
       });
-      finish_mask(n, m);
+      finish_mask_soft(n, m);
     })
 
 REGISTER_NODE(
@@ -285,7 +285,7 @@ REGISTER_NODE(
             m.at(x, y) = concave ? lap : -lap;
           }
       });
-      finish_mask(n, m);
+      finish_mask_soft(n, m);
     })
 
 REGISTER_NODE(
@@ -315,7 +315,7 @@ REGISTER_NODE(
             m.at(x, y) = occ / K;
           }
       });
-      finish_mask(n, m);
+      finish_mask_soft(n, m);
     })
 
 

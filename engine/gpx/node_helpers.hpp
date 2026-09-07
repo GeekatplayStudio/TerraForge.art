@@ -5,6 +5,8 @@
 #pragma once
 #include "gpx/node_graph.hpp"
 #include "gpx/parallel.hpp"
+#include <algorithm>
+#include <cmath>
 
 namespace gpx {
 
@@ -138,6 +140,28 @@ inline void setup_selector(Node &n) {
 
 inline void finish_mask(Node &n, Heightmap &m) {
   m.remap(0.f, 1.f);
+  if (n.attrs.get_b("invert"))
+    for (auto &v : m.v) v = 1.f - v;
+}
+
+// For the selectors whose mask is a measured quantity rather than a band
+// test - a curvature, an occlusion, a bell over the mid elevations. Those
+// have no hard edge for "edge softness" to soften, and for a long time the
+// control sat on them doing nothing at all: declared, tooltipped, saved, and
+// ignored. tools/param_audit found all three.
+//
+// Here it means what it means everywhere else - how gradually the selection
+// gives out - by leaning on the contrast of the measured field. The default
+// 0.1 is exactly the identity, so every existing project reads as it did;
+// below it the mask hardens towards a threshold at the midpoint, above it
+// flattens towards a weak, gradual selection.
+inline void finish_mask_soft(Node &n, Heightmap &m) {
+  m.remap(0.f, 1.f);
+  const float soft = std::max(n.attrs.get_f("smoothing", 0.1f), 1e-3f);
+  if (std::fabs(soft - 0.1f) > 1e-6f) {
+    const float k = 0.1f / soft;
+    for (auto &v : m.v) v = std::clamp((v - 0.5f) * k + 0.5f, 0.f, 1.f);
+  }
   if (n.attrs.get_b("invert"))
     for (auto &v : m.v) v = 1.f - v;
 }

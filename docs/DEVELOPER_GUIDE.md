@@ -228,11 +228,31 @@ one step per document, so an agent's whole batch reverts as one edit.
 5. `regression_tests --update` to record new nodes/attributes in the
    manifest; `node_docs_gen` to regenerate `docs/NODES.md`.
 6. If it touches the UI, launch the app and verify it *live*: send an action
-   document to the inbox, capture with the `capture` op or a screenshot,
-   look at it. Screenshots go in the PR.
+   document to the inbox, capture with the `capture` op (the viewport) or
+   `save_node_preview` (one node's card, which is usually the faster answer
+   to "did that node do what I meant"), look at it. Screenshots go in the PR.
 7. Add the op to the AI schema and MCP. Update the README section.
 8. Commit with a message that says what changed and why — the history is
    documentation. Push to `main`.
+
+### The four auditors
+
+Suites say a change did not break what was already there. These ask whether
+what is there was ever right. All four report rather than fail, because a gate
+switched on over hundreds of pre-existing findings is a gate someone turns off
+— the checks that survive a clean sweep get promoted into the contract battery
+afterwards, where they cannot regress.
+
+| Tool | Asks |
+| :--- | :--- |
+| `build/node_audit` | Does every node explain itself — a description worth reading, a tooltip on every parameter, a name a person would choose, an output the editor can draw? |
+| `build/param_audit` | Does moving each slider change anything? It builds every node with real upstream nodes, moves one parameter, and looks. When nothing moves it retries under each mode switch, toggle and zeroed amount on the node before reporting, because most of what looks dead is merely switched off. |
+| `python scripts/mutate.py` | Would the tests notice if the code were wrong? It breaks the source on purpose, one plausible mistake at a time, and reports the mutants that survive. |
+| `python docs_private/mark_refs.py` | Does the reference ledger still match the registry? It reported ten gaps we had filled months earlier. |
+
+`param_audit` earns its place by having found what a green suite cannot: three
+selectors carrying an "Edge softness" control that was declared, tooltipped,
+saved, loaded and read by nothing at all.
 
 ### Conventions
 

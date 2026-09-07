@@ -3898,6 +3898,55 @@ static void test_material_layers() {
 // read as whatever the raw 0..1 heightmap slope happened to be - wildly
 // steeper than the real terrain on any project where height_scale != 1,
 // which is nearly every real one.
+// Three selectors carried an "Edge softness" control that was declared,
+// tooltipped, saved, loaded, and read by nothing at all. Their masks are
+// measured quantities - a curvature, an occlusion, a bell over the mid
+// elevations - so there was no band edge for the shared band code to soften,
+// and the control quietly became decoration. tools/param_audit found all
+// three by moving every slider on every node and watching what happened.
+//
+// The fix has to hold two things at once: the control must do something, and
+// the default must do nothing, or every project made before today reads
+// differently.
+static void test_selector_softness_is_live_and_default_is_identity() {
+  std::printf("selector edge softness...\n");
+  for (const char *type : {"SelectCurvature", "SelectCavities",
+                           "SelectMidrange"}) {
+    auto mask_at = [&](float soft) {
+      gpx::Graph g;
+      g.resolution = 96;
+      gpx::Node *src = g.add_node("Noise");
+      gpx::Node *sel = g.add_node(type);
+      g.add_link(src->id, "output", sel->id, "input");
+      sel->attrs.find("smoothing")->f = soft;
+      g.evaluate();
+      return *sel->port("mask", gpx::PortDir::Out)->hmap;
+    };
+    // how much of the mask sits at the extremes: a hard selection is nearly
+    // all 0 and 1, a soft one lives in the middle
+    auto extremeness = [](const gpx::Heightmap &m) {
+      int n = 0;
+      for (float v : m.v)
+        if (v < 0.05f || v > 0.95f) ++n;
+      return (double)n / (double)m.v.size();
+    };
+
+    const gpx::Heightmap def = mask_at(0.1f);
+    const gpx::Heightmap hard = mask_at(0.005f);
+    const gpx::Heightmap soft = mask_at(1.0f);
+
+    CHECK(extremeness(hard) > extremeness(def) + 0.05,
+          std::string(type) + ": a small softness hardens the mask (" +
+              std::to_string(extremeness(def)) + " -> " +
+              std::to_string(extremeness(hard)) + " at the extremes)");
+    CHECK(extremeness(soft) < extremeness(def) + 1e-9,
+          std::string(type) + ": a large softness does not harden it");
+    // and the default is bit-for-bit what it always was
+    const gpx::Heightmap again = mask_at(0.1f);
+    CHECK(def.v == again.v, std::string(type) + ": 0.1 is reproducible");
+  }
+}
+
 static void test_material_layer_slope_reads_real_degrees() {
   std::printf("material layer slope reads real degrees...\n");
   gpx::Graph g;
@@ -5234,6 +5283,7 @@ int main() {
   test_terrain_imprint();
   test_displacement_layers();
   test_material_layers();
+  test_selector_softness_is_live_and_default_is_identity();
   test_material_layer_slope_reads_real_degrees();
   test_fractal_color();
   test_vue_fractals();

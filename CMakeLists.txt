@@ -745,6 +745,10 @@ add_executable(node_index_gen tools/gen_node_index.cpp)
 target_link_libraries(node_index_gen PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+add_executable(param_audit tools/param_audit.cpp)
+target_link_libraries(param_audit PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(node_audit tools/node_audit.cpp)
 target_link_libraries(node_audit PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
