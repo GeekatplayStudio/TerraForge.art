@@ -157,12 +157,19 @@ REGISTER_NODE(
       add_int(n.attrs, "headwaters", "Headwaters", 24, 2, 200, "Rivers")
           .tooltip = "Number of river source points seeded on high ground\n"
                      "with strong drainage; streams merge downstream.";
-      add_float(n.attrs, "width", "River width", 0.006f, 0.001f, 0.05f, "Rivers");
-      add_float(n.attrs, "depth", "Carve depth", 0.05f, 0.005f, 0.3f, "Rivers");
+      add_float(n.attrs, "width", "River width", 0.006f, 0.001f, 0.05f, "Rivers")
+          .tooltip = "How wide the channel is cut, as a fraction of the tile.";
+      add_float(n.attrs, "depth", "Carve depth", 0.05f, 0.005f, 0.3f, "Rivers")
+          .tooltip = "How deeply the channel is cut below the surrounding\n"
+                     "ground.";
       add_float(n.attrs, "valley_width", "Valley width", 0.02f, 0.f, 0.15f, "Rivers")
           .tooltip = "Soft V-shaped valley carved around the channel.";
       add_float(n.attrs, "widen_downstream", "Widen downstream", 0.6f, 0.f, 1.f,
-                "Rivers");
+                "Rivers")
+          .tooltip = "How much the channel broadens as more water joins it. 0\n"
+                     "gives a ditch of constant width the whole way; higher\n"
+                     "makes the headwaters narrow and the lower reaches broad,\n"
+                     "which is what a real drainage network looks like.";
       add_seed(n.attrs);
     },
     [](Node &n) {
@@ -305,17 +312,25 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_out("output");
       n.add_out("beach_mask");
-      add_float(n.attrs, "water_level", "Water level", 0.12f, 0.f, 0.8f, "Coast");
+      add_float(n.attrs, "water_level", "Water level", 0.12f, 0.f, 0.8f, "Coast")
+          .tooltip = "The sea level, as a fraction of the terrain's range.\n"
+                     "Everything this node does is measured from it.";
       add_float(n.attrs, "beach_width", "Beach height band", 0.04f, 0.005f, 0.2f,
                 "Coast")
           .tooltip = "Heights within this band above water are planed\n"
                      "into a gently sloping beach.";
-      add_float(n.attrs, "beach_slope", "Beach slope", 0.25f, 0.02f, 1.f, "Coast");
+      add_float(n.attrs, "beach_slope", "Beach slope", 0.25f, 0.02f, 1.f, "Coast")
+          .tooltip = "How steeply the beach shelves into the water. Gentle gives\n"
+                     "a wide tidal flat; steep gives a narrow strand under a\n"
+                     "bluff.";
       add_float(n.attrs, "bluff", "Bluff sharpness", 0.5f, 0.f, 1.f, "Coast")
           .tooltip = "Steepens the cut where the terrain rises out of\n"
                      "the beach band — wave-cut bluffs.";
       add_float(n.attrs, "underwater_smooth", "Underwater smoothing", 0.4f, 0.f, 1.f,
-                "Coast");
+                "Coast")
+          .tooltip = "How much the ground below the waterline is smoothed. Wave\n"
+                     "action planes off the shallows, so a seabed with the same\n"
+                     "roughness as the hills above it reads as wrong.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

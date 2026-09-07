@@ -285,11 +285,17 @@ REGISTER_NODE(
     Glaciation, "Erosion", "Glacial carving — broad U-shaped valleys, ridges left intact",
     [](Node &n) {
       fx_setup(n);
-      add_float(n.attrs, "strength", "Strength", 0.6f, 0.f, 1.f, "Glacier");
+      add_float(n.attrs, "strength", "Strength", 0.6f, 0.f, 1.f, "Glacier")
+          .tooltip = "How deeply the glacier cuts. It carves a U-shaped trough\n"
+                     "along the drainage, which is what tells a glaciated valley\n"
+                     "from a river one.";
       add_float(n.attrs, "snowline", "Ice line", 0.55f, 0.f, 1.f, "Glacier")
           .tooltip = "Ground below this altitude is carved by ice;\n"
                      "peaks above it keep their sharp profile.";
-      add_float(n.attrs, "width", "Valley width", 0.03f, 0.005f, 0.15f, "Glacier");
+      add_float(n.attrs, "width", "Valley width", 0.03f, 0.005f, 0.15f, "Glacier")
+          .tooltip = "How wide the trough is, as a fraction of the tile.\n"
+                     "Glaciers cut far broader valleys than rivers of the same\n"
+                     "catchment.";
       add_float(n.attrs, "hardness", "Rock hardness", 0.4f, 0.f, 1.f, "Glacier")
           .tooltip = "Hard rock resists the ice and keeps more relief.";
     },
@@ -328,14 +334,20 @@ REGISTER_NODE(
     [](Node &n) {
       fx_setup(n);
       n.add_out("flow_map");
-      add_float(n.attrs, "amount", "Amount", 0.25f, 0.f, 1.f, "Dissolve");
+      add_float(n.attrs, "amount", "Amount", 0.25f, 0.f, 1.f, "Dissolve")
+          .tooltip = "How much rock is taken into solution. This eats out\n"
+                     "hollows and sinkholes from within rather than cutting from\n"
+                     "the surface, which is how limestone country gets its\n"
+                     "pitted, karst character.";
       add_float(n.attrs, "hardness", "Rock hardness", 0.5f, 0.f, 1.f, "Dissolve")
           .tooltip = "Hard rock keeps the streams narrow and incised;\n"
                      "soft rock lets them spread and flatten the surface.";
       add_float(n.attrs, "altitude_bias", "Low ground bias", 1.f, 0.f, 3.f,
                 "Dissolve")
           .tooltip = "How much the effect concentrates at low altitude.";
-      add_float(n.attrs, "smooth", "Smoothing", 0.15f, 0.f, 1.f, "Dissolve");
+      add_float(n.attrs, "smooth", "Smoothing", 0.15f, 0.f, 1.f, "Dissolve")
+          .tooltip = "Rounds the dissolved forms. Solution features are smooth-\n"
+                     "walled, unlike the sharp edges of mechanical erosion.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

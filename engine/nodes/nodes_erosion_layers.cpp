@@ -89,8 +89,14 @@ REGISTER_NODE(
       add_seed(n.attrs);
       add_float(n.attrs, "strength", "Strength", 1.f, 0.1f, 3.f, "Erosion")
           .tooltip = "Scales droplet count / solver iterations.";
-      add_float(n.attrs, "talus", "Talus angle", 1.2f, 0.05f, 4.f, "Erosion");
-      add_int(n.attrs, "thermal_iters", "Thermal iterations", 40, 1, 300, "Erosion");
+      add_float(n.attrs, "talus", "Talus angle", 1.2f, 0.05f, 4.f, "Erosion")
+          .tooltip = "The steepest slope loose material will hold before it\n"
+                     "slides - the angle of repose. Low makes everything slump\n"
+                     "into gentle scree cones; high lets steep faces stand.";
+      add_int(n.attrs, "thermal_iters", "Thermal iterations", 40, 1, 300, "Erosion")
+          .tooltip = "How many passes of material shedding are run before the\n"
+                     "layers are read off. More approaches the angle of repose\n"
+                     "everywhere.";
       add_float(n.attrs, "relief", "Relief (height / width)", 0.2f, 0.02f, 1.f, "Layers")
           .tooltip = "How tall the terrain is compared with the tile width.\n"
                      "A heightmap is 0..1 over a 0..1 tile; real ground rises\n"
@@ -100,7 +106,10 @@ REGISTER_NODE(
           .tooltip = "Slope (0 flat .. 1 vertical, 0.5 = 45°) above which\n"
                      "soil cannot hold and rock is exposed.";
       add_float(n.attrs, "grass_slope", "Grass slope limit", 0.25f, 0.02f, 0.9f,
-                "Layers");
+                "Layers")
+          .tooltip = "The steepest ground grass will hold on. Above this the\n"
+                     "layer stops, which is what keeps vegetation off the cliffs\n"
+                     "and in the hollows.";
       add_float(n.attrs, "sediment_thr", "Sediment threshold", 0.25f, 0.02f, 0.95f,
                 "Layers")
           .tooltip = "How much deposited material makes a cell sand/silt.";
@@ -111,7 +120,10 @@ REGISTER_NODE(
       add_float(n.attrs, "snowline", "Snowline", 1.f, 0.f, 1.f, "Layers")
           .tooltip = "Height above which snow lies on gentle ground.\n"
                      "1 = no snow.";
-      add_float(n.attrs, "softness", "Edge softness", 0.08f, 0.005f, 0.4f, "Layers");
+      add_float(n.attrs, "softness", "Edge softness", 0.08f, 0.005f, 0.4f, "Layers")
+          .tooltip = "How gradually one layer's mask gives way to the next. Hard\n"
+                     "edges read as drawn on; this is what lets rock, scree,\n"
+                     "soil and grass blend into one another.";
       add_float(n.attrs, "wet_spread", "Wetness spread", 0.01f, 0.f, 0.05f, "Layers")
           .tooltip = "Blur radius (fraction of the map) that lets moisture\n"
                      "reach past the channel itself.";

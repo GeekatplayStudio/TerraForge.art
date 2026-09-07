@@ -352,25 +352,76 @@ REGISTER_NODE(
       n.add_out("delta_map");
       n.add_out("exposed_map");
       add_choice(n.attrs, "method", "Method",
-                 {"Particle droplets", "Shallow water (pipe model)"}, 0);
+                 {"Particle droplets", "Shallow water (pipe model)"}, 0)
+          .tooltip = "Two ways of simulating running water. Particle droplets\n"
+                     "follow thousands of individual raindrops downhill, each\n"
+                     "picking up and dropping sediment - fast, and good at\n"
+                     "carving channels. Shallow water solves the whole sheet of\n"
+                     "water at once through the pipe model, which is slower but\n"
+                     "handles standing water and broad flow properly.";
       add_seed(n.attrs);
       // droplets
-      add_int(n.attrs, "particles", "Particles (x1000)", 120, 1, 2000, "Droplets");
-      add_int(n.attrs, "lifetime", "Particle lifetime", 48, 8, 256, "Droplets");
-      add_float(n.attrs, "inertia", "Inertia", 0.06f, 0.f, 0.6f, "Droplets");
-      add_float(n.attrs, "capacity", "Carry capacity", 5.5f, 0.5f, 20.f, "Droplets");
-      add_float(n.attrs, "erode_rate", "Erosion rate", 0.4f, 0.01f, 1.f, "Droplets");
-      add_float(n.attrs, "deposit_rate", "Deposition rate", 0.25f, 0.01f, 1.f, "Droplets");
-      add_float(n.attrs, "evaporation", "Evaporation", 0.015f, 0.f, 0.1f, "Droplets");
-      add_float(n.attrs, "gravity", "Gravity", 4.f, 0.5f, 12.f, "Droplets");
-      add_int(n.attrs, "brush", "Brush radius", 3, 1, 8, "Droplets");
+      add_int(n.attrs, "particles", "Particles (x1000)", 120, 1, 2000, "Droplets")
+          .tooltip = "How many droplets are released, in thousands. More is\n"
+                     "smoother and more thoroughly carved, and costs\n"
+                     "proportionally more.";
+      add_int(n.attrs, "lifetime", "Particle lifetime", 48, 8, 256, "Droplets")
+          .tooltip = "How many steps a droplet takes before it gives up. Short\n"
+                     "lives erode near the ridges only; long ones carry sediment\n"
+                     "all the way to the basins.";
+      add_float(n.attrs, "inertia", "Inertia", 0.06f, 0.f, 0.6f, "Droplets")
+          .tooltip = "How much a droplet keeps its heading rather than turning\n"
+                     "straight downhill. Low follows the terrain exactly and\n"
+                     "gives tight, branching channels; high sweeps across\n"
+                     "contours and gives straighter, broader valleys.";
+      add_float(n.attrs, "capacity", "Carry capacity", 5.5f, 0.5f, 20.f, "Droplets")
+          .tooltip = "How much sediment a droplet can hold, per unit of speed\n"
+                     "and slope. This is the main dial for how deeply the\n"
+                     "terrain is cut: a droplet erodes while it is under\n"
+                     "capacity and deposits once it is over.";
+      add_float(n.attrs, "erode_rate", "Erosion rate", 0.4f, 0.01f, 1.f, "Droplets")
+          .tooltip = "How fast a droplet takes material when it has room to\n"
+                     "carry more. High values cut sharp gullies quickly and can\n"
+                     "punch through thin ridges.";
+      add_float(n.attrs, "deposit_rate", "Deposition rate", 0.25f, 0.01f, 1.f, "Droplets")
+          .tooltip = "How fast a droplet drops material once it is carrying more\n"
+                     "than it can hold. This is what builds the fans and flats\n"
+                     "at the bottom of the slope.";
+      add_float(n.attrs, "evaporation", "Evaporation", 0.015f, 0.f, 0.1f, "Droplets")
+          .tooltip = "How fast a droplet shrinks as it travels. Faster\n"
+                     "evaporation shortens its reach and makes it drop its load\n"
+                     "sooner, which piles sediment higher up the slope.";
+      add_float(n.attrs, "gravity", "Gravity", 4.f, 0.5f, 12.f, "Droplets")
+          .tooltip = "How strongly slope accelerates a droplet. Higher makes\n"
+                     "fast water on steep ground far more erosive than slow\n"
+                     "water on flat.";
+      add_int(n.attrs, "brush", "Brush radius", 3, 1, 8, "Droplets")
+          .tooltip = "How wide an area each droplet takes material from. 1 gives\n"
+                     "thin, noisy scratches; wider spreads the cut and gives\n"
+                     "smoother, more believable channels.";
       // pipe model
-      add_int(n.attrs, "iterations", "Iterations", 120, 10, 600, "Shallow water");
-      add_float(n.attrs, "rain", "Rainfall", 0.012f, 0.001f, 0.1f, "Shallow water");
-      add_float(n.attrs, "capacity_k", "Capacity Kc", 1.f, 0.1f, 4.f, "Shallow water");
-      add_float(n.attrs, "erode_k", "Erosion Ks", 0.5f, 0.05f, 2.f, "Shallow water");
-      add_float(n.attrs, "deposit_k", "Deposition Kd", 0.5f, 0.05f, 2.f, "Shallow water");
-      add_float(n.attrs, "sw_evap", "Evaporation", 0.015f, 0.f, 0.2f, "Shallow water");
+      add_int(n.attrs, "iterations", "Iterations", 120, 10, 600, "Shallow water")
+          .tooltip = "How many time steps the water sheet is advanced. This is\n"
+                     "the main cost and the main dial for how far the erosion\n"
+                     "has progressed.";
+      add_float(n.attrs, "rain", "Rainfall", 0.012f, 0.001f, 0.1f, "Shallow water")
+          .tooltip = "How much water falls per step, everywhere. More water\n"
+                     "means more flow, deeper channels and more standing water\n"
+                     "in the hollows.";
+      add_float(n.attrs, "capacity_k", "Capacity Kc", 1.f, 0.1f, 4.f, "Shallow water")
+          .tooltip = "How much sediment the flow can carry for a given speed and\n"
+                     "slope. The single strongest control on how deeply the\n"
+                     "terrain is cut.";
+      add_float(n.attrs, "erode_k", "Erosion Ks", 0.5f, 0.05f, 2.f, "Shallow water")
+          .tooltip = "How fast the bed gives up material where the flow is under\n"
+                     "capacity.";
+      add_float(n.attrs, "deposit_k", "Deposition Kd", 0.5f, 0.05f, 2.f, "Shallow water")
+          .tooltip = "How fast sediment settles where the flow is over capacity.\n"
+                     "High values fill the basins quickly and flatten them.";
+      add_float(n.attrs, "sw_evap", "Evaporation", 0.015f, 0.f, 0.2f, "Shallow water")
+          .tooltip = "How fast standing water disappears each step. Low leaves\n"
+                     "lakes in the hollows; high dries the map between rainfalls\n"
+                     "and concentrates the cutting in the channels.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

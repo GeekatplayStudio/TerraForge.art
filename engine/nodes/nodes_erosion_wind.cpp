@@ -35,11 +35,27 @@ REGISTER_NODE(
       n.add_out("abrasion_map");
       n.add_out("deposit_map");
       n.add_out("delta_map");
-      add_float(n.attrs, "angle", "Wind direction °", 30.f, -180.f, 180.f);
-      add_int(n.attrs, "iterations", "Iterations", 40, 1, 300);
-      add_float(n.attrs, "strength", "Strength", 0.4f, 0.05f, 1.f);
-      add_float(n.attrs, "carry_dist", "Carry distance", 0.03f, 0.005f, 0.15f);
-      add_float(n.attrs, "shadow_angle", "Shadow angle", 1.f, 0.2f, 4.f);
+      add_float(n.attrs, "angle", "Wind direction °", 30.f, -180.f, 180.f)
+          .tooltip = "Which way the wind blows. Everything this node does is\n"
+                     "oriented by it: material is lifted from the windward faces\n"
+                     "and dropped in the lee.";
+      add_int(n.attrs, "iterations", "Iterations", 40, 1, 300)
+          .tooltip = "How many passes of transport are run. More moves material\n"
+                     "further and settles the dunes into longer, more continuous\n"
+                     "forms.";
+      add_float(n.attrs, "strength", "Strength", 0.4f, 0.05f, 1.f)
+          .tooltip = "How much material the wind lifts per pass. High scours the\n"
+                     "exposed ground hard and piles it deep behind obstacles.";
+      add_float(n.attrs, "carry_dist", "Carry distance", 0.03f, 0.005f, 0.15f)
+          .tooltip = "How far the wind carries a grain before dropping it, as a\n"
+                     "fraction of the tile. Short gives sharp drifts against\n"
+                     "every obstruction; long spreads material across the whole\n"
+                     "map.";
+      add_float(n.attrs, "shadow_angle", "Shadow angle", 1.f, 0.2f, 4.f)
+          .tooltip = "How far into the lee of a rise the wind stays too weak to\n"
+                     "lift anything. This is what creates the sheltered pocket\n"
+                     "where sand accumulates, and the reason dunes form downwind\n"
+                     "of an obstacle rather than on it.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -145,8 +161,13 @@ REGISTER_NODE(
       n.add_out("output");
       n.add_out("sediment_map");
       n.add_out("exposed_map"); // what the blanket did not cover
-      add_int(n.attrs, "iterations", "Iterations", 40, 1, 300);
-      add_float(n.attrs, "amount", "Fill amount", 0.3f, 0.f, 1.f);
+      add_int(n.attrs, "iterations", "Iterations", 40, 1, 300)
+          .tooltip = "How many settling passes are run. More lets sediment\n"
+                     "travel further downhill before it comes to rest.";
+      add_float(n.attrs, "amount", "Fill amount", 0.3f, 0.f, 1.f)
+          .tooltip = "How much material is deposited into the hollows. This is\n"
+                     "the counterpart to erosion: it fills the low ground and\n"
+                     "flattens the basins rather than cutting the high ground.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

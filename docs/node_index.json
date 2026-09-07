@@ -1784,7 +1784,7 @@
         "type": "float",
         "group": "Coast",
         "min": 0, "max": 0.8, "default": 0.12,
-        "tooltip": ""
+        "tooltip": "The sea level, as a fraction of the terrain's range.\nEverything this node does is measured from it."
       },
       {
         "key": "beach_width",
@@ -1800,7 +1800,7 @@
         "type": "float",
         "group": "Coast",
         "min": 0.02, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How steeply the beach shelves into the water. Gentle gives\na wide tidal flat; steep gives a narrow strand under a\nbluff."
       },
       {
         "key": "bluff",
@@ -1816,7 +1816,7 @@
         "type": "float",
         "group": "Coast",
         "min": 0, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "How much the ground below the waterline is smoothed. Wave\naction planes off the shallows, so a seabed with the same\nroughness as the hills above it reads as wrong."
       },
       {
         "key": "blend_invert",
@@ -1846,7 +1846,7 @@
         "type": "float",
         "group": "Dissolve",
         "min": 0, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How much rock is taken into solution. This eats out\nhollows and sinkholes from within rather than cutting from\nthe surface, which is how limestone country gets its\npitted, karst character."
       },
       {
         "key": "hardness",
@@ -1870,7 +1870,7 @@
         "type": "float",
         "group": "Dissolve",
         "min": 0, "max": 1, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "Rounds the dissolved forms. Solution features are smooth-\nwalled, unlike the sharp edges of mechanical erosion."
       }
       ]
     },
@@ -1924,7 +1924,7 @@
         "type": "float",
         "group": "Erosion",
         "min": 0.05, "max": 4, "default": 1.2,
-        "tooltip": ""
+        "tooltip": "The steepest slope loose material will hold before it\nslides - the angle of repose. Low makes everything slump\ninto gentle scree cones; high lets steep faces stand."
       },
       {
         "key": "thermal_iters",
@@ -1932,7 +1932,7 @@
         "type": "int",
         "group": "Erosion",
         "min": 1, "max": 300, "default": 40,
-        "tooltip": ""
+        "tooltip": "How many passes of material shedding are run before the\nlayers are read off. More approaches the angle of repose\neverywhere."
       },
       {
         "key": "relief",
@@ -1956,7 +1956,7 @@
         "type": "float",
         "group": "Layers",
         "min": 0.02, "max": 0.9, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "The steepest ground grass will hold on. Above this the\nlayer stops, which is what keeps vegetation off the cliffs\nand in the hollows."
       },
       {
         "key": "sediment_thr",
@@ -1988,7 +1988,7 @@
         "type": "float",
         "group": "Layers",
         "min": 0.005, "max": 0.4, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How gradually one layer's mask gives way to the next. Hard\nedges read as drawn on; this is what lets rock, scree,\nsoil and grass blend into one another."
       },
       {
         "key": "wet_spread",
@@ -2017,7 +2017,7 @@
         "type": "float",
         "group": "Glacier",
         "min": 0, "max": 1, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "How deeply the glacier cuts. It carves a U-shaped trough\nalong the drainage, which is what tells a glaciated valley\nfrom a river one."
       },
       {
         "key": "snowline",
@@ -2033,7 +2033,7 @@
         "type": "float",
         "group": "Glacier",
         "min": 0.005, "max": 0.15, "default": 0.03,
-        "tooltip": ""
+        "tooltip": "How wide the trough is, as a fraction of the tile.\nGlaciers cut far broader valleys than rivers of the same\ncatchment."
       },
       {
         "key": "hardness",
@@ -2066,7 +2066,7 @@
         "label": "Method",
         "type": "choice",
         "choices": ["Particle droplets", "Shallow water (pipe model)"],
-        "tooltip": ""
+        "tooltip": "Two ways of simulating running water. Particle droplets\nfollow thousands of individual raindrops downhill, each\npicking up and dropping sediment - fast, and good at\ncarving channels. Shallow water solves the whole sheet of\nwater at once through the pipe model, which is slower but\nhandles standing water and broad flow properly."
       },
       {
         "key": "seed",
@@ -2080,7 +2080,7 @@
         "type": "int",
         "group": "Droplets",
         "min": 1, "max": 2000, "default": 120,
-        "tooltip": ""
+        "tooltip": "How many droplets are released, in thousands. More is\nsmoother and more thoroughly carved, and costs\nproportionally more."
       },
       {
         "key": "lifetime",
@@ -2088,7 +2088,7 @@
         "type": "int",
         "group": "Droplets",
         "min": 8, "max": 256, "default": 48,
-        "tooltip": ""
+        "tooltip": "How many steps a droplet takes before it gives up. Short\nlives erode near the ridges only; long ones carry sediment\nall the way to the basins."
       },
       {
         "key": "inertia",
@@ -2096,7 +2096,7 @@
         "type": "float",
         "group": "Droplets",
         "min": 0, "max": 0.6, "default": 0.06,
-        "tooltip": ""
+        "tooltip": "How much a droplet keeps its heading rather than turning\nstraight downhill. Low follows the terrain exactly and\ngives tight, branching channels; high sweeps across\ncontours and gives straighter, broader valleys."
       },
       {
         "key": "capacity",
@@ -2104,7 +2104,7 @@
         "type": "float",
         "group": "Droplets",
         "min": 0.5, "max": 20, "default": 5.5,
-        "tooltip": ""
+        "tooltip": "How much sediment a droplet can hold, per unit of speed\nand slope. This is the main dial for how deeply the\nterrain is cut: a droplet erodes while it is under\ncapacity and deposits once it is over."
       },
       {
         "key": "erode_rate",
@@ -2112,7 +2112,7 @@
         "type": "float",
         "group": "Droplets",
         "min": 0.01, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "How fast a droplet takes material when it has room to\ncarry more. High values cut sharp gullies quickly and can\npunch through thin ridges."
       },
       {
         "key": "deposit_rate",
@@ -2120,7 +2120,7 @@
         "type": "float",
         "group": "Droplets",
         "min": 0.01, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How fast a droplet drops material once it is carrying more\nthan it can hold. This is what builds the fans and flats\nat the bottom of the slope."
       },
       {
         "key": "evaporation",
@@ -2128,7 +2128,7 @@
         "type": "float",
         "group": "Droplets",
         "min": 0, "max": 0.1, "default": 0.015,
-        "tooltip": ""
+        "tooltip": "How fast a droplet shrinks as it travels. Faster\nevaporation shortens its reach and makes it drop its load\nsooner, which piles sediment higher up the slope."
       },
       {
         "key": "gravity",
@@ -2136,7 +2136,7 @@
         "type": "float",
         "group": "Droplets",
         "min": 0.5, "max": 12, "default": 4,
-        "tooltip": ""
+        "tooltip": "How strongly slope accelerates a droplet. Higher makes\nfast water on steep ground far more erosive than slow\nwater on flat."
       },
       {
         "key": "brush",
@@ -2144,7 +2144,7 @@
         "type": "int",
         "group": "Droplets",
         "min": 1, "max": 8, "default": 3,
-        "tooltip": ""
+        "tooltip": "How wide an area each droplet takes material from. 1 gives\nthin, noisy scratches; wider spreads the cut and gives\nsmoother, more believable channels."
       },
       {
         "key": "iterations",
@@ -2152,7 +2152,7 @@
         "type": "int",
         "group": "Shallow water",
         "min": 10, "max": 600, "default": 120,
-        "tooltip": ""
+        "tooltip": "How many time steps the water sheet is advanced. This is\nthe main cost and the main dial for how far the erosion\nhas progressed."
       },
       {
         "key": "rain",
@@ -2160,7 +2160,7 @@
         "type": "float",
         "group": "Shallow water",
         "min": 0.001, "max": 0.1, "default": 0.012,
-        "tooltip": ""
+        "tooltip": "How much water falls per step, everywhere. More water\nmeans more flow, deeper channels and more standing water\nin the hollows."
       },
       {
         "key": "capacity_k",
@@ -2168,7 +2168,7 @@
         "type": "float",
         "group": "Shallow water",
         "min": 0.1, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much sediment the flow can carry for a given speed and\nslope. The single strongest control on how deeply the\nterrain is cut."
       },
       {
         "key": "erode_k",
@@ -2176,7 +2176,7 @@
         "type": "float",
         "group": "Shallow water",
         "min": 0.05, "max": 2, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How fast the bed gives up material where the flow is under\ncapacity."
       },
       {
         "key": "deposit_k",
@@ -2184,7 +2184,7 @@
         "type": "float",
         "group": "Shallow water",
         "min": 0.05, "max": 2, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How fast sediment settles where the flow is over capacity.\nHigh values fill the basins quickly and flatten them."
       },
       {
         "key": "sw_evap",
@@ -2192,7 +2192,7 @@
         "type": "float",
         "group": "Shallow water",
         "min": 0, "max": 0.2, "default": 0.015,
-        "tooltip": ""
+        "tooltip": "How fast standing water disappears each step. Low leaves\nlakes in the hollows; high dries the map between rainfalls\nand concentrates the cutting in the channels."
       }
       ]
     },
@@ -2213,7 +2213,7 @@
         "type": "int",
         "group": "Blur",
         "min": 1, "max": 64, "default": 8,
-        "tooltip": ""
+        "tooltip": "How far the smoothing reaches. This is a blur that follows\nthe drainage, so it softens the slopes water would have\nrun down while leaving the ridge lines alone."
       },
       {
         "key": "amount",
@@ -2221,7 +2221,7 @@
         "type": "float",
         "group": "Blur",
         "min": 0, "max": 1, "default": 0.7,
-        "tooltip": ""
+        "tooltip": "How much of the blurred result is mixed in. Full strength\nreads as a landscape long weathered; a little takes the\nhard edges off fresh erosion."
       },
       {
         "key": "keep_ridges",
@@ -2268,7 +2268,7 @@
         "type": "float",
         "group": "Rivers",
         "min": 0.001, "max": 0.05, "default": 0.006,
-        "tooltip": ""
+        "tooltip": "How wide the channel is cut, as a fraction of the tile."
       },
       {
         "key": "depth",
@@ -2276,7 +2276,7 @@
         "type": "float",
         "group": "Rivers",
         "min": 0.005, "max": 0.3, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How deeply the channel is cut below the surrounding\nground."
       },
       {
         "key": "valley_width",
@@ -2292,7 +2292,7 @@
         "type": "float",
         "group": "Rivers",
         "min": 0, "max": 1, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "How much the channel broadens as more water joins it. 0\ngives a ditch of constant width the whole way; higher\nmakes the headwaters narrow and the lower reaches broad,\nwhich is what a real drainage network looks like."
       },
       {
         "key": "seed",
@@ -2328,14 +2328,14 @@
         "label": "Iterations",
         "type": "int",
         "min": 1, "max": 300, "default": 40,
-        "tooltip": ""
+        "tooltip": "How many settling passes are run. More lets sediment\ntravel further downhill before it comes to rest."
       },
       {
         "key": "amount",
         "label": "Fill amount",
         "type": "float",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How much material is deposited into the hollows. This is\nthe counterpart to erosion: it fills the low ground and\nflattens the basins rather than cutting the high ground."
       }
       ]
     },
@@ -2361,7 +2361,7 @@
         "label": "Method",
         "type": "choice",
         "choices": ["Explicit incision", "Implicit + uplift (Braun-Willett)"],
-        "tooltip": ""
+        "tooltip": "How the incision law is stepped. The explicit scheme is\nsimple and fast but needs a small time step to stay\nstable; the implicit one (Braun and Willett) is\nunconditionally stable and lets you take large steps,\nwhich is how you get a mature drainage network without\nwaiting."
       },
       {
         "key": "iterations",
@@ -2369,7 +2369,7 @@
         "type": "int",
         "group": "Simulation",
         "min": 1, "max": 400, "default": 40,
-        "tooltip": ""
+        "tooltip": "How many time steps the incision law is advanced. This is\nthe main cost and the main dial for how mature the\ndrainage network becomes."
       },
       {
         "key": "k_erode",
@@ -2377,7 +2377,7 @@
         "type": "float",
         "group": "Simulation",
         "min": 0.001, "max": 0.3, "default": 0.03,
-        "tooltip": ""
+        "tooltip": "How erodible the rock is. This is the overall rate of the\nwhole process - harder rock, slower incision, and a\nlandscape that keeps its steep ground for longer."
       },
       {
         "key": "m_exp",
@@ -2385,7 +2385,7 @@
         "type": "float",
         "group": "Simulation",
         "min": 0.2, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How strongly drainage area drives incision. Higher makes\nthe big rivers cut far faster than the small ones, which\ndeepens the main valleys and leaves the tributaries\nhanging."
       },
       {
         "key": "n_exp",
@@ -2393,7 +2393,7 @@
         "type": "float",
         "group": "Simulation",
         "min": 0.5, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strongly slope drives incision. Above 1 the steep\nreaches cut away fastest and the profile straightens out;\nbelow 1 they persist."
       },
       {
         "key": "dt",
@@ -2401,7 +2401,7 @@
         "type": "float",
         "group": "Simulation",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "The time step. Larger advances the landscape faster per\niteration; with the explicit method too large a step goes\nunstable and spikes."
       },
       {
         "key": "uplift_rate",
@@ -2409,7 +2409,7 @@
         "type": "float",
         "group": "Simulation",
         "min": 0, "max": 0.05, "default": 0.004,
-        "tooltip": ""
+        "tooltip": "How fast the land is pushed up while the rivers cut down.\nA landscape only reaches a steady shape when the two are\nin balance, and this is what stops the terrain simply\nwearing flat."
       },
       {
         "key": "smooth",
@@ -2417,7 +2417,7 @@
         "type": "float",
         "group": "Simulation",
         "min": 0, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "Smooths the result at the end, which takes off the\nnumerical roughness the solver leaves without undoing the\ndrainage pattern it found."
       }
       ]
     },
@@ -2461,21 +2461,21 @@
         "label": "Iterations",
         "type": "int",
         "min": 1, "max": 500, "default": 60,
-        "tooltip": ""
+        "tooltip": "How many passes of material are shed. More approaches the\nangle of repose everywhere and costs proportionally."
       },
       {
         "key": "rate",
         "label": "Transport rate",
         "type": "float",
         "min": 0.05, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much material moves per pass. Low is a slow, even\ncreep; high collapses the slopes quickly and can overshoot\ninto terracing."
       },
       {
         "key": "converge",
         "label": "Run to convergence",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Stops early once a pass moves less than this, so a terrain\nthat has already reached its angle of repose does not keep\npaying for iterations that do nothing."
       }
       ]
     },
@@ -2498,35 +2498,35 @@
         "label": "Wind direction °",
         "type": "float",
         "min": -180, "max": 180, "default": 30,
-        "tooltip": ""
+        "tooltip": "Which way the wind blows. Everything this node does is\noriented by it: material is lifted from the windward faces\nand dropped in the lee."
       },
       {
         "key": "iterations",
         "label": "Iterations",
         "type": "int",
         "min": 1, "max": 300, "default": 40,
-        "tooltip": ""
+        "tooltip": "How many passes of transport are run. More moves material\nfurther and settles the dunes into longer, more continuous\nforms."
       },
       {
         "key": "strength",
         "label": "Strength",
         "type": "float",
         "min": 0.05, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "How much material the wind lifts per pass. High scours the\nexposed ground hard and piles it deep behind obstacles."
       },
       {
         "key": "carry_dist",
         "label": "Carry distance",
         "type": "float",
         "min": 0.005, "max": 0.15, "default": 0.03,
-        "tooltip": ""
+        "tooltip": "How far the wind carries a grain before dropping it, as a\nfraction of the tile. Short gives sharp drifts against\nevery obstruction; long spreads material across the whole\nmap."
       },
       {
         "key": "shadow_angle",
         "label": "Shadow angle",
         "type": "float",
         "min": 0.2, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far into the lee of a rise the wind stays too weak to\nlift anything. This is what creates the sheltered pocket\nwhere sand accumulates, and the reason dunes form downwind\nof an obstacle rather than on it."
       }
       ]
     },

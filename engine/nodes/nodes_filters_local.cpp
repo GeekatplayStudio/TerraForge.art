@@ -254,8 +254,14 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_int(n.attrs, "radius", "Radius (px)", 8, 1, 64, "Blur");
-      add_float(n.attrs, "amount", "Amount", 0.7f, 0.f, 1.f, "Blur");
+      add_int(n.attrs, "radius", "Radius (px)", 8, 1, 64, "Blur")
+          .tooltip = "How far the smoothing reaches. This is a blur that follows\n"
+                     "the drainage, so it softens the slopes water would have\n"
+                     "run down while leaving the ridge lines alone.";
+      add_float(n.attrs, "amount", "Amount", 0.7f, 0.f, 1.f, "Blur")
+          .tooltip = "How much of the blurred result is mixed in. Full strength\n"
+                     "reads as a landscape long weathered; a little takes the\n"
+                     "hard edges off fresh erosion.";
       add_float(n.attrs, "keep_ridges", "Keep ridges", 0.7f, 0.f, 1.f, "Blur")
           .tooltip = "Convex ground (ridges, crests) resists the smoothing;\n"
                      "concave ground (gullies, hollows) takes it fully -\n"

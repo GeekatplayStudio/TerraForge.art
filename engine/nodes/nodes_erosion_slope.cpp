@@ -46,9 +46,17 @@ REGISTER_NODE(
       add_float(n.attrs, "relief", "Relief (height / width)", 0.2f, 0.02f, 1.f)
           .tooltip = "How tall the terrain is against the tile width; the\n"
                      "angle above is measured against this.";
-      add_int(n.attrs, "iterations", "Iterations", 60, 1, 500);
-      add_float(n.attrs, "rate", "Transport rate", 0.5f, 0.05f, 1.f);
-      add_bool(n.attrs, "converge", "Run to convergence", false);
+      add_int(n.attrs, "iterations", "Iterations", 60, 1, 500)
+          .tooltip = "How many passes of material are shed. More approaches the\n"
+                     "angle of repose everywhere and costs proportionally.";
+      add_float(n.attrs, "rate", "Transport rate", 0.5f, 0.05f, 1.f)
+          .tooltip = "How much material moves per pass. Low is a slow, even\n"
+                     "creep; high collapses the slopes quickly and can overshoot\n"
+                     "into terracing.";
+      add_bool(n.attrs, "converge", "Run to convergence", false)
+          .tooltip = "Stops early once a pass moves less than this, so a terrain\n"
+                     "that has already reached its angle of repose does not keep\n"
+                     "paying for iterations that do nothing.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -167,14 +175,43 @@ REGISTER_NODE(
       n.add_out("deposit_map");
       n.add_out("delta_map");
       add_choice(n.attrs, "method", "Method",
-                 {"Explicit incision", "Implicit + uplift (Braun-Willett)"}, 1);
-      add_int(n.attrs, "iterations", "Iterations", 40, 1, 400, "Simulation");
-      add_float(n.attrs, "k_erode", "Erodibility K", 0.03f, 0.001f, 0.3f, "Simulation");
-      add_float(n.attrs, "m_exp", "Area exponent m", 0.5f, 0.2f, 1.f, "Simulation");
-      add_float(n.attrs, "n_exp", "Slope exponent n (explicit)", 1.f, 0.5f, 2.f, "Simulation");
-      add_float(n.attrs, "dt", "Timestep (implicit)", 1.f, 0.05f, 10.f, "Simulation");
-      add_float(n.attrs, "uplift_rate", "Uplift rate", 0.004f, 0.f, 0.05f, "Simulation");
-      add_float(n.attrs, "smooth", "Diffusion", 0.08f, 0.f, 0.5f, "Simulation");
+                 {"Explicit incision", "Implicit + uplift (Braun-Willett)"}, 1)
+          .tooltip = "How the incision law is stepped. The explicit scheme is\n"
+                     "simple and fast but needs a small time step to stay\n"
+                     "stable; the implicit one (Braun and Willett) is\n"
+                     "unconditionally stable and lets you take large steps,\n"
+                     "which is how you get a mature drainage network without\n"
+                     "waiting.";
+      add_int(n.attrs, "iterations", "Iterations", 40, 1, 400, "Simulation")
+          .tooltip = "How many time steps the incision law is advanced. This is\n"
+                     "the main cost and the main dial for how mature the\n"
+                     "drainage network becomes.";
+      add_float(n.attrs, "k_erode", "Erodibility K", 0.03f, 0.001f, 0.3f, "Simulation")
+          .tooltip = "How erodible the rock is. This is the overall rate of the\n"
+                     "whole process - harder rock, slower incision, and a\n"
+                     "landscape that keeps its steep ground for longer.";
+      add_float(n.attrs, "m_exp", "Area exponent m", 0.5f, 0.2f, 1.f, "Simulation")
+          .tooltip = "How strongly drainage area drives incision. Higher makes\n"
+                     "the big rivers cut far faster than the small ones, which\n"
+                     "deepens the main valleys and leaves the tributaries\n"
+                     "hanging.";
+      add_float(n.attrs, "n_exp", "Slope exponent n (explicit)", 1.f, 0.5f, 2.f, "Simulation")
+          .tooltip = "How strongly slope drives incision. Above 1 the steep\n"
+                     "reaches cut away fastest and the profile straightens out;\n"
+                     "below 1 they persist.";
+      add_float(n.attrs, "dt", "Timestep (implicit)", 1.f, 0.05f, 10.f, "Simulation")
+          .tooltip = "The time step. Larger advances the landscape faster per\n"
+                     "iteration; with the explicit method too large a step goes\n"
+                     "unstable and spikes.";
+      add_float(n.attrs, "uplift_rate", "Uplift rate", 0.004f, 0.f, 0.05f, "Simulation")
+          .tooltip = "How fast the land is pushed up while the rivers cut down.\n"
+                     "A landscape only reaches a steady shape when the two are\n"
+                     "in balance, and this is what stops the terrain simply\n"
+                     "wearing flat.";
+      add_float(n.attrs, "smooth", "Diffusion", 0.08f, 0.f, 0.5f, "Simulation")
+          .tooltip = "Smooths the result at the end, which takes off the\n"
+                     "numerical roughness the solver leaves without undoing the\n"
+                     "drainage pattern it found.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

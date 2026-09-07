@@ -588,11 +588,11 @@ Coastal shaping: flat beach band, wave planation, bluff
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Water level | float, 0 to 0.8, default 0.12 |  |
+| Water level | float, 0 to 0.8, default 0.12 | The sea level, as a fraction of the terrain's range. Everything this node does is measured from it. |
 | Beach height band | float, 0.005 to 0.2, default 0.04 | Heights within this band above water are planed into a gently sloping beach. |
-| Beach slope | float, 0.02 to 1, default 0.25 |  |
+| Beach slope | float, 0.02 to 1, default 0.25 | How steeply the beach shelves into the water. Gentle gives a wide tidal flat; steep gives a narrow strand under a bluff. |
 | Bluff sharpness | float, 0 to 1, default 0.5 | Steepens the cut where the terrain rises out of the beach band — wave-cut bluffs. |
-| Underwater smoothing | float, 0 to 1, default 0.4 |  |
+| Underwater smoothing | float, 0 to 1, default 0.4 | How much the ground below the waterline is smoothed. Wave action planes off the shallows, so a seabed with the same roughness as the hills above it reads as wrong. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Dissolve
@@ -608,10 +608,10 @@ Rainwater dissolves the surface into streams, strongest low down
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Amount | float, 0 to 1, default 0.25 |  |
+| Amount | float, 0 to 1, default 0.25 | How much rock is taken into solution. This eats out hollows and sinkholes from within rather than cutting from the surface, which is how limestone country gets its pitted, karst character. |
 | Rock hardness | float, 0 to 1, default 0.5 | Hard rock keeps the streams narrow and incised; soft rock lets them spread and flatten the surface. |
 | Low ground bias | float, 0 to 3, default 1 | How much the effect concentrates at low altitude. |
-| Smoothing | float, 0 to 1, default 0.15 |  |
+| Smoothing | float, 0 to 1, default 0.15 | Rounds the dissolved forms. Solution features are smooth- walled, unlike the sharp edges of mechanical erosion. |
 
 ### ErosionLayers
 
@@ -639,15 +639,15 @@ Erode the terrain and derive material layer masks from what the water and rock d
 | Erosion | choice: Droplets / Shallow water / Thermal only / Thermal + droplets / Thermal + shallow water | Thermal weathering first drops scree below the cliffs; the hydraulic pass then carves channels and settles silt. |
 | Seed | seed |  |
 | Strength | float, 0.1 to 3, default 1 | Scales droplet count / solver iterations. |
-| Talus angle | float, 0.05 to 4, default 1.2 |  |
-| Thermal iterations | int, 1 to 300, default 40 |  |
+| Talus angle | float, 0.05 to 4, default 1.2 | The steepest slope loose material will hold before it slides - the angle of repose. Low makes everything slump into gentle scree cones; high lets steep faces stand. |
+| Thermal iterations | int, 1 to 300, default 40 | How many passes of material shedding are run before the layers are read off. More approaches the angle of repose everywhere. |
 | Relief (height / width) | float, 0.02 to 1, default 0.2 | How tall the terrain is compared with the tile width. A heightmap is 0..1 over a 0..1 tile; real ground rises a fifth of its width or less. Slopes are measured against this, so 0.5 means 45° on the real terrain. |
 | Bedrock slope | float, 0.05 to 0.95, default 0.45 | Slope (0 flat .. 1 vertical, 0.5 = 45°) above which soil cannot hold and rock is exposed. |
-| Grass slope limit | float, 0.02 to 0.9, default 0.25 |  |
+| Grass slope limit | float, 0.02 to 0.9, default 0.25 | The steepest ground grass will hold on. Above this the layer stops, which is what keeps vegetation off the cliffs and in the hollows. |
 | Sediment threshold | float, 0.02 to 0.95, default 0.25 | How much deposited material makes a cell sand/silt. |
 | Stream threshold | float, 0.1 to 0.98, default 0.55 | Drainage (log scale, 0..1) above which the cell is a riverbed. |
 | Snowline | float, 0 to 1, default 1 | Height above which snow lies on gentle ground. 1 = no snow. |
-| Edge softness | float, 0.005 to 0.4, default 0.08 |  |
+| Edge softness | float, 0.005 to 0.4, default 0.08 | How gradually one layer's mask gives way to the next. Hard edges read as drawn on; this is what lets rock, scree, soil and grass blend into one another. |
 | Wetness spread | float, 0 to 0.05, default 0.01 | Blur radius (fraction of the map) that lets moisture reach past the channel itself. |
 
 ### Glaciation
@@ -662,9 +662,9 @@ Glacial carving — broad U-shaped valleys, ridges left intact
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Strength | float, 0 to 1, default 0.6 |  |
+| Strength | float, 0 to 1, default 0.6 | How deeply the glacier cuts. It carves a U-shaped trough along the drainage, which is what tells a glaciated valley from a river one. |
 | Ice line | float, 0 to 1, default 0.55 | Ground below this altitude is carved by ice; peaks above it keep their sharp profile. |
-| Valley width | float, 0.005 to 0.15, default 0.03 |  |
+| Valley width | float, 0.005 to 0.15, default 0.03 | How wide the trough is, as a fraction of the tile. Glaciers cut far broader valleys than rivers of the same catchment. |
 | Rock hardness | float, 0 to 1, default 0.4 | Hard rock resists the ice and keeps more relief. |
 
 ### Hydraulic
@@ -684,23 +684,23 @@ Hydraulic erosion: particle droplets or shallow-water pipe model
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Method | choice: Particle droplets / Shallow water (pipe model) |  |
+| Method | choice: Particle droplets / Shallow water (pipe model) | Two ways of simulating running water. Particle droplets follow thousands of individual raindrops downhill, each picking up and dropping sediment - fast, and good at carving channels. Shallow water solves the whole sheet of water at once through the pipe model, which is slower but handles standing water and broad flow properly. |
 | Seed | seed |  |
-| Particles (x1000) | int, 1 to 2000, default 120 |  |
-| Particle lifetime | int, 8 to 256, default 48 |  |
-| Inertia | float, 0 to 0.6, default 0.06 |  |
-| Carry capacity | float, 0.5 to 20, default 5.5 |  |
-| Erosion rate | float, 0.01 to 1, default 0.4 |  |
-| Deposition rate | float, 0.01 to 1, default 0.25 |  |
-| Evaporation | float, 0 to 0.1, default 0.015 |  |
-| Gravity | float, 0.5 to 12, default 4 |  |
-| Brush radius | int, 1 to 8, default 3 |  |
-| Iterations | int, 10 to 600, default 120 |  |
-| Rainfall | float, 0.001 to 0.1, default 0.012 |  |
-| Capacity Kc | float, 0.1 to 4, default 1 |  |
-| Erosion Ks | float, 0.05 to 2, default 0.5 |  |
-| Deposition Kd | float, 0.05 to 2, default 0.5 |  |
-| Evaporation | float, 0 to 0.2, default 0.015 |  |
+| Particles (x1000) | int, 1 to 2000, default 120 | How many droplets are released, in thousands. More is smoother and more thoroughly carved, and costs proportionally more. |
+| Particle lifetime | int, 8 to 256, default 48 | How many steps a droplet takes before it gives up. Short lives erode near the ridges only; long ones carry sediment all the way to the basins. |
+| Inertia | float, 0 to 0.6, default 0.06 | How much a droplet keeps its heading rather than turning straight downhill. Low follows the terrain exactly and gives tight, branching channels; high sweeps across contours and gives straighter, broader valleys. |
+| Carry capacity | float, 0.5 to 20, default 5.5 | How much sediment a droplet can hold, per unit of speed and slope. This is the main dial for how deeply the terrain is cut: a droplet erodes while it is under capacity and deposits once it is over. |
+| Erosion rate | float, 0.01 to 1, default 0.4 | How fast a droplet takes material when it has room to carry more. High values cut sharp gullies quickly and can punch through thin ridges. |
+| Deposition rate | float, 0.01 to 1, default 0.25 | How fast a droplet drops material once it is carrying more than it can hold. This is what builds the fans and flats at the bottom of the slope. |
+| Evaporation | float, 0 to 0.1, default 0.015 | How fast a droplet shrinks as it travels. Faster evaporation shortens its reach and makes it drop its load sooner, which piles sediment higher up the slope. |
+| Gravity | float, 0.5 to 12, default 4 | How strongly slope accelerates a droplet. Higher makes fast water on steep ground far more erosive than slow water on flat. |
+| Brush radius | int, 1 to 8, default 3 | How wide an area each droplet takes material from. 1 gives thin, noisy scratches; wider spreads the cut and gives smoother, more believable channels. |
+| Iterations | int, 10 to 600, default 120 | How many time steps the water sheet is advanced. This is the main cost and the main dial for how far the erosion has progressed. |
+| Rainfall | float, 0.001 to 0.1, default 0.012 | How much water falls per step, everywhere. More water means more flow, deeper channels and more standing water in the hollows. |
+| Capacity Kc | float, 0.1 to 4, default 1 | How much sediment the flow can carry for a given speed and slope. The single strongest control on how deeply the terrain is cut. |
+| Erosion Ks | float, 0.05 to 2, default 0.5 | How fast the bed gives up material where the flow is under capacity. |
+| Deposition Kd | float, 0.05 to 2, default 0.5 | How fast sediment settles where the flow is over capacity. High values fill the basins quickly and flatten them. |
+| Evaporation | float, 0 to 0.2, default 0.015 | How fast standing water disappears each step. Low leaves lakes in the hollows; high dries the map between rainfalls and concentrates the cutting in the channels. |
 
 ### HydraulicBlur
 
@@ -714,8 +714,8 @@ The erosion look at one percent of the cost
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius (px) | int, 1 to 64, default 8 |  |
-| Amount | float, 0 to 1, default 0.7 |  |
+| Radius (px) | int, 1 to 64, default 8 | How far the smoothing reaches. This is a blur that follows the drainage, so it softens the slopes water would have run down while leaving the ridge lines alone. |
+| Amount | float, 0 to 1, default 0.7 | How much of the blurred result is mixed in. Full strength reads as a landscape long weathered; a little takes the hard edges off fresh erosion. |
 | Keep ridges | float, 0 to 1, default 0.7 | Convex ground (ridges, crests) resists the smoothing; concave ground (gullies, hollows) takes it fully - which is the shape hydraulic erosion carves. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -734,10 +734,10 @@ Trace rivers from headwaters and carve channels; outputs river + depth masks
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Headwaters | int, 2 to 200, default 24 | Number of river source points seeded on high ground with strong drainage; streams merge downstream. |
-| River width | float, 0.001 to 0.05, default 0.006 |  |
-| Carve depth | float, 0.005 to 0.3, default 0.05 |  |
+| River width | float, 0.001 to 0.05, default 0.006 | How wide the channel is cut, as a fraction of the tile. |
+| Carve depth | float, 0.005 to 0.3, default 0.05 | How deeply the channel is cut below the surrounding ground. |
 | Valley width | float, 0 to 0.15, default 0.02 | Soft V-shaped valley carved around the channel. |
-| Widen downstream | float, 0 to 1, default 0.6 |  |
+| Widen downstream | float, 0 to 1, default 0.6 | How much the channel broadens as more water joins it. 0 gives a ditch of constant width the whole way; higher makes the headwaters narrow and the lower reaches broad, which is what a real drainage network looks like. |
 | Seed | seed |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -755,8 +755,8 @@ Fill valleys with smooth sediment
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Iterations | int, 1 to 300, default 40 |  |
-| Fill amount | float, 0 to 1, default 0.3 |  |
+| Iterations | int, 1 to 300, default 40 | How many settling passes are run. More lets sediment travel further downhill before it comes to rest. |
+| Fill amount | float, 0 to 1, default 0.3 | How much material is deposited into the hollows. This is the counterpart to erosion: it fills the low ground and flattens the basins rather than cutting the high ground. |
 
 ### StreamPower
 
@@ -776,14 +776,14 @@ Fluvial erosion E=K·A^m·S^n — explicit incision or implicit solver with tect
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Method | choice: Explicit incision / Implicit + uplift (Braun-Willett) |  |
-| Iterations | int, 1 to 400, default 40 |  |
-| Erodibility K | float, 0.001 to 0.3, default 0.03 |  |
-| Area exponent m | float, 0.2 to 1, default 0.5 |  |
-| Slope exponent n (explicit) | float, 0.5 to 2, default 1 |  |
-| Timestep (implicit) | float, 0.05 to 10, default 1 |  |
-| Uplift rate | float, 0 to 0.05, default 0.004 |  |
-| Diffusion | float, 0 to 0.5, default 0.08 |  |
+| Method | choice: Explicit incision / Implicit + uplift (Braun-Willett) | How the incision law is stepped. The explicit scheme is simple and fast but needs a small time step to stay stable; the implicit one (Braun and Willett) is unconditionally stable and lets you take large steps, which is how you get a mature drainage network without waiting. |
+| Iterations | int, 1 to 400, default 40 | How many time steps the incision law is advanced. This is the main cost and the main dial for how mature the drainage network becomes. |
+| Erodibility K | float, 0.001 to 0.3, default 0.03 | How erodible the rock is. This is the overall rate of the whole process - harder rock, slower incision, and a landscape that keeps its steep ground for longer. |
+| Area exponent m | float, 0.2 to 1, default 0.5 | How strongly drainage area drives incision. Higher makes the big rivers cut far faster than the small ones, which deepens the main valleys and leaves the tributaries hanging. |
+| Slope exponent n (explicit) | float, 0.5 to 2, default 1 | How strongly slope drives incision. Above 1 the steep reaches cut away fastest and the profile straightens out; below 1 they persist. |
+| Timestep (implicit) | float, 0.05 to 10, default 1 | The time step. Larger advances the landscape faster per iteration; with the explicit method too large a step goes unstable and spikes. |
+| Uplift rate | float, 0 to 0.05, default 0.004 | How fast the land is pushed up while the rivers cut down. A landscape only reaches a steady shape when the two are in balance, and this is what stops the terrain simply wearing flat. |
+| Diffusion | float, 0 to 0.5, default 0.08 | Smooths the result at the end, which takes off the numerical roughness the solver leaves without undoing the drainage pattern it found. |
 
 ### Thermal
 
@@ -803,9 +803,9 @@ Thermal weathering — talus slopes to angle of repose
 | Talus angle (legacy) | float, 0.05 to 4, default 1.2 | Relief units per texel. Used only while the angle of repose below is 0. |
 | Angle of repose | float, 0 to 80, default 0 | In degrees on the real terrain: scree settles at about 35°, dry sand at 30-34°, wet soil steeper. 0 keeps the legacy talus value. |
 | Relief (height / width) | float, 0.02 to 1, default 0.2 | How tall the terrain is against the tile width; the angle above is measured against this. |
-| Iterations | int, 1 to 500, default 60 |  |
-| Transport rate | float, 0.05 to 1, default 0.5 |  |
-| Run to convergence | toggle, default off |  |
+| Iterations | int, 1 to 500, default 60 | How many passes of material are shed. More approaches the angle of repose everywhere and costs proportionally. |
+| Transport rate | float, 0.05 to 1, default 0.5 | How much material moves per pass. Low is a slow, even creep; high collapses the slopes quickly and can overshoot into terracing. |
+| Run to convergence | toggle, default off | Stops early once a pass moves less than this, so a terrain that has already reached its angle of repose does not keep paying for iterations that do nothing. |
 
 ### Wind
 
@@ -822,11 +822,11 @@ Aeolian erosion — windward abrasion, leeward deposition (dunes)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Wind direction ° | float, -180 to 180, default 30 |  |
-| Iterations | int, 1 to 300, default 40 |  |
-| Strength | float, 0.05 to 1, default 0.4 |  |
-| Carry distance | float, 0.005 to 0.15, default 0.03 |  |
-| Shadow angle | float, 0.2 to 4, default 1 |  |
+| Wind direction ° | float, -180 to 180, default 30 | Which way the wind blows. Everything this node does is oriented by it: material is lifted from the windward faces and dropped in the lee. |
+| Iterations | int, 1 to 300, default 40 | How many passes of transport are run. More moves material further and settles the dunes into longer, more continuous forms. |
+| Strength | float, 0.05 to 1, default 0.4 | How much material the wind lifts per pass. High scours the exposed ground hard and piles it deep behind obstacles. |
+| Carry distance | float, 0.005 to 0.15, default 0.03 | How far the wind carries a grain before dropping it, as a fraction of the tile. Short gives sharp drifts against every obstruction; long spreads material across the whole map. |
+| Shadow angle | float, 0.2 to 4, default 1 | How far into the lee of a rise the wind stays too weak to lift anything. This is what creates the sheltered pocket where sand accumulates, and the reason dunes form downwind of an obstacle rather than on it. |
 
 ## Export
 
