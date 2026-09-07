@@ -173,16 +173,15 @@ struct SceneObject {
   // Built-in primitives only: how finely the shape is tessellated, so it
   // can carry a displacement material rather than read as a facet count.
   int primitive_detail = 24;
-  // How far the base is sunk below the highest ground under its footprint,
-  // in heightmap units. Zero seats it on that highest point, so it never
-  // cuts into the terrain - and on any slope hangs over the rest, which is
-  // the gap. Sink it by the ground's own unevenness and it touches
-  // everywhere; sink it further and it is buried. Unlimited.
+  // A displacement the terrain knows nothing about, in heightmap units.
+  // Positive sinks the object into the ground, negative lifts it out of it,
+  // and either way the terrain is left exactly as it was - the imprint is
+  // handed the base from before this was applied, so it never sees the
+  // object move. Signed, and unlimited in both directions.
   //
-  // The terrain does NOT react to this: the amount sunk is added to the
-  // imprint's dead band, so sinking an object into the ground leaves the
-  // ground where it was. That is the difference between this and a negative
-  // height, which the ground follows down.
+  // That is the whole difference between this and `ground_offset`, which is
+  // also a height but one the ground follows: lift by the offset and a mound
+  // rises with it; lift by this and the object simply leaves the ground.
   float ground_sunk = 0.f;
   // How uneven the ground under the base is (highest minus lowest sample),
   // runtime only, so the panel can say how deep "touches everywhere" is.

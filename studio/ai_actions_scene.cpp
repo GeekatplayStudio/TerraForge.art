@@ -78,9 +78,9 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         if (act.contains("sink_m")) o.ground_sink = std::max(act["sink_m"].get<float>(), 0.f) / hm_m;
         // How far the ground may travel to meet it. Absent leaves the
         // default, which is unlimited and is how it behaved before.
-        // How far below the highest ground under its base the object is
-        // sunk, in metres. The ground does not react to this.
-        if (act.contains("sunk_m")) o.ground_sunk = std::max(act["sunk_m"].get<float>(), 0.f) / hm_m;
+        // A displacement in metres the terrain does not react to: positive
+        // sinks the object in, negative lifts it out.
+        if (act.contains("sunk_m")) o.ground_sunk = act["sunk_m"].get<float>() / hm_m;
         if (act.contains("lift_m")) o.ground_lift = std::max(act["lift_m"].get<float>(), 0.f) / hm_m;
         if (act.contains("dig_m")) o.ground_dig = std::max(act["dig_m"].get<float>(), 0.f) / hm_m;
         ++applied;

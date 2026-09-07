@@ -71,7 +71,7 @@ void object_transform_from_json(const json &jo, SceneObject &o) {
   o.ground_blend = jo.value("ground_blend", 0.f);
   o.ground_sink = jo.value("ground_sink", 0.f);
   o.primitive_detail = jo.value("primitive_detail", 24);
-  o.ground_sunk = std::max(jo.value("ground_sunk", 0.f), 0.f);
+  o.ground_sunk = jo.value("ground_sunk", 0.f);
   o.ground_lift = jo.value("ground_lift", 1e9f);
   o.ground_dig = jo.value("ground_dig", 1e9f);
   if (jo.contains("twist")) v3_from(jo["twist"], o.deform.twist);

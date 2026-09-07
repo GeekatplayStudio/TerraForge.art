@@ -97,18 +97,20 @@ std::string footprints_text(const SceneState &sc, float hs, bool &any) {
     Footprint f = imprint_footprint(o, hs);
     if (!f.valid()) continue;
     any = true;
-    // The sunk depth joins the dead band. Without this the node saw a base
-    // below the ground and dug the ground down to it, so "sink into the
-    // ground" moved the ground instead of the object - which is the exact
-    // opposite of what it says.
-    // Sinking must not move the ground, in either direction. Above the
-    // base the sunk depth joins the dead band; below it, whatever of the
-    // natural unevenness the sink has not yet covered is left alone too.
-    const float sunk = std::max(o.ground_sunk, 0.f);
-    text += imprint_footprint_line(f, o.ground_sink + sunk, o.ground_margin,
+    // The terrain is shown the base the object would have if it were not
+    // sunk, so it moulds to that and the sink moves the object alone.
+    //
+    // Every earlier attempt at this widened the dead band instead, which is
+    // the same idea applied in the wrong place: the node still saw a base
+    // that had moved and still responded to it, just less. The base it is
+    // told about simply must not move. Then there is nothing to suppress -
+    // sinking a boulder a hundred metres, or lifting it, leaves the ground
+    // byte for byte where it was, because the ground was never asked a
+    // different question.
+    f.base += o.ground_sunk;
+    text += imprint_footprint_line(f, o.ground_sink, o.ground_margin,
                                     o.ground_blend, o.ground_lift,
-                                    o.ground_dig,
-                                    std::max(o.ground_uneven - sunk, 0.f));
+                                    o.ground_dig);
   }
   return text;
 }
@@ -153,12 +155,10 @@ void app_service_imprint(App &a) {
       Footprint f = imprint_footprint(o, hs);
       if (!f.valid()) continue;
       // The ground under the footprint, sampled at its corners and centre.
-      //
-      // Resting on the *highest* of those is what leaves a gap: on any
-      // slope the base sits at the height of its highest corner and hangs
-      // over everything else. `ground_settle` says where between the lowest
-      // and the highest the base actually sits - 0 sinks it in until it
-      // touches everywhere, 1 keeps it clear of the ground entirely.
+      // The base is seated on the highest of them, so no corner of it is
+      // ever underground unless it is put there on purpose; how far under
+      // is `ground_sunk` below. The spread between highest and lowest is
+      // published so the panel can say how deep "touches everywhere" is.
       float hi = -1e30f, lo = 1e30f;
       const size_t n = f.xz.size() / 2;
       auto note = [&](float u, float v) {
@@ -171,9 +171,17 @@ void app_service_imprint(App &a) {
       note(f.cx, f.cz);
       if (std::fabs(o.ground_uneven - (hi - lo)) > 1e-6f) moved = true;
       o.ground_uneven = hi - lo;
-      const float h = hi - std::max(o.ground_sunk, 0.f);
       const float base_rel = f.base - o.pos[1]; // the base below the pivot
-      const float rest = h - base_rel;          // pos.y that seats the base
+      // Two displacements, and the whole point is that they are different:
+      //
+      //   ground_offset  the height above the surface, which the ground
+      //                  follows - lift it and a mound rises with it.
+      //   ground_sunk    a straight displacement the ground knows nothing
+      //                  about, because footprints_text hands the node the
+      //                  base from before it was applied. Positive sinks the
+      //                  object into the ground, negative lifts it out, and
+      //                  either way the terrain is exactly as it was.
+      const float rest = hi - base_rel - o.ground_sunk;
 
       // The height is the user's to set, from anywhere.
       //

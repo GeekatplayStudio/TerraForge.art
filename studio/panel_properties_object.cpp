@@ -210,18 +210,20 @@ void ground_ui(App &a, SceneObject &o) {
   // one corner and hangs over the rest, which reads as floating.
   float sunk_m = o.ground_sunk * m;
   if (ImGui::DragFloat("Sink into the ground", &sunk_m, dh, 0.f, 0.f, "%.2f m"))
-    o.ground_sunk = std::max(sunk_m, 0.f) / m;
+    o.ground_sunk = sunk_m / m;
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("How far the object is sunk into the ground, below the\n"
-                      "highest point under its base. The ground does NOT move:\n"
-                      "the object goes down into it and the terrain rises\n"
-                      "through it wherever the ground is higher.\n\n"
-                      "At zero it sits on its highest corner and, on a slope,\n"
-                      "hangs over the rest - that is the gap. Sink it by the\n"
-                      "unevenness shown below and it touches everywhere; sink\n"
-                      "it further and it is buried. No upper limit.\n\n"
-                      "This is different from a negative height, which the\n"
-                      "ground follows down.");
+    ImGui::SetTooltip("Moves the object without the terrain following.\n\n"
+                      "Positive sinks it into the ground, negative lifts it\n"
+                      "out. Either way the terrain stays exactly as it was:\n"
+                      "no hollow under a buried object, no mound under a\n"
+                      "raised one. Sink a boulder a hundred metres and the\n"
+                      "hill it is in does not change.\n\n"
+                      "At zero it sits on the highest ground under its base,\n"
+                      "so on a slope it touches at one corner and hangs over\n"
+                      "the rest. Sink it by the unevenness shown beside this\n"
+                      "and it touches everywhere.\n\n"
+                      "Signed and unlimited. The height above, by contrast,\n"
+                      "is one the ground DOES follow.");
   ImGui::SameLine();
   ImGui::TextDisabled("(ground under it varies by %.2f m)", o.ground_uneven * m);
   if (ImGui::IsItemHovered())

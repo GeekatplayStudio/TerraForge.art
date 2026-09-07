@@ -50,8 +50,7 @@ GroundLockStep ground_lock_step(float pos_y, float last_y, bool seen,
                                 float rest, float offset);
 
 std::string imprint_footprint_line(const Footprint &f, float sink, float margin,
-                                   float blend, float lift, float dig,
-                                   float below = 0.f);
+                                   float blend, float lift, float dig);
 
 // Andrew's monotone chain; points in, hull out (counter-clockwise). Exposed
 // for the tests.
