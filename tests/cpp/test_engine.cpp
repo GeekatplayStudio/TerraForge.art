@@ -453,6 +453,31 @@ static void test_thread_count_determinism() {
       {"StreamPower", "stream power incision"},
       {"SedimentDeposit", "sediment deposition"},
       {"Wind", "aeolian transport"},
+      // Splats: a node that writes into a radius around a cell cannot let a
+      // band of rows own its *sources*, because a cell near a band edge
+      // reaches into the next band and two threads then read-modify-write
+      // the same texel. min and max do not make that safe. Rivers was doing
+      // exactly this and failed the universal battery's determinism check
+      // about one run in four; the rest are here because they scatter-write
+      // too and nothing was watching them.
+      {"Rivers", "river channel splatting"},
+      {"Coast", "coastal planation"},
+      {"FillBasins", "basin filling"},
+      {"Flood", "flood fill"},
+      {"PathCarve", "path carving"},
+      {"PathSDF", "path distance field"},
+      {"Morphology", "morphological open/close"},
+      {"ExpandShrink", "dilate and erode"},
+      {"AreaRemove", "small-area removal"},
+      {"Cracks", "crack splatting"},
+      {"Grit", "grit detail"},
+      {"Gravel", "gravel detail"},
+      {"Peaks", "peak sharpening"},
+      {"Glaciation", "glacial carving"},
+      {"Dissolve", "dissolution"},
+      {"Sharpen", "unsharp mask"},
+      {"Median", "median filter"},
+      {"Smooth", "smoothing"},
   };
   const unsigned counts[] = {1, 2, 3, 5, 8};
 
@@ -484,6 +509,68 @@ static void test_thread_count_determinism() {
     }
   }
   gpx::set_worker_count(0); // back to the default for the rest of the suite
+}
+
+// Repeating the same evaluation, which is a different question from varying
+// the worker count.
+//
+// The test above catches a solver that divides work differently and so gets a
+// different answer - a partition dependence, which reproduces every run. It
+// cannot see a solver where two threads read-modify-write the same texel,
+// because that one only diverges when the interleaving happens to land badly:
+// at a fixed worker count it gives the same answer most runs and a different
+// one occasionally. Rivers had exactly that, and the universal battery's
+// "deterministic across two evaluations" check caught it about one run in
+// four - often enough to be real, rarely enough to look like noise.
+//
+// So this evaluates the same graph many times over and demands every result
+// be bit-identical.
+//
+// A timing race is a probabilistic thing to test for, so the graph is set up
+// to lose the coin toss as often as possible rather than as rarely: every
+// splat radius is opened right up, so almost every write crosses a band
+// boundary instead of the tenth or so that the defaults produce. Left at its
+// defaults this caught the Rivers race one suite run in three; widened, every
+// run.
+static void test_repeat_determinism() {
+  std::printf("repeat determinism...\n");
+  const char *types[] = {"Rivers", "Coast", "PathCarve", "Cracks", "Glaciation"};
+  const int REPEATS = 24;
+  gpx::set_worker_count(8); // enough bands at 128 rows to make threads collide
+  for (const char *type : types) {
+    std::vector<float> reference;
+    bool have_ref = false, diverged = false;
+    for (int r = 0; r < REPEATS && !diverged; ++r) {
+      gpx::Graph g;
+      g.resolution = 128;
+      gpx::Node *src = g.add_node("Noise");
+      if (!src) break;
+      src->attrs.find("seed")->seed = 4242;
+      gpx::Node *n = g.add_node(type);
+      if (!n) break;
+      g.add_link(src->id, "output", n->id, "input");
+      if (gpx::Attribute *s = n->attrs.find("seed")) s->seed = 99;
+      // Widen everything that decides how far a splat reaches, so a write is
+      // far more likely to land in a band its thread does not own.
+      for (const char *k : {"valley_width", "width", "radius", "falloff_m",
+                            "smooth", "reach"})
+        if (gpx::Attribute *a = n->attrs.find(k)) a->f = a->fmax;
+      if (gpx::Attribute *a = n->attrs.find("headwaters")) a->i = a->imax;
+      if (!g.evaluate()) break;
+      gpx::Port *out = n->port("output", gpx::PortDir::Out);
+      if (!out || !out->hmap) break;
+      if (!have_ref) {
+        reference = out->hmap->v;
+        have_ref = true;
+      } else if (out->hmap->v != reference) {
+        diverged = true;
+      }
+    }
+    CHECK(!diverged, std::string(type) +
+                         " gives a different answer on a repeated evaluation - "
+                         "two threads are writing the same texel");
+  }
+  gpx::set_worker_count(0);
 }
 
 static void test_workflow_determinism() {
@@ -5033,6 +5120,7 @@ int main() {
   test_material_library_roundtrip();
   test_workflow_determinism();
   test_thread_count_determinism();
+  test_repeat_determinism();
   test_camera_math();
   test_ai_spec();
   test_terrain_effects();

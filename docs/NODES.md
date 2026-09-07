@@ -1550,14 +1550,16 @@ A field of stones - boulders, cobbles and gravel - as a function, at any scale
 | position | in (optional) | field (vector) |
 | out | out | field (number) |
 | mask | out | field (number) |
+| shade | out | field (number) |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Largest stone (m) | float, 0.005 to 200, default 0.35 | The biggest stone's width across, in metres, and it is really metres: 0.35 is a stone you could pick up, 0.05 is gravel, 3 is a boulder. Every size below it comes from the octaves, each half as wide and four times as many, so one field holds boulders, cobbles and grit at once. |
-| Sizes | int, 1 to 5, default 3 | How many halvings of the stone size to add. 1 is one size of stone; 4 reaches gravel a sixteenth as wide. Distance takes octaves away again, so this is a ceiling, not a cost. |
-| Density | float, 0 to 1, default 0.7 | The share of the ground that holds a stone. |
+| Stone size (m) | float, 0.005 to 200, default 0.12 | The biggest stone's width across, in metres, and it is really metres: 0.12 is a cobble, 0.02 is grit, 3 is a boulder. Every size below it comes from the octaves, each half as wide and four times as many, so one field holds boulders, cobbles and grit at once.  Below about a centimetre across on a 5 km tile the tile's own coordinates run out of precision and the outlines go blocky. Shrink the terrain, not the stone. |
+| Sizes | int, 1 to 6, default 4 | How many halvings of the stone size to add, so how wide a range of sizes one field holds. 1 is a single size; 6 spans thirty-two to one, boulders down to grit. Distance takes octaves away again, so this is a ceiling, not a cost. |
+| Amount | float, 0 to 1, default 0.55 | How much stone there is. Up to about three quarters it thins the field; past that every cell holds a stone and they grow into one another, so 1 paves the ground end to end with no bare earth left between. |
 | Tallness | float, 0.05 to 2, default 0.6 | A stone's height as a fraction of its radius. |
-| Size spread | float, 0 to 1, default 0.7 | 0: every stone the same size. 1: the power-law spectrum a scree slope has - many small, a few large. |
+| Size variation | float, 0 to 1, default 0.7 | 0: every stone the same size. 1: the power-law spectrum a scree slope has - many small, a few large. |
+| Shape variation | float, 0 to 1, default 0.6 | How much stones differ from one another. 0 breaks, flattens and pits every stone in the field to exactly the same degree, which is the look of a texture; 1 puts rounded cobbles and shattered blocks side by side, the way real scree does. |
 | Flatten | float, 0 to 1, default 0.25 | Raises the top into a plateau while keeping the footprint: 0 boulders, 1 slabs. |
 | Settled into the ground | float, 0 to 0.9, default 0.25 | How deep a stone sits. Buried stones show only their tops, and the ground cuts their outline instead of meeting them tangentially. |
 | Elongation | float, 0 to 1, default 0.5 | How much longer a stone may be one way than the other, turned as it fell. Round in plan is the tell of a procedural field. |
@@ -1565,8 +1567,8 @@ A field of stones - boulders, cobbles and gravel - as a function, at any scale
 | Broken faces | float, 0 to 1, default 0.55 | Cuts flat faces into each stone. 0 leaves rounded pebbles; high values give the angular, broken look of quarried or frost-shattered rock. |
 | Surface relief | float, 0 to 1, default 0.4 | How far a stone's own surface departs from a smooth shell. 0 is polished. |
 | Lean | float, 0 to 1, default 0.35 | Moves each stone's high point off centre, so it has a downhill side rather than being a dome. |
-| Clustering | float, 0 to 1, default 0.5 | Stones are not spread evenly: they collect in drifts with bare ground between. 0 scatters them uniformly, 1 gathers them hard. The count is unchanged either way - this rearranges a field, it does not thin it. |
-| Drift size (m) | float, 0.05 to 2000, default 5 | How far across one drift of stones is, in metres. |
+| Cluster / repel | float, -1 to 1, default 0.5 | Stones are not spread evenly. Above zero they collect in drifts with bare ground between, and are pulled together inside a drift until they lie shoulder to shoulder - 1 heaps them hard. Below zero they push apart instead and stand off from one another, the way frost heave sorts a boulder field. The count is unchanged either way: this rearranges a field, it does not thin it. |
+| Drift size (m) | float, 0.05 to 2000, default 2 | How far across one clump of stones is, in metres. |
 | Seed | seed |  |
 | Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the size above means metres. |
 

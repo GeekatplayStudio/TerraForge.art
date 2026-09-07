@@ -365,7 +365,9 @@ each one was a bug we already paid for. Do not regress them.
 1. **Every step must be deterministic.** Same graph and seeds must produce
    bit-identical output, every run, on every thread count. Parallel solvers
    use per-worker buffers reduced in a fixed order — never unsynchronised
-   writes to shared data. `test_workflow_determinism` enforces this.
+   writes to shared data. `test_workflow_determinism`,
+   `test_thread_count_determinism` and `test_repeat_determinism` enforce this;
+   see "Deterministic parallelism" for why all three are needed.
 2. **Erosion must not destroy relief.** Clamp per-round changes; a solver that
    produces spikes will be normalised into a flat terrain.
    `test_erosion` enforces this.
@@ -841,7 +843,24 @@ is overridable (`set_worker_count()`, `GPX_WORKERS`) so it can.
    another worker's band: an unsynchronised read-modify-write, so updates could
    be lost outright. The determinism test found it at 5 workers. Any solver
    that writes somewhere other than the cell it is visiting needs the atomic
-   accumulator.
+   accumulator — or must stop letting bands own their sources.
+
+   `Rivers` had the same bug and the same comment excusing it ("concurrent min
+   writes race benignly across bands"). A min is not benign: both threads read
+   the old value and one update is lost. **Two tests are needed, because they
+   see different things.** `test_thread_count_determinism` catches a solver
+   that *divides* work differently and so answers differently — that
+   reproduces every run, and it never fired on Rivers because the partition
+   was not the variable. A timing race gives the same answer most runs and a
+   different one occasionally: `test_repeat_determinism` evaluates one graph
+   two dozen times over with every splat radius opened to its maximum, so
+   nearly every write crosses a band. At the default radii the Rivers race
+   showed up in one suite run in three; widened, in every one.
+
+   For a **sparse** splat, having the bands own the *output* beats an atomic:
+   collect the cells that actually write, then have each thread walk that list
+   and touch only rows it owns. No texel gets two writers, the total write
+   work is unchanged, and there is no atomic traffic at all.
 7. **Removing within-round coupling costs rounds.** With particles no longer
    seeing each other inside a round, `ROUNDS` had to rise 8 → 48 or erosion
    spikes: mean |Laplacian| 0.0227 → 0.0087, and at 8 the surface punched

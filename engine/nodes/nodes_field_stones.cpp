@@ -34,8 +34,8 @@ stones::Params read(const Node &n) {
   stones::Params p;
   // one stone's worth of ground: the cell is the stone's own diameter, so
   // density is the only thing that decides how packed a field is
-  p.cell = std::max(n.attrs.get_f("stone_m", 0.35f), 1e-4f) / tile_m(n);
-  p.density = n.attrs.get_f("density", 0.7f);
+  p.cell = std::max(n.attrs.get_f("stone_m", 0.12f), 1e-4f) / tile_m(n);
+  p.density = n.attrs.get_f("density", 0.55f);
   p.tallness = n.attrs.get_f("tallness", 0.6f);
   p.flatten = n.attrs.get_f("flatten", 0.25f);
   p.bury = n.attrs.get_f("bury", 0.25f);
@@ -45,11 +45,12 @@ stones::Params read(const Node &n) {
   p.rough = n.attrs.get_f("rough", 0.45f);
   p.facet = n.attrs.get_f("facet", 0.55f);
   p.bumpy = n.attrs.get_f("bumpy", 0.4f);
+  p.variation = n.attrs.get_f("variation", 0.6f);
   p.cluster = n.attrs.get_f("cluster", 0.5f);
   // a drift is given in metres and held in cells, because the cell is the
-  // stone: "drifts about 5 m across" survives a change of stone size
-  p.cluster_cells = std::max(n.attrs.get_f("cluster_m", 5.f) /
-                                 std::max(n.attrs.get_f("stone_m", 0.35f), 1e-3f),
+  // stone: "drifts about 2 m across" survives a change of stone size
+  p.cluster_cells = std::max(n.attrs.get_f("cluster_m", 2.f) /
+                                 std::max(n.attrs.get_f("stone_m", 0.12f), 1e-3f),
                              1.f);
   p.seed = n.attrs.get_seed("seed");
   return p;
@@ -59,7 +60,7 @@ stones::Params read(const Node &n) {
 // so the far ground pays for boulders alone and the ground underfoot pays
 // for the gravel too. The caller's budget is the field domain's LOD.
 int octaves_for(const Node &n, float lod) {
-  const int want = n.attrs.get_i("octaves", 3);
+  const int want = n.attrs.get_i("octaves", 4);
   return std::clamp((int)(lod) - 3, 1, std::clamp(want, 1, stones::MAX_OCTAVES));
 }
 
@@ -70,25 +71,38 @@ REGISTER_NODE(
     "A field of stones - boulders, cobbles and gravel - as a function, at any scale",
     [](Node &n) {
       n.add_field_in("position", FieldType::Vector, true);
-      add_float(n.attrs, "stone_m", "Largest stone (m)", 0.35f, 0.005f, 200.f, "Stones", true)
+      add_float(n.attrs, "stone_m", "Stone size (m)", 0.12f, 0.005f, 200.f, "Stones", true)
           .tooltip = "The biggest stone's width across, in metres, and it is\n"
-                     "really metres: 0.35 is a stone you could pick up, 0.05\n"
-                     "is gravel, 3 is a boulder. Every size below it comes\n"
-                     "from the octaves, each half as wide and four times as\n"
-                     "many, so one field holds boulders, cobbles and grit at\n"
-                     "once.";
-      add_int(n.attrs, "octaves", "Sizes", 3, 1, 5, "Stones")
-          .tooltip = "How many halvings of the stone size to add. 1 is one\n"
-                     "size of stone; 4 reaches gravel a sixteenth as wide.\n"
+                     "really metres: 0.12 is a cobble, 0.02 is grit, 3 is a\n"
+                     "boulder. Every size below it comes from the octaves,\n"
+                     "each half as wide and four times as many, so one field\n"
+                     "holds boulders, cobbles and grit at once.\n"
+                     "\n"
+                     "Below about a centimetre across on a 5 km tile the\n"
+                     "tile's own coordinates run out of precision and the\n"
+                     "outlines go blocky. Shrink the terrain, not the stone.";
+      add_int(n.attrs, "octaves", "Sizes", 4, 1, 6, "Stones")
+          .tooltip = "How many halvings of the stone size to add, so how wide\n"
+                     "a range of sizes one field holds. 1 is a single size;\n"
+                     "6 spans thirty-two to one, boulders down to grit.\n"
                      "Distance takes octaves away again, so this is a\n"
                      "ceiling, not a cost.";
-      add_float(n.attrs, "density", "Density", 0.7f, 0.f, 1.f, "Stones")
-          .tooltip = "The share of the ground that holds a stone.";
+      add_float(n.attrs, "density", "Amount", 0.55f, 0.f, 1.f, "Stones")
+          .tooltip = "How much stone there is. Up to about three quarters it\n"
+                     "thins the field; past that every cell holds a stone and\n"
+                     "they grow into one another, so 1 paves the ground end\n"
+                     "to end with no bare earth left between.";
       add_float(n.attrs, "tallness", "Tallness", 0.6f, 0.05f, 2.f, "Stones")
           .tooltip = "A stone's height as a fraction of its radius.";
-      add_float(n.attrs, "spread", "Size spread", 0.7f, 0.f, 1.f, "Shape")
+      add_float(n.attrs, "spread", "Size variation", 0.7f, 0.f, 1.f, "Shape")
           .tooltip = "0: every stone the same size. 1: the power-law\n"
                      "spectrum a scree slope has - many small, a few large.";
+      add_float(n.attrs, "variation", "Shape variation", 0.6f, 0.f, 1.f, "Shape")
+          .tooltip = "How much stones differ from one another. 0 breaks,\n"
+                     "flattens and pits every stone in the field to exactly\n"
+                     "the same degree, which is the look of a texture; 1 puts\n"
+                     "rounded cobbles and shattered blocks side by side, the\n"
+                     "way real scree does.";
       add_float(n.attrs, "flatten", "Flatten", 0.25f, 0.f, 1.f, "Shape")
           .tooltip = "Raises the top into a plateau while keeping the\n"
                      "footprint: 0 boulders, 1 slabs.";
@@ -112,13 +126,17 @@ REGISTER_NODE(
       add_float(n.attrs, "tilt", "Lean", 0.35f, 0.f, 1.f, "Shape")
           .tooltip = "Moves each stone's high point off centre, so it has a\n"
                      "downhill side rather than being a dome.";
-      add_float(n.attrs, "cluster", "Clustering", 0.5f, 0.f, 1.f, "Stones")
-          .tooltip = "Stones are not spread evenly: they collect in drifts\n"
-                     "with bare ground between. 0 scatters them uniformly,\n"
-                     "1 gathers them hard. The count is unchanged either\n"
-                     "way - this rearranges a field, it does not thin it.";
-      add_float(n.attrs, "cluster_m", "Drift size (m)", 5.f, 0.05f, 2000.f, "Stones", true)
-          .tooltip = "How far across one drift of stones is, in metres.";
+      add_float(n.attrs, "cluster", "Cluster / repel", 0.5f, -1.f, 1.f, "Stones")
+          .tooltip = "Stones are not spread evenly. Above zero they collect\n"
+                     "in drifts with bare ground between, and are pulled\n"
+                     "together inside a drift until they lie shoulder to\n"
+                     "shoulder - 1 heaps them hard. Below zero they push\n"
+                     "apart instead and stand off from one another, the way\n"
+                     "frost heave sorts a boulder field. The count is\n"
+                     "unchanged either way: this rearranges a field, it does\n"
+                     "not thin it.";
+      add_float(n.attrs, "cluster_m", "Drift size (m)", 2.f, 0.05f, 2000.f, "Stones", true)
+          .tooltip = "How far across one clump of stones is, in metres.";
       add_seed(n.attrs, "seed", "Seed", 0, "Stones");
       add_float(n.attrs, "size_m", "Terrain size (m)", 5000.f, 1.f, 1000000.f, "Stones", true)
           .tooltip = "The tile's width; the studio keeps this in step with\n"
@@ -130,9 +148,9 @@ REGISTER_NODE(
                         self.in_field("position", ctx,
                                       FieldValue::vector(ctx.pos[0], ctx.pos[1], ctx.pos[2]))
                             .as_vector(p);
-                        float h = 0.f, m = 0.f;
+                        float h = 0.f, m = 0.f, s = 0.f;
                         stones::field(read(self), p[0], p[2],
-                                      octaves_for(self, ctx.lod), h, m);
+                                      octaves_for(self, ctx.lod), h, m, s);
                         return FieldValue(h);
                       });
       // the stones alone, as a mask: what shades them differently from the
@@ -143,10 +161,26 @@ REGISTER_NODE(
                         self.in_field("position", ctx,
                                       FieldValue::vector(ctx.pos[0], ctx.pos[1], ctx.pos[2]))
                             .as_vector(p);
-                        float h = 0.f, m = 0.f;
+                        float h = 0.f, m = 0.f, s = 0.f;
                         stones::field(read(self), p[0], p[2],
-                                      octaves_for(self, ctx.lod), h, m);
+                                      octaves_for(self, ctx.lod), h, m, s);
                         return FieldValue(m);
+                      });
+      // and which stone this is: a number of its own, 0..1, constant across
+      // one stone and unrelated to its neighbour's. A field where every
+      // stone is the same colour is the last thing that gives a procedural
+      // one away, so feed this to a colour ramp and each stone takes its
+      // own shade.
+      n.add_field_out("shade", FieldType::Number,
+                      [](const Node &self, const FieldContext &ctx) {
+                        float p[3];
+                        self.in_field("position", ctx,
+                                      FieldValue::vector(ctx.pos[0], ctx.pos[1], ctx.pos[2]))
+                            .as_vector(p);
+                        float h = 0.f, m = 0.f, s = 0.f;
+                        stones::field(read(self), p[0], p[2],
+                                      octaves_for(self, ctx.lod), h, m, s);
+                        return FieldValue(s);
                       });
     },
     [](Node &) {})
@@ -160,21 +194,22 @@ std::string emit_stones(const Node &n, const glslgen::InputFn &in,
   using glslgen::f2s;
   const std::string p = in("#position", ctx.pos.c_str());
   const stones::Params sp = read(n);
-  const int want = std::clamp(n.attrs.get_i("octaves", 3), 1, stones::MAX_OCTAVES);
+  const int want = std::clamp(n.attrs.get_i("octaves", 4), 1, stones::MAX_OCTAVES);
   // the octave budget, from the caller's LOD, exactly as the CPU does it
   const std::string oct = ctx.declare(
       "int", "stoct",
       "clamp(int(" + ctx.lod + ") - 3, 1, " + std::to_string(want) + ")");
   const std::string v = ctx.declare(
-      "vec2", "stones",
+      "vec3", "stones",
       "gpxf_stones(vec2((" + p + ").x, (" + p + ").z), " + f2s(sp.cell) + ", " +
           f2s(sp.density) + ", " + f2s(sp.tallness) + ", " + f2s(sp.flatten) +
           ", " + f2s(sp.bury) + ", " + f2s(sp.tilt) + ", " + f2s(sp.spread) +
           ", " + f2s(sp.elongation) + ", " + f2s(sp.rough) + ", " +
-          f2s(sp.facet) + ", " + f2s(sp.bumpy) + ", " + f2s(sp.cluster) +
-          ", " + f2s(sp.cluster_cells) + ", " +
+          f2s(sp.facet) + ", " + f2s(sp.bumpy) + ", " + f2s(sp.variation) +
+          ", " + f2s(sp.cluster) + ", " + f2s(sp.cluster_cells) + ", " +
           std::to_string((unsigned)sp.seed) + "u, " + oct + ")");
-  return "vec4(" + v + (component == 0 ? ".x" : ".y") + ", 0.0, 0.0, 1.0)";
+  const char *lane = component == 0 ? ".x" : (component == 1 ? ".y" : ".z");
+  return "vec4(" + v + lane + ", 0.0, 0.0, 1.0)";
 }
 
 struct StonesEmitterRegistrar {
@@ -187,6 +222,11 @@ struct StonesEmitterRegistrar {
                      [](const Node &n, const glslgen::InputFn &in,
                         glslgen::EmitCtx &ctx) {
                        return emit_stones(n, in, ctx, 1);
+                     });
+    glslgen::reg_out("FieldStones", "shade",
+                     [](const Node &n, const glslgen::InputFn &in,
+                        glslgen::EmitCtx &ctx) {
+                       return emit_stones(n, in, ctx, 2);
                      });
   }
 };

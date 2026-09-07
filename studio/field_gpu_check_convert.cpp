@@ -19,7 +19,8 @@ struct FieldGpuResult {
   int samples = 0;
   std::string message;
 };
-FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port);
+FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port,
+                                float tol = 2e-4f);
 
 void field_gpu_verify_converters(std::string &out) {
   auto run = [&](const char *name, gpx::Node *tip, const char *port) {

@@ -84,28 +84,38 @@ vec3 gpxf_cell(vec3 p, uint seed, float jitter, int metric){
   return vec3(f1, f2, id);
 }
 // A field of stones, mirroring gpx::stones::field (gpx/stones.hpp) line for
-// line. Returns (height, coverage). A heightmap cannot hold a stone; this
+// line. Returns (height, coverage, per-stone shade). A heightmap cannot hold a stone; this
 // can, because it is a function and has no resolution.
 uint gpxf_remix(uint h){ h *= 2654435761u; h ^= h >> 15u; return h; }
-float gpxf_cluster_at(float gx, float gz, uint seed){
+uint gpxf_remix2(uint h){ h *= 0x85ebca6bu; h ^= h >> 13u; return h; }
+// value and analytic gradient of the drift field
+vec3 gpxf_cluster_at(float gx, float gz, uint seed){
   float fx = floor(gx), fz = floor(gz);
-  float ax = gx - fx, az = gz - fz;
-  ax = ax * ax * (3.0 - 2.0 * ax);
-  az = az * az * (3.0 - 2.0 * az);
+  float ux = gx - fx, uz = gz - fz;
+  float ax = ux * ux * (3.0 - 2.0 * ux), az = uz * uz * (3.0 - 2.0 * uz);
+  float dax = 6.0 * ux * (1.0 - ux), daz = 6.0 * uz * (1.0 - uz);
   float n00 = float(gpxf_hash_bits(vec3(fx,       5.0, fz      ), seed) & 0xffffu) * (1.0/65535.0);
   float n10 = float(gpxf_hash_bits(vec3(fx + 1.0, 5.0, fz      ), seed) & 0xffffu) * (1.0/65535.0);
   float n01 = float(gpxf_hash_bits(vec3(fx,       5.0, fz + 1.0), seed) & 0xffffu) * (1.0/65535.0);
   float n11 = float(gpxf_hash_bits(vec3(fx + 1.0, 5.0, fz + 1.0), seed) & 0xffffu) * (1.0/65535.0);
-  return (n00 * (1.0 - ax) + n10 * ax) * (1.0 - az) +
-         (n01 * (1.0 - ax) + n11 * ax) * az;
+  float a = n00 + (n10 - n00) * ax;
+  float b = n01 + (n11 - n01) * ax;
+  return vec3(a + (b - a) * az,
+              ((n10 - n00) * (1.0 - az) + (n11 - n01) * az) * dax,
+              (b - a) * daz);
 }
-vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
+vec3 gpxf_stones(vec2 xz, float cell, float density, float tallness,
                  float flatten, float bury, float tilt, float spread,
                  float elongation, float rough, float facet, float bumpy,
-                 float cluster, float cluster_cells, uint seed, int oct){
-  float total = 0.0, cover = 0.0;
+                 float variation, float cluster, float cluster_cells,
+                 uint seed, int oct){
+  float total = 0.0, cover = 0.0, tone = 0.0;
   float cs = max(cell, 1e-9);
-  for (int o = 0; o < 5; ++o){
+  float fill = clamp(density, 0.0, 1.0);
+  float chance = min(fill * (4.0/3.0), 1.0);
+  float packt = clamp((fill - 0.75) * 4.0, 0.0, 1.0);
+  float pack = 1.0 + 0.5 * packt;
+  for (int o = 0; o < 6; ++o){
     if (o >= oct) break;
     uint oseed = seed + uint(o) * 7919u;
     float inv = 1.0 / cs;
@@ -115,20 +125,35 @@ vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
     for (int dx = -1; dx <= 1; ++dx){
       float cxi = ix + float(dx), czi = iz + float(dz);
       uint h = gpxf_hash_bits(vec3(cxi, 0.0, czi), oseed);
-      float local_density = density;
+      float local_density = chance;
+      float cgx = 0.0, cgz = 0.0;
       if (cluster > 0.0){
         float inv_cc = 1.0 / max(cluster_cells, 1.0);
-        float cn = gpxf_cluster_at(cxi * inv_cc, czi * inv_cc, oseed ^ 0x5bd1u);
-        local_density *= 1.0 - cluster + cluster * cn * 2.0;
+        vec3 cn = gpxf_cluster_at(cxi * inv_cc, czi * inv_cc, oseed ^ 0x5bd1u);
+        cgx = cn.y; cgz = cn.z;
+        local_density *= 1.0 - cluster + cluster * cn.x * 2.0;
       }
       float exist = float(h & 0xfffu) * (1.0/4095.0);
       if (exist > local_density) continue;
       uint h2 = gpxf_hash_bits(vec3(cxi, 1.0, czi), oseed);
       float ox = float((h >> 12u) & 0x3ffu) * (1.0/1023.0);
       float oz = float((h >> 22u) & 0x3ffu) * (1.0/1023.0);
+      // heaped together against the middle of the drift, or, below zero,
+      // pushed apart by taking the jitter out
+      if (cluster > 0.0){
+        float tx = 0.5 + 0.5 * clamp(cgx * 2.0, -1.0, 1.0);
+        float tz = 0.5 + 0.5 * clamp(cgz * 2.0, -1.0, 1.0);
+        ox += (tx - ox) * cluster * 0.75;
+        oz += (tz - oz) * cluster * 0.75;
+      } else if (cluster < 0.0){
+        float k = 1.0 + cluster * 0.85;
+        ox = 0.5 + (ox - 0.5) * k;
+        oz = 0.5 + (oz - 0.5) * k;
+      }
       float t = float(h2 & 0x3ffu) * (1.0/1023.0);
       float sz = 1.0 - spread + spread * t * t * t;
-      float rad = 0.5 * sz;
+      sz += (1.0 - sz) * 0.5 * packt;
+      float rad = 0.5 * sz * pack;
       uint h3 = gpxf_hash_bits(vec3(cxi, 2.0, czi), oseed);
       float ddx = fx - (cxi + ox), ddz = fz - (czi + oz);
       // no angles: a turn is a hashed unit vector, and the harmonics that
@@ -148,7 +173,7 @@ vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
       float c3 = c1*c2 - s1*s2, s3 = s1*c2 + c1*s2;
       float c5 = c3*c2 - s3*s2, s5 = s3*c2 + c3*s2;
       float q1 = float((h3 >> 30u) & 0x3u) * (2.0/3.0) - 1.0;
-      float q2 = float((h2 >> 24u) & 0x3u) * (2.0/3.0) - 1.0;
+      float q2 = float((h2 >> 30u) & 0x3u) * (2.0/3.0) - 1.0;
       float wob = 1.0 + rough * (0.13 * (s3 * (1.0 - abs(q1)) + c3 * q1) +
                                  0.07 * (s5 * (1.0 - abs(q2)) + c5 * q2));
       rr /= max(wob, 0.2);
@@ -157,8 +182,14 @@ vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
       float base = 1.0 - r2;
       float e = 0.35 + 0.5 * float((h2 >> 10u) & 0xffu) * (1.0/255.0);
       float prof = pow(base, e);
-      prof = min(prof / max(1.0 - flatten * 0.85, 0.15), 1.0);
-      uint h4 = gpxf_remix(h2), h5 = gpxf_remix(h3);
+      uint h4 = gpxf_remix(h2), h5 = gpxf_remix(h3), h6 = gpxf_remix2(h4);
+      // how far this stone departs from the field's average shape
+      float vA = float(h5 & 0xffu) * (1.0/255.0);
+      float vB = float(h6 & 0xffu) * (1.0/255.0);
+      float s_flat  = min(flatten * (1.0 - variation + variation * 2.0 * vA), 1.0);
+      float s_facet = min(facet   * (1.0 - variation + variation * 2.0 * vB), 1.0);
+      float s_bumpy = min(bumpy   * (1.0 - variation + variation * 2.0 * (1.0 - vA)), 1.0);
+      prof = min(prof / max(1.0 - s_flat * 0.85, 0.15), 1.0);
       if (facet > 0.0){
         float ux = ex * inv_rr, uz = ez * inv_rr;
         float r01 = sqrt(max(r2, 0.0));
@@ -172,10 +203,10 @@ vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
           float off = 0.35 + 0.5 * float((hk >> 24u) & 0xffu) * (1.0/255.0);
           cut = min(cut, off - r01 * (ux * nx + uz * nz) * inv_nl);
         }
-        prof *= 1.0 - facet * (1.0 - clamp(cut * 2.0, 0.0, 1.0));
+        prof *= 1.0 - s_facet * (1.0 - clamp(cut * 2.0, 0.0, 1.0));
       }
       if (bumpy > 0.0)
-        prof *= 1.0 + bumpy * 0.22 * (s3 * (2.0 * base - 1.0) + c5 * (1.0 - base));
+        prof *= 1.0 + s_bumpy * 0.22 * (s3 * (2.0 * base - 1.0) + c5 * (1.0 - base));
       float lx = float((h2 >> 18u) & 0x3fu) * (2.0/63.0) - 1.0;
       float lz = float((h2 >> 24u) & 0x3fu) * (2.0/63.0) - 1.0;
       float ll = sqrt(lx*lx + lz*lz);
@@ -186,12 +217,15 @@ vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
       float H = rad * cs * tallness * (0.6 + 0.8 * hv);
       float hs = H * prof - bury * H;
       if (hs <= 0.0) continue;
-      total = max(total, hs);
+      if (hs > total){
+        total = hs;
+        tone = float((h6 >> 8u) & 0xffffu) * (1.0/65535.0);
+      }
       cover = max(cover, min(base * 3.0, 1.0));
     }
     cs *= 0.5;
   }
-  return vec2(total, cover);
+  return vec3(total, cover, tone);
 }
 // guarded division: the CPU side returns 0 rather than NaN, so must this
 float gpxf_div(float a, float b){ return abs(b) > 1e-9 ? a/b : 0.0; }

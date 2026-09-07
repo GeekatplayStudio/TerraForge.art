@@ -1,0 +1,30 @@
+{ "actions": [
+  { "op": "set_viewport", "shading": "textured", "use_albedo": true, "tessellation": true, "tess_pixels": 3, "tess_max": 64 },
+
+  { "op": "add_node", "type": "Constant", "x": 40, "y": 460, "alias": "base", "attrs": { "value": 0.5 } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "TerrainOutput", "to_port": "heightmap" },
+
+  { "op": "add_node", "type": "FieldStones", "x": 340, "y": 460, "alias": "stones",
+    "attrs": { "stone_m": 0.25, "octaves": 4, "density": 0.55, "spread": 0.6, "variation": 0.7,
+               "cluster": 0.8, "cluster_m": 3.0, "facet": 0.6, "bumpy": 0.45, "bury": 0.3 } },
+
+  { "op": "add_node", "type": "TerrainDisplacement", "x": 660, "y": 460, "alias": "disp", "attrs": { "strength": 1.0 } },
+  { "op": "connect", "from": "stones", "from_port": "out", "to": "disp", "to_port": "field" },
+
+  { "op": "add_node", "type": "FieldColorConstant", "x": 40, "y": 60,  "alias": "earth", "attrs": { "color": [0.26, 0.19, 0.12] } },
+  { "op": "add_node", "type": "FieldColorConstant", "x": 40, "y": 160, "alias": "dark",  "attrs": { "color": [0.19, 0.18, 0.17] } },
+  { "op": "add_node", "type": "FieldColorConstant", "x": 40, "y": 260, "alias": "pale",  "attrs": { "color": [0.72, 0.68, 0.60] } },
+
+  { "op": "add_node", "type": "FieldColorMix", "x": 340, "y": 160, "alias": "stonecol" },
+  { "op": "connect", "from": "dark",   "from_port": "out",   "to": "stonecol", "to_port": "a" },
+  { "op": "connect", "from": "pale",   "from_port": "out",   "to": "stonecol", "to_port": "b" },
+  { "op": "connect", "from": "stones", "from_port": "shade", "to": "stonecol", "to_port": "factor" },
+
+  { "op": "add_node", "type": "FieldColorMix", "x": 640, "y": 100, "alias": "ground" },
+  { "op": "connect", "from": "earth",    "from_port": "out",  "to": "ground", "to_port": "a" },
+  { "op": "connect", "from": "stonecol", "from_port": "out",  "to": "ground", "to_port": "b" },
+  { "op": "connect", "from": "stones",   "from_port": "mask", "to": "ground", "to_port": "factor" },
+
+  { "op": "add_node", "type": "TerrainSurface", "x": 940, "y": 100, "alias": "surface" },
+  { "op": "connect", "from": "ground", "from_port": "out", "to": "surface", "to_port": "color" }
+] }

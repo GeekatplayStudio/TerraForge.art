@@ -230,39 +230,59 @@ REGISTER_NODE(
         }
       }
 
-      // carve: distance-based falloff around river cells (splat channels)
+      // Carve: distance-based falloff around river cells (splat channels).
+      //
+      // A splat writes into a radius around its cell, so a band of rows
+      // cannot own its *sources*: a river cell near a band edge reaches
+      // into the neighbouring band, and two threads then read-modify-write
+      // the same texel. min and max do not make that safe - both threads
+      // read the old value and one update is simply lost - so the result
+      // depended on how the work happened to be divided and the node
+      // failed its own determinism check about one run in four. It also
+      // broke the promise in AGENTS.md that a solver is bit-identical on
+      // every thread count.
+      //
+      // So the bands own the *output* instead. Each thread walks every
+      // river cell whose reach overlaps its rows and writes only rows it
+      // owns, which leaves no texel with two writers. The total write work
+      // is unchanged; the list is walked once per band, and river cells
+      // are a sparse handful of the map.
+      std::vector<int> river;
+      for (size_t i = 0; i < strength.size(); ++i)
+        if (strength[i] > 0.f) river.push_back((int)i);
       parallel_rows(h, [&](int y0, int y1) {
-        for (int y = y0; y < y1; ++y)
-          for (int x = 0; x < w; ++x) {
-            int idx = y * w + x;
-            if (strength[idx] <= 0) continue;
-            float rw = width * (0.6f + 0.4f * strength[idx]);
-            float rv = vwidth * (0.6f + 0.4f * strength[idx]);
-            int rad = (int)std::ceil(std::max(rw, rv)) + 1;
-            float cd = carve * hamp * std::min(strength[idx], 2.f);
-            for (int dy = -rad; dy <= rad; ++dy)
-              for (int dx = -rad; dx <= rad; ++dx) {
-                int nx2 = x + dx, ny2 = y + dy;
-                if (nx2 < 0 || nx2 >= w || ny2 < 0 || ny2 >= h) continue;
-                float d = std::sqrt((float)(dx * dx + dy * dy));
-                // channel: parabolic cross-section
-                if (d < rw) {
-                  float prof = (1.f - (d / rw) * (d / rw)) * cd;
-                  size_t ni = (size_t)ny2 * w + nx2;
-                  float cut = in->v[ni] - prof;
-                  // note: concurrent min writes race benignly across bands
-                  if (cut < out.v[ni]) out.v[ni] = cut;
-                  if (prof > wdepth.v[ni]) wdepth.v[ni] = prof;
-                  rmask.v[ni] = std::max(rmask.v[ni], 1.f - d / rw);
-                } else if (d < rv) {
-                  float t = (d - rw) / std::max(rv - rw, 1e-4f);
-                  float prof = (1.f - t) * (1.f - t) * cd * 0.5f;
-                  size_t ni = (size_t)ny2 * w + nx2;
-                  float cut = in->v[ni] - prof;
-                  if (cut < out.v[ni]) out.v[ni] = cut;
-                }
+        for (int idx : river) {
+          const int x = idx % w, y = idx / w;
+          const float rw = width * (0.6f + 0.4f * strength[idx]);
+          const float rv = vwidth * (0.6f + 0.4f * strength[idx]);
+          const int rad = (int)std::ceil(std::max(rw, rv)) + 1;
+          if (y + rad < y0 || y - rad >= y1) continue;
+          const float cd = carve * hamp * std::min(strength[idx], 2.f);
+          const int ry0 = std::max(y - rad, y0), ry1 = std::min(y + rad, y1 - 1);
+          for (int ny2 = ry0; ny2 <= ry1; ++ny2) {
+            const int dy = ny2 - y;
+            for (int dx = -rad; dx <= rad; ++dx) {
+              const int nx2 = x + dx;
+              if (nx2 < 0 || nx2 >= w) continue;
+              float d = std::sqrt((float)(dx * dx + dy * dy));
+              // channel: parabolic cross-section
+              if (d < rw) {
+                float prof = (1.f - (d / rw) * (d / rw)) * cd;
+                size_t ni = (size_t)ny2 * w + nx2;
+                float cut = in->v[ni] - prof;
+                if (cut < out.v[ni]) out.v[ni] = cut;
+                if (prof > wdepth.v[ni]) wdepth.v[ni] = prof;
+                rmask.v[ni] = std::max(rmask.v[ni], 1.f - d / rw);
+              } else if (d < rv) {
+                float t = (d - rw) / std::max(rv - rw, 1e-4f);
+                float prof = (1.f - t) * (1.f - t) * cd * 0.5f;
+                size_t ni = (size_t)ny2 * w + nx2;
+                float cut = in->v[ni] - prof;
+                if (cut < out.v[ni]) out.v[ni] = cut;
               }
+            }
           }
+        }
       });
       // enforce downstream monotonic water surface along traced paths
       for (int s : sources) {

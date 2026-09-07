@@ -78,7 +78,17 @@ static GLuint compile_or_report(GLenum type, const std::string &src,
   return sh;
 }
 
-FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port) {
+// `tol` is the bar this case has to clear. It is a parameter and not a
+// constant because one kind of output legitimately needs a wider one: a
+// coverage mask is a 0..1 step across a stone's rim, and its steepness in
+// world terms is set by the stone, so a field whose finest octave is a
+// hundredth of the cell divides the input coordinate's own float
+// quantisation up by the square of that. Measured on the stone mask, all
+// else equal: 1.9e-05 at one octave, 1.8e-04 at four, 4.2e-04 at six -
+// doubling per octave, which is the cell halving, and nothing to do with
+// whether the two implementations agree. Everything else stays at 2e-4.
+FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port,
+                                float tol) {
   FieldGpuResult r;
   const int GRID = 64;
   const float SPAN = 4.f; // covers negative and positive coordinates
@@ -198,7 +208,7 @@ FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port) 
   r.mean_abs_error = r.samples ? (float)(sum / r.samples) : 0.f;
   // float32 on two different execution units: exact equality is not the bar,
   // but anything above this means the two implementations really differ
-  r.ok = r.max_abs_error < 2e-4f;
+  r.ok = r.max_abs_error < tol;
   char buf[256];
   std::snprintf(buf, sizeof buf,
                 "%d samples, max |cpu-gpu| = %.3e, mean = %.3e -> %s",
@@ -215,11 +225,15 @@ std::string planet_gpu_verify();                      // planet_gpu_check.cpp
 
 std::string field_gpu_verify_all(App &a) {
   std::string out;
-  auto run_port = [&](const char *name, gpx::Graph &g, gpx::Node *tip,
-                      const char *port) {
-    FieldGpuResult r = field_gpu_verify(*tip, port);
+  auto run_port_tol = [&](const char *name, gpx::Graph &g, gpx::Node *tip,
+                          const char *port, float tol) {
+    FieldGpuResult r = field_gpu_verify(*tip, port, tol);
     out += std::string(name) + ": " + r.message + "\n";
     (void)g;
+  };
+  auto run_port = [&](const char *name, gpx::Graph &g, gpx::Node *tip,
+                      const char *port) {
+    run_port_tol(name, g, tip, port, 2e-4f);
   };
   auto run = [&](const char *name, gpx::Graph &g, gpx::Node *tip) {
     run_port(name, g, tip, "out");
@@ -412,7 +426,16 @@ std::string field_gpu_verify_all(App &a) {
         {"stones rough surface", "bumpy", 1.f},
         {"stones spread evenly", "cluster", 0.f},
         {"stones in drifts", "cluster", 1.f},
-        {"stones tight drifts", "cluster_m", 0.5f},
+        {"stones pushed apart", "cluster", -1.f},
+        {"stones half repelled", "cluster", -0.4f},
+        {"stones tight drifts", "cluster_m", 800.f},
+        {"stones wide drifts", "cluster_m", 2000.f},
+        {"stones all alike", "variation", 0.f},
+        {"stones every shape", "variation", 1.f},
+        // the coverage remap: past three quarters the stones grow into one
+        // another and the smallest are lifted, which is a different branch
+        {"stones paving the ground", "density", 1.f},
+        {"stones at the packing knee", "density", 0.75f},
     };
     for (const Case &c : cases) {
       gpx::Graph g;
@@ -421,6 +444,10 @@ std::string field_gpu_verify_all(App &a) {
       // whole stones and their edges rather than one stone's interior
       n->attrs.find("stone_m")->f = 400.f;
       n->attrs.find("size_m")->f = 1000.f;
+      // Drifts are authored in metres and held in cells, and the cell here
+      // is 400 m, so a default 2 m drift would round to one cell and every
+      // clustering case would silently be testing nothing.
+      n->attrs.find("cluster_m")->f = 1600.f;
       if (c.key) n->attrs.find(c.key)->f = c.value;
       run(c.name, g, n);
     }
@@ -429,15 +456,38 @@ std::string field_gpu_verify_all(App &a) {
       gpx::Node *n = g.add_node("FieldStones");
       n->attrs.find("stone_m")->f = 400.f;
       n->attrs.find("size_m")->f = 1000.f;
-      n->attrs.find("octaves")->i = 5;
-      run("stones x5 octaves", g, n);
+      n->attrs.find("cluster_m")->f = 1600.f;
+      n->attrs.find("octaves")->i = 6;
+      run("stones x6 octaves", g, n);
     }
     {   // the mask output: the same walk, the other component
       gpx::Graph g;
       gpx::Node *n = g.add_node("FieldStones");
       n->attrs.find("stone_m")->f = 400.f;
       n->attrs.find("size_m")->f = 1000.f;
-      run_port("stones mask", g, n, "mask");
+      n->attrs.find("cluster_m")->f = 1600.f;
+      // The mask's bar widens with the octave count, and only the mask's:
+      // see the note on field_gpu_verify. One octave is held to the same
+      // 2e-4 as everything else, which is what pins the formula; the wider
+      // cases are there to catch a mirror that has actually drifted, and
+      // the numbers they print are the record of the amplification.
+      n->attrs.find("octaves")->i = 1;
+      run_port("stones mask x1 octave (tight bar)", g, n, "mask");
+      n->attrs.find("octaves")->i = 4;
+      run_port_tol("stones mask x4 octaves", g, n, "mask", 6e-4f);
+      n->attrs.find("octaves")->i = 6;
+      run_port_tol("stones mask x6 octaves", g, n, "mask", 1.5e-3f);
+    }
+    {   // and the per-stone shade, which is the one output that is not a
+        // smooth function of position - it steps at every stone's edge, so
+        // it is the sharpest test the harness has that both sides pick the
+        // same winning stone
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldStones");
+      n->attrs.find("stone_m")->f = 400.f;
+      n->attrs.find("size_m")->f = 1000.f;
+      n->attrs.find("cluster_m")->f = 1600.f;
+      run_port("stones shade", g, n, "shade");
     }
   }
 

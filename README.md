@@ -579,8 +579,15 @@ wanted his students to have.
   come out of one node and there is no ceiling on how many - where the
   raster `FakeStones` could express no stone smaller than 14 m and no more
   than 25 to the hectare. Power-law sizes, a height and a lean per stone,
-  elongation, irregular outlines, burial and slabs; CPU and GPU verified
-  identical to 6.2e-5 over 16 cases.
+  elongation, irregular outlines, broken faces, burial and slabs, and every
+  stone shaped differently from its neighbour rather than only from the
+  average. Amount is a coverage target, so turning it up paves the ground
+  end to end with no bare earth left. Clustering both gathers stones into
+  drifts *and* pulls them together inside one until they touch; below zero
+  it pushes them apart. A `mask` and a per-stone `shade` output let a
+  material colour each stone at its own position -
+  `examples/macros/stone_field_material.json` wires it in one go. CPU and
+  GPU verified identical over 33 cases.
   [docs/STONE_FIELDS.md](docs/STONE_FIELDS.md).
 - **Ecosystems - intelligent distribution of objects**, Vue's EcoSystem as
   a layer in the material stack: `EcosystemLayer` places a population per
