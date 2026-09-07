@@ -50,7 +50,11 @@ REGISTER_NODE(
     Smooth, "Filter", "Gaussian-like smoothing",
     [](Node &n) {
       setup_masked_filter(n);
-      add_float(n.attrs, "radius", "Radius", 0.01f, 0.f, 0.2f);
+      add_float(n.attrs, "radius", "Radius", 0.01f, 0.f, 0.2f)
+          .tooltip = "How far the blur reaches, as a fraction of the tile.\n"
+                     "Small values take the noise off a surface without\n"
+                     "touching its shape; large ones dissolve the shape\n"
+                     "as well.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -65,12 +69,23 @@ REGISTER_NODE(
     Terrace, "Filter", "Stratified terraces: uneven layers, warped edges, altitude band",
     [](Node &n) {
       setup_masked_filter(n);
-      add_int(n.attrs, "levels", "Levels", 8, 2, 64, "Steps");
-      add_float(n.attrs, "shape", "Edge sharpness", 3.f, 0.5f, 12.f, "Steps");
+      add_int(n.attrs, "levels", "Levels", 8, 2, 64, "Steps")
+          .tooltip = "How many steps the height range is cut into. Few\n"
+                     "gives the broad benches of a canyon wall; many gives\n"
+                     "fine bedding, and past a point they are finer than\n"
+                     "the terrain can show.";
+      add_float(n.attrs, "shape", "Edge sharpness", 3.f, 0.5f, 12.f, "Steps")
+          .tooltip = "How abruptly one step gives way to the next. Low\n"
+                     "leaves rounded treads that still read as a slope;\n"
+                     "high gives a flat tread and a near-vertical riser.";
       add_float(n.attrs, "cliff_bias", "Cliff bias", 0.f, -1.f, 1.f, "Steps")
           .tooltip = "Skews each step: negative = wide flats with sharp\n"
                      "cliffs above; positive = sharp base, sloped tops.";
-      add_float(n.attrs, "mix", "Strength", 1.f, 0.f, 1.f, "Steps");
+      add_float(n.attrs, "mix", "Strength", 1.f, 0.f, 1.f, "Steps")
+          .tooltip = "How much of the terraced result replaces the\n"
+                     "original. Below 1 leaves the underlying slope\n"
+                     "showing through, which is usually more convincing\n"
+                     "than a fully stepped hillside.";
       add_seed(n.attrs, "seed", "Seed", 0, "Variation");
       add_float(n.attrs, "level_jitter", "Level thickness jitter", 0.3f, 0.f, 1.f,
                 "Variation")
@@ -80,11 +95,17 @@ REGISTER_NODE(
           .tooltip = "Warps terrace edges with noise so contour lines\n"
                      "wander instead of following exact heights.";
       add_float(n.attrs, "edge_noise_scale", "Edge warp scale", 12.f, 2.f, 64.f,
-                "Variation");
+                "Variation")
+          .tooltip = "How fine the wander in the terrace edges is. Low\n"
+                     "makes each contour meander in broad curves; high\n"
+                     "gives a ragged, crumbling edge.";
       add_range(n.attrs, "band", "Altitude band", 0.f, 1.f, 0.f, 1.f, "Range")
           .tooltip = "Only terrace heights inside this normalized band;\n"
                      "terrain outside is left untouched.";
-      add_float(n.attrs, "band_soft", "Band softness", 0.1f, 0.01f, 0.5f, "Range");
+      add_float(n.attrs, "band_soft", "Band softness", 0.1f, 0.01f, 0.5f, "Range")
+          .tooltip = "How gradually the terracing fades in at the edges of\n"
+                     "the altitude band, so the treated ground does not\n"
+                     "end on a visible line.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -154,8 +175,15 @@ REGISTER_NODE(
     Clamp, "Filter", "Clamp with optional smooth shoulders",
     [](Node &n) {
       setup_masked_filter(n);
-      add_range(n.attrs, "range", "Clamp range", 0.1f, 0.9f, -1.f, 2.f);
-      add_float(n.attrs, "smoothing", "Shoulder softness", 0.f, 0.f, 0.5f);
+      add_range(n.attrs, "range", "Clamp range", 0.1f, 0.9f, -1.f, 2.f)
+          .tooltip = "Everything below the low value is lifted to it and\n"
+                     "everything above the high value pushed down to it -\n"
+                     "flat floors and flat tops, with the middle\n"
+                     "untouched.";
+      add_float(n.attrs, "smoothing", "Shoulder softness", 0.f, 0.f, 0.5f)
+          .tooltip = "Rounds the corner where the terrain meets the clamp\n"
+                     "instead of cutting it flat. 0 leaves a hard crease\n"
+                     "that catches the light as a line.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -185,7 +213,12 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_range(n.attrs, "range", "Target range", 0.f, 1.f, -2.f, 2.f);
+      add_range(n.attrs, "range", "Target range", 0.f, 1.f, -2.f, 2.f)
+          .tooltip = "Rescales the whole map so its lowest point lands on\n"
+                     "the first value and its highest on the second.\n"
+                     "Nothing is clipped - the shape is unchanged, only\n"
+                     "its range. Reversing the two turns the terrain\n"
+                     "upside down.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -201,7 +234,12 @@ REGISTER_NODE(
     GammaCorrection, "Filter", "Power-curve contrast",
     [](Node &n) {
       setup_masked_filter(n);
-      add_float(n.attrs, "gamma", "Gamma", 1.f, 0.05f, 6.f, "", true);
+      add_float(n.attrs, "gamma", "Gamma", 1.f, 0.05f, 6.f, "", true)
+          .tooltip = "Bends the heights toward the low or the high end\n"
+                     "without moving either. Below 1 lifts the middle, so\n"
+                     "more of the map sits high and the lowland shrinks;\n"
+                     "above 1 pushes it down, so peaks become sparse and\n"
+                     "the valleys broad.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -222,8 +260,15 @@ REGISTER_NODE(
     Plateau, "Filter", "Flatten tops above a level",
     [](Node &n) {
       setup_masked_filter(n);
-      add_float(n.attrs, "level", "Level", 0.7f, 0.f, 1.f);
-      add_float(n.attrs, "softness", "Softness", 0.1f, 0.01f, 1.f);
+      add_float(n.attrs, "level", "Level", 0.7f, 0.f, 1.f)
+          .tooltip = "The height everything above is flattened to. This is\n"
+                     "how a mesa or a tableland is made from a hill: the\n"
+                     "summit is cut off level and the flanks keep their\n"
+                     "shape.";
+      add_float(n.attrs, "softness", "Softness", 0.1f, 0.01f, 1.f)
+          .tooltip = "How gradually the flank gives way to the flat top.\n"
+                     "Low gives the sharp shoulder of a lava-capped mesa;\n"
+                     "high gives a rounded summit.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -249,8 +294,15 @@ REGISTER_NODE(
     ExpandShrink, "Filter", "Morphological dilate / erode",
     [](Node &n) {
       setup_masked_filter(n);
-      add_float(n.attrs, "radius", "Radius", 0.01f, 0.001f, 0.05f);
-      add_bool(n.attrs, "shrink", "Shrink (erode)", false);
+      add_float(n.attrs, "radius", "Radius", 0.01f, 0.001f, 0.05f)
+          .tooltip = "How far the high ground grows outward, as a fraction\n"
+                     "of the tile. On a mask this fattens or thins the\n"
+                     "selected region; on terrain it broadens ridges or\n"
+                     "widens valleys.";
+      add_bool(n.attrs, "shrink", "Shrink (erode)", false)
+          .tooltip = "Runs it the other way: the low ground grows instead,\n"
+                     "eating into the high. Expand then shrink at the same\n"
+                     "radius closes small gaps and leaves the rest alone.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -278,7 +330,12 @@ REGISTER_NODE(
     Fold, "Filter", "Fold values around midline — creates ridged detail",
     [](Node &n) {
       setup_masked_filter(n);
-      add_int(n.attrs, "iterations", "Iterations", 1, 1, 6);
+      add_int(n.attrs, "iterations", "Iterations", 1, 1, 6)
+          .tooltip = "How many times the heights are reflected about the\n"
+                     "middle. Each fold turns every valley into a ridge,\n"
+                     "so one pass makes smooth noise ridged and several\n"
+                     "make an intricate crumpled surface. This is where\n"
+                     "ridged noise comes from, applied after the fact.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -414,8 +471,15 @@ REGISTER_NODE(
     [](Node &n) {
       setup_masked_filter(n);
       add_gradient(n.attrs, "curve", "Curve",
-                   {{0.f, 0.f, 0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f, 1.f}});
-      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 1.f);
+                   {{0.f, 0.f, 0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f, 1.f}})
+          .tooltip = "The transfer curve, read as brightness: the horizontal\n"
+                     "axis is the height coming in, the gradient's brightness at\n"
+                     "that point is the height going out. A straight ramp\n"
+                     "changes nothing; bending it up raises the midlands, an S\n"
+                     "makes the flats flatter and the steeps steeper.";
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 1.f)
+          .tooltip = "How much of the curved result replaces the original. Part-\n"
+                     "way is a gentler version of the same shaping.";
       setup_post(n);
     },
     [](Node &n) {

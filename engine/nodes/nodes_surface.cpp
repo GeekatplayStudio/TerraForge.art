@@ -22,7 +22,11 @@ REGISTER_NODE(
       n.add_out("displacement_map");
       add_choice(n.attrs, "flavor", "Noise flavour",
                  {"Perlin", "Billows", "Ridges", "Voronoi billows", "Voronoi ridges"},
-                 2, "Scales");
+                 2, "Scales")
+          .tooltip = "Which noise the displacement is built from. Each has a\n"
+                     "different character at the same settings - one gives\n"
+                     "rolling forms, another sharp ridges, another cellular\n"
+                     "blocks.";
       add_float(n.attrs, "lead_in", "Lead-in scale", 1.f, 0.05f, 4.f, "Scales")
           .tooltip = "Largest visible variation (fraction of terrain width).\n"
                      "Octaves between lead-in and feature scale ramp in\n"
@@ -34,7 +38,9 @@ REGISTER_NODE(
           .tooltip = "Detail cutoff — nothing finer than this is added.";
       add_seed(n.attrs, "seed", "Seed", 0, "Scales");
       add_float(n.attrs, "amplitude", "Displacement amplitude", 0.15f, 0.f, 1.f,
-                "Displacement");
+                "Displacement")
+          .tooltip = "How far the pattern displaces the surface, in heightmap\n"
+                     "units. This is the strength of the whole effect.";
       add_float(n.attrs, "disp_offset", "Displacement offset", 0.f, -0.5f, 0.5f,
                 "Displacement")
           .tooltip = "Shifts displacement: positive raises plinths,\n"
@@ -55,7 +61,9 @@ REGISTER_NODE(
           .tooltip = "Restrict displacement to this normalized slope band\n"
                      "(e.g. 0.4..1 = only on steep faces).";
       add_float(n.attrs, "slope_soft", "Slope softness", 0.15f, 0.01f, 0.5f,
-                "Restriction");
+                "Restriction")
+          .tooltip = "How gradually the effect fades in as the slope steepens,\n"
+                     "so treated ground does not end on a visible line.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -151,20 +159,37 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("output");
-      add_float(n.attrs, "strength", "Strength", 0.6f, 0.05f, 1.f, "Strata");
-      add_int(n.attrs, "layers", "Layer count", 18, 4, 80, "Strata");
+      add_float(n.attrs, "strength", "Strength", 0.6f, 0.05f, 1.f, "Strata")
+          .tooltip = "How strongly the bedding shows. The beds are cut\n"
+                     "into the existing surface rather than laid over it,\n"
+                     "so this is how much of the original slope survives.";
+      add_int(n.attrs, "layers", "Layer count", 18, 4, 80, "Strata")
+          .tooltip = "How many beds are stacked through the height range.\n"
+                     "Few gives the broad benches of a canyon wall; many\n"
+                     "gives fine banding.";
       add_float(n.attrs, "tilt", "Tilt", 0.15f, 0.f, 0.8f, "Strata")
           .tooltip = "Strata are tilted planes, not horizontal bands —\n"
                      "the single most important realism control.";
       add_float(n.attrs, "tilt_dir", "Tilt direction °", 30.f, -180.f, 180.f,
-                "Strata");
-      add_float(n.attrs, "warp", "Warp", 0.2f, 0.f, 1.f, "Strata");
+                "Strata")
+          .tooltip = "Which way the beds dip. Sedimentary rock is rarely level,\n"
+                     "and the direction it leans is the single strongest clue to\n"
+                     "a landscape's geological history.";
+      add_float(n.attrs, "warp", "Warp", 0.2f, 0.f, 1.f, "Strata")
+          .tooltip = "How much the beds are bent out of true. Real strata are\n"
+                     "folded by the same forces that raised them; perfectly flat\n"
+                     "bedding reads as printed on.";
       add_float(n.attrs, "substrata", "Substrata", 0.4f, 0.f, 1.f, "Strata")
           .tooltip = "Finer secondary layering nested inside each stratum.";
       add_float(n.attrs, "slope_min", "Only on slopes above", 0.25f, 0.f, 1.f,
-                "Restriction");
+                "Restriction")
+          .tooltip = "How steep ground must be before the strata show. Bedding\n"
+                     "is exposed where rock is bare and cut into; gentle ground\n"
+                     "carries soil that hides it.";
       add_float(n.attrs, "slope_soft", "Slope softness", 0.15f, 0.02f, 0.5f,
-                "Restriction");
+                "Restriction")
+          .tooltip = "How gradually the strata fade in as the slope steepens, so\n"
+                     "the bedded ground does not end on a visible line.";
       add_seed(n.attrs);
     },
     [](Node &n) {
@@ -276,11 +301,24 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("output");
-      add_float(n.attrs, "detail_scale", "Detail scale", 24.f, 4.f, 128.f);
-      add_float(n.attrs, "strength", "Strength", 0.06f, 0.f, 0.3f);
-      add_float(n.attrs, "slope_min", "Slope threshold", 0.3f, 0.f, 1.f);
-      add_float(n.attrs, "slope_soft", "Threshold softness", 0.2f, 0.02f, 0.6f);
-      add_int(n.attrs, "octaves", "Octaves", 5, 2, 9);
+      add_float(n.attrs, "detail_scale", "Detail scale", 24.f, 4.f, 128.f)
+          .tooltip = "How fine the added crag detail is, in repeats across\n"
+                     "the tile. High values give the broken texture of\n"
+                     "shattered rock; low ones give lumps.";
+      add_float(n.attrs, "strength", "Strength", 0.06f, 0.f, 0.3f)
+          .tooltip = "How far the crags stand off the surface. This is\n"
+                     "surface roughness, not landform - a little goes a\n"
+                     "long way.";
+      add_float(n.attrs, "slope_min", "Slope threshold", 0.3f, 0.f, 1.f)
+          .tooltip = "How steep ground must be before crags appear on it.\n"
+                     "Bare broken rock belongs on the steeps; flat ground\n"
+                     "collects soil and stays smooth.";
+      add_float(n.attrs, "slope_soft", "Threshold softness", 0.2f, 0.02f, 0.6f)
+          .tooltip = "How gradually the crags fade in as the slope\n"
+                     "steepens, so the treated ground does not end on a\n"
+                     "line.";
+      add_int(n.attrs, "octaves", "Octaves", 5, 2, 9)
+          .tooltip = "How many sizes of crag are layered together.";
       add_seed(n.attrs);
     },
     [](Node &n) {

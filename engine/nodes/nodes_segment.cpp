@@ -16,10 +16,19 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_int(n.attrs, "radius", "Radius (px)", 6, 2, 24, "MeanShift");
+      add_int(n.attrs, "radius", "Radius (px)", 6, 2, 24, "MeanShift")
+          .tooltip = "How far across the map each point looks for company.\n"
+                     "Larger merges more ground into each plateau.";
       add_float(n.attrs, "tolerance", "Value tolerance", 0.08f, 0.005f, 0.5f,
-                "MeanShift");
-      add_int(n.attrs, "iterations", "Iterations", 3, 1, 8, "MeanShift");
+                "MeanShift")
+          .tooltip = "How close in height two points must be to count as\n"
+                     "the same surface. This is what keeps a cliff a cliff\n"
+                     "while the ground either side of it flattens: only\n"
+                     "similar heights are averaged together.";
+      add_int(n.attrs, "iterations", "Iterations", 3, 1, 8, "MeanShift")
+          .tooltip = "How many times the search is repeated. Each pass\n"
+                     "moves points further toward the nearest flat, so\n"
+                     "more of them converge into fewer, cleaner terraces.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

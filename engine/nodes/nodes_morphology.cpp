@@ -81,10 +81,21 @@ REGISTER_NODE(
       add_choice(n.attrs, "op", "Operation",
                  {"Dilate", "Erode", "Open", "Close", "Gradient", "Top hat",
                   "Black hat"},
-                 0, "Morphology");
-      add_int(n.attrs, "radius", "Radius (px)", 3, 1, 64, "Morphology");
+                 0, "Morphology")
+          .tooltip = "Dilate grows the bright regions, erode shrinks them. Open\n"
+                     "is erode then dilate - it removes specks and leaves\n"
+                     "everything else the same size. Close is the reverse and\n"
+                     "fills small holes. The two are how you clean up a mask\n"
+                     "without blurring it.";
+      add_int(n.attrs, "radius", "Radius (px)", 3, 1, 64, "Morphology")
+          .tooltip = "How far the operation reaches. On a mask this is the\n"
+                     "size of the gap it can close or the speck it can\n"
+                     "remove.";
       add_choice(n.attrs, "shape", "Element", {"Square", "Octagon"}, 1,
-                 "Morphology");
+                 "Morphology")
+          .tooltip = "The neighbourhood the operation uses. A square is fastest\n"
+                     "but leaves corners on round features; the octagon is\n"
+                     "closer to a circle and does not.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

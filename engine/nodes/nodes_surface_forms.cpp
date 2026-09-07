@@ -431,15 +431,26 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_out("output");
       n.add_out("snow_mask");
-      add_float(n.attrs, "amount", "Snow amount", 0.06f, 0.f, 0.3f, "Snow");
-      add_float(n.attrs, "snowline", "Snowline", 0.55f, 0.f, 1.f, "Snow");
-      add_float(n.attrs, "falloff", "Snowline falloff", 0.15f, 0.02f, 0.6f, "Snow");
+      add_float(n.attrs, "amount", "Snow amount", 0.06f, 0.f, 0.3f, "Snow")
+          .tooltip = "How thick the snow lies, in heightmap units. It is added\n"
+                     "on top of the terrain, so this also softens whatever it\n"
+                     "covers.";
+      add_float(n.attrs, "snowline", "Snowline", 0.55f, 0.f, 1.f, "Snow")
+          .tooltip = "The height above which snow settles, as a fraction of the\n"
+                     "terrain's range. Below it the ground stays bare.";
+      add_float(n.attrs, "falloff", "Snowline falloff", 0.15f, 0.02f, 0.6f, "Snow")
+          .tooltip = "How gradually the snowline is crossed. A hard line looks\n"
+                     "painted on; real snow thins out over a band, and thins\n"
+                     "faster on the sunnier side.";
       add_float(n.attrs, "slip_angle", "Slip-off slope", 0.55f, 0.1f, 1.f, "Snow")
           .tooltip = "Snow cannot cling to slopes steeper than this.";
       add_int(n.attrs, "settle", "Settle-thaw iterations", 12, 0, 60, "Snow")
           .tooltip = "Lets snow slide into hollows and compact —\n"
                      "smooth, wind-packed accumulation.";
-      add_float(n.attrs, "melt", "Melt (low areas)", 0.3f, 0.f, 1.f, "Snow");
+      add_float(n.attrs, "melt", "Melt (low areas)", 0.3f, 0.f, 1.f, "Snow")
+          .tooltip = "How much snow disappears from the low, sheltered ground -\n"
+                     "the hollows where it goes first. 0 leaves an even blanket\n"
+                     "above the snowline.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

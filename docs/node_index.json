@@ -4532,14 +4532,14 @@
         "key": "range",
         "label": "Clamp range",
         "type": "range",
-        "tooltip": ""
+        "tooltip": "Everything below the low value is lifted to it and\neverything above the high value pushed down to it -\nflat floors and flat tops, with the middle\nuntouched."
       },
       {
         "key": "smoothing",
         "label": "Shoulder softness",
         "type": "float",
         "min": 0, "max": 0.5, "default": 0,
-        "tooltip": ""
+        "tooltip": "Rounds the corner where the terrain meets the clamp\ninstead of cutting it flat. 0 leaves a hard crease\nthat catches the light as a line."
       }
       ]
     },
@@ -4560,7 +4560,7 @@
         "type": "choice",
         "group": "Convolve",
         "choices": ["Sharpen", "Edge (laplacian)", "Emboss NW", "Sobel X", "Sobel Y", "Custom"],
-        "tooltip": ""
+        "tooltip": "A small matrix swept over the map. Sharpen boosts\nlocal contrast; the edge and Sobel kernels find\nboundaries and make good masks rather than terrain;\nEmboss lights it from one side. Custom takes your\nown numbers below."
       },
       {
         "key": "custom",
@@ -4574,7 +4574,7 @@
         "type": "float",
         "group": "Convolve",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "Scales the kernel's result before it is used."
       },
       {
         "key": "add_to_input",
@@ -4582,7 +4582,7 @@
         "type": "bool",
         "group": "Convolve",
         "default": false,
-        "tooltip": ""
+        "tooltip": "On, the result is added on top of the original\nterrain instead of replacing it - which is how an\nedge kernel becomes extra relief along the breaks\nrather than a picture of them."
       },
       {
         "key": "blend_invert",
@@ -4610,35 +4610,35 @@
         "label": "Detail scale",
         "type": "float",
         "min": 4, "max": 128, "default": 24,
-        "tooltip": ""
+        "tooltip": "How fine the added crag detail is, in repeats across\nthe tile. High values give the broken texture of\nshattered rock; low ones give lumps."
       },
       {
         "key": "strength",
         "label": "Strength",
         "type": "float",
         "min": 0, "max": 0.3, "default": 0.06,
-        "tooltip": ""
+        "tooltip": "How far the crags stand off the surface. This is\nsurface roughness, not landform - a little goes a\nlong way."
       },
       {
         "key": "slope_min",
         "label": "Slope threshold",
         "type": "float",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How steep ground must be before crags appear on it.\nBare broken rock belongs on the steeps; flat ground\ncollects soil and stays smooth."
       },
       {
         "key": "slope_soft",
         "label": "Threshold softness",
         "type": "float",
         "min": 0.02, "max": 0.6, "default": 0.2,
-        "tooltip": ""
+        "tooltip": "How gradually the crags fade in as the slope\nsteepens, so the treated ground does not end on a\nline."
       },
       {
         "key": "octaves",
         "label": "Octaves",
         "type": "int",
         "min": 2, "max": 9, "default": 5,
-        "tooltip": ""
+        "tooltip": "How many sizes of crag are layered together."
       },
       {
         "key": "seed",
@@ -4663,14 +4663,14 @@
         "key": "curve",
         "label": "Curve",
         "type": "gradient",
-        "tooltip": ""
+        "tooltip": "The transfer curve, read as brightness: the horizontal\naxis is the height coming in, the gradient's brightness at\nthat point is the height going out. A straight ramp\nchanges nothing; bending it up raises the midlands, an S\nmakes the flats flatter and the steeps steeper."
       },
       {
         "key": "strength",
         "label": "Strength",
         "type": "float",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the curved result replaces the original. Part-\nway is a gentler version of the same shaping."
       },
       {
         "key": "post_remap",
@@ -4730,7 +4730,7 @@
         "type": "float",
         "group": "Bands",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "The grain of the surface. Turning it down calms a\nnoisy terrain without softening its shape; turning\nit up sharpens the texture without adding relief."
       },
       {
         "key": "medium",
@@ -4738,7 +4738,7 @@
         "type": "float",
         "group": "Bands",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "Gullies and small outcrops - the scale that carries\nmost of a landscape's character."
       },
       {
         "key": "coarse",
@@ -4746,7 +4746,7 @@
         "type": "float",
         "group": "Bands",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "Ridges and valleys: the landforms themselves."
       },
       {
         "key": "base",
@@ -4754,7 +4754,7 @@
         "type": "float",
         "group": "Bands",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "The overall lie of the land under everything else.\nTurning this down flattens the map without losing\nany of its detail - all four bands together are the\noriginal, so 1 everywhere changes nothing."
       },
       {
         "key": "blend_invert",
@@ -4783,7 +4783,7 @@
         "type": "float",
         "group": "Detrend",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the overall tilt is removed. An imported\nheightfield often leans as a whole; taking the plane\nout levels it without touching the relief on top."
       },
       {
         "key": "blend_invert",
@@ -4812,7 +4812,7 @@
         "type": "float",
         "group": "Blur",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Which way the streaks run. Along the prevailing wind\nthis reads as scouring; down the slope, as material\nhaving run."
       },
       {
         "key": "length",
@@ -4820,7 +4820,7 @@
         "type": "float",
         "group": "Blur",
         "min": 0.002, "max": 0.5, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How far the smearing reaches, as a fraction of the\ntile."
       },
       {
         "key": "both_ways",
@@ -4828,7 +4828,7 @@
         "type": "bool",
         "group": "Blur",
         "default": true,
-        "tooltip": ""
+        "tooltip": "On, it smears symmetrically and the surface stays\nput. Off, it drags one way only, so features shift\ndownstream as well as blurring - which is what makes\nit look like flow rather than blur."
       },
       {
         "key": "blend_invert",
@@ -4915,14 +4915,14 @@
         "label": "Radius",
         "type": "float",
         "min": 0.001, "max": 0.05, "default": 0.01,
-        "tooltip": ""
+        "tooltip": "How far the high ground grows outward, as a fraction\nof the tile. On a mask this fattens or thins the\nselected region; on terrain it broadens ridges or\nwidens valleys."
       },
       {
         "key": "shrink",
         "label": "Shrink (erode)",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Runs it the other way: the low ground grows instead,\neating into the high. Expand then shrink at the same\nradius closes small gaps and leaves the rest alone."
       }
       ]
     },
@@ -4942,7 +4942,7 @@
         "label": "Iterations",
         "type": "int",
         "min": 1, "max": 6, "default": 1,
-        "tooltip": ""
+        "tooltip": "How many times the heights are reflected about the\nmiddle. Each fold turns every valley into a ridge,\nso one pass makes smooth noise ridged and several\nmake an intricate crumpled surface. This is where\nridged noise comes from, applied after the fact."
       }
       ]
     },
@@ -4962,7 +4962,7 @@
         "label": "Gamma",
         "type": "float",
         "min": 0.05, "max": 6, "default": 1,
-        "tooltip": ""
+        "tooltip": "Bends the heights toward the low or the high end\nwithout moving either. Below 1 lifts the middle, so\nmore of the map sits high and the lowland shrinks;\nabove 1 pushes it down, so peaks become sparse and\nthe valleys broad."
       }
       ]
     },
@@ -4983,7 +4983,7 @@
         "type": "int",
         "group": "Kuwahara",
         "min": 1, "max": 16, "default": 4,
-        "tooltip": ""
+        "tooltip": "How far it looks for a flat neighbourhood to average\ninstead. Unlike a blur this keeps the edges: it\nflattens the ground between features while leaving\nthe breaks between them sharp."
       },
       {
         "key": "mix",
@@ -4991,7 +4991,7 @@
         "type": "float",
         "group": "Kuwahara",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the flattened result replaces the\noriginal. The full effect is strongly painterly;\npart of it just calms a noisy surface."
       },
       {
         "key": "blend_invert",
@@ -5020,7 +5020,7 @@
         "type": "int",
         "group": "MeanShift",
         "min": 2, "max": 24, "default": 6,
-        "tooltip": ""
+        "tooltip": "How far across the map each point looks for company.\nLarger merges more ground into each plateau."
       },
       {
         "key": "tolerance",
@@ -5028,7 +5028,7 @@
         "type": "float",
         "group": "MeanShift",
         "min": 0.005, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How close in height two points must be to count as\nthe same surface. This is what keeps a cliff a cliff\nwhile the ground either side of it flattens: only\nsimilar heights are averaged together."
       },
       {
         "key": "iterations",
@@ -5036,7 +5036,7 @@
         "type": "int",
         "group": "MeanShift",
         "min": 1, "max": 8, "default": 3,
-        "tooltip": ""
+        "tooltip": "How many times the search is repeated. Each pass\nmoves points further toward the nearest flat, so\nmore of them converge into fewer, cleaner terraces."
       },
       {
         "key": "blend_invert",
@@ -5131,7 +5131,7 @@
         "type": "choice",
         "group": "Morphology",
         "choices": ["Dilate", "Erode", "Open", "Close", "Gradient", "Top hat", "Black hat"],
-        "tooltip": ""
+        "tooltip": "Dilate grows the bright regions, erode shrinks them. Open\nis erode then dilate - it removes specks and leaves\neverything else the same size. Close is the reverse and\nfills small holes. The two are how you clean up a mask\nwithout blurring it."
       },
       {
         "key": "radius",
@@ -5139,7 +5139,7 @@
         "type": "int",
         "group": "Morphology",
         "min": 1, "max": 64, "default": 3,
-        "tooltip": ""
+        "tooltip": "How far the operation reaches. On a mask this is the\nsize of the gap it can close or the speck it can\nremove."
       },
       {
         "key": "shape",
@@ -5147,7 +5147,7 @@
         "type": "choice",
         "group": "Morphology",
         "choices": ["Square", "Octagon"],
-        "tooltip": ""
+        "tooltip": "The neighbourhood the operation uses. A square is fastest\nbut leaves corners on round features; the octagon is\ncloser to a circle and does not."
       },
       {
         "key": "blend_invert",
@@ -5175,14 +5175,14 @@
         "label": "Level",
         "type": "float",
         "min": 0, "max": 1, "default": 0.7,
-        "tooltip": ""
+        "tooltip": "The height everything above is flattened to. This is\nhow a mesa or a tableland is made from a hill: the\nsummit is cut off level and the flanks keep their\nshape."
       },
       {
         "key": "softness",
         "label": "Softness",
         "type": "float",
         "min": 0.01, "max": 1, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "How gradually the flank gives way to the flat top.\nLow gives the sharp shoulder of a lava-capped mesa;\nhigh gives a rounded summit."
       }
       ]
     },
@@ -5204,7 +5204,7 @@
         "type": "choice",
         "group": "Scales",
         "choices": ["Perlin", "Billows", "Ridges", "Voronoi billows", "Voronoi ridges"],
-        "tooltip": ""
+        "tooltip": "Which noise the displacement is built from. Each has a\ndifferent character at the same settings - one gives\nrolling forms, another sharp ridges, another cellular\nblocks."
       },
       {
         "key": "lead_in",
@@ -5243,7 +5243,7 @@
         "type": "float",
         "group": "Displacement",
         "min": 0, "max": 1, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "How far the pattern displaces the surface, in heightmap\nunits. This is the strength of the whole effect."
       },
       {
         "key": "disp_offset",
@@ -5290,7 +5290,7 @@
         "type": "float",
         "group": "Restriction",
         "min": 0.01, "max": 0.5, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "How gradually the effect fades in as the slope steepens,\nso treated ground does not end on a visible line."
       }
       ]
     },
@@ -5309,7 +5309,7 @@
         "key": "range",
         "label": "Target range",
         "type": "range",
-        "tooltip": ""
+        "tooltip": "Rescales the whole map so its lowest point lands on\nthe first value and its highest on the second.\nNothing is clipped - the shape is unchanged, only\nits range. Reversing the two turns the terrain\nupside down."
       },
       {
         "key": "blend_invert",
@@ -5337,7 +5337,7 @@
         "label": "Radius",
         "type": "float",
         "min": 0, "max": 0.2, "default": 0.01,
-        "tooltip": ""
+        "tooltip": "How far the blur reaches, as a fraction of the tile.\nSmall values take the noise off a surface without\ntouching its shape; large ones dissolve the shape\nas well."
       }
       ]
     },
@@ -5359,7 +5359,7 @@
         "type": "int",
         "group": "Fill",
         "min": 1, "max": 128, "default": 16,
-        "tooltip": ""
+        "tooltip": "How large a hollow counts as one worth filling.\nAnything narrower than this is levelled; anything\nbroader is left as terrain."
       },
       {
         "key": "direction",
@@ -5367,7 +5367,7 @@
         "type": "choice",
         "group": "Fill",
         "choices": ["Fill up", "Shave down"],
-        "tooltip": ""
+        "tooltip": "Fill up raises hollows to the smoothed surface -\nsediment settling into dips. Shave down cuts the\nbumps off instead, which is weathering rather than\ndeposition. The second output reports how much was\nmoved, which makes a good sediment mask."
       },
       {
         "key": "amount",
@@ -5375,7 +5375,7 @@
         "type": "float",
         "group": "Fill",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the way to the smoothed surface it\ngoes. Part-way leaves the hollow visible but\nsoftened."
       },
       {
         "key": "blend_invert",
@@ -5405,7 +5405,7 @@
         "type": "float",
         "group": "Snow",
         "min": 0, "max": 0.3, "default": 0.06,
-        "tooltip": ""
+        "tooltip": "How thick the snow lies, in heightmap units. It is added\non top of the terrain, so this also softens whatever it\ncovers."
       },
       {
         "key": "snowline",
@@ -5413,7 +5413,7 @@
         "type": "float",
         "group": "Snow",
         "min": 0, "max": 1, "default": 0.55,
-        "tooltip": ""
+        "tooltip": "The height above which snow settles, as a fraction of the\nterrain's range. Below it the ground stays bare."
       },
       {
         "key": "falloff",
@@ -5421,7 +5421,7 @@
         "type": "float",
         "group": "Snow",
         "min": 0.02, "max": 0.6, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "How gradually the snowline is crossed. A hard line looks\npainted on; real snow thins out over a band, and thins\nfaster on the sunnier side."
       },
       {
         "key": "slip_angle",
@@ -5445,7 +5445,7 @@
         "type": "float",
         "group": "Snow",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How much snow disappears from the low, sheltered ground -\nthe hollows where it goes first. 0 leaves an even blanket\nabove the snowline."
       },
       {
         "key": "blend_invert",
@@ -5474,7 +5474,7 @@
         "type": "float",
         "group": "Strata",
         "min": 0.05, "max": 1, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "How strongly the bedding shows. The beds are cut\ninto the existing surface rather than laid over it,\nso this is how much of the original slope survives."
       },
       {
         "key": "layers",
@@ -5482,7 +5482,7 @@
         "type": "int",
         "group": "Strata",
         "min": 4, "max": 80, "default": 18,
-        "tooltip": ""
+        "tooltip": "How many beds are stacked through the height range.\nFew gives the broad benches of a canyon wall; many\ngives fine banding."
       },
       {
         "key": "tilt",
@@ -5498,7 +5498,7 @@
         "type": "float",
         "group": "Strata",
         "min": -180, "max": 180, "default": 30,
-        "tooltip": ""
+        "tooltip": "Which way the beds dip. Sedimentary rock is rarely level,\nand the direction it leans is the single strongest clue to\na landscape's geological history."
       },
       {
         "key": "warp",
@@ -5506,7 +5506,7 @@
         "type": "float",
         "group": "Strata",
         "min": 0, "max": 1, "default": 0.2,
-        "tooltip": ""
+        "tooltip": "How much the beds are bent out of true. Real strata are\nfolded by the same forces that raised them; perfectly flat\nbedding reads as printed on."
       },
       {
         "key": "substrata",
@@ -5522,7 +5522,7 @@
         "type": "float",
         "group": "Restriction",
         "min": 0, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How steep ground must be before the strata show. Bedding\nis exposed where rock is bare and cut into; gentle ground\ncarries soil that hides it."
       },
       {
         "key": "slope_soft",
@@ -5530,7 +5530,7 @@
         "type": "float",
         "group": "Restriction",
         "min": 0.02, "max": 0.5, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "How gradually the strata fade in as the slope steepens, so\nthe bedded ground does not end on a visible line."
       },
       {
         "key": "seed",
@@ -5557,7 +5557,7 @@
         "type": "int",
         "group": "Steps",
         "min": 2, "max": 64, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many steps the height range is cut into. Few\ngives the broad benches of a canyon wall; many gives\nfine bedding, and past a point they are finer than\nthe terrain can show."
       },
       {
         "key": "shape",
@@ -5565,7 +5565,7 @@
         "type": "float",
         "group": "Steps",
         "min": 0.5, "max": 12, "default": 3,
-        "tooltip": ""
+        "tooltip": "How abruptly one step gives way to the next. Low\nleaves rounded treads that still read as a slope;\nhigh gives a flat tread and a near-vertical riser."
       },
       {
         "key": "cliff_bias",
@@ -5581,7 +5581,7 @@
         "type": "float",
         "group": "Steps",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the terraced result replaces the\noriginal. Below 1 leaves the underlying slope\nshowing through, which is usually more convincing\nthan a fully stepped hillside."
       },
       {
         "key": "seed",
@@ -5612,7 +5612,7 @@
         "type": "float",
         "group": "Variation",
         "min": 2, "max": 64, "default": 12,
-        "tooltip": ""
+        "tooltip": "How fine the wander in the terrace edges is. Low\nmakes each contour meander in broad curves; high\ngives a ragged, crumbling edge."
       },
       {
         "key": "band",
@@ -5627,7 +5627,7 @@
         "type": "float",
         "group": "Range",
         "min": 0.01, "max": 0.5, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "How gradually the terracing fades in at the edges of\nthe altitude band, so the treated ground does not\nend on a visible line."
       }
       ]
     },

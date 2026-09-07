@@ -1644,8 +1644,8 @@ Clamp with optional smooth shoulders
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Clamp range | range |  |
-| Shoulder softness | float, 0 to 0.5, default 0 |  |
+| Clamp range | range | Everything below the low value is lifted to it and everything above the high value pushed down to it - flat floors and flat tops, with the middle untouched. |
+| Shoulder softness | float, 0 to 0.5, default 0 | Rounds the corner where the terrain meets the clamp instead of cutting it flat. 0 leaves a hard crease that catches the light as a line. |
 
 ### Convolve
 
@@ -1659,10 +1659,10 @@ Convolution by a preset or typed kernel
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Kernel | choice: Sharpen / Edge (laplacian) / Emboss NW / Sobel X / Sobel Y / Custom |  |
+| Kernel | choice: Sharpen / Edge (laplacian) / Emboss NW / Sobel X / Sobel Y / Custom | A small matrix swept over the map. Sharpen boosts local contrast; the edge and Sobel kernels find boundaries and make good masks rather than terrain; Emboss lights it from one side. Custom takes your own numbers below. |
 | Custom (row-major) | text | 9 or 25 numbers, row-major 3x3 or 5x5, any whitespace. |
-| Strength | float, 0 to 4, default 1 |  |
-| Add to input | toggle, default off |  |
+| Strength | float, 0 to 4, default 1 | Scales the kernel's result before it is used. |
+| Add to input | toggle, default off | On, the result is added on top of the original terrain instead of replacing it - which is how an edge kernel becomes extra relief along the breaks rather than a picture of them. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Craggy
@@ -1677,11 +1677,11 @@ Slope-targeted rocky detail; flats stay clean
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Detail scale | float, 4 to 128, default 24 |  |
-| Strength | float, 0 to 0.3, default 0.06 |  |
-| Slope threshold | float, 0 to 1, default 0.3 |  |
-| Threshold softness | float, 0.02 to 0.6, default 0.2 |  |
-| Octaves | int, 2 to 9, default 5 |  |
+| Detail scale | float, 4 to 128, default 24 | How fine the added crag detail is, in repeats across the tile. High values give the broken texture of shattered rock; low ones give lumps. |
+| Strength | float, 0 to 0.3, default 0.06 | How far the crags stand off the surface. This is surface roughness, not landform - a little goes a long way. |
+| Slope threshold | float, 0 to 1, default 0.3 | How steep ground must be before crags appear on it. Bare broken rock belongs on the steeps; flat ground collects soil and stays smooth. |
+| Threshold softness | float, 0.02 to 0.6, default 0.2 | How gradually the crags fade in as the slope steepens, so the treated ground does not end on a line. |
+| Octaves | int, 2 to 9, default 5 | How many sizes of crag are layered together. |
 | Seed | seed |  |
 
 ### Curve
@@ -1696,8 +1696,8 @@ Remaps elevations through a drawn curve - the gradient's brightness is the trans
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Curve | gradient |  |
-| Strength | float, 0 to 1, default 1 |  |
+| Curve | gradient | The transfer curve, read as brightness: the horizontal axis is the height coming in, the gradient's brightness at that point is the height going out. A straight ramp changes nothing; bending it up raises the midlands, an S makes the flats flatter and the steeps steeper. |
+| Strength | float, 0 to 1, default 1 | How much of the curved result replaces the original. Part- way is a gentler version of the same shaping. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -1716,10 +1716,10 @@ Per-band detail gains, like an audio EQ
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Fine (1-4 px) | float, 0 to 3, default 1 |  |
-| Medium (4-16 px) | float, 0 to 3, default 1 |  |
-| Coarse (16-64 px) | float, 0 to 3, default 1 |  |
-| Base (blur 64 px+) | float, 0 to 3, default 1 |  |
+| Fine (1-4 px) | float, 0 to 3, default 1 | The grain of the surface. Turning it down calms a noisy terrain without softening its shape; turning it up sharpens the texture without adding relief. |
+| Medium (4-16 px) | float, 0 to 3, default 1 | Gullies and small outcrops - the scale that carries most of a landscape's character. |
+| Coarse (16-64 px) | float, 0 to 3, default 1 | Ridges and valleys: the landforms themselves. |
+| Base (blur 64 px+) | float, 0 to 3, default 1 | The overall lie of the land under everything else. Turning this down flattens the map without losing any of its detail - all four bands together are the original, so 1 everywhere changes nothing. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Detrend
@@ -1734,7 +1734,7 @@ Subtract the best-fit plane
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Amount | float, 0 to 1, default 1 |  |
+| Amount | float, 0 to 1, default 1 | How much of the overall tilt is removed. An imported heightfield often leans as a whole; taking the plane out levels it without touching the relief on top. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### DirectionalBlur
@@ -1749,9 +1749,9 @@ Streak the surface along a direction
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Direction ° | float, -180 to 180, default 0 |  |
-| Length | float, 0.002 to 0.5, default 0.05 |  |
-| Both directions | toggle, default on |  |
+| Direction ° | float, -180 to 180, default 0 | Which way the streaks run. Along the prevailing wind this reads as scouring; down the slope, as material having run. |
+| Length | float, 0.002 to 0.5, default 0.05 | How far the smearing reaches, as a fraction of the tile. |
+| Both directions | toggle, default on | On, it smears symmetrically and the surface stays put. Off, it drags one way only, so features shift downstream as well as blurring - which is what makes it look like flow rather than blur. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Equalize
@@ -1785,8 +1785,8 @@ Morphological dilate / erode
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius | float, 0.001 to 0.05, default 0.01 |  |
-| Shrink (erode) | toggle, default off |  |
+| Radius | float, 0.001 to 0.05, default 0.01 | How far the high ground grows outward, as a fraction of the tile. On a mask this fattens or thins the selected region; on terrain it broadens ridges or widens valleys. |
+| Shrink (erode) | toggle, default off | Runs it the other way: the low ground grows instead, eating into the high. Expand then shrink at the same radius closes small gaps and leaves the rest alone. |
 
 ### Fold
 
@@ -1800,7 +1800,7 @@ Fold values around midline — creates ridged detail
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Iterations | int, 1 to 6, default 1 |  |
+| Iterations | int, 1 to 6, default 1 | How many times the heights are reflected about the middle. Each fold turns every valley into a ridge, so one pass makes smooth noise ridged and several make an intricate crumpled surface. This is where ridged noise comes from, applied after the fact. |
 
 ### GammaCorrection
 
@@ -1814,7 +1814,7 @@ Power-curve contrast
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Gamma | float, 0.05 to 6, default 1 |  |
+| Gamma | float, 0.05 to 6, default 1 | Bends the heights toward the low or the high end without moving either. Below 1 lifts the middle, so more of the map sits high and the lowland shrinks; above 1 pushes it down, so peaks become sparse and the valleys broad. |
 
 ### Kuwahara
 
@@ -1828,8 +1828,8 @@ Edge-preserving smoothing (painterly flats)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius (px) | int, 1 to 16, default 4 |  |
-| Mix | float, 0 to 1, default 1 |  |
+| Radius (px) | int, 1 to 16, default 4 | How far it looks for a flat neighbourhood to average instead. Unlike a blur this keeps the edges: it flattens the ground between features while leaving the breaks between them sharp. |
+| Mix | float, 0 to 1, default 1 | How much of the flattened result replaces the original. The full effect is strongly painterly; part of it just calms a noisy surface. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### MeanShift
@@ -1844,9 +1844,9 @@ Mode-seeking smoothing (flattens toward plateaus)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius (px) | int, 2 to 24, default 6 |  |
-| Value tolerance | float, 0.005 to 0.5, default 0.08 |  |
-| Iterations | int, 1 to 8, default 3 |  |
+| Radius (px) | int, 2 to 24, default 6 | How far across the map each point looks for company. Larger merges more ground into each plateau. |
+| Value tolerance | float, 0.005 to 0.5, default 0.08 | How close in height two points must be to count as the same surface. This is what keeps a cliff a cliff while the ground either side of it flattens: only similar heights are averaged together. |
+| Iterations | int, 1 to 8, default 3 | How many times the search is repeated. Each pass moves points further toward the nearest flat, so more of them converge into fewer, cleaner terraces. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Median
@@ -1881,9 +1881,9 @@ Dilate, erode and their compositions
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Operation | choice: Dilate / Erode / Open / Close / Gradient / Top hat / Black hat |  |
-| Radius (px) | int, 1 to 64, default 3 |  |
-| Element | choice: Square / Octagon |  |
+| Operation | choice: Dilate / Erode / Open / Close / Gradient / Top hat / Black hat | Dilate grows the bright regions, erode shrinks them. Open is erode then dilate - it removes specks and leaves everything else the same size. Close is the reverse and fills small holes. The two are how you clean up a mask without blurring it. |
+| Radius (px) | int, 1 to 64, default 3 | How far the operation reaches. On a mask this is the size of the gap it can close or the speck it can remove. |
+| Element | choice: Square / Octagon | The neighbourhood the operation uses. A square is fastest but leaves corners on round features; the octagon is closer to a circle and does not. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Plateau
@@ -1898,8 +1898,8 @@ Flatten tops above a level
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Level | float, 0 to 1, default 0.7 |  |
-| Softness | float, 0.01 to 1, default 0.1 |  |
+| Level | float, 0 to 1, default 0.7 | The height everything above is flattened to. This is how a mesa or a tableland is made from a hill: the summit is cut off level and the flanks keep their shape. |
+| Softness | float, 0.01 to 1, default 0.1 | How gradually the flank gives way to the flat top. Low gives the sharp shoulder of a lava-capped mesa; high gives a rounded summit. |
 
 ### PowerFractal
 
@@ -1914,18 +1914,18 @@ Terragen-style multi-scale fractal displacement
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Noise flavour | choice: Perlin / Billows / Ridges / Voronoi billows / Voronoi ridges |  |
+| Noise flavour | choice: Perlin / Billows / Ridges / Voronoi billows / Voronoi ridges | Which noise the displacement is built from. Each has a different character at the same settings - one gives rolling forms, another sharp ridges, another cellular blocks. |
 | Lead-in scale | float, 0.05 to 4, default 1 | Largest visible variation (fraction of terrain width). Octaves between lead-in and feature scale ramp in with reduced amplitude. |
 | Feature scale | float, 0.01 to 2, default 0.25 | Scale of the dominant, full-amplitude features. |
 | Smallest scale | float, 0.0005 to 0.1, default 0.004 | Detail cutoff — nothing finer than this is added. |
 | Seed | seed |  |
-| Displacement amplitude | float, 0 to 1, default 0.15 |  |
+| Displacement amplitude | float, 0 to 1, default 0.15 | How far the pattern displaces the surface, in heightmap units. This is the strength of the whole effect. |
 | Displacement offset | float, -0.5 to 0.5, default 0 | Shifts displacement: positive raises plinths, negative sinks features. |
 | Roughness | float, 0.3 to 1.6, default 1 | Per-octave gain multiplier; below 1 smooths high frequencies, above 1 exaggerates them. |
 | Spike limit | float, 0.05 to 1, default 0.7 | Damps octave contributions on already-steep ground to prevent needle spikes. |
 | Displace along normal | toggle, default off | Scales displacement with slope so cliffs bulge outward like real overhung rock (approximated). |
 | Apply on slopes | range | Restrict displacement to this normalized slope band (e.g. 0.4..1 = only on steep faces). |
-| Slope softness | float, 0.01 to 0.5, default 0.15 |  |
+| Slope softness | float, 0.01 to 0.5, default 0.15 | How gradually the effect fades in as the slope steepens, so treated ground does not end on a visible line. |
 
 ### Remap
 
@@ -1939,7 +1939,7 @@ Remap value range
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Target range | range |  |
+| Target range | range | Rescales the whole map so its lowest point lands on the first value and its highest on the second. Nothing is clipped - the shape is unchanged, only its range. Reversing the two turns the terrain upside down. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Smooth
@@ -1954,7 +1954,7 @@ Gaussian-like smoothing
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius | float, 0 to 0.2, default 0.01 |  |
+| Radius | float, 0 to 0.2, default 0.01 | How far the blur reaches, as a fraction of the tile. Small values take the noise off a surface without touching its shape; large ones dissolve the shape as well. |
 
 ### SmoothFill
 
@@ -1969,9 +1969,9 @@ Fill hollows up to the smoothed surface
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius (px) | int, 1 to 128, default 16 |  |
-| Direction | choice: Fill up / Shave down |  |
-| Amount | float, 0 to 1, default 1 |  |
+| Radius (px) | int, 1 to 128, default 16 | How large a hollow counts as one worth filling. Anything narrower than this is levelled; anything broader is left as terrain. |
+| Direction | choice: Fill up / Shave down | Fill up raises hollows to the smoothed surface - sediment settling into dips. Shave down cuts the bumps off instead, which is weathering rather than deposition. The second output reports how much was moved, which makes a good sediment mask. |
+| Amount | float, 0 to 1, default 1 | How much of the way to the smoothed surface it goes. Part-way leaves the hollow visible but softened. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Snow
@@ -1987,12 +1987,12 @@ Snow cover: snowline, settle-thaw, slip-off; outputs depth mask
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Snow amount | float, 0 to 0.3, default 0.06 |  |
-| Snowline | float, 0 to 1, default 0.55 |  |
-| Snowline falloff | float, 0.02 to 0.6, default 0.15 |  |
+| Snow amount | float, 0 to 0.3, default 0.06 | How thick the snow lies, in heightmap units. It is added on top of the terrain, so this also softens whatever it covers. |
+| Snowline | float, 0 to 1, default 0.55 | The height above which snow settles, as a fraction of the terrain's range. Below it the ground stays bare. |
+| Snowline falloff | float, 0.02 to 0.6, default 0.15 | How gradually the snowline is crossed. A hard line looks painted on; real snow thins out over a band, and thins faster on the sunnier side. |
 | Slip-off slope | float, 0.1 to 1, default 0.55 | Snow cannot cling to slopes steeper than this. |
 | Settle-thaw iterations | int, 0 to 60, default 12 | Lets snow slide into hollows and compact — smooth, wind-packed accumulation. |
-| Melt (low areas) | float, 0 to 1, default 0.3 |  |
+| Melt (low areas) | float, 0 to 1, default 0.3 | How much snow disappears from the low, sheltered ground - the hollows where it goes first. 0 leaves an even blanket above the snowline. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Stratify
@@ -2007,14 +2007,14 @@ Tilted rock strata exposed on cliff faces
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Strength | float, 0.05 to 1, default 0.6 |  |
-| Layer count | int, 4 to 80, default 18 |  |
+| Strength | float, 0.05 to 1, default 0.6 | How strongly the bedding shows. The beds are cut into the existing surface rather than laid over it, so this is how much of the original slope survives. |
+| Layer count | int, 4 to 80, default 18 | How many beds are stacked through the height range. Few gives the broad benches of a canyon wall; many gives fine banding. |
 | Tilt | float, 0 to 0.8, default 0.15 | Strata are tilted planes, not horizontal bands — the single most important realism control. |
-| Tilt direction ° | float, -180 to 180, default 30 |  |
-| Warp | float, 0 to 1, default 0.2 |  |
+| Tilt direction ° | float, -180 to 180, default 30 | Which way the beds dip. Sedimentary rock is rarely level, and the direction it leans is the single strongest clue to a landscape's geological history. |
+| Warp | float, 0 to 1, default 0.2 | How much the beds are bent out of true. Real strata are folded by the same forces that raised them; perfectly flat bedding reads as printed on. |
 | Substrata | float, 0 to 1, default 0.4 | Finer secondary layering nested inside each stratum. |
-| Only on slopes above | float, 0 to 1, default 0.25 |  |
-| Slope softness | float, 0.02 to 0.5, default 0.15 |  |
+| Only on slopes above | float, 0 to 1, default 0.25 | How steep ground must be before the strata show. Bedding is exposed where rock is bare and cut into; gentle ground carries soil that hides it. |
+| Slope softness | float, 0.02 to 0.5, default 0.15 | How gradually the strata fade in as the slope steepens, so the bedded ground does not end on a visible line. |
 | Seed | seed |  |
 
 ### Terrace
@@ -2029,16 +2029,16 @@ Stratified terraces: uneven layers, warped edges, altitude band
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Levels | int, 2 to 64, default 8 |  |
-| Edge sharpness | float, 0.5 to 12, default 3 |  |
+| Levels | int, 2 to 64, default 8 | How many steps the height range is cut into. Few gives the broad benches of a canyon wall; many gives fine bedding, and past a point they are finer than the terrain can show. |
+| Edge sharpness | float, 0.5 to 12, default 3 | How abruptly one step gives way to the next. Low leaves rounded treads that still read as a slope; high gives a flat tread and a near-vertical riser. |
 | Cliff bias | float, -1 to 1, default 0 | Skews each step: negative = wide flats with sharp cliffs above; positive = sharp base, sloped tops. |
-| Strength | float, 0 to 1, default 1 |  |
+| Strength | float, 0 to 1, default 1 | How much of the terraced result replaces the original. Below 1 leaves the underlying slope showing through, which is usually more convincing than a fully stepped hillside. |
 | Seed | seed |  |
 | Level thickness jitter | float, 0 to 1, default 0.3 | Randomizes each layer's thickness — natural geological strata are never evenly spaced. |
 | Edge warp | float, 0 to 1, default 0.15 | Warps terrace edges with noise so contour lines wander instead of following exact heights. |
-| Edge warp scale | float, 2 to 64, default 12 |  |
+| Edge warp scale | float, 2 to 64, default 12 | How fine the wander in the terrace edges is. Low makes each contour meander in broad curves; high gives a ragged, crumbling edge. |
 | Altitude band | range | Only terrace heights inside this normalized band; terrain outside is left untouched. |
-| Band softness | float, 0.01 to 0.5, default 0.1 |  |
+| Band softness | float, 0.01 to 0.5, default 0.1 | How gradually the terracing fades in at the edges of the altitude band, so the treated ground does not end on a visible line. |
 
 ## Group
 

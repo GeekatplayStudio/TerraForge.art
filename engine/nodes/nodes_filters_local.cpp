@@ -51,8 +51,15 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_int(n.attrs, "radius", "Radius (px)", 4, 1, 16, "Kuwahara");
-      add_float(n.attrs, "mix", "Mix", 1.f, 0.f, 1.f, "Kuwahara");
+      add_int(n.attrs, "radius", "Radius (px)", 4, 1, 16, "Kuwahara")
+          .tooltip = "How far it looks for a flat neighbourhood to average\n"
+                     "instead. Unlike a blur this keeps the edges: it\n"
+                     "flattens the ground between features while leaving\n"
+                     "the breaks between them sharp.";
+      add_float(n.attrs, "mix", "Mix", 1.f, 0.f, 1.f, "Kuwahara")
+          .tooltip = "How much of the flattened result replaces the\n"
+                     "original. The full effect is strongly painterly;\n"
+                     "part of it just calms a noisy surface.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -96,9 +103,18 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f, "Blur");
-      add_float(n.attrs, "length", "Length", 0.05f, 0.002f, 0.5f, "Blur");
-      add_bool(n.attrs, "both_ways", "Both directions", true, "Blur");
+      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f, "Blur")
+          .tooltip = "Which way the streaks run. Along the prevailing wind\n"
+                     "this reads as scouring; down the slope, as material\n"
+                     "having run.";
+      add_float(n.attrs, "length", "Length", 0.05f, 0.002f, 0.5f, "Blur")
+          .tooltip = "How far the smearing reaches, as a fraction of the\n"
+                     "tile.";
+      add_bool(n.attrs, "both_ways", "Both directions", true, "Blur")
+          .tooltip = "On, it smears symmetrically and the surface stays\n"
+                     "put. Off, it drags one way only, so features shift\n"
+                     "downstream as well as blurring - which is what makes\n"
+                     "it look like flow rather than blur.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -132,7 +148,10 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_float(n.attrs, "amount", "Amount", 1.f, 0.f, 1.f, "Detrend");
+      add_float(n.attrs, "amount", "Amount", 1.f, 0.f, 1.f, "Detrend")
+          .tooltip = "How much of the overall tilt is removed. An imported\n"
+                     "heightfield often leans as a whole; taking the plane\n"
+                     "out levels it without touching the relief on top.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -194,10 +213,21 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_out("output");
       n.add_out("fill_depth");
-      add_int(n.attrs, "radius", "Radius (px)", 16, 1, 128, "Fill");
+      add_int(n.attrs, "radius", "Radius (px)", 16, 1, 128, "Fill")
+          .tooltip = "How large a hollow counts as one worth filling.\n"
+                     "Anything narrower than this is levelled; anything\n"
+                     "broader is left as terrain.";
       add_choice(n.attrs, "direction", "Direction", {"Fill up", "Shave down"},
-                 0, "Fill");
-      add_float(n.attrs, "amount", "Amount", 1.f, 0.f, 1.f, "Fill");
+                 0, "Fill")
+          .tooltip = "Fill up raises hollows to the smoothed surface -\n"
+                     "sediment settling into dips. Shave down cuts the\n"
+                     "bumps off instead, which is weathering rather than\n"
+                     "deposition. The second output reports how much was\n"
+                     "moved, which makes a good sediment mask.";
+      add_float(n.attrs, "amount", "Amount", 1.f, 0.f, 1.f, "Fill")
+          .tooltip = "How much of the way to the smoothed surface it\n"
+                     "goes. Part-way leaves the hollow visible but\n"
+                     "softened.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -291,10 +321,20 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_float(n.attrs, "fine", "Fine (1-4 px)", 1.f, 0.f, 3.f, "Bands");
-      add_float(n.attrs, "medium", "Medium (4-16 px)", 1.f, 0.f, 3.f, "Bands");
-      add_float(n.attrs, "coarse", "Coarse (16-64 px)", 1.f, 0.f, 3.f, "Bands");
-      add_float(n.attrs, "base", "Base (blur 64 px+)", 1.f, 0.f, 3.f, "Bands");
+      add_float(n.attrs, "fine", "Fine (1-4 px)", 1.f, 0.f, 3.f, "Bands")
+          .tooltip = "The grain of the surface. Turning it down calms a\n"
+                     "noisy terrain without softening its shape; turning\n"
+                     "it up sharpens the texture without adding relief.";
+      add_float(n.attrs, "medium", "Medium (4-16 px)", 1.f, 0.f, 3.f, "Bands")
+          .tooltip = "Gullies and small outcrops - the scale that carries\n"
+                     "most of a landscape's character.";
+      add_float(n.attrs, "coarse", "Coarse (16-64 px)", 1.f, 0.f, 3.f, "Bands")
+          .tooltip = "Ridges and valleys: the landforms themselves.";
+      add_float(n.attrs, "base", "Base (blur 64 px+)", 1.f, 0.f, 3.f, "Bands")
+          .tooltip = "The overall lie of the land under everything else.\n"
+                     "Turning this down flattens the map without losing\n"
+                     "any of its detail - all four bands together are the\n"
+                     "original, so 1 everywhere changes nothing.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -327,12 +367,22 @@ REGISTER_NODE(
       add_choice(n.attrs, "kernel", "Kernel",
                  {"Sharpen", "Edge (laplacian)", "Emboss NW", "Sobel X",
                   "Sobel Y", "Custom"},
-                 0, "Convolve");
+                 0, "Convolve")
+          .tooltip = "A small matrix swept over the map. Sharpen boosts\n"
+                     "local contrast; the edge and Sobel kernels find\n"
+                     "boundaries and make good masks rather than terrain;\n"
+                     "Emboss lights it from one side. Custom takes your\n"
+                     "own numbers below.";
       add_text(n.attrs, "custom", "Custom (row-major)",
                "0 -1 0  -1 5 -1  0 -1 0")
           .tooltip = "9 or 25 numbers, row-major 3x3 or 5x5, any whitespace.";
-      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 4.f, "Convolve");
-      add_bool(n.attrs, "add_to_input", "Add to input", false, "Convolve");
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 4.f, "Convolve")
+          .tooltip = "Scales the kernel's result before it is used.";
+      add_bool(n.attrs, "add_to_input", "Add to input", false, "Convolve")
+          .tooltip = "On, the result is added on top of the original\n"
+                     "terrain instead of replacing it - which is how an\n"
+                     "edge kernel becomes extra relief along the breaks\n"
+                     "rather than a picture of them.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
