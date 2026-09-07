@@ -36,6 +36,43 @@ std::string mesh_engines_text();
 // input cannot be made into a solid; `err` always says which.
 bool mesh_solidify(TriMesh &m, std::string &err);
 
+// Constructive solid geometry between two meshes.
+//
+// Union, intersection and difference, each guaranteed manifold by
+// construction because Manifold guarantees it. Both meshes are stitched
+// first, for the same reason solidify stitches: a mesh whose triangles never
+// shared a vertex reads as a cloud of islands and cannot be a solid.
+//
+// The two must already be in the same space. Nothing here knows about a
+// scene transform, so the caller bakes.
+enum class MeshBoolOp { Union, Intersect, Difference };
+bool mesh_boolean(TriMesh &a, const TriMesh &b, MeshBoolOp op,
+                  std::string &err);
+
+// One ball of a metaball field: a centre, a radius, and how strongly it
+// pulls. Strength may be negative, which carves rather than adds - a
+// negative blob dropped through a positive one is how a hollow is made.
+struct MetaBlob {
+  float x = 0, y = 0, z = 0;
+  float radius = 1.f;
+  float strength = 1.f;
+};
+
+// Mesh the surface where the blobs' summed field reaches 1.
+//
+// The field of one blob is the classic Wyvill falloff: 1 at the centre,
+// smoothly 0 at the radius, and with a continuous derivative at both ends,
+// which is what makes two blobs *merge* rather than intersect. `smoothness`
+// widens each blob's reach without moving its surface, so the same set of
+// balls can read as separate beads or as one poured mass.
+//
+// `cell` is the voxel edge: the smaller it is, the finer the result and the
+// more of them there are, cubically. Manifold's level set is used rather
+// than a marching-cubes of our own, so the output is manifold and can go
+// straight into mesh_boolean.
+bool mesh_metaball(const std::vector<MetaBlob> &blobs, float smoothness,
+                   float cell, TriMesh &out, std::string &err);
+
 // Rebuild the surface as evenly sized, curvature-aligned quads, triangulated
 // on the way back (our TriMesh is triangles). `target_faces` is the quad
 // count asked for; the result is about twice that in triangles.

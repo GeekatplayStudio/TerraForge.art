@@ -128,6 +128,7 @@ set(ENGINE_SOURCES
     engine/asset_index.cpp
     engine/mesh_analysis.cpp
     engine/mesh_engines.cpp
+    engine/mesh_csg.cpp
     engine/mesh_cleanup.cpp
     engine/mesh_io.cpp
     engine/mesh_io_gltf.cpp
@@ -705,6 +706,10 @@ add_executable(mesh_probe tests/cpp/mesh_probe.cpp)
 target_link_libraries(mesh_probe PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+add_executable(mesh_csg_tests tests/cpp/test_mesh_csg.cpp)
+target_link_libraries(mesh_csg_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(mesh_tests tests/cpp/test_mesh.cpp)
 target_link_libraries(mesh_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -790,6 +795,7 @@ add_test(NAME UndoTests COMMAND undo_tests)
 add_test(NAME RenderTests COMMAND render_tests)
 add_test(NAME LayoutTests COMMAND layout_tests)
 add_test(NAME MeshTests COMMAND mesh_tests)
+add_test(NAME MeshCsgTests COMMAND mesh_csg_tests)
 add_test(NAME MaterialEditorTests COMMAND material_editor_tests)
 add_test(NAME ConfigTests COMMAND config_tests)
 add_test(NAME IconTests COMMAND icon_tests)
