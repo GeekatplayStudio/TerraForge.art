@@ -651,6 +651,10 @@ add_executable(shape_lake_tests tests/cpp/test_shape_lake.cpp)
 target_link_libraries(shape_lake_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+add_executable(points_thumb_tests tests/cpp/test_points_thumb.cpp)
+target_link_libraries(points_thumb_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(node_tests tests/cpp/test_nodes.cpp tests/cpp/test_nodes_convert.cpp)
 target_link_libraries(node_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -678,6 +682,10 @@ target_link_libraries(asset_tests PRIVATE third_party_headers)
 # picture controls, layer presence modes, the two-material distribution.
 add_executable(material_editor_tests tests/cpp/test_material_editor.cpp)
 target_link_libraries(material_editor_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
+add_executable(points_preview_tests tests/cpp/test_points_preview.cpp)
+target_link_libraries(points_preview_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
 add_executable(mesh_probe tests/cpp/mesh_probe.cpp)
@@ -752,6 +760,8 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AnimTests COMMAND anim_tests)
 add_test(NAME EcosystemTests COMMAND ecosystem_tests)
 add_test(NAME ShapeLakeTests COMMAND shape_lake_tests)
+add_test(NAME PointsThumbTests COMMAND points_thumb_tests)
+add_test(NAME PointsPreviewTests COMMAND points_preview_tests)
 add_test(NAME NodeNameTests COMMAND node_name_tests)
 add_test(NAME NodeSearchTests COMMAND node_search_tests)
 add_test(NAME I18nTests COMMAND i18n_tests)

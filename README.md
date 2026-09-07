@@ -45,6 +45,10 @@ gallery and the studio, in pictures.
 one-click installer to building it yourself.
 **[Node reference](docs/NODES.md)** — every node, port and parameter,
 generated from the registry itself.
+**[Node previews](docs/NODE_PREVIEWS.md)** — what the thumbnail on each card
+is drawn from, and why a scatter that clumps looks like one.
+**[Finding a node](docs/NODE_SEARCH.md)** — search by what you want, not by
+what it is called: *rocks* finds stones, boulders, scree and talus.
 **[Developer guide](docs/DEVELOPER_GUIDE.md)** — goals, roadmap, architecture
 and how we work, for anyone who wants to join.
 **[Layered materials](docs/MATERIAL_LAYERS.md)** — how a material stacks,

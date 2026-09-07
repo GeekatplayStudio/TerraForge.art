@@ -385,8 +385,24 @@ static void check_ports(gpx::Node *n) {
       ++outs;
     }
   }
-  if (!is_sink(n->type) && !is_container(n->type) && !is_config_node(n->type))
+  if (!is_sink(n->type) && !is_container(n->type) && !is_config_node(n->type)) {
     CHECK(outs >= 1, "has at least one output");
+    // And that output has to be something the node editor can draw, or the
+    // card carries a name and a row of sliders and leaves the result to be
+    // imagined. studio/preview.cpp handles all four data types - a picture,
+    // a hillshade of the relief, a field sampled over the tile, a cloud
+    // splatted onto it - so this fails only for a new type nobody taught it.
+    bool drawable = false;
+    for (const gpx::Port &p : n->ports)
+      if (p.dir == gpx::PortDir::Out &&
+          (p.type == gpx::DataType::Texture ||
+           p.type == gpx::DataType::Heightmap ||
+           p.type == gpx::DataType::Points ||
+           (p.type == gpx::DataType::Field && p.field_eval)))
+        drawable = true;
+    CHECK(drawable, "has an output studio/preview.cpp can draw a thumbnail "
+                    "from - otherwise its card shows nothing");
+  }
 }
 
 static void check_eval_and_determinism(const std::string &type) {

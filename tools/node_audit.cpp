@@ -143,6 +143,29 @@ void audit(const NodeDef *d, Node *n, std::vector<Finding> &out) {
       out.push_back({"PORT_CASE", "port '" + p.name +
                                       "' is not lower case like the rest"});
 
+  // ---- does it show what it does (step 3) ----------------------------
+  //
+  // studio/preview.cpp draws a node's thumbnail from its first output: the
+  // picture itself, a hillshade of the relief, the field sampled over the
+  // tile, or the cloud splatted onto it. A node whose outputs are none of
+  // those has a blank card, and the user has to read the name and imagine
+  // the rest. Sinks, containers and configuration nodes are exempt for the
+  // same reason they are exempt from NO_OUTPUT: there is nothing of their
+  // own to draw.
+  bool previewable = false;
+  for (const Port &p : n->ports) {
+    if (p.dir != PortDir::Out) continue;
+    if (p.type == DataType::Texture || p.type == DataType::Heightmap ||
+        p.type == DataType::Points ||
+        (p.type == DataType::Field && p.field_eval))
+      previewable = true;
+  }
+  if (!previewable && !is_sink(n->type) && !is_container(n->type) &&
+      !is_config_node(n->type))
+    out.push_back({"NO_PREVIEW",
+                   "nothing on its card but the name: no texture, heightmap "
+                   "or field output for studio/preview.cpp to draw"});
+
   // ---- name (step 9) -------------------------------------------------
   if (name_is_jargon(n->type))
     out.push_back({"NAME", "shown to the user as '" +

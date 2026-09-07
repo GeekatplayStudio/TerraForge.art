@@ -1,6 +1,7 @@
 // Geekatplay Studio — per-node preview thumbnails (hillshaded relief)
 #include "app.hpp"
 #include "gpx/field.hpp"
+#include "gpx/points_thumb.hpp"
 #include <glad/gl.h>
 #include <algorithm>
 #include <cmath>
@@ -100,6 +101,15 @@ void previews_update(App &a) {
           rgba[i + 3] = 255;
         }
       upload_preview(n->id, rgba, PW, PW);
+      continue;
+    }
+    gpx::Port *pp = n->first_out(gpx::DataType::Points);
+    if (pp && pp->pts && pp->pts->size()) {
+      // "path" is the declared name of an ordered cloud; "points" is a
+      // scatter. Same buffer, different picture.
+      upload_preview(n->id,
+                     gpx::points_thumbnail(*pp->pts, PW, pp->name == "path"),
+                     PW, PW);
       continue;
     }
     // A field node has no buffer to show, so a small one is evaluated for

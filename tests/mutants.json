@@ -1,0 +1,55 @@
+{
+  "_": "Mutants for scripts/mutate.py. Each is a plausible mistake, not a nonsense edit: the question is whether the suite would catch a change somebody might actually make. Run with `python scripts/mutate.py`.",
+  "suites": [
+    {
+      "name": "points_thumb",
+      "file": "engine/gpx/points_thumb.hpp",
+      "target": "points_thumb_tests",
+      "run": "points_thumb_tests",
+      "timeout": 120,
+      "mutants": [
+        {
+          "name": "path draws its points, not the line between them",
+          "find": "int steps = (int)std::max(std::fabs(cbx - cax), std::fabs(cby - cay)) + 1;",
+          "replace": "int steps = 1;"
+        },
+        {
+          "name": "brightness ramp goes linear",
+          "find": "float t = std::sqrt(std::min(acc[i] / mx, 1.f));",
+          "replace": "float t = std::min(acc[i] / mx, 1.f) * 0.05f;"
+        },
+        {
+          "name": "off-tile points are clamped to the edge",
+          "find": "return (double)t * (w - 1);",
+          "replace": "return (double)std::clamp(t, 0.f, 1.f) * (w - 1);"
+        },
+        {
+          "name": "splat drops the bilinear weights",
+          "find": "weight * (dx ? tx : 1.f - tx) * (dy ? ty : 1.f - ty);",
+          "replace": "weight * 0.f;"
+        },
+        {
+          "name": "normalisation uses a fixed constant",
+          "find": "float mx = 0.f;\n  for (float v : acc) mx = std::max(mx, v);",
+          "replace": "float mx = 64.f;\n  for (float v : acc) (void)v;"
+        },
+        {
+          "name": "the segment clip runs in float, not double",
+          "find": "double t0 = 0.0, t1 = 1.0, dx = bx - ax, dy = by - ay;",
+          "replace": "float t0 = 0.f, t1 = 1.f; double dx = bx - ax, dy = by - ay;"
+        },
+        {
+          "name": "a segment with no part on the canvas is walked anyway",
+          "find": "if (!visible) continue;",
+          "replace": "if (!visible) { t0 = 0.0; t1 = 1.0; }"
+        }
+      ],
+      "not_mutated": [
+        {
+          "name": "the isfinite guard in splat",
+          "why": "removing it is undefined behaviour ((int)floor(NaN)), not a wrong answer - on x86 the garbage index lands out of bounds and the picture is identical, so no test can kill it. It stays because UB is not a thing to leave in."
+        }
+      ]
+    }
+  ]
+}
