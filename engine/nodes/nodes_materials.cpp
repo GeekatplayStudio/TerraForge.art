@@ -38,23 +38,45 @@ REGISTER_NODE(
     TextureFile, "Material", "Load an image texture (PNG/JPG/TGA/BMP) with mapping modes",
     [](Node &n) {
       n.add_out("texture", DataType::Texture);
-      add_filename(n.attrs, "path", "Image file", "", "Picture");
+      add_filename(n.attrs, "path", "Image file", "", "Picture")
+          .tooltip = "The image file. Colour maps are read as sRGB and\n"
+                     "everything else as linear, so a normal or roughness map\n"
+                     "loaded here is not silently gamma-corrected.";
       add_choice(n.attrs, "mapping", "Mapping", {"Stretch", "Tile", "Tile offset"}, 1,
-                 "Picture");
-      add_float(n.attrs, "tiles", "Tiles across", 8.f, 1.f, 64.f, "Picture");
-      add_float(n.attrs, "brightness", "Brightness", 1.f, 0.2f, 3.f, "Picture");
+                 "Picture")
+          .tooltip = "How the picture is laid onto the surface. Flat projection\n"
+                     "is fine on ground seen from above; triplanar projects from\n"
+                     "three directions and blends, which is what stops the\n"
+                     "stretching on a cliff face.";
+      add_float(n.attrs, "tiles", "Tiles across", 8.f, 1.f, 64.f, "Picture")
+          .tooltip = "How many times the picture repeats across the surface.\n"
+                     "High counts show the repeat unless the picture was made\n"
+                     "seamless.";
+      add_float(n.attrs, "brightness", "Brightness", 1.f, 0.2f, 3.f, "Picture")
+          .tooltip = "Scales the picture after loading.";
       // Vue's mapped-picture controls (manual p705-707): gamma, rotate by
       // quarter turns, invert, mirror, scale and offset of the picture itself
       add_float(n.attrs, "gamma", "Gamma", 1.f, 0.2f, 3.f, "Picture").tooltip =
           "Gamma correction for this picture, overriding the global setting.";
-      add_choice(n.attrs, "rotate", "Rotate", {"0", "90", "180", "270"}, 0, "Picture");
-      add_bool(n.attrs, "invert", "Invert colors", false, "Picture");
-      add_bool(n.attrs, "mirror_x", "Mirror X", false, "Picture");
-      add_bool(n.attrs, "mirror_y", "Mirror Y", false, "Picture");
-      add_vec2(n.attrs, "scale", "Picture scale", 1.f, 1.f, 0.05f, 20.f, "Picture");
-      add_vec2(n.attrs, "offset", "Image offset", 0.f, 0.f, -1.f, 1.f, "Picture");
+      add_choice(n.attrs, "rotate", "Rotate", {"0", "90", "180", "270"}, 0, "Picture")
+          .tooltip = "Turns the picture on the surface.";
+      add_bool(n.attrs, "invert", "Invert colors", false, "Picture")
+          .tooltip = "Flips the picture's values. On a height or roughness map\n"
+                     "this turns bumps into dents and gloss into matt.";
+      add_bool(n.attrs, "mirror_x", "Mirror X", false, "Picture")
+          .tooltip = "Mirrors alternate repeats across, which hides the seam of\n"
+                     "a picture that does not tile.";
+      add_bool(n.attrs, "mirror_y", "Mirror Y", false, "Picture")
+          .tooltip = "Mirrors alternate repeats down.";
+      add_vec2(n.attrs, "scale", "Picture scale", 1.f, 1.f, 0.05f, 20.f, "Picture")
+          .tooltip = "Multiplies the picture's values after loading.";
+      add_vec2(n.attrs, "offset", "Image offset", 0.f, 0.f, -1.f, 1.f, "Picture")
+          .tooltip = "Added to the picture's values after loading.";
       add_choice(n.attrs, "interpolation", "Interpolation", {"Linear", "Nearest"}, 0,
-                 "Picture");
+                 "Picture")
+          .tooltip = "How the picture is sampled between its pixels. Smooth is\n"
+                     "right for nearly everything; nearest keeps hard pixel\n"
+                     "edges, which is what an index or ID map needs.";
     },
     [](Node &n) {
       std::string path = n.attrs.get_s("path");
@@ -144,8 +166,10 @@ REGISTER_NODE(
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("texture", DataType::Texture);
       add_choice(n.attrs, "mode", "Mode",
-                 {"Normal", "Multiply", "Add", "Overlay", "Screen", "Height tint"}, 0);
-      add_float(n.attrs, "opacity", "Opacity", 1.f, 0.f, 1.f);
+                 {"Normal", "Multiply", "Add", "Overlay", "Screen", "Height tint"}, 0)
+          .tooltip = "How the two pictures are combined.";
+      add_float(n.attrs, "opacity", "Opacity", 1.f, 0.f, 1.f)
+          .tooltip = "How much of the second picture shows over the first.";
     },
     [](Node &n) {
       const TextureRGBA *ta = n.in_tex("texture A");
@@ -190,7 +214,10 @@ REGISTER_NODE(
       n.add_in("mask B", DataType::Heightmap, true);
       n.add_in("mask A", DataType::Heightmap, true);
       n.add_out("splat", DataType::Texture);
-      add_bool(n.attrs, "normalize", "Normalize weights", true);
+      add_bool(n.attrs, "normalize", "Normalize weights", true)
+          .tooltip = "Rescales the four channels so they sum to one at every\n"
+                     "point. Splat weights that do not sum to one either darken\n"
+                     "the surface or blow it out.";
     },
     [](Node &n) {
       const Heightmap *m[4] = {n.in_hmap("mask R"), n.in_hmap("mask G"),
@@ -269,10 +296,21 @@ REGISTER_NODE(
       n.add_in("albedo", DataType::Texture);
       n.add_out("normal", DataType::Texture);
       n.add_out("roughness", DataType::Texture);
-      add_float(n.attrs, "normal_strength", "Normal strength", 2.f, 0.1f, 10.f);
-      add_float(n.attrs, "rough_base", "Roughness base", 0.8f, 0.f, 1.f);
-      add_float(n.attrs, "rough_variation", "Roughness variation", 0.3f, 0.f, 1.f);
-      add_bool(n.attrs, "invert_rough", "Bright = smooth", true);
+      add_float(n.attrs, "normal_strength", "Normal strength", 2.f, 0.1f, 10.f)
+          .tooltip = "How much relief is inferred from the photograph's\n"
+                     "brightness. A photograph has no depth in it, so this is a\n"
+                     "guess: too much and every dark patch becomes a dent.";
+      add_float(n.attrs, "rough_base", "Roughness base", 0.8f, 0.f, 1.f)
+          .tooltip = "The roughness the whole surface starts at, before the\n"
+                     "picture varies it.";
+      add_float(n.attrs, "rough_variation", "Roughness variation", 0.3f, 0.f, 1.f)
+          .tooltip = "How much the picture's own detail varies the roughness, so\n"
+                     "darker, damper-looking areas come out glossier than pale\n"
+                     "dry ones.";
+      add_bool(n.attrs, "invert_rough", "Bright = smooth", true)
+          .tooltip = "Swaps which end of the picture reads as glossy. If the\n"
+                     "highlights are landing on the wrong parts of the surface,\n"
+                     "this is the switch.";
     },
     [](Node &n) {
       const TextureRGBA *alb = n.in_tex("albedo");
@@ -322,13 +360,24 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("texture", DataType::Texture);
       n.add_out("texture", DataType::Texture);
-      add_float(n.attrs, "brightness", "Brightness", 1.f, 0.2f, 3.f);
-      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.2f, 3.f);
-      add_float(n.attrs, "saturation", "Saturation", 1.f, 0.f, 3.f);
-      add_float(n.attrs, "hue_shift", "Hue shift °", 0.f, -180.f, 180.f);
-      add_float(n.attrs, "tint_r", "Tint R", 1.f, 0.f, 2.f, "Tint");
-      add_float(n.attrs, "tint_g", "Tint G", 1.f, 0.f, 2.f, "Tint");
-      add_float(n.attrs, "tint_b", "Tint B", 1.f, 0.f, 2.f, "Tint");
+      add_float(n.attrs, "brightness", "Brightness", 1.f, 0.2f, 3.f)
+          .tooltip = "Scales every colour up or down.";
+      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.2f, 3.f)
+          .tooltip = "Pushes colours away from mid-grey, or toward it below 1.";
+      add_float(n.attrs, "saturation", "Saturation", 1.f, 0.f, 3.f)
+          .tooltip = "How strong the colour is. 0 leaves greyscale with all the\n"
+                     "detail intact.";
+      add_float(n.attrs, "hue_shift", "Hue shift °", 0.f, -180.f, 180.f)
+          .tooltip = "Rotates every colour around the wheel, in degrees. A small\n"
+                     "shift is the cheapest way to make one photographed surface\n"
+                     "look like a different rock.";
+      add_float(n.attrs, "tint_r", "Tint R", 1.f, 0.f, 2.f, "Tint")
+          .tooltip = "Multiplies the red channel, for correcting a cast rather\n"
+                     "than recolouring.";
+      add_float(n.attrs, "tint_g", "Tint G", 1.f, 0.f, 2.f, "Tint")
+          .tooltip = "Multiplies the green channel.";
+      add_float(n.attrs, "tint_b", "Tint B", 1.f, 0.f, 2.f, "Tint")
+          .tooltip = "Multiplies the blue channel.";
     },
     [](Node &n) {
       const TextureRGBA *in = n.in_tex("texture");
@@ -384,9 +433,14 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("texture", DataType::Texture);
-      add_float(n.attrs, "r", "Red", 0.5f, 0.f, 1.f);
-      add_float(n.attrs, "g", "Green", 0.45f, 0.f, 1.f);
-      add_float(n.attrs, "b", "Blue", 0.4f, 0.f, 1.f);
+      add_float(n.attrs, "r", "Red", 0.5f, 0.f, 1.f)
+          .tooltip = "The red component, linear rather than sRGB: 0.5 here is\n"
+                     "not the mid-grey you would pick in a paint program. That\n"
+                     "matters when a value is matched against a photograph.";
+      add_float(n.attrs, "g", "Green", 0.45f, 0.f, 1.f)
+          .tooltip = "The green component, linear rather than sRGB.";
+      add_float(n.attrs, "b", "Blue", 0.4f, 0.f, 1.f)
+          .tooltip = "The blue component, linear rather than sRGB.";
     },
     [](Node &n) {
       TextureRGBA &out = n.out_tex("texture");

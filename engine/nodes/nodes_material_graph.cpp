@@ -30,7 +30,10 @@ REGISTER_NODE(
       // units; the studio adds it to the terrain it is assigned to
       n.add_in("displacement", DataType::Heightmap, true);
       n.add_out("preview", DataType::Texture);
-      add_text(n.attrs, "name", "Material name", "Material", "Identity");
+      add_text(n.attrs, "name", "Material name", "Material", "Identity")
+          .tooltip = "What this material is called in the Objects tree and the\n"
+                     "material browser. It is how you pick it when assigning it\n"
+                     "to something.";
       // every surface property, grouped by the Material Editor's tabs
       // (engine/material_params.cpp); the renderers read them through
       // material_params_from()
@@ -61,11 +64,21 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("texture", DataType::Texture);
       n.add_out("texture", DataType::Texture);
-      add_float(n.attrs, "in_black", "Input black", 0.f, 0.f, 1.f, "Input");
-      add_float(n.attrs, "in_white", "Input white", 1.f, 0.f, 1.f, "Input");
-      add_float(n.attrs, "gamma", "Gamma", 1.f, 0.1f, 4.f, "Input");
-      add_float(n.attrs, "out_black", "Output black", 0.f, 0.f, 1.f, "Output");
-      add_float(n.attrs, "out_white", "Output white", 1.f, 0.f, 1.f, "Output");
+      add_float(n.attrs, "in_black", "Input black", 0.f, 0.f, 1.f, "Input")
+          .tooltip = "Input values at or below this are pulled to black. Raising\n"
+                     "it deepens the shadows and throws away whatever detail was\n"
+                     "below it.";
+      add_float(n.attrs, "in_white", "Input white", 1.f, 0.f, 1.f, "Input")
+          .tooltip = "Input values at or above this are pushed to white.";
+      add_float(n.attrs, "gamma", "Gamma", 1.f, 0.1f, 4.f, "Input")
+          .tooltip = "Bends the midtones without moving the two ends. Below 1\n"
+                     "darkens them, above 1 lifts them.";
+      add_float(n.attrs, "out_black", "Output black", 0.f, 0.f, 1.f, "Output")
+          .tooltip = "The darkest the result is allowed to be. Raising it lifts\n"
+                     "the whole picture off black, which is what a hazy or dusty\n"
+                     "surface actually does.";
+      add_float(n.attrs, "out_white", "Output white", 1.f, 0.f, 1.f, "Output")
+          .tooltip = "The brightest the result is allowed to be.";
       add_bool(n.attrs, "per_channel", "Per channel", false, "Output")
           .tooltip = "Off: operate on luminance and keep the hue.\n"
                      "On: apply the curve to R, G and B separately.";
@@ -113,8 +126,12 @@ REGISTER_NODE(
       add_gradient(n.attrs, "gradient", "Gradient",
                    {{0.0f, 0.06f, 0.05f, 0.04f, 1},
                     {0.45f, 0.38f, 0.31f, 0.24f, 1},
-                    {1.0f, 0.88f, 0.86f, 0.82f, 1}});
-      add_float(n.attrs, "mix", "Amount", 1.f, 0.f, 1.f);
+                    {1.0f, 0.88f, 0.86f, 0.82f, 1}})
+          .tooltip = "The colour ramp the incoming value is looked up in: 0\n"
+                     "takes the left end, 1 the right. This is how a height, a\n"
+                     "slope or a mask becomes colour.";
+      add_float(n.attrs, "mix", "Amount", 1.f, 0.f, 1.f)
+          .tooltip = "How much of the mapped colour replaces what came in.";
     },
     [](Node &n) {
       const TextureRGBA *in = n.in_tex("texture");
@@ -164,7 +181,10 @@ REGISTER_NODE(
       n.add_in("base", DataType::Texture);
       n.add_in("detail", DataType::Texture);
       n.add_out("texture", DataType::Texture);
-      add_float(n.attrs, "detail_strength", "Detail strength", 1.f, 0.f, 3.f);
+      add_float(n.attrs, "detail_strength", "Detail strength", 1.f, 0.f, 3.f)
+          .tooltip = "How much of the detail normal is laid over the base one.\n"
+                     "The two are combined so the fine map rides on the coarse\n"
+                     "one rather than replacing its direction.";
     },
     [](Node &n) {
       const TextureRGBA *a = n.in_tex("base");
@@ -198,9 +218,12 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("texture", DataType::Texture);
       n.add_out("texture", DataType::Texture);
-      add_vec2(n.attrs, "tiles", "Tiles", 1.f, 1.f, 0.1f, 64.f);
-      add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -2.f, 2.f);
-      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f);
+      add_vec2(n.attrs, "tiles", "Tiles", 1.f, 1.f, 0.1f, 64.f)
+          .tooltip = "How many times the picture repeats across the surface.";
+      add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -2.f, 2.f)
+          .tooltip = "Slides the picture across the surface.";
+      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f)
+          .tooltip = "Turns the picture on the surface.";
       add_bool(n.attrs, "mirror", "Mirror repeat", false)
           .tooltip = "Flips alternate tiles so seams are less visible.";
     },
@@ -249,8 +272,15 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("height");
       n.add_out("texture", DataType::Texture);
-      add_float(n.attrs, "radius", "Radius", 0.02f, 0.002f, 0.15f);
-      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 3.f);
+      add_float(n.attrs, "radius", "Radius", 0.02f, 0.002f, 0.15f)
+          .tooltip = "How far around each point the surroundings are sampled to\n"
+                     "decide how enclosed it is. Small radii darken creases and\n"
+                     "pits; large ones darken whole valleys.";
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 3.f)
+          .tooltip = "How dark the enclosed places get. Ambient occlusion is the\n"
+                     "soft shadow of a surface against itself, and a little of\n"
+                     "it does more for the sense of depth than any amount of\n"
+                     "bump.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "height");
@@ -287,8 +317,13 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("height");
       n.add_out("texture", DataType::Texture);
-      add_float(n.attrs, "scale", "Feature scale", 0.01f, 0.002f, 0.1f);
-      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.1f, 6.f);
+      add_float(n.attrs, "scale", "Feature scale", 0.01f, 0.002f, 0.1f)
+          .tooltip = "How large a feature the curvature is measured over. Small\n"
+                     "finds surface crinkle; large finds whether you are on a\n"
+                     "ridge or in a hollow.";
+      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.1f, 6.f)
+          .tooltip = "Stretches the result apart. Raw curvature bunches around\n"
+                     "zero, so without this most of the map reads as flat.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "height");
@@ -321,7 +356,10 @@ REGISTER_NODE(
       n.add_in("green", DataType::Heightmap, true);
       n.add_in("blue", DataType::Heightmap, true);
       n.add_out("texture", DataType::Texture);
-      add_bool(n.attrs, "normalize", "Normalize inputs", true);
+      add_bool(n.attrs, "normalize", "Normalize inputs", true)
+          .tooltip = "Rescales the result to fill 0..1. Off keeps the raw\n"
+                     "values, which is what you want when the output feeds\n"
+                     "arithmetic rather than a blend.";
     },
     [](Node &n) {
       const Heightmap *ch[3] = {n.in_hmap("red"), n.in_hmap("green"),
@@ -359,9 +397,13 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("texture", DataType::Texture);
-      add_bool(n.attrs, "normalize", "Normalize", true);
-      add_float(n.attrs, "scale", "Scale", 1.f, 0.f, 2.f);
-      add_float(n.attrs, "offset", "Offset", 0.f, -1.f, 1.f);
+      add_bool(n.attrs, "normalize", "Normalize", true)
+          .tooltip = "Rescales the mask to fill 0..1 before it becomes a\n"
+                     "picture.";
+      add_float(n.attrs, "scale", "Scale", 1.f, 0.f, 2.f)
+          .tooltip = "Multiplies the mask on its way into the texture.";
+      add_float(n.attrs, "offset", "Offset", 0.f, -1.f, 1.f)
+          .tooltip = "Added to the mask on its way into the texture.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -388,7 +430,10 @@ REGISTER_NODE(
       n.add_in("texture", DataType::Texture);
       n.add_out("mask");
       add_choice(n.attrs, "channel", "Channel",
-                 {"Luminance", "Red", "Green", "Blue", "Alpha"}, 0);
+                 {"Luminance", "Red", "Green", "Blue", "Alpha"}, 0)
+          .tooltip = "Which channel of the picture becomes the mask. Luminance\n"
+                     "is the usual choice; the single channels are for pictures\n"
+                     "that were packed with a different mask in each one.";
     },
     [](Node &n) {
       const TextureRGBA *in = n.in_tex("texture");

@@ -29,12 +29,22 @@ void material_params_declare(AttrSet &a) {
   // Color
   c(a, "tint", "Overall color", 1.f, 1.f, 1.f, "Color").tooltip =
       "Multiplies every colour in the material. White leaves it alone.";
-  f(a, "color_gain", "Brightness", 1.f, 0.f, 2.f, "Color");
-  f(a, "saturation", "Saturation", 1.f, 0.f, 2.f, "Color");
+  f(a, "color_gain", "Brightness", 1.f, 0.f, 2.f, "Color")
+      .tooltip = "Scales the whole colour up or down after everything\n"
+                 "upstream. Use it to sit a material into a scene without\n"
+                 "going back and editing the maps that made it.";
+  f(a, "saturation", "Saturation", 1.f, 0.f, 2.f, "Color")
+      .tooltip = "How strong the colour is. 0 leaves a greyscale surface\n"
+                 "with all of its detail intact, which is often closer to\n"
+                 "real weathered rock than the photograph it came from.";
   b(a, "color_blend", "Color blend", false, "Color").tooltip =
       "Blend the picture with a solid colour, in product mode.";
-  c(a, "blend_color", "Blend color", 1.f, 1.f, 1.f, "Color");
-  f(a, "blend_amount", "Blend amount", 0.5f, 0.f, 1.f, "Color");
+  c(a, "blend_color", "Blend color", 1.f, 1.f, 1.f, "Color")
+      .tooltip = "A colour mixed into the whole surface. This is the\n"
+                 "quickest way to tint a shared material differently per\n"
+                 "object - a wash of ochre over the same rock.";
+  f(a, "blend_amount", "Blend amount", 0.5f, 0.f, 1.f, "Color")
+      .tooltip = "How much of the blend colour is mixed in.";
   f(a, "blend_mask", "Color mask", 0.f, 0.f, 1.f, "Color").tooltip =
       "0: the colour multiplies the picture. 1: it replaces it.";
   // Alpha
@@ -51,18 +61,28 @@ void material_params_declare(AttrSet &a) {
       "The amount of bump. Negative turns bumps into holes.";
   f(a, "bump_slope", "Dependent on slope", 0.f, 0.f, 1.f, "Bump").tooltip =
       "Higher bumps on steep faces than on flat ground, as on eroded terrain.";
-  b(a, "normal_invert", "Invert normal map", false, "Bump");
+  b(a, "normal_invert", "Invert normal map", false, "Bump")
+      .tooltip = "Flips the green channel of the normal map. There are two\n"
+                 "conventions for which way is up and they are visually\n"
+                 "identical until the light moves - if the bumps read as\n"
+                 "dents, this is the switch.";
   f(a, "displacement", "Displacement depth", 0.f, 0.f, 0.1f, "Bump").tooltip =
       "Height map displacement applied to the surface, in world units. "
       "Moves geometry, not only normals.";
-  f(a, "disp_smoothing", "Displacement smoothing", 0.f, 0.f, 1.f, "Bump");
+  f(a, "disp_smoothing", "Displacement smoothing", 0.f, 0.f, 1.f, "Bump")
+      .tooltip = "Softens the displacement before it moves the surface,\n"
+                 "without touching the colour. Use it when a height map is\n"
+                 "noisier than the geometry can carry.";
   // Highlights
   add_choice(a, "highlight_model", "Lighting model", {"GGX", "Phong"}, 0,
              "Highlights")
       .tooltip = "GGX: the physically based microfacet model, size is "
                  "roughness. Phong: the legacy model, size and intensity "
                  "independent.";
-  f(a, "specular", "Highlight intensity", 0.35f, 0.f, 1.f, "Highlights");
+  f(a, "specular", "Highlight intensity", 0.35f, 0.f, 1.f, "Highlights")
+      .tooltip = "How bright the direct highlight is. This is the sheen a\n"
+                 "light leaves on the surface, as against Reflectivity\n"
+                 "below, which is how much of the surroundings it mirrors.";
   f(a, "roughness", "Roughness (highlight size)", 0.85f, 0.02f, 1.f, "Highlights")
       .tooltip = "Small: a polished surface with tight bright spots. Large: "
                  "dull. Also multiplies a connected roughness map.";
@@ -71,29 +91,47 @@ void material_params_declare(AttrSet &a) {
   f(a, "anisotropy", "Anisotropy", 0.f, 0.f, 1.f, "Highlights").tooltip =
       "Stretched highlights along a direction, for brushed metal or hair.";
   // Transparency
-  f(a, "transparency", "Global transparency", 0.f, 0.f, 1.f, "Transparency");
+  f(a, "transparency", "Global transparency", 0.f, 0.f, 1.f, "Transparency")
+      .tooltip = "How much light passes straight through. 0 is opaque.";
   f(a, "ior", "Refraction index", 1.f, 1.f, 2.5f, "Transparency").tooltip =
       "1 air, 1.33 water, 1.52 glass. Bends light crossing the surface; also "
       "sets how reflective a transparent surface is.";
   f(a, "reflect_with_angle", "Turn reflective with angle", 0.f, 0.f, 1.f,
     "Transparency")
       .tooltip = "Glass and water mirror at a low angle. About 0.4 looks right.";
-  f(a, "fade_out", "Fade out", 0.f, 0.f, 1.f, "Transparency");
-  b(a, "thin_surface", "Thin surface (no refraction)", false, "Transparency");
+  f(a, "fade_out", "Fade out", 0.f, 0.f, 1.f, "Transparency")
+      .tooltip = "How much the surface thins toward its silhouette, so an\n"
+                 "edge dissolves rather than ending on a hard line.";
+  b(a, "thin_surface", "Thin surface (no refraction)", false, "Transparency")
+      .tooltip = "Treats the surface as having no thickness, so light passes\n"
+                 "through without bending. Right for glass panes, leaves and\n"
+                 "water films; wrong for a solid body of water, which does\n"
+                 "refract.";
   b(a, "additive", "Additive", false, "Transparency").tooltip =
       "Adds the colour to the background: luminous, immaterial objects.";
   f(a, "flare_intensity", "Flare intensity", 0.f, 0.f, 1.f, "Transparency")
       .tooltip = "Brightening when light is seen through a partly transparent "
                  "surface. Strongest at 50% transparency.";
-  f(a, "flare_span", "Flare span", 0.2f, 0.f, 1.f, "Transparency");
+  f(a, "flare_span", "Flare span", 0.2f, 0.f, 1.f, "Transparency")
+      .tooltip = "How far the highlight spreads. Narrow reads as polished,\n"
+                 "wide as satin.";
   // Reflection
-  f(a, "reflection", "Global reflectivity", 0.25f, 0.f, 1.f, "Reflection");
+  f(a, "reflection", "Global reflectivity", 0.25f, 0.f, 1.f, "Reflection")
+      .tooltip = "How much of the surroundings the surface mirrors. Distinct\n"
+                 "from the highlight: this is the world reflected, that is\n"
+                 "the light source.";
   f(a, "reflect_min", "Minimal reflectivity", 0.f, 0.f, 1.f, "Reflection").tooltip =
       "Reflectivity looking straight at the surface; the angle sensitivity "
       "raises it toward grazing.";
   f(a, "reflect_angle", "Sensitivity to incidence angle", 0.5f, 0.f, 1.f,
-    "Reflection");
-  f(a, "reflect_blur", "Blurred reflections", 0.f, 0.f, 1.f, "Reflection");
+    "Reflection")
+      .tooltip = "How much more reflective the surface becomes at a grazing\n"
+                 "angle. Nearly every real material does this - it is why a\n"
+                 "wet road mirrors the sky ahead but not underfoot - so 0\n"
+                 "reads as wrong.";
+  f(a, "reflect_blur", "Blurred reflections", 0.f, 0.f, 1.f, "Reflection")
+      .tooltip = "How blurred the reflection is. 0 is a mirror; higher is\n"
+                 "brushed metal or rippled water.";
   f(a, "metallic", "Metalness", 0.f, 0.f, 1.f, "Reflection").tooltip =
       "Metal reflects its own colour and has no diffuse. Also multiplies a "
       "connected metallic map.";
@@ -102,12 +140,19 @@ void material_params_declare(AttrSet &a) {
   // Translucency
   f(a, "translucency", "Translucency", 0.f, 0.f, 1.f, "Translucency").tooltip =
       "Light bleeding through thin material toward the viewer.";
-  b(a, "sss", "Subsurface scattering", false, "Translucency");
+  b(a, "sss", "Subsurface scattering", false, "Translucency")
+      .tooltip = "Lets light enter the surface, scatter inside and leave\n"
+                 "elsewhere. This is what makes skin, wax, marble and snow\n"
+                 "look lit from within rather than merely lit.";
   f(a, "sss_depth", "Average depth (m)", 0.01f, 0.0001f, 1.f, "Translucency", true)
       .tooltip = "How far light travels inside: a fraction of a millimetre for "
                  "skin, centimetres for wax.";
   f(a, "sss_balance", "Absorption / scattering balance", 0.5f, 0.f, 1.f,
-    "Translucency");
+    "Translucency")
+      .tooltip = "Whether light inside the surface is mostly absorbed or\n"
+                 "mostly scattered onward. Toward absorption gives dense,\n"
+                 "waxy material; toward scattering gives translucent,\n"
+                 "glowing material.";
   c(a, "sss_color", "Scattering color", 1.f, 0.6f, 0.5f, "Translucency").tooltip =
       "The colour light picks up inside - the red of a finger over a torch.";
   b(a, "backlight", "Backlight", false, "Translucency").tooltip =
@@ -115,19 +160,33 @@ void material_params_declare(AttrSet &a) {
   // Clearcoat
   f(a, "cc_intensity", "Coat intensity", 0.f, 0.f, 1.f, "Clearcoat").tooltip =
       "A thin reflective layer on top: the lacquer over car paint.";
-  c(a, "cc_tint", "Coat tint", 1.f, 1.f, 1.f, "Clearcoat");
-  f(a, "cc_roughness", "Coat roughness", 0.1f, 0.02f, 1.f, "Clearcoat");
-  f(a, "cc_ior", "Coat refraction index", 1.5f, 1.f, 2.5f, "Clearcoat");
+  c(a, "cc_tint", "Coat tint", 1.f, 1.f, 1.f, "Clearcoat")
+      .tooltip = "The colour of the clear coat over the surface - the\n"
+                 "lacquer on car paint, the wet film on a stone. It reflects\n"
+                 "and tints without changing the material underneath.";
+  f(a, "cc_roughness", "Coat roughness", 0.1f, 0.02f, 1.f, "Clearcoat")
+      .tooltip = "How polished the clear coat is, independently of the\n"
+                 "surface under it. A rough stone under a smooth wet coat is\n"
+                 "exactly what a rock in a stream is.";
+  f(a, "cc_ior", "Coat refraction index", 1.5f, 1.f, 2.5f, "Clearcoat")
+      .tooltip = "The coat's refractive index, which sets how strongly it\n"
+                 "reflects at a glancing angle. 1.5 is a lacquer or a\n"
+                 "varnish; 1.33 is water.";
   f(a, "cc_flatten", "Flatten", 1.f, 0.f, 1.f, "Clearcoat").tooltip =
       "1: the coat has its own smooth normal. 0: it follows the bumps below.";
   // Effects
   f(a, "diffuse", "Diffuse lighting", 0.6f, 0.f, 1.f, "Effects").tooltip =
       "How the material reacts to light from light sources. Diffuse + ambient "
       "should stay at 100%.";
-  f(a, "ambient", "Ambient lighting", 0.4f, 0.f, 1.f, "Effects");
+  f(a, "ambient", "Ambient lighting", 0.4f, 0.f, 1.f, "Effects")
+      .tooltip = "How much of the surrounding sky light the surface picks up\n"
+                 "where nothing shines on it directly. Too low makes the\n"
+                 "shadows read as black holes.";
   f(a, "luminous", "Luminous", 0.f, 0.f, 2.f, "Effects").tooltip =
       "Seems to emit light. Does not cast real light.";
-  c(a, "luminous_color", "Luminous color", 1.f, 1.f, 1.f, "Effects");
+  c(a, "luminous_color", "Luminous color", 1.f, 1.f, 1.f, "Effects")
+      .tooltip = "Light the surface emits by itself. It lights nothing else\n"
+                 "in the viewport - this is the surface glowing, not a lamp.";
   f(a, "contrast", "Contrast", 1.f, 0.2f, 4.f, "Effects").tooltip =
       "How fast the surface goes from light to shadow; low for fluffy things.";
   b(a, "color_reflected", "Color reflected light", false, "Effects").tooltip =
@@ -135,21 +194,31 @@ void material_params_declare(AttrSet &a) {
   b(a, "color_transmitted", "Color transmitted light", false, "Effects").tooltip =
       "Light crossing a transparent surface takes its colour: stained glass.";
   // Options
-  b(a, "cast_shadows", "Casts shadows", true, "Options");
-  b(a, "receive_shadows", "Receives shadows", true, "Options");
+  b(a, "cast_shadows", "Casts shadows", true, "Options")
+      .tooltip = "Whether the surface blocks light. Turning it off is a\n"
+                 "lighting cheat, useful for glass and for foliage cards\n"
+                 "that would otherwise shadow themselves into mud.";
+  b(a, "receive_shadows", "Receives shadows", true, "Options")
+      .tooltip = "Whether other things can cast shadows onto this surface.";
   b(a, "one_sided", "One sided", false, "Options").tooltip =
       "Traced for one intersection per ray; matters for transparent surfaces.";
   b(a, "hide_from_camera", "Hide from camera rays", false, "Options").tooltip =
       "Seen only in reflections and refractions.";
   b(a, "hide_from_reflections", "Hide from reflected / refracted rays", false,
-    "Options");
+    "Options")
+      .tooltip = "Keeps the surface out of reflections and refractions while\n"
+                 "leaving it visible to the camera. A compositing\n"
+                 "convenience, not physics.";
   b(a, "ignore_lighting", "Ignore lighting", false, "Options").tooltip =
       "No sun, no lights: the surface shows its own colour.";
   b(a, "ignore_atmosphere", "Ignore atmosphere", false, "Options").tooltip =
       "No fog or haze between it and the camera.";
   b(a, "only_shadows", "Only shadows", false, "Options").tooltip =
       "Invisible, but still casts a shadow.";
-  b(a, "disable_aa", "Disable anti-aliasing", false, "Options");
+  b(a, "disable_aa", "Disable anti-aliasing", false, "Options")
+      .tooltip = "Turns off edge smoothing for this material. Only wanted\n"
+                 "where a hard pixel boundary is the point, such as an index\n"
+                 "or ID pass.";
   // Transform
   add_choice(a, "mapping", "Mapping",
              {"Automatic", "Flat", "Faces", "Cylindrical", "Spherical"}, 0, "Transform")
@@ -164,9 +233,17 @@ void material_params_declare(AttrSet &a) {
   b(a, "turbulence", "Turbulence", false, "Transform").tooltip =
       "A noise repeatedly displaces where the maps are read, so a tiled "
       "picture stops looking tiled.";
-  add_int(a, "turb_complexity", "Complexity", 3, 1, 8, "Transform");
-  f(a, "turb_amplitude", "Amplitude", 0.05f, 0.f, 0.5f, "Transform");
-  f(a, "turb_scale", "Scale", 4.f, 0.25f, 64.f, "Transform", true);
+  add_int(a, "turb_complexity", "Complexity", 3, 1, 8, "Transform")
+      .tooltip = "How many scales of small-scale disturbance ripple the\n"
+                 "surface normal. This is shading detail only - it does not\n"
+                 "move the geometry.";
+  f(a, "turb_amplitude", "Amplitude", 0.05f, 0.f, 0.5f, "Transform")
+      .tooltip = "How strongly the disturbance tilts the surface normal. A\n"
+                 "little breaks up a surface that reads as too clean; a lot\n"
+                 "looks like hammered metal.";
+  f(a, "turb_scale", "Scale", 4.f, 0.25f, 64.f, "Transform", true)
+      .tooltip = "How fine the disturbance is, in repeats across the\n"
+                 "surface.";
   f(a, "turb_harmonics", "Harmonics", 0.5f, 0.1f, 0.9f, "Transform").tooltip =
       "How scale and amplitude shrink with each repetition of the noise.";
   f(a, "cycling", "Cycling", 0.f, 0.f, 1.f, "Transform").tooltip =

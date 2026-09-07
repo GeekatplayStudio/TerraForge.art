@@ -39,15 +39,22 @@ REGISTER_NODE(
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("texture", DataType::Texture);
       n.add_out("grain", DataType::Heightmap);
-      add_color(n.attrs, "color1", "Base color", 0.42f, 0.36f, 0.28f, 1.f, "Colors");
-      add_bool(n.attrs, "use_color2", "Mix with a second color", true, "Colors");
-      add_color(n.attrs, "color2", "Second color", 0.55f, 0.5f, 0.42f, 1.f, "Colors");
+      add_color(n.attrs, "color1", "Base color", 0.42f, 0.36f, 0.28f, 1.f, "Colors")
+          .tooltip = "The first of the two colours the grain runs between.";
+      add_bool(n.attrs, "use_color2", "Mix with a second color", true, "Colors")
+          .tooltip = "Off, the grain varies only in brightness. On, it runs\n"
+                     "between two colours, which is how granite gets its mixed\n"
+                     "mineral speckle.";
+      add_color(n.attrs, "color2", "Second color", 0.55f, 0.5f, 0.42f, 1.f, "Colors")
+          .tooltip = "The second colour, when two are used.";
       add_float(n.attrs, "scale", "Scale", 0.2f, 0.005f, 4.f, "Grain", true)
           .tooltip = "The overall size of the grain. Keep it large for a "
                      "terrain, small for a pebble.";
       add_float(n.attrs, "roughness", "Roughness", 0.6f, 0.f, 1.f, "Grain")
           .tooltip = "How much fine detail rides on the large variation.";
-      add_float(n.attrs, "contrast", "Contrast", 0.5f, 0.f, 1.f, "Grain");
+      add_float(n.attrs, "contrast", "Contrast", 0.5f, 0.f, 1.f, "Grain")
+          .tooltip = "How sharply the grain separates. Low is a soft mottle;\n"
+                     "high gives distinct grains against a background.";
       add_float(n.attrs, "balance", "Balance", 0.5f, 0.f, 1.f, "Grain")
           .tooltip = "Which of the two colours dominates.";
       add_float(n.attrs, "distortion", "Distortion", 0.f, 0.f, 1.f, "Grain")

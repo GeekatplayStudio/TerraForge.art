@@ -124,10 +124,21 @@ REGISTER_NODE(
       add_filename(n.attrs, "folder", "Material folder (or any map in it)", "")
           .tooltip = "Pick any image of the set; the folder it is in is scanned for\n"
                      "the other maps.";
-      add_text(n.attrs, "asset", "ambientCG asset ID", "Rock035");
-      add_choice(n.attrs, "resolution", "Resolution", {"1K", "2K", "4K", "8K"}, 1);
-      add_choice(n.attrs, "mapping", "Mapping", {"Stretch", "Tile"}, 1);
-      add_float(n.attrs, "tiles", "Tiles across", 8.f, 1.f, 64.f);
+      add_text(n.attrs, "asset", "ambientCG asset ID", "Rock035")
+          .tooltip = "Which surface from the library. Each brings its own\n"
+                     "colour, normal, roughness and height maps together,\n"
+                     "already matched.";
+      add_choice(n.attrs, "resolution", "Resolution", {"1K", "2K", "4K", "8K"}, 1)
+          .tooltip = "Which size of the maps to load. Lower costs less memory\n"
+                     "and is invisible at a distance; the highest is for\n"
+                     "surfaces the camera comes close to.";
+      add_choice(n.attrs, "mapping", "Mapping", {"Stretch", "Tile"}, 1)
+          .tooltip = "How the maps are laid onto the surface. Triplanar projects\n"
+                     "from three directions and blends, which is what stops the\n"
+                     "stretching on a cliff face.";
+      add_float(n.attrs, "tiles", "Tiles across", 8.f, 1.f, 64.f)
+          .tooltip = "How many times the surface repeats. Photographed materials\n"
+                     "show their repeat if this is pushed too high.";
     },
     [](Node &n) {
       const bool local = n.attrs.get_choice("source") == 1;

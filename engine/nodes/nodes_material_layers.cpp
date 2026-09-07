@@ -98,20 +98,26 @@ REGISTER_NODE(
       add_seed(n.attrs, "seed", "Seed", 0, "Fractal");
       add_choice(n.attrs, "base", "Base noise",
                  {"Perlin", "Value", "Cellular", "Cell edges", "Grainy"}, 0,
-                 "Fractal");
+                 "Fractal")
+          .tooltip = "The noise the fractal is built from.";
       add_float(n.attrs, "wavelength", "Wavelength", 0.25f, 0.005f, 2.f, "Fractal")
           .tooltip = "Size of the largest feature, in tile widths.";
-      add_int(n.attrs, "octaves", "Iterations", 8, 1, 16, "Fractal");
+      add_int(n.attrs, "octaves", "Iterations", 8, 1, 16, "Fractal")
+          .tooltip = "How many times the pattern is added at a smaller size.";
       add_float(n.attrs, "roughness", "Roughness", 1.f, 0.f, 2.f, "Fractal")
           .tooltip = "1 keeps the same detail at every scale. Lower is\n"
                      "smoother, higher is grittier.";
-      add_float(n.attrs, "gain", "Gain", 1.f, 0.2f, 6.f, "Fractal");
+      add_float(n.attrs, "gain", "Gain", 1.f, 0.2f, 6.f, "Fractal")
+          .tooltip = "Contrast of the result.";
       add_float(n.attrs, "distortion", "Distortion", 0.f, 0.f, 1.f, "Fractal")
           .tooltip = "Smears the sampling position with a low-frequency noise,\n"
                      "which breaks up the lattice the noise sits on.";
       add_choice(n.attrs, "landscape", "Shape",
                  {"Plain", "Ridges", "Billows", "Ridge mix", "Billow/ridge mix"},
-                 0, "Fractal");
+                 0, "Fractal")
+          .tooltip = "The shape the harmonics take - rolling, ridged or\n"
+                     "billowed. As colour rather than terrain, ridges read as\n"
+                     "veining and billows as mottling.";
       add_float(n.attrs, "warp_amount", "Warp by input", 0.3f, 0.f, 2.f, "Fractal")
           .tooltip = "How far the warp input displaces the sample position.";
       add_float(n.attrs, "bias", "Bias", 0.5f, 0.01f, 0.99f, "Filter")
@@ -203,8 +209,13 @@ REGISTER_NODE(
       n.add_out("presence", DataType::Heightmap);
       n.add_out("displacement", DataType::Heightmap);
 
-      add_text(n.attrs, "name", "Name", "Layer", "Layer");
-      add_bool(n.attrs, "enabled", "Visible", true, "Layer");
+      add_text(n.attrs, "name", "Name", "Layer", "Layer")
+          .tooltip = "What this layer is called in the stack. Naming them is the\n"
+                     "difference between a readable material and six rows of\n"
+                     "'Layer'.";
+      add_bool(n.attrs, "enabled", "Visible", true, "Layer")
+          .tooltip = "Turns the layer off without removing it or losing its\n"
+                     "settings.";
       add_float(n.attrs, "opacity", "Opacity", 1.f, 0.f, 1.f, "Layer")
           .tooltip = "Overall presence of the layer, within whatever the\n"
                      "environment constraints below already allow. It cannot\n"
@@ -217,7 +228,9 @@ REGISTER_NODE(
                      "transitions, so the layer reads as sitting on top.\n"
                      "Colour only: takes colour from here, everything else\n"
                      "from below.";
-      add_bool(n.attrs, "invert_mask", "Invert mask", false, "Layer");
+      add_bool(n.attrs, "invert_mask", "Invert mask", false, "Layer")
+          .tooltip = "Uses the mask the other way round: the layer appears where\n"
+                     "the mask is dark.";
       add_float(n.attrs, "rough_value", "Roughness", 0.8f, 0.f, 1.f, "Layer")
           .tooltip = "Used where this layer has no roughness map connected.";
       add_float(n.attrs, "normal_add", "Add to normals below", 1.f, 0.f, 1.f,
@@ -241,8 +254,11 @@ REGISTER_NODE(
           .tooltip = "Shows the layer as a flat colour so you can see where\n"
                      "it lands. Shading is off while highlighted.";
       add_color(n.attrs, "highlight_color", "Highlight color", 1.f, 0.2f, 0.9f, 1.f,
-                "Layer");
-      add_bool(n.attrs, "use_altitude", "By altitude", false, "Altitude");
+                "Layer")
+          .tooltip = "The flat colour the layer is shown in while Highlight is\n"
+                     "on, so you can see exactly where it lands.";
+      add_bool(n.attrs, "use_altitude", "By altitude", false, "Altitude")
+          .tooltip = "Limits the layer to a band of heights.";
       add_choice(n.attrs, "altitude_mode", "Range of altitudes",
                  {"By terrain", "Absolute", "Relative to sea"}, 0, "Altitude")
           .tooltip = "By terrain: the band is a fraction of this terrain's own\n"
@@ -251,13 +267,22 @@ REGISTER_NODE(
       add_range(n.attrs, "altitude", "Altitude band", 0.f, 1.f, 0.f, 1.f,
                 "Altitude")
           .tooltip = "As a fraction of the terrain's own height range.";
-      add_float(n.attrs, "sea_level", "Sea level", 0.f, 0.f, 1.f, "Altitude");
-      add_float(n.attrs, "altitude_fuzz", "Fade", 0.08f, 0.f, 0.5f, "Altitude");
+      add_float(n.attrs, "sea_level", "Sea level", 0.f, 0.f, 1.f, "Altitude")
+          .tooltip = "The height that counts as sea level, when the altitude\n"
+                     "band is measured from it rather than from the terrain's\n"
+                     "own range.";
+      add_float(n.attrs, "altitude_fuzz", "Fade", 0.08f, 0.f, 0.5f, "Altitude")
+          .tooltip = "How gradually the layer gives out at the edges of its\n"
+                     "altitude band. Zero draws a contour line across the\n"
+                     "hillside.";
 
-      add_bool(n.attrs, "use_slope", "By slope", false, "Slope");
+      add_bool(n.attrs, "use_slope", "By slope", false, "Slope")
+          .tooltip = "Limits the layer to a band of steepness.";
       add_range(n.attrs, "slope", "Slope band", 0.f, 30.f, 0.f, 90.f, "Slope")
           .tooltip = "Degrees from horizontal. 0 is flat, 90 is a cliff.";
-      add_float(n.attrs, "slope_fuzz", "Fade", 6.f, 0.f, 45.f, "Slope");
+      add_float(n.attrs, "slope_fuzz", "Fade", 6.f, 0.f, 45.f, "Slope")
+          .tooltip = "How gradually the layer gives out at the edges of its\n"
+                     "slope band.";
       // Degrees means degrees only if the vertical scale is known: a
       // heightmap stores 0..1, and the terrain's actual rise over its run is
       // that times height_scale. The studio keeps this in step with the
@@ -270,19 +295,26 @@ REGISTER_NODE(
                      "the project automatically.";
 
       add_bool(n.attrs, "use_orientation", "By orientation", false,
-               "Orientation");
+               "Orientation")
+          .tooltip = "Limits the layer to slopes facing a particular way.";
       add_float(n.attrs, "orientation", "Faces", 0.f, 0.f, 360.f, "Orientation")
           .tooltip = "Compass direction the surface looks towards, in degrees.\n"
                      "0 is north. North faces hold snow; south faces dry out.";
       add_float(n.attrs, "orient_width", "Arc", 60.f, 5.f, 180.f, "Orientation")
           .tooltip = "How far either side of that direction still counts.";
-      add_float(n.attrs, "orient_fuzz", "Fade", 20.f, 0.f, 90.f, "Orientation");
+      add_float(n.attrs, "orient_fuzz", "Fade", 20.f, 0.f, 90.f, "Orientation")
+          .tooltip = "How gradually the layer gives out as a slope turns away\n"
+                     "from the favoured direction.";
 
       add_float(n.attrs, "tiles", "Tiling", 1.f, 0.05f, 64.f, "Placement")
           .tooltip = "How many times this layer's own maps repeat across the\n"
                      "terrain. Does not affect the mask or the constraints.";
-      add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -4.f, 4.f, "Placement");
-      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f, "Placement");
+      add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -4.f, 4.f, "Placement")
+          .tooltip = "Slides this layer's own maps across the surface, without\n"
+                     "moving the layers around it.";
+      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f, "Placement")
+          .tooltip = "Turns this layer's own maps. Rotating one layer of several\n"
+                     "breaks the alignment that makes a stack read as printed.";
     },
     [](Node &n) {
       const TextureRGBA *BA = n.in_tex("below albedo");

@@ -2513,8 +2513,8 @@ Ambient occlusion baked from a height input
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius | float, 0.002 to 0.15, default 0.02 |  |
-| Strength | float, 0 to 3, default 1 |  |
+| Radius | float, 0.002 to 0.15, default 0.02 | How far around each point the surroundings are sampled to decide how enclosed it is. Small radii darken creases and pits; large ones darken whole valleys. |
+| Strength | float, 0 to 3, default 1 | How dark the enclosed places get. Ambient occlusion is the soft shadow of a surface against itself, and a little of it does more for the sense of depth than any amount of bump. |
 
 ### AlbedoToPBR
 
@@ -2528,10 +2528,10 @@ Derive normal + roughness maps from an albedo texture
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Normal strength | float, 0.1 to 10, default 2 |  |
-| Roughness base | float, 0 to 1, default 0.8 |  |
-| Roughness variation | float, 0 to 1, default 0.3 |  |
-| Bright = smooth | toggle, default on |  |
+| Normal strength | float, 0.1 to 10, default 2 | How much relief is inferred from the photograph's brightness. A photograph has no depth in it, so this is a guess: too much and every dark patch becomes a dent. |
+| Roughness base | float, 0 to 1, default 0.8 | The roughness the whole surface starts at, before the picture varies it. |
+| Roughness variation | float, 0 to 1, default 0.3 | How much the picture's own detail varies the roughness, so darker, damper-looking areas come out glossier than pale dry ones. |
+| Bright = smooth | toggle, default on | Swaps which end of the picture reads as glossy. If the highlights are landing on the wrong parts of the surface, this is the switch. |
 
 ### ChannelMix
 
@@ -2546,7 +2546,7 @@ Pack three grayscale inputs into one RGB texture
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Normalize inputs | toggle, default on |  |
+| Normalize inputs | toggle, default on | Rescales the result to fill 0..1. Off keeps the raw values, which is what you want when the output feeds arithmetic rather than a blend. |
 
 ### ChannelSplit
 
@@ -2572,13 +2572,13 @@ Color correction: brightness, contrast, saturation, hue, tint
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Brightness | float, 0.2 to 3, default 1 |  |
-| Contrast | float, 0.2 to 3, default 1 |  |
-| Saturation | float, 0 to 3, default 1 |  |
-| Hue shift ° | float, -180 to 180, default 0 |  |
-| Tint R | float, 0 to 2, default 1 |  |
-| Tint G | float, 0 to 2, default 1 |  |
-| Tint B | float, 0 to 2, default 1 |  |
+| Brightness | float, 0.2 to 3, default 1 | Scales every colour up or down. |
+| Contrast | float, 0.2 to 3, default 1 | Pushes colours away from mid-grey, or toward it below 1. |
+| Saturation | float, 0 to 3, default 1 | How strong the colour is. 0 leaves greyscale with all the detail intact. |
+| Hue shift ° | float, -180 to 180, default 0 | Rotates every colour around the wheel, in degrees. A small shift is the cheapest way to make one photographed surface look like a different rock. |
+| Tint R | float, 0 to 2, default 1 | Multiplies the red channel, for correcting a cast rather than recolouring. |
+| Tint G | float, 0 to 2, default 1 | Multiplies the green channel. |
+| Tint B | float, 0 to 2, default 1 | Multiplies the blue channel. |
 
 ### CurvatureFromHeight
 
@@ -2591,8 +2591,8 @@ Convex/concave curvature map from height
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Feature scale | float, 0.002 to 0.1, default 0.01 |  |
-| Contrast | float, 0.1 to 6, default 1 |  |
+| Feature scale | float, 0.002 to 0.1, default 0.01 | How large a feature the curvature is measured over. Small finds surface crinkle; large finds whether you are on a ridge or in a hollow. |
+| Contrast | float, 0.1 to 6, default 1 | Stretches the result apart. Raw curvature bunches around zero, so without this most of the map reads as flat. |
 
 ### DistributionLayer
 
@@ -2609,7 +2609,7 @@ Distribution layer: the presence that shades also places objects
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Instances | int, 1 to 50000, default 800 | How many objects the presence places at full presence. |
-| Min spacing | float, 0.001 to 0.3, default 0.015 |  |
+| Min spacing | float, 0.001 to 0.3, default 0.015 | The closest two placed items may come to one another. This is what stops a distribution clumping into overlapping piles at high density. |
 | Presence threshold | float, 0 to 1, default 0.15 | Presence below this places nothing at all. |
 | Seed | seed |  |
 | Instance size from | choice: Uniform / Presence / Power law | The point value: the same for all, following the presence (strong presence, big plant), or many small and a few large. |
@@ -2637,70 +2637,70 @@ Ecosystem layer: a population placed by the layer's presence, reacting to the la
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Name | text |  |
-| Populate | toggle, default on |  |
-| Invert presence | toggle, default off |  |
+| Name | text | What this population is called in the stack and the Objects tree. |
+| Populate | toggle, default on | Turns the layer off without removing it or losing its settings. |
+| Invert presence | toggle, default off | Uses the mask the other way round: the layer appears where the mask is dark. |
 | Density (per hectare) | float, 0.01 to 100000, default 20 | Instances per hectare (100 m x 100 m) at full presence. A rate, not a count: the same setting fills a 1 km tile and a 20 km one to the same look. |
 | Minimum spacing (m) | float, 0.05 to 1000, default 5 | The lattice the candidates stand on. Changing the density never moves an instance; changing this reseeds them all. |
-| Placement | choice: Jittered / Random / Regular |  |
+| Placement | choice: Jittered / Random / Regular | How the candidate positions are laid out before anything is rejected. A jittered lattice covers ground evenly; purely random leaves clumps and bald patches, which is sometimes what you want. |
 | Clumping | float, 0 to 1, default 0 | Groups instances together as species do in nature. |
-| Clump size (m) | float, 0.5 to 5000, default 60 |  |
+| Clump size (m) | float, 0.5 to 5000, default 60 | How far across one clump of plants is, in metres. Vegetation gathers where the ground suits it, and a population spread perfectly evenly is the clearest sign of a generated one. |
 | Seed | seed |  |
 | Populate around the camera | toggle, default off | Off: the population covers the terrain tile, computed once. On: it covers the ground wherever the camera goes - a planet or an infinite terrain has no tile to cover - generated in cells on demand and thrown away behind you. What a cell holds never depends on where it was seen from. |
 | Populate within (m) | float, 10 to 200000, default 2000 | How far from the camera the ground is populated when 'Populate around the camera' is on. |
 | Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the rate above means what it says. |
 | Presence threshold | float, 0 to 1, default 0.05 | Presence below this places nothing at all. |
 | Slope influence | float, 0 to 1, default 0.5 | 1: instances thin out on steep ground. 0: the same density whatever the slope. |
-| By altitude | toggle, default off |  |
-| Range of altitudes | choice: By terrain / Absolute / Relative to sea |  |
+| By altitude | toggle, default off | Limits the layer to a band of heights. |
+| Range of altitudes | choice: By terrain / Absolute / Relative to sea | Whether the altitude band is read against the terrain's own range, in absolute height units, or from sea level. |
 | Altitude band | range | As a fraction of the terrain's own height range. |
-| Sea level | float, 0 to 1, default 0 |  |
-| Fade | float, 0 to 0.5, default 0.08 |  |
-| By slope | toggle, default off |  |
+| Sea level | float, 0 to 1, default 0 | The height that counts as sea level, when the altitude band is measured from it rather than from the terrain's own range. |
+| Fade | float, 0 to 0.5, default 0.08 | How gradually the layer gives out at the edges of its altitude band. Zero draws a contour line across the hillside. |
+| By slope | toggle, default off | Limits the layer to a band of steepness. |
 | Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
-| Fade | float, 0 to 45, default 6 |  |
-| By orientation | toggle, default off |  |
+| Fade | float, 0 to 45, default 6 | How gradually the layer gives out at the edges of its slope band. |
+| By orientation | toggle, default off | Limits the layer to slopes facing a particular way. |
 | Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards. 0 is north. |
-| Arc | float, 5 to 180, default 60 |  |
-| Fade | float, 0 to 90, default 20 |  |
+| Arc | float, 5 to 180, default 60 | How wide an arc of facings counts as the favoured direction. Narrow puts moss on the north face alone; wide covers most of the hill. |
+| Fade | float, 0 to 90, default 20 | How gradually the layer gives out as a slope turns away from the favoured direction. |
 | Terrain height scale | float, 0.001 to 100, default 1 | World height of a heightmap unit as a fraction of the tile's width; the studio keeps this in step with the project so a slope in degrees is the slope the viewport shows. |
 | Decay near objects | float, 0 to 1, default 0 | Thins the population around the objects standing on the terrain (the 'objects' input: 0 at an object, 1 far away). 1 leaves a void right at them. |
 | Reach | float, 0.001 to 0.5, default 0.05 | How far from the objects the decay extends, as a fraction of the terrain. |
 | Falloff | float, -1 to 1, default 0 | 0 linear. Positive: the void is larger and more sudden. Negative: gentler. |
 | Affinity with layer below | float, -1 to 1, default 0 | Positive: instances gather around the instances of the layer below (primroses around the trees) and thin out elsewhere. Negative: everywhere except near them. |
-| Affinity radius (m) | float, 0.1 to 2000, default 25 |  |
+| Affinity radius (m) | float, 0.1 to 2000, default 25 | How far this population reaches to gather around the one below it, in metres. |
 | Repulsion from layer below | float, -1 to 1, default 0 | Sudden. Positive: a void around each instance below (no grass under the canopy). Negative: only inside that void (small stones at the foot of the boulder). Use both: near the trees but not under them. |
-| Repulsion radius (m) | float, 0.1 to 2000, default 8 |  |
+| Repulsion radius (m) | float, 0.1 to 2000, default 8 | How far this population is pushed back from the one below it, in metres - the bare ring around the base of a tree. |
 | Avoid overlapping instances | toggle, default on | No two instances closer than their footprints allow. |
 | Species | int, 1 to 8, default 1 | How many kinds of object this layer places. Each scene object bound to the layer picks the species it stands for. |
 | Species 1 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 1 scale | float, 0.05 to 10, default 1 |  |
+| Species 1 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 2 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 2 scale | float, 0.05 to 10, default 1 |  |
+| Species 2 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 3 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 3 scale | float, 0.05 to 10, default 1 |  |
+| Species 3 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 4 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 4 scale | float, 0.05 to 10, default 1 |  |
+| Species 4 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 5 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 5 scale | float, 0.05 to 10, default 1 |  |
+| Species 5 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 6 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 6 scale | float, 0.05 to 10, default 1 |  |
+| Species 6 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 7 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 7 scale | float, 0.05 to 10, default 1 |  |
+| Species 7 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 8 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 8 scale | float, 0.05 to 10, default 1 |  |
-| Overall scaling | float, 0.05 to 10, default 1 |  |
+| Species 8 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Overall scaling | float, 0.05 to 10, default 1 | The size of one copy, as a multiple of the mesh's own size. |
 | Size variation | float, 0 to 1, default 0.3 | 1: instances range from half to twice the size. |
 | Keep proportions | float, 0 to 1, default 1 | 1: the three axes scale together. 0: each on its own. |
 | Direction from surface | float, 0 to 1, default 0 | 0: instances grow vertically whatever the slope. 1: perpendicular to the ground (rocks); trees want 0. |
-| Rotation | choice: Up axis / None / Driven |  |
+| Rotation | choice: Up axis / None / Driven | How far a copy may be turned about its up axis. Full rotation is right for anything without a front; less keeps a set of objects aligned. |
 | Maximum angle | float, 0 to 1, default 1 | As a fraction of a half turn either way. |
 | Offset from surface (m) | float, -50 to 50, default 0 | Negative buries the instance. |
 | Footprint radius (m) | float, 0.01 to 500, default 2 | The ground one instance claims at scale 1; what overlap avoidance and the layer above measure against. |
 | Shrink at low density | float, -1 to 1, default 0 | Lone instances are smaller (negative: larger), as at the edge of a wood. |
-| Low-density radius (m) | float, 0.1 to 2000, default 30 |  |
+| Low-density radius (m) | float, 0.1 to 2000, default 30 | How close to the population below a copy must be before it is made smaller, in metres. This is what puts stunted growth under a canopy rather than an abrupt edge. |
 | Lean out at low density | float, 0 to 1, default 0 | Lone instances lean into the slope, as plants reaching for light. |
-| Color variation | float, 0 to 1, default 0.3 |  |
+| Color variation | float, 0 to 1, default 0.3 | How much copies differ in brightness from one another. Identical tint across a whole population is the second clearest sign of instancing, after identical size. |
 | Time offset range (s) | float, 0 to 10, default 1 | Each instance's wind phase is shifted by up to this, so a field sways as a crowd, not a marching army. |
 
 ### EffectorLayer
@@ -2717,9 +2717,9 @@ Effector layer: a typed influence field for other systems to read
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Effector kind | choice: Pressure / Wind / Light / Heat / Moisture / Custom | What this field means to the systems that read it. Pressure: trodden or loaded ground. Wind: local air movement. Light and Heat: exposure. Moisture: wetness. Custom: whatever a script assigns it. |
-| Strength | float, 0 to 4, default 1 |  |
+| Strength | float, 0 to 4, default 1 | How strongly this layer pushes the layers below it around. |
 | Falloff | float, 0.1 to 6, default 1 | A power on the mask: above 1 the field concentrates where the mask is strongest, below 1 it spreads. |
-| Invert | toggle, default off |  |
+| Invert | toggle, default off | Pushes where it would have pulled, and the other way about. |
 | Tint the material by the field | toggle, default off | Blends the field into the colour so it can be seen in the viewport while it is being painted. Off, the material's colour passes through untouched. |
 
 ### FlatColor
@@ -2733,9 +2733,9 @@ Solid color material (procedural function + color)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Red | float, 0 to 1, default 0.5 |  |
-| Green | float, 0 to 1, default 0.45 |  |
-| Blue | float, 0 to 1, default 0.4 |  |
+| Red | float, 0 to 1, default 0.5 | The red component, linear rather than sRGB: 0.5 here is not the mid-grey you would pick in a paint program. That matters when a value is matched against a photograph. |
+| Green | float, 0 to 1, default 0.45 | The green component, linear rather than sRGB. |
+| Blue | float, 0 to 1, default 0.4 | The blue component, linear rather than sRGB. |
 
 ### FractalColor
 
@@ -2751,13 +2751,13 @@ A fractal through a colour map: RGBA texture out, and the same pattern as a mask
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Base noise | choice: Perlin / Value / Cellular / Cell edges / Grainy |  |
+| Base noise | choice: Perlin / Value / Cellular / Cell edges / Grainy | The noise the fractal is built from. |
 | Wavelength | float, 0.005 to 2, default 0.25 | Size of the largest feature, in tile widths. |
-| Iterations | int, 1 to 16, default 8 |  |
+| Iterations | int, 1 to 16, default 8 | How many times the pattern is added at a smaller size. |
 | Roughness | float, 0 to 2, default 1 | 1 keeps the same detail at every scale. Lower is smoother, higher is grittier. |
-| Gain | float, 0.2 to 6, default 1 |  |
+| Gain | float, 0.2 to 6, default 1 | Contrast of the result. |
 | Distortion | float, 0 to 1, default 0 | Smears the sampling position with a low-frequency noise, which breaks up the lattice the noise sits on. |
-| Shape | choice: Plain / Ridges / Billows / Ridge mix / Billow/ridge mix |  |
+| Shape | choice: Plain / Ridges / Billows / Ridge mix / Billow/ridge mix | The shape the harmonics take - rolling, ridged or billowed. As colour rather than terrain, ridges read as veining and billows as mottling. |
 | Warp by input | float, 0 to 2, default 0.3 | How far the warp input displaces the sample position. |
 | Bias | float, 0.01 to 0.99, default 0.5 | Moves the midpoint of the pattern: below 0.5 the colour map's left end takes more of the surface. |
 | Gain | float, 0.01 to 0.99, default 0.5 | Pushes values away from the middle. High values give hard-edged patches rather than a smooth wash. |
@@ -2774,8 +2774,8 @@ Recolor a texture through a gradient by luminance
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Gradient | gradient |  |
-| Amount | float, 0 to 1, default 1 |  |
+| Gradient | gradient | The colour ramp the incoming value is looked up in: 0 takes the left end, 1 the right. This is how a height, a slope or a mask becomes colour. |
+| Amount | float, 0 to 1, default 1 | How much of the mapped colour replaces what came in. |
 
 ### Levels
 
@@ -2788,11 +2788,11 @@ Levels: remap input black/white/gamma to output range
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Input black | float, 0 to 1, default 0 |  |
-| Input white | float, 0 to 1, default 1 |  |
-| Gamma | float, 0.1 to 4, default 1 |  |
-| Output black | float, 0 to 1, default 0 |  |
-| Output white | float, 0 to 1, default 1 |  |
+| Input black | float, 0 to 1, default 0 | Input values at or below this are pulled to black. Raising it deepens the shadows and throws away whatever detail was below it. |
+| Input white | float, 0 to 1, default 1 | Input values at or above this are pushed to white. |
+| Gamma | float, 0.1 to 4, default 1 | Bends the midtones without moving the two ends. Below 1 darkens them, above 1 lifts them. |
+| Output black | float, 0 to 1, default 0 | The darkest the result is allowed to be. Raising it lifts the whole picture off black, which is what a hazy or dusty surface actually does. |
+| Output white | float, 0 to 1, default 1 | The brightest the result is allowed to be. |
 | Per channel | toggle, default off | Off: operate on luminance and keep the hue. On: apply the curve to R, G and B separately. |
 
 ### MaskToTexture
@@ -2806,9 +2806,9 @@ Grayscale mask or heightmap as a texture channel
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Normalize | toggle, default on |  |
-| Scale | float, 0 to 2, default 1 |  |
-| Offset | float, -1 to 1, default 0 |  |
+| Normalize | toggle, default on | Rescales the mask to fill 0..1 before it becomes a picture. |
+| Scale | float, 0 to 2, default 1 | Multiplies the mask on its way into the texture. |
+| Offset | float, -1 to 1, default 0 | Added to the mask on its way into the texture. |
 
 ### MaterialLayer
 
@@ -2834,34 +2834,34 @@ One layer of a material stack: its own maps, its own mask, and its own reaction 
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Name | text |  |
-| Visible | toggle, default on |  |
+| Name | text | What this layer is called in the stack. Naming them is the difference between a readable material and six rows of 'Layer'. |
+| Visible | toggle, default on | Turns the layer off without removing it or losing its settings. |
 | Opacity | float, 0 to 1, default 1 | Overall presence of the layer, within whatever the environment constraints below already allow. It cannot put the layer anywhere they exclude. |
 | Blend | choice: Normal / Cover / Colour only / Add / Multiply | Normal: ordinary alpha-over. Cover: colour switches without a ramp, only the normal transitions, so the layer reads as sitting on top. Colour only: takes colour from here, everything else from below. |
-| Invert mask | toggle, default off |  |
+| Invert mask | toggle, default off | Uses the mask the other way round: the layer appears where the mask is dark. |
 | Roughness | float, 0 to 1, default 0.8 | Used where this layer has no roughness map connected. |
 | Add to normals below | float, 0 to 1, default 1 | 1: this layer's relief adds to the layer beneath, the way lichen sits on rock. 0: it replaces it, the way snow flattens what it covers. |
 | Displacement | float, 0 to 4, default 1 | Multiplies the displacement input - a FakeStones or GrassDisplacement 'displacement' output, or any relief in heightmap units - where this layer is present. |
 | Add to displacement below | float, 0 to 1, default 1 | 1 stacks this layer's relief on the layers below; 0 replaces theirs where this layer is present. |
 | Alpha boost | float, -1 to 1, default 0 | The layer's overall presence, within what the constraints below allow. Positive: stronger. |
 | Highlight (solid color) | toggle, default off | Shows the layer as a flat colour so you can see where it lands. Shading is off while highlighted. |
-| Highlight color | color |  |
-| By altitude | toggle, default off |  |
+| Highlight color | color | The flat colour the layer is shown in while Highlight is on, so you can see exactly where it lands. |
+| By altitude | toggle, default off | Limits the layer to a band of heights. |
 | Range of altitudes | choice: By terrain / Absolute / Relative to sea | By terrain: the band is a fraction of this terrain's own range. Absolute: in the terrain's height units. Relative to sea: measured from the sea level below. |
 | Altitude band | range | As a fraction of the terrain's own height range. |
-| Sea level | float, 0 to 1, default 0 |  |
-| Fade | float, 0 to 0.5, default 0.08 |  |
-| By slope | toggle, default off |  |
+| Sea level | float, 0 to 1, default 0 | The height that counts as sea level, when the altitude band is measured from it rather than from the terrain's own range. |
+| Fade | float, 0 to 0.5, default 0.08 | How gradually the layer gives out at the edges of its altitude band. Zero draws a contour line across the hillside. |
+| By slope | toggle, default off | Limits the layer to a band of steepness. |
 | Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
-| Fade | float, 0 to 45, default 6 |  |
+| Fade | float, 0 to 45, default 6 | How gradually the layer gives out at the edges of its slope band. |
 | Height scale | float, 0.0001 to 1000, default 1 | The terrain's vertical scale, so 'By slope' and 'By orientation' read real degrees. Kept in step with the project automatically. |
-| By orientation | toggle, default off |  |
+| By orientation | toggle, default off | Limits the layer to slopes facing a particular way. |
 | Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards, in degrees. 0 is north. North faces hold snow; south faces dry out. |
 | Arc | float, 5 to 180, default 60 | How far either side of that direction still counts. |
-| Fade | float, 0 to 90, default 20 |  |
+| Fade | float, 0 to 90, default 20 | How gradually the layer gives out as a slope turns away from the favoured direction. |
 | Tiling | float, 0.05 to 64, default 1 | How many times this layer's own maps repeat across the terrain. Does not affect the mask or the constraints. |
-| Offset | x/y pair |  |
-| Rotation | float, -180 to 180, default 0 |  |
+| Offset | x/y pair | Slides this layer's own maps across the surface, without moving the layers around it. |
+| Rotation | float, -180 to 180, default 0 | Turns this layer's own maps. Rotating one layer of several breaks the alignment that makes a stack read as printed. |
 
 ### MaterialOutput
 
@@ -2881,76 +2881,76 @@ The material: base color, normal, roughness, metallic, height and AO channels
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Material name | text |  |
+| Material name | text | What this material is called in the Objects tree and the material browser. It is how you pick it when assigning it to something. |
 | Overall color | color | Multiplies every colour in the material. White leaves it alone. |
-| Brightness | float, 0 to 2, default 1 |  |
-| Saturation | float, 0 to 2, default 1 |  |
+| Brightness | float, 0 to 2, default 1 | Scales the whole colour up or down after everything upstream. Use it to sit a material into a scene without going back and editing the maps that made it. |
+| Saturation | float, 0 to 2, default 1 | How strong the colour is. 0 leaves a greyscale surface with all of its detail intact, which is often closer to real weathered rock than the photograph it came from. |
 | Color blend | toggle, default off | Blend the picture with a solid colour, in product mode. |
-| Blend color | color |  |
-| Blend amount | float, 0 to 1, default 0.5 |  |
+| Blend color | color | A colour mixed into the whole surface. This is the quickest way to tint a shared material differently per object - a wash of ochre over the same rock. |
+| Blend amount | float, 0 to 1, default 0.5 | How much of the blend colour is mixed in. |
 | Color mask | float, 0 to 1, default 0 | 0: the colour multiplies the picture. 1: it replaces it. |
 | Global alpha | float, 0 to 1, default 1 | Where no alpha map is connected. Alpha does not bend light; transparency does. |
 | Alpha boost | float, -1 to 1, default 0 | For a layer of a multi-layer material: its overall presence, within the limits the Presence tab sets. |
 | Normal intensity | float, 0 to 4, default 1 | How much of the normal map's vector is applied. |
 | Bump depth | float, -4 to 4, default 1 | The amount of bump. Negative turns bumps into holes. |
 | Dependent on slope | float, 0 to 1, default 0 | Higher bumps on steep faces than on flat ground, as on eroded terrain. |
-| Invert normal map | toggle, default off |  |
+| Invert normal map | toggle, default off | Flips the green channel of the normal map. There are two conventions for which way is up and they are visually identical until the light moves - if the bumps read as dents, this is the switch. |
 | Displacement depth | float, 0 to 0.1, default 0 | Height map displacement applied to the surface, in world units. Moves geometry, not only normals. |
-| Displacement smoothing | float, 0 to 1, default 0 |  |
+| Displacement smoothing | float, 0 to 1, default 0 | Softens the displacement before it moves the surface, without touching the colour. Use it when a height map is noisier than the geometry can carry. |
 | Lighting model | choice: GGX / Phong | GGX: the physically based microfacet model, size is roughness. Phong: the legacy model, size and intensity independent. |
-| Highlight intensity | float, 0 to 1, default 0.35 |  |
+| Highlight intensity | float, 0 to 1, default 0.35 | How bright the direct highlight is. This is the sheen a light leaves on the surface, as against Reflectivity below, which is how much of the surroundings it mirrors. |
 | Roughness (highlight size) | float, 0.02 to 1, default 0.85 | Small: a polished surface with tight bright spots. Large: dull. Also multiplies a connected roughness map. |
 | Highlight color | color | A uniform shade for the highlights - blue for pearl. |
 | Anisotropy | float, 0 to 1, default 0 | Stretched highlights along a direction, for brushed metal or hair. |
-| Global transparency | float, 0 to 1, default 0 |  |
+| Global transparency | float, 0 to 1, default 0 | How much light passes straight through. 0 is opaque. |
 | Refraction index | float, 1 to 2.5, default 1 | 1 air, 1.33 water, 1.52 glass. Bends light crossing the surface; also sets how reflective a transparent surface is. |
 | Turn reflective with angle | float, 0 to 1, default 0 | Glass and water mirror at a low angle. About 0.4 looks right. |
-| Fade out | float, 0 to 1, default 0 |  |
-| Thin surface (no refraction) | toggle, default off |  |
+| Fade out | float, 0 to 1, default 0 | How much the surface thins toward its silhouette, so an edge dissolves rather than ending on a hard line. |
+| Thin surface (no refraction) | toggle, default off | Treats the surface as having no thickness, so light passes through without bending. Right for glass panes, leaves and water films; wrong for a solid body of water, which does refract. |
 | Additive | toggle, default off | Adds the colour to the background: luminous, immaterial objects. |
 | Flare intensity | float, 0 to 1, default 0 | Brightening when light is seen through a partly transparent surface. Strongest at 50% transparency. |
-| Flare span | float, 0 to 1, default 0.2 |  |
-| Global reflectivity | float, 0 to 1, default 0.25 |  |
+| Flare span | float, 0 to 1, default 0.2 | How far the highlight spreads. Narrow reads as polished, wide as satin. |
+| Global reflectivity | float, 0 to 1, default 0.25 | How much of the surroundings the surface mirrors. Distinct from the highlight: this is the world reflected, that is the light source. |
 | Minimal reflectivity | float, 0 to 1, default 0 | Reflectivity looking straight at the surface; the angle sensitivity raises it toward grazing. |
-| Sensitivity to incidence angle | float, 0 to 1, default 0.5 |  |
-| Blurred reflections | float, 0 to 1, default 0 |  |
+| Sensitivity to incidence angle | float, 0 to 1, default 0.5 | How much more reflective the surface becomes at a grazing angle. Nearly every real material does this - it is why a wet road mirrors the sky ahead but not underfoot - so 0 reads as wrong. |
+| Blurred reflections | float, 0 to 1, default 0 | How blurred the reflection is. 0 is a mirror; higher is brushed metal or rippled water. |
 | Metalness | float, 0 to 1, default 0 | Metal reflects its own colour and has no diffuse. Also multiplies a connected metallic map. |
 | Specular level (PBR) | float, 0 to 1, default 0.5 | F0 of the non-metal parts: 0.5 is the common 4 %, 1 is 8 %. |
 | Translucency | float, 0 to 1, default 0 | Light bleeding through thin material toward the viewer. |
-| Subsurface scattering | toggle, default off |  |
+| Subsurface scattering | toggle, default off | Lets light enter the surface, scatter inside and leave elsewhere. This is what makes skin, wax, marble and snow look lit from within rather than merely lit. |
 | Average depth (m) | float, 0.0001 to 1, default 0.01 | How far light travels inside: a fraction of a millimetre for skin, centimetres for wax. |
-| Absorption / scattering balance | float, 0 to 1, default 0.5 |  |
+| Absorption / scattering balance | float, 0 to 1, default 0.5 | Whether light inside the surface is mostly absorbed or mostly scattered onward. Toward absorption gives dense, waxy material; toward scattering gives translucent, glowing material. |
 | Scattering color | color | The colour light picks up inside - the red of a finger over a torch. |
 | Backlight | toggle, default off | Thin enough that light shows through from behind, like a leaf. |
 | Coat intensity | float, 0 to 1, default 0 | A thin reflective layer on top: the lacquer over car paint. |
-| Coat tint | color |  |
-| Coat roughness | float, 0.02 to 1, default 0.1 |  |
-| Coat refraction index | float, 1 to 2.5, default 1.5 |  |
+| Coat tint | color | The colour of the clear coat over the surface - the lacquer on car paint, the wet film on a stone. It reflects and tints without changing the material underneath. |
+| Coat roughness | float, 0.02 to 1, default 0.1 | How polished the clear coat is, independently of the surface under it. A rough stone under a smooth wet coat is exactly what a rock in a stream is. |
+| Coat refraction index | float, 1 to 2.5, default 1.5 | The coat's refractive index, which sets how strongly it reflects at a glancing angle. 1.5 is a lacquer or a varnish; 1.33 is water. |
 | Flatten | float, 0 to 1, default 1 | 1: the coat has its own smooth normal. 0: it follows the bumps below. |
 | Diffuse lighting | float, 0 to 1, default 0.6 | How the material reacts to light from light sources. Diffuse + ambient should stay at 100%. |
-| Ambient lighting | float, 0 to 1, default 0.4 |  |
+| Ambient lighting | float, 0 to 1, default 0.4 | How much of the surrounding sky light the surface picks up where nothing shines on it directly. Too low makes the shadows read as black holes. |
 | Luminous | float, 0 to 2, default 0 | Seems to emit light. Does not cast real light. |
-| Luminous color | color |  |
+| Luminous color | color | Light the surface emits by itself. It lights nothing else in the viewport - this is the surface glowing, not a lamp. |
 | Contrast | float, 0.2 to 4, default 1 | How fast the surface goes from light to shadow; low for fluffy things. |
 | Color reflected light | toggle, default off | Highlights and reflections take the surface colour: metal. |
 | Color transmitted light | toggle, default off | Light crossing a transparent surface takes its colour: stained glass. |
-| Casts shadows | toggle, default on |  |
-| Receives shadows | toggle, default on |  |
+| Casts shadows | toggle, default on | Whether the surface blocks light. Turning it off is a lighting cheat, useful for glass and for foliage cards that would otherwise shadow themselves into mud. |
+| Receives shadows | toggle, default on | Whether other things can cast shadows onto this surface. |
 | One sided | toggle, default off | Traced for one intersection per ray; matters for transparent surfaces. |
 | Hide from camera rays | toggle, default off | Seen only in reflections and refractions. |
-| Hide from reflected / refracted rays | toggle, default off |  |
+| Hide from reflected / refracted rays | toggle, default off | Keeps the surface out of reflections and refractions while leaving it visible to the camera. A compositing convenience, not physics. |
 | Ignore lighting | toggle, default off | No sun, no lights: the surface shows its own colour. |
 | Ignore atmosphere | toggle, default off | No fog or haze between it and the camera. |
 | Only shadows | toggle, default off | Invisible, but still casts a shadow. |
-| Disable anti-aliasing | toggle, default off |  |
+| Disable anti-aliasing | toggle, default off | Turns off edge smoothing for this material. Only wanted where a hard pixel boundary is the point, such as an index or ID pass. |
 | Mapping | choice: Automatic / Flat / Faces / Cylindrical / Spherical | How the 2D maps wrap a 3D object. Terrain is always Flat (projected from above); the others are for objects. |
 | Scale of the maps | float, 0.05 to 20, default 1 | Scales every texture map together. |
 | Origin | x/y pair | Offsets the material in map space, for precise placement. |
 | Rotation | float, -180 to 180, default 0 | Turns the maps about the surface normal, in degrees. |
 | Turbulence | toggle, default off | A noise repeatedly displaces where the maps are read, so a tiled picture stops looking tiled. |
-| Complexity | int, 1 to 8, default 3 |  |
-| Amplitude | float, 0 to 0.5, default 0.05 |  |
-| Scale | float, 0.25 to 64, default 4 |  |
+| Complexity | int, 1 to 8, default 3 | How many scales of small-scale disturbance ripple the surface normal. This is shading detail only - it does not move the geometry. |
+| Amplitude | float, 0 to 0.5, default 0.05 | How strongly the disturbance tilts the surface normal. A little breaks up a surface that reads as too clean; a lot looks like hammered metal. |
+| Scale | float, 0.25 to 64, default 4 | How fine the disturbance is, in repeats across the surface. |
 | Harmonics | float, 0.1 to 0.9, default 0.5 | How scale and amplitude shrink with each repetition of the noise. |
 | Cycling | float, 0 to 1, default 0 | A large, slow perturbation that keeps a material from repeating. |
 
@@ -2981,20 +2981,20 @@ Blend up to six material layers by mask, height-aware, into albedo + roughness
 | Mixing | choice: Weighted layers / Two materials (distribution) | Weighted: every layer by its own mask. Two materials: material 1 and 2 by one distribution (mask 1) against the proportions, as Vue mixes. |
 | Mixing proportions | float, 0 to 1, default 0.5 | Left: more of material 1. Right: more of material 2. |
 | Smooth blending strip | float, 0 to 1, default 0.2 | The width of the band where the two are blended. |
-| Blending method | choice: Simple blend / Full blend (linear bumps) / Full blend (cubic bumps) / Cover / Color and lighting blend |  |
-| Distribution dependent on environment | toggle, default off |  |
+| Blending method | choice: Simple blend / Full blend (linear bumps) / Full blend (cubic bumps) / Cover / Color and lighting blend | How the layers of the stack are combined into one surface. |
+| Distribution dependent on environment | toggle, default off | Whether the layers are allowed to react to altitude, slope and orientation at all. Off, they blend by their masks alone. |
 | Influence of altitude | float, -1 to 1, default 0 | Positive: material 2 higher up. Negative: lower down. |
 | Influence of slope | float, -1 to 1, default 0 | Positive: material 2 on steep faces. Negative: on flat. |
-| Influence of orientation | float, 0 to 1, default 0 |  |
+| Influence of orientation | float, 0 to 1, default 0 | How strongly the direction a slope faces counts toward which layer shows. This is what puts moss on the north face and dry grass on the south. |
 | Azimuth | float, 0 to 360, default 0 | Material 2 gathers on faces looking this way. 0 is north. |
 | Height blend | float, 0 to 1, default 0.5 | 0: plain weighted mix. 1: the layer whose texture is highest at this texel wins — silt fills the cracks of the rock before it covers the ridges. |
 | Blend depth | float, 0.02 to 1, default 0.25 | How far below the winning layer others still show. |
-| Roughness | float, 0 to 1, default 0.8 |  |
-| Roughness | float, 0 to 1, default 0.8 |  |
-| Roughness | float, 0 to 1, default 0.8 |  |
-| Roughness | float, 0 to 1, default 0.8 |  |
-| Roughness | float, 0 to 1, default 0.8 |  |
-| Roughness | float, 0 to 1, default 0.8 |  |
+| Roughness | float, 0 to 1, default 0.8 | How rough this layer's surface is: 0 is a mirror, 1 is matt. Wet rock and ice sit low, dry scree and grass high, and the difference between them is most of what tells one layer from another when they are the same colour. |
+| Roughness | float, 0 to 1, default 0.8 | How rough this layer's surface is: 0 is a mirror, 1 is matt. Wet rock and ice sit low, dry scree and grass high, and the difference between them is most of what tells one layer from another when they are the same colour. |
+| Roughness | float, 0 to 1, default 0.8 | How rough this layer's surface is: 0 is a mirror, 1 is matt. Wet rock and ice sit low, dry scree and grass high, and the difference between them is most of what tells one layer from another when they are the same colour. |
+| Roughness | float, 0 to 1, default 0.8 | How rough this layer's surface is: 0 is a mirror, 1 is matt. Wet rock and ice sit low, dry scree and grass high, and the difference between them is most of what tells one layer from another when they are the same colour. |
+| Roughness | float, 0 to 1, default 0.8 | How rough this layer's surface is: 0 is a mirror, 1 is matt. Wet rock and ice sit low, dry scree and grass high, and the difference between them is most of what tells one layer from another when they are the same colour. |
+| Roughness | float, 0 to 1, default 0.8 | How rough this layer's surface is: 0 is a mirror, 1 is matt. Wet rock and ice sit low, dry scree and grass high, and the difference between them is most of what tells one layer from another when they are the same colour. |
 
 ### NaturalGrain
 
@@ -3008,12 +3008,12 @@ Natural grain: one or two colours varied by a noise, for ground and rock
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Base color | color |  |
-| Mix with a second color | toggle, default on |  |
-| Second color | color |  |
+| Base color | color | The first of the two colours the grain runs between. |
+| Mix with a second color | toggle, default on | Off, the grain varies only in brightness. On, it runs between two colours, which is how granite gets its mixed mineral speckle. |
+| Second color | color | The second colour, when two are used. |
 | Scale | float, 0.005 to 4, default 0.2 | The overall size of the grain. Keep it large for a terrain, small for a pebble. |
 | Roughness | float, 0 to 1, default 0.6 | How much fine detail rides on the large variation. |
-| Contrast | float, 0 to 1, default 0.5 |  |
+| Contrast | float, 0 to 1, default 0.5 | How sharply the grain separates. Low is a soft mottle; high gives distinct grains against a background. |
 | Balance | float, 0 to 1, default 0.5 | Which of the two colours dominates. |
 | Distortion | float, 0 to 1, default 0 | Warps the grain so it stops looking like a noise. |
 | Seed | seed |  |
@@ -3030,7 +3030,7 @@ Combine two normal maps (whiteout blend)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Detail strength | float, 0 to 3, default 1 |  |
+| Detail strength | float, 0 to 3, default 1 | How much of the detail normal is laid over the base one. The two are combined so the fine map rides on the coarse one rather than replacing its direction. |
 
 ### PBRMaterial
 
@@ -3047,10 +3047,10 @@ A PBR material set (albedo/normal/roughness/AO): a folder of maps on disk, or a 
 | :--- | :--- | :--- |
 | Source | choice: ambientCG download / Folder on disk | Where the maps come from. A folder holds the set's images; the maps are found by name (color/albedo/diffuse, normal, roughness, ao/ambientocclusion) - the layout every PBR library ships. |
 | Material folder (or any map in it) | file path | Pick any image of the set; the folder it is in is scanned for the other maps. |
-| ambientCG asset ID | text |  |
-| Resolution | choice: 1K / 2K / 4K / 8K |  |
-| Mapping | choice: Stretch / Tile |  |
-| Tiles across | float, 1 to 64, default 8 |  |
+| ambientCG asset ID | text | Which surface from the library. Each brings its own colour, normal, roughness and height maps together, already matched. |
+| Resolution | choice: 1K / 2K / 4K / 8K | Which size of the maps to load. Lower costs less memory and is invisible at a distance; the highest is for surfaces the camera comes close to. |
+| Mapping | choice: Stretch / Tile | How the maps are laid onto the surface. Triplanar projects from three directions and blends, which is what stops the stretching on a cliff face. |
+| Tiles across | float, 1 to 64, default 8 | How many times the surface repeats. Photographed materials show their repeat if this is pushed too high. |
 
 ### SplatMaterial
 
@@ -3079,7 +3079,7 @@ Pack up to 4 masks into RGBA splat weights (normalized)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Normalize weights | toggle, default on |  |
+| Normalize weights | toggle, default on | Rescales the four channels so they sum to one at every point. Splat weights that do not sum to one either darken the surface or blow it out. |
 
 ### TextureBlend
 
@@ -3094,8 +3094,8 @@ Blend two textures by mask / mode / opacity
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Mode | choice: Normal / Multiply / Add / Overlay / Screen / Height tint |  |
-| Opacity | float, 0 to 1, default 1 |  |
+| Mode | choice: Normal / Multiply / Add / Overlay / Screen / Height tint | How the two pictures are combined. |
+| Opacity | float, 0 to 1, default 1 | How much of the second picture shows over the first. |
 
 ### TextureFile
 
@@ -3107,18 +3107,18 @@ Load an image texture (PNG/JPG/TGA/BMP) with mapping modes
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Image file | file path |  |
-| Mapping | choice: Stretch / Tile / Tile offset |  |
-| Tiles across | float, 1 to 64, default 8 |  |
-| Brightness | float, 0.2 to 3, default 1 |  |
+| Image file | file path | The image file. Colour maps are read as sRGB and everything else as linear, so a normal or roughness map loaded here is not silently gamma-corrected. |
+| Mapping | choice: Stretch / Tile / Tile offset | How the picture is laid onto the surface. Flat projection is fine on ground seen from above; triplanar projects from three directions and blends, which is what stops the stretching on a cliff face. |
+| Tiles across | float, 1 to 64, default 8 | How many times the picture repeats across the surface. High counts show the repeat unless the picture was made seamless. |
+| Brightness | float, 0.2 to 3, default 1 | Scales the picture after loading. |
 | Gamma | float, 0.2 to 3, default 1 | Gamma correction for this picture, overriding the global setting. |
-| Rotate | choice: 0 / 90 / 180 / 270 |  |
-| Invert colors | toggle, default off |  |
-| Mirror X | toggle, default off |  |
-| Mirror Y | toggle, default off |  |
-| Picture scale | x/y pair |  |
-| Image offset | x/y pair |  |
-| Interpolation | choice: Linear / Nearest |  |
+| Rotate | choice: 0 / 90 / 180 / 270 | Turns the picture on the surface. |
+| Invert colors | toggle, default off | Flips the picture's values. On a height or roughness map this turns bumps into dents and gloss into matt. |
+| Mirror X | toggle, default off | Mirrors alternate repeats across, which hides the seam of a picture that does not tile. |
+| Mirror Y | toggle, default off | Mirrors alternate repeats down. |
+| Picture scale | x/y pair | Multiplies the picture's values after loading. |
+| Image offset | x/y pair | Added to the picture's values after loading. |
+| Interpolation | choice: Linear / Nearest | How the picture is sampled between its pixels. Smooth is right for nearly everything; nearest keeps hard pixel edges, which is what an index or ID map needs. |
 
 ### TextureToMask
 
@@ -3131,7 +3131,7 @@ Texture luminance back into a mask/heightmap
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Channel | choice: Luminance / Red / Green / Blue / Alpha |  |
+| Channel | choice: Luminance / Red / Green / Blue / Alpha | Which channel of the picture becomes the mask. Luminance is the usual choice; the single channels are for pictures that were packed with a different mask in each one. |
 
 ### TextureTransform
 
@@ -3144,9 +3144,9 @@ Tile, scale, offset and rotate a texture
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Tiles | x/y pair |  |
-| Offset | x/y pair |  |
-| Rotation | float, -180 to 180, default 0 |  |
+| Tiles | x/y pair | How many times the picture repeats across the surface. |
+| Offset | x/y pair | Slides the picture across the surface. |
+| Rotation | float, -180 to 180, default 0 | Turns the picture on the surface. |
 | Mirror repeat | toggle, default off | Flips alternate tiles so seams are less visible. |
 
 ## Operator
@@ -3372,9 +3372,9 @@ Attract to, repel from another cloud; keep instances from overlapping
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Affinity with layer below | float, -1 to 1, default 0 | Positive: instances gather around the instances of the layer below (primroses around the trees) and thin out elsewhere. Negative: everywhere except near them. |
-| Affinity radius (m) | float, 0.1 to 2000, default 25 |  |
+| Affinity radius (m) | float, 0.1 to 2000, default 25 | How far this population reaches to gather around the one below it, in metres. |
 | Repulsion from layer below | float, -1 to 1, default 0 | Sudden. Positive: a void around each instance below (no grass under the canopy). Negative: only inside that void (small stones at the foot of the boulder). Use both: near the trees but not under them. |
-| Repulsion radius (m) | float, 0.1 to 2000, default 8 |  |
+| Repulsion radius (m) | float, 0.1 to 2000, default 8 | How far this population is pushed back from the one below it, in metres - the bare ring around the base of a tree. |
 | Avoid overlapping instances | toggle, default on | No two instances closer than their footprints allow. |
 | Terrain size (m) | float, 1 to 1e+06, default 5000 |  |
 
@@ -3478,33 +3478,33 @@ Species, size, rotation, lean and tint per instance
 | :--- | :--- | :--- |
 | Species | int, 1 to 8, default 1 | How many kinds of object this layer places. Each scene object bound to the layer picks the species it stands for. |
 | Species 1 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 1 scale | float, 0.05 to 10, default 1 |  |
+| Species 1 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 2 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 2 scale | float, 0.05 to 10, default 1 |  |
+| Species 2 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 3 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 3 scale | float, 0.05 to 10, default 1 |  |
+| Species 3 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 4 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 4 scale | float, 0.05 to 10, default 1 |  |
+| Species 4 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 5 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 5 scale | float, 0.05 to 10, default 1 |  |
+| Species 5 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 6 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 6 scale | float, 0.05 to 10, default 1 |  |
+| Species 6 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 7 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 7 scale | float, 0.05 to 10, default 1 |  |
+| Species 7 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
 | Species 8 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
-| Species 8 scale | float, 0.05 to 10, default 1 |  |
-| Overall scaling | float, 0.05 to 10, default 1 |  |
+| Species 8 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Overall scaling | float, 0.05 to 10, default 1 | The size of one copy, as a multiple of the mesh's own size. |
 | Size variation | float, 0 to 1, default 0.3 | 1: instances range from half to twice the size. |
 | Keep proportions | float, 0 to 1, default 1 | 1: the three axes scale together. 0: each on its own. |
 | Direction from surface | float, 0 to 1, default 0 | 0: instances grow vertically whatever the slope. 1: perpendicular to the ground (rocks); trees want 0. |
-| Rotation | choice: Up axis / None / Driven |  |
+| Rotation | choice: Up axis / None / Driven | How far a copy may be turned about its up axis. Full rotation is right for anything without a front; less keeps a set of objects aligned. |
 | Maximum angle | float, 0 to 1, default 1 | As a fraction of a half turn either way. |
 | Offset from surface (m) | float, -50 to 50, default 0 | Negative buries the instance. |
 | Footprint radius (m) | float, 0.01 to 500, default 2 | The ground one instance claims at scale 1; what overlap avoidance and the layer above measure against. |
 | Shrink at low density | float, -1 to 1, default 0 | Lone instances are smaller (negative: larger), as at the edge of a wood. |
-| Low-density radius (m) | float, 0.1 to 2000, default 30 |  |
+| Low-density radius (m) | float, 0.1 to 2000, default 30 | How close to the population below a copy must be before it is made smaller, in metres. This is what puts stunted growth under a canopy rather than an abrupt edge. |
 | Lean out at low density | float, 0 to 1, default 0 | Lone instances lean into the slope, as plants reaching for light. |
-| Color variation | float, 0 to 1, default 0.3 |  |
+| Color variation | float, 0 to 1, default 0.3 | How much copies differ in brightness from one another. Identical tint across a whole population is the second clearest sign of instancing, after identical size. |
 | Time offset range (s) | float, 0 to 10, default 1 | Each instance's wind phase is shifted by up to this, so a field sways as a crowd, not a marching army. |
 | Terrain size (m) | float, 1 to 1e+06, default 5000 |  |
 
@@ -3524,27 +3524,27 @@ Scatter by density per hectare and the presence of the ground
 | Invert presence | toggle, default off |  |
 | Density (per hectare) | float, 0.01 to 100000, default 20 | Instances per hectare (100 m x 100 m) at full presence. A rate, not a count: the same setting fills a 1 km tile and a 20 km one to the same look. |
 | Minimum spacing (m) | float, 0.05 to 1000, default 5 | The lattice the candidates stand on. Changing the density never moves an instance; changing this reseeds them all. |
-| Placement | choice: Jittered / Random / Regular |  |
+| Placement | choice: Jittered / Random / Regular | How the candidate positions are laid out before anything is rejected. A jittered lattice covers ground evenly; purely random leaves clumps and bald patches, which is sometimes what you want. |
 | Clumping | float, 0 to 1, default 0 | Groups instances together as species do in nature. |
-| Clump size (m) | float, 0.5 to 5000, default 60 |  |
+| Clump size (m) | float, 0.5 to 5000, default 60 | How far across one clump of plants is, in metres. Vegetation gathers where the ground suits it, and a population spread perfectly evenly is the clearest sign of a generated one. |
 | Seed | seed |  |
 | Populate around the camera | toggle, default off | Off: the population covers the terrain tile, computed once. On: it covers the ground wherever the camera goes - a planet or an infinite terrain has no tile to cover - generated in cells on demand and thrown away behind you. What a cell holds never depends on where it was seen from. |
 | Populate within (m) | float, 10 to 200000, default 2000 | How far from the camera the ground is populated when 'Populate around the camera' is on. |
 | Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the rate above means what it says. |
 | Presence threshold | float, 0 to 1, default 0.05 | Presence below this places nothing at all. |
 | Slope influence | float, 0 to 1, default 0.5 | 1: instances thin out on steep ground. 0: the same density whatever the slope. |
-| By altitude | toggle, default off |  |
-| Range of altitudes | choice: By terrain / Absolute / Relative to sea |  |
+| By altitude | toggle, default off | Limits the layer to a band of heights. |
+| Range of altitudes | choice: By terrain / Absolute / Relative to sea | Whether the altitude band is read against the terrain's own range, in absolute height units, or from sea level. |
 | Altitude band | range | As a fraction of the terrain's own height range. |
-| Sea level | float, 0 to 1, default 0 |  |
-| Fade | float, 0 to 0.5, default 0.08 |  |
-| By slope | toggle, default off |  |
+| Sea level | float, 0 to 1, default 0 | The height that counts as sea level, when the altitude band is measured from it rather than from the terrain's own range. |
+| Fade | float, 0 to 0.5, default 0.08 | How gradually the layer gives out at the edges of its altitude band. Zero draws a contour line across the hillside. |
+| By slope | toggle, default off | Limits the layer to a band of steepness. |
 | Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
-| Fade | float, 0 to 45, default 6 |  |
-| By orientation | toggle, default off |  |
+| Fade | float, 0 to 45, default 6 | How gradually the layer gives out at the edges of its slope band. |
+| By orientation | toggle, default off | Limits the layer to slopes facing a particular way. |
 | Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards. 0 is north. |
-| Arc | float, 5 to 180, default 60 |  |
-| Fade | float, 0 to 90, default 20 |  |
+| Arc | float, 5 to 180, default 60 | How wide an arc of facings counts as the favoured direction. Narrow puts moss on the north face alone; wide covers most of the hill. |
+| Fade | float, 0 to 90, default 20 | How gradually the layer gives out as a slope turns away from the favoured direction. |
 | Terrain height scale | float, 0.001 to 100, default 1 | World height of a heightmap unit as a fraction of the tile's width; the studio keeps this in step with the project so a slope in degrees is the slope the viewport shows. |
 | Decay near objects | float, 0 to 1, default 0 | Thins the population around the objects standing on the terrain (the 'objects' input: 0 at an object, 1 far away). 1 leaves a void right at them. |
 | Reach | float, 0.001 to 0.5, default 0.05 | How far from the objects the decay extends, as a fraction of the terrain. |

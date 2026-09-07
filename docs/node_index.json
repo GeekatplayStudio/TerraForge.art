@@ -6828,14 +6828,14 @@
         "label": "Radius",
         "type": "float",
         "min": 0.002, "max": 0.15, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How far around each point the surroundings are sampled to\ndecide how enclosed it is. Small radii darken creases and\npits; large ones darken whole valleys."
       },
       {
         "key": "strength",
         "label": "Strength",
         "type": "float",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "How dark the enclosed places get. Ambient occlusion is the\nsoft shadow of a surface against itself, and a little of\nit does more for the sense of depth than any amount of\nbump."
       }
       ]
     },
@@ -6855,28 +6855,28 @@
         "label": "Normal strength",
         "type": "float",
         "min": 0.1, "max": 10, "default": 2,
-        "tooltip": ""
+        "tooltip": "How much relief is inferred from the photograph's\nbrightness. A photograph has no depth in it, so this is a\nguess: too much and every dark patch becomes a dent."
       },
       {
         "key": "rough_base",
         "label": "Roughness base",
         "type": "float",
         "min": 0, "max": 1, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "The roughness the whole surface starts at, before the\npicture varies it."
       },
       {
         "key": "rough_variation",
         "label": "Roughness variation",
         "type": "float",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How much the picture's own detail varies the roughness, so\ndarker, damper-looking areas come out glossier than pale\ndry ones."
       },
       {
         "key": "invert_rough",
         "label": "Bright = smooth",
         "type": "bool",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Swaps which end of the picture reads as glossy. If the\nhighlights are landing on the wrong parts of the surface,\nthis is the switch."
       }
       ]
     },
@@ -6897,7 +6897,7 @@
         "label": "Normalize inputs",
         "type": "bool",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Rescales the result to fill 0..1. Off keeps the raw\nvalues, which is what you want when the output feeds\narithmetic rather than a blend."
       }
       ]
     },
@@ -6932,28 +6932,28 @@
         "label": "Brightness",
         "type": "float",
         "min": 0.2, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "Scales every colour up or down."
       },
       {
         "key": "contrast",
         "label": "Contrast",
         "type": "float",
         "min": 0.2, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "Pushes colours away from mid-grey, or toward it below 1."
       },
       {
         "key": "saturation",
         "label": "Saturation",
         "type": "float",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strong the colour is. 0 leaves greyscale with all the\ndetail intact."
       },
       {
         "key": "hue_shift",
         "label": "Hue shift °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Rotates every colour around the wheel, in degrees. A small\nshift is the cheapest way to make one photographed surface\nlook like a different rock."
       },
       {
         "key": "tint_r",
@@ -6961,7 +6961,7 @@
         "type": "float",
         "group": "Tint",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "Multiplies the red channel, for correcting a cast rather\nthan recolouring."
       },
       {
         "key": "tint_g",
@@ -6969,7 +6969,7 @@
         "type": "float",
         "group": "Tint",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "Multiplies the green channel."
       },
       {
         "key": "tint_b",
@@ -6977,7 +6977,7 @@
         "type": "float",
         "group": "Tint",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "Multiplies the blue channel."
       }
       ]
     },
@@ -6996,14 +6996,14 @@
         "label": "Feature scale",
         "type": "float",
         "min": 0.002, "max": 0.1, "default": 0.01,
-        "tooltip": ""
+        "tooltip": "How large a feature the curvature is measured over. Small\nfinds surface crinkle; large finds whether you are on a\nridge or in a hollow."
       },
       {
         "key": "contrast",
         "label": "Contrast",
         "type": "float",
         "min": 0.1, "max": 6, "default": 1,
-        "tooltip": ""
+        "tooltip": "Stretches the result apart. Raw curvature bunches around\nzero, so without this most of the map reads as flat."
       }
       ]
     },
@@ -7034,7 +7034,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.001, "max": 0.3, "default": 0.015,
-        "tooltip": ""
+        "tooltip": "The closest two placed items may come to one another. This\nis what stops a distribution clumping into overlapping\npiles at high density."
       },
       {
         "key": "threshold",
@@ -7088,7 +7088,7 @@
         "label": "Name",
         "type": "text",
         "group": "Layer",
-        "tooltip": ""
+        "tooltip": "What this population is called in the stack and the\nObjects tree."
       },
       {
         "key": "enabled",
@@ -7096,7 +7096,7 @@
         "type": "bool",
         "group": "Layer",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Turns the layer off without removing it or losing its\nsettings."
       },
       {
         "key": "invert_mask",
@@ -7104,7 +7104,7 @@
         "type": "bool",
         "group": "Layer",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Uses the mask the other way round: the layer appears where\nthe mask is dark."
       },
       {
         "key": "density",
@@ -7128,7 +7128,7 @@
         "type": "choice",
         "group": "Density",
         "choices": ["Jittered", "Random", "Regular"],
-        "tooltip": ""
+        "tooltip": "How the candidate positions are laid out before anything\nis rejected. A jittered lattice covers ground evenly;\npurely random leaves clumps and bald patches, which is\nsometimes what you want."
       },
       {
         "key": "clump_amount",
@@ -7144,7 +7144,7 @@
         "type": "float",
         "group": "Density",
         "min": 0.5, "max": 5000, "default": 60,
-        "tooltip": ""
+        "tooltip": "How far across one clump of plants is, in metres.\nVegetation gathers where the ground suits it, and a\npopulation spread perfectly evenly is the clearest sign of\na generated one."
       },
       {
         "key": "seed",
@@ -7199,7 +7199,7 @@
         "type": "bool",
         "group": "Altitude",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to a band of heights."
       },
       {
         "key": "altitude_mode",
@@ -7207,7 +7207,7 @@
         "type": "choice",
         "group": "Altitude",
         "choices": ["By terrain", "Absolute", "Relative to sea"],
-        "tooltip": ""
+        "tooltip": "Whether the altitude band is read against the terrain's\nown range, in absolute height units, or from sea level."
       },
       {
         "key": "altitude",
@@ -7222,7 +7222,7 @@
         "type": "float",
         "group": "Altitude",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The height that counts as sea level, when the altitude\nband is measured from it rather than from the terrain's\nown range."
       },
       {
         "key": "altitude_fuzz",
@@ -7230,7 +7230,7 @@
         "type": "float",
         "group": "Altitude",
         "min": 0, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out at the edges of its\naltitude band. Zero draws a contour line across the\nhillside."
       },
       {
         "key": "use_slope",
@@ -7238,7 +7238,7 @@
         "type": "bool",
         "group": "Slope",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to a band of steepness."
       },
       {
         "key": "slope",
@@ -7253,7 +7253,7 @@
         "type": "float",
         "group": "Slope",
         "min": 0, "max": 45, "default": 6,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out at the edges of its\nslope band."
       },
       {
         "key": "use_orientation",
@@ -7261,7 +7261,7 @@
         "type": "bool",
         "group": "Orientation",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to slopes facing a particular way."
       },
       {
         "key": "orientation",
@@ -7277,7 +7277,7 @@
         "type": "float",
         "group": "Orientation",
         "min": 5, "max": 180, "default": 60,
-        "tooltip": ""
+        "tooltip": "How wide an arc of facings counts as the favoured\ndirection. Narrow puts moss on the north face alone; wide\ncovers most of the hill."
       },
       {
         "key": "orient_fuzz",
@@ -7285,7 +7285,7 @@
         "type": "float",
         "group": "Orientation",
         "min": 0, "max": 90, "default": 20,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out as a slope turns away\nfrom the favoured direction."
       },
       {
         "key": "height_scale",
@@ -7333,7 +7333,7 @@
         "type": "float",
         "group": "Interaction",
         "min": 0.1, "max": 2000, "default": 25,
-        "tooltip": ""
+        "tooltip": "How far this population reaches to gather around the one\nbelow it, in metres."
       },
       {
         "key": "repulsion",
@@ -7349,7 +7349,7 @@
         "type": "float",
         "group": "Interaction",
         "min": 0.1, "max": 2000, "default": 8,
-        "tooltip": ""
+        "tooltip": "How far this population is pushed back from the one below\nit, in metres - the bare ring around the base of a tree."
       },
       {
         "key": "avoid_overlap",
@@ -7381,7 +7381,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp2_presence",
@@ -7397,7 +7397,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp3_presence",
@@ -7413,7 +7413,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp4_presence",
@@ -7429,7 +7429,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp5_presence",
@@ -7445,7 +7445,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp6_presence",
@@ -7461,7 +7461,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp7_presence",
@@ -7477,7 +7477,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp8_presence",
@@ -7493,7 +7493,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "scale",
@@ -7501,7 +7501,7 @@
         "type": "float",
         "group": "Scaling",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "The size of one copy, as a multiple of the mesh's own\nsize."
       },
       {
         "key": "variation",
@@ -7533,7 +7533,7 @@
         "type": "choice",
         "group": "Scaling",
         "choices": ["Up axis", "None", "Driven"],
-        "tooltip": ""
+        "tooltip": "How far a copy may be turned about its up axis. Full\nrotation is right for anything without a front; less keeps\na set of objects aligned."
       },
       {
         "key": "rotation_max",
@@ -7573,7 +7573,7 @@
         "type": "float",
         "group": "Scaling",
         "min": 0.1, "max": 2000, "default": 30,
-        "tooltip": ""
+        "tooltip": "How close to the population below a copy must be before it\nis made smaller, in metres. This is what puts stunted\ngrowth under a canopy rather than an abrupt edge."
       },
       {
         "key": "lean",
@@ -7589,7 +7589,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How much copies differ in brightness from one another.\nIdentical tint across a whole population is the second\nclearest sign of instancing, after identical size."
       },
       {
         "key": "phase_range",
@@ -7627,7 +7627,7 @@
         "type": "float",
         "group": "Effector",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strongly this layer pushes the layers below it around."
       },
       {
         "key": "falloff",
@@ -7643,7 +7643,7 @@
         "type": "bool",
         "group": "Effector",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Pushes where it would have pulled, and the other way\nabout."
       },
       {
         "key": "show",
@@ -7670,21 +7670,21 @@
         "label": "Red",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The red component, linear rather than sRGB: 0.5 here is\nnot the mid-grey you would pick in a paint program. That\nmatters when a value is matched against a photograph."
       },
       {
         "key": "g",
         "label": "Green",
         "type": "float",
         "min": 0, "max": 1, "default": 0.45,
-        "tooltip": ""
+        "tooltip": "The green component, linear rather than sRGB."
       },
       {
         "key": "b",
         "label": "Blue",
         "type": "float",
         "min": 0, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "The blue component, linear rather than sRGB."
       }
       ]
     },
@@ -7713,7 +7713,7 @@
         "type": "choice",
         "group": "Fractal",
         "choices": ["Perlin", "Value", "Cellular", "Cell edges", "Grainy"],
-        "tooltip": ""
+        "tooltip": "The noise the fractal is built from."
       },
       {
         "key": "wavelength",
@@ -7729,7 +7729,7 @@
         "type": "int",
         "group": "Fractal",
         "min": 1, "max": 16, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the pattern is added at a smaller size."
       },
       {
         "key": "roughness",
@@ -7745,7 +7745,7 @@
         "type": "float",
         "group": "Fractal",
         "min": 0.2, "max": 6, "default": 1,
-        "tooltip": ""
+        "tooltip": "Contrast of the result."
       },
       {
         "key": "distortion",
@@ -7761,7 +7761,7 @@
         "type": "choice",
         "group": "Fractal",
         "choices": ["Plain", "Ridges", "Billows", "Ridge mix", "Billow/ridge mix"],
-        "tooltip": ""
+        "tooltip": "The shape the harmonics take - rolling, ridged or\nbillowed. As colour rather than terrain, ridges read as\nveining and billows as mottling."
       },
       {
         "key": "warp_amount",
@@ -7810,14 +7810,14 @@
         "key": "gradient",
         "label": "Gradient",
         "type": "gradient",
-        "tooltip": ""
+        "tooltip": "The colour ramp the incoming value is looked up in: 0\ntakes the left end, 1 the right. This is how a height, a\nslope or a mask becomes colour."
       },
       {
         "key": "mix",
         "label": "Amount",
         "type": "float",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the mapped colour replaces what came in."
       }
       ]
     },
@@ -7837,7 +7837,7 @@
         "type": "float",
         "group": "Input",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Input values at or below this are pulled to black. Raising\nit deepens the shadows and throws away whatever detail was\nbelow it."
       },
       {
         "key": "in_white",
@@ -7845,7 +7845,7 @@
         "type": "float",
         "group": "Input",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "Input values at or above this are pushed to white."
       },
       {
         "key": "gamma",
@@ -7853,7 +7853,7 @@
         "type": "float",
         "group": "Input",
         "min": 0.1, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "Bends the midtones without moving the two ends. Below 1\ndarkens them, above 1 lifts them."
       },
       {
         "key": "out_black",
@@ -7861,7 +7861,7 @@
         "type": "float",
         "group": "Output",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The darkest the result is allowed to be. Raising it lifts\nthe whole picture off black, which is what a hazy or dusty\nsurface actually does."
       },
       {
         "key": "out_white",
@@ -7869,7 +7869,7 @@
         "type": "float",
         "group": "Output",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The brightest the result is allowed to be."
       },
       {
         "key": "per_channel",
@@ -7896,21 +7896,21 @@
         "label": "Normalize",
         "type": "bool",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Rescales the mask to fill 0..1 before it becomes a\npicture."
       },
       {
         "key": "scale",
         "label": "Scale",
         "type": "float",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "Multiplies the mask on its way into the texture."
       },
       {
         "key": "offset",
         "label": "Offset",
         "type": "float",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Added to the mask on its way into the texture."
       }
       ]
     },
@@ -7942,7 +7942,7 @@
         "label": "Name",
         "type": "text",
         "group": "Layer",
-        "tooltip": ""
+        "tooltip": "What this layer is called in the stack. Naming them is the\ndifference between a readable material and six rows of\n'Layer'."
       },
       {
         "key": "enabled",
@@ -7950,7 +7950,7 @@
         "type": "bool",
         "group": "Layer",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Turns the layer off without removing it or losing its\nsettings."
       },
       {
         "key": "opacity",
@@ -7974,7 +7974,7 @@
         "type": "bool",
         "group": "Layer",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Uses the mask the other way round: the layer appears where\nthe mask is dark."
       },
       {
         "key": "rough_value",
@@ -8029,7 +8029,7 @@
         "label": "Highlight color",
         "type": "color",
         "group": "Layer",
-        "tooltip": ""
+        "tooltip": "The flat colour the layer is shown in while Highlight is\non, so you can see exactly where it lands."
       },
       {
         "key": "use_altitude",
@@ -8037,7 +8037,7 @@
         "type": "bool",
         "group": "Altitude",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to a band of heights."
       },
       {
         "key": "altitude_mode",
@@ -8060,7 +8060,7 @@
         "type": "float",
         "group": "Altitude",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The height that counts as sea level, when the altitude\nband is measured from it rather than from the terrain's\nown range."
       },
       {
         "key": "altitude_fuzz",
@@ -8068,7 +8068,7 @@
         "type": "float",
         "group": "Altitude",
         "min": 0, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out at the edges of its\naltitude band. Zero draws a contour line across the\nhillside."
       },
       {
         "key": "use_slope",
@@ -8076,7 +8076,7 @@
         "type": "bool",
         "group": "Slope",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to a band of steepness."
       },
       {
         "key": "slope",
@@ -8091,7 +8091,7 @@
         "type": "float",
         "group": "Slope",
         "min": 0, "max": 45, "default": 6,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out at the edges of its\nslope band."
       },
       {
         "key": "height_scale",
@@ -8107,7 +8107,7 @@
         "type": "bool",
         "group": "Orientation",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to slopes facing a particular way."
       },
       {
         "key": "orientation",
@@ -8131,7 +8131,7 @@
         "type": "float",
         "group": "Orientation",
         "min": 0, "max": 90, "default": 20,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out as a slope turns away\nfrom the favoured direction."
       },
       {
         "key": "tiles",
@@ -8146,7 +8146,7 @@
         "label": "Offset",
         "type": "vec2",
         "group": "Placement",
-        "tooltip": ""
+        "tooltip": "Slides this layer's own maps across the surface, without\nmoving the layers around it."
       },
       {
         "key": "rotation",
@@ -8154,7 +8154,7 @@
         "type": "float",
         "group": "Placement",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Turns this layer's own maps. Rotating one layer of several\nbreaks the alignment that makes a stack read as printed."
       }
       ]
     },
@@ -8180,7 +8180,7 @@
         "label": "Material name",
         "type": "text",
         "group": "Identity",
-        "tooltip": ""
+        "tooltip": "What this material is called in the Objects tree and the\nmaterial browser. It is how you pick it when assigning it\nto something."
       },
       {
         "key": "tint",
@@ -8195,7 +8195,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "Scales the whole colour up or down after everything\nupstream. Use it to sit a material into a scene without\ngoing back and editing the maps that made it."
       },
       {
         "key": "saturation",
@@ -8203,7 +8203,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strong the colour is. 0 leaves a greyscale surface\nwith all of its detail intact, which is often closer to\nreal weathered rock than the photograph it came from."
       },
       {
         "key": "color_blend",
@@ -8218,7 +8218,7 @@
         "label": "Blend color",
         "type": "color",
         "group": "Color",
-        "tooltip": ""
+        "tooltip": "A colour mixed into the whole surface. This is the\nquickest way to tint a shared material differently per\nobject - a wash of ochre over the same rock."
       },
       {
         "key": "blend_amount",
@@ -8226,7 +8226,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much of the blend colour is mixed in."
       },
       {
         "key": "blend_mask",
@@ -8282,7 +8282,7 @@
         "type": "bool",
         "group": "Bump",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Flips the green channel of the normal map. There are two\nconventions for which way is up and they are visually\nidentical until the light moves - if the bumps read as\ndents, this is the switch."
       },
       {
         "key": "displacement",
@@ -8298,7 +8298,7 @@
         "type": "float",
         "group": "Bump",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Softens the displacement before it moves the surface,\nwithout touching the colour. Use it when a height map is\nnoisier than the geometry can carry."
       },
       {
         "key": "highlight_model",
@@ -8314,7 +8314,7 @@
         "type": "float",
         "group": "Highlights",
         "min": 0, "max": 1, "default": 0.35,
-        "tooltip": ""
+        "tooltip": "How bright the direct highlight is. This is the sheen a\nlight leaves on the surface, as against Reflectivity\nbelow, which is how much of the surroundings it mirrors."
       },
       {
         "key": "roughness",
@@ -8345,7 +8345,7 @@
         "type": "float",
         "group": "Transparency",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "How much light passes straight through. 0 is opaque."
       },
       {
         "key": "ior",
@@ -8369,7 +8369,7 @@
         "type": "float",
         "group": "Transparency",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "How much the surface thins toward its silhouette, so an\nedge dissolves rather than ending on a hard line."
       },
       {
         "key": "thin_surface",
@@ -8377,7 +8377,7 @@
         "type": "bool",
         "group": "Transparency",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Treats the surface as having no thickness, so light passes\nthrough without bending. Right for glass panes, leaves and\nwater films; wrong for a solid body of water, which does\nrefract."
       },
       {
         "key": "additive",
@@ -8401,7 +8401,7 @@
         "type": "float",
         "group": "Transparency",
         "min": 0, "max": 1, "default": 0.2,
-        "tooltip": ""
+        "tooltip": "How far the highlight spreads. Narrow reads as polished,\nwide as satin."
       },
       {
         "key": "reflection",
@@ -8409,7 +8409,7 @@
         "type": "float",
         "group": "Reflection",
         "min": 0, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How much of the surroundings the surface mirrors. Distinct\nfrom the highlight: this is the world reflected, that is\nthe light source."
       },
       {
         "key": "reflect_min",
@@ -8425,7 +8425,7 @@
         "type": "float",
         "group": "Reflection",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much more reflective the surface becomes at a grazing\nangle. Nearly every real material does this - it is why a\nwet road mirrors the sky ahead but not underfoot - so 0\nreads as wrong."
       },
       {
         "key": "reflect_blur",
@@ -8433,7 +8433,7 @@
         "type": "float",
         "group": "Reflection",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "How blurred the reflection is. 0 is a mirror; higher is\nbrushed metal or rippled water."
       },
       {
         "key": "metallic",
@@ -8465,7 +8465,7 @@
         "type": "bool",
         "group": "Translucency",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Lets light enter the surface, scatter inside and leave\nelsewhere. This is what makes skin, wax, marble and snow\nlook lit from within rather than merely lit."
       },
       {
         "key": "sss_depth",
@@ -8481,7 +8481,7 @@
         "type": "float",
         "group": "Translucency",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "Whether light inside the surface is mostly absorbed or\nmostly scattered onward. Toward absorption gives dense,\nwaxy material; toward scattering gives translucent,\nglowing material."
       },
       {
         "key": "sss_color",
@@ -8511,7 +8511,7 @@
         "label": "Coat tint",
         "type": "color",
         "group": "Clearcoat",
-        "tooltip": ""
+        "tooltip": "The colour of the clear coat over the surface - the\nlacquer on car paint, the wet film on a stone. It reflects\nand tints without changing the material underneath."
       },
       {
         "key": "cc_roughness",
@@ -8519,7 +8519,7 @@
         "type": "float",
         "group": "Clearcoat",
         "min": 0.02, "max": 1, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "How polished the clear coat is, independently of the\nsurface under it. A rough stone under a smooth wet coat is\nexactly what a rock in a stream is."
       },
       {
         "key": "cc_ior",
@@ -8527,7 +8527,7 @@
         "type": "float",
         "group": "Clearcoat",
         "min": 1, "max": 2.5, "default": 1.5,
-        "tooltip": ""
+        "tooltip": "The coat's refractive index, which sets how strongly it\nreflects at a glancing angle. 1.5 is a lacquer or a\nvarnish; 1.33 is water."
       },
       {
         "key": "cc_flatten",
@@ -8551,7 +8551,7 @@
         "type": "float",
         "group": "Effects",
         "min": 0, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "How much of the surrounding sky light the surface picks up\nwhere nothing shines on it directly. Too low makes the\nshadows read as black holes."
       },
       {
         "key": "luminous",
@@ -8566,7 +8566,7 @@
         "label": "Luminous color",
         "type": "color",
         "group": "Effects",
-        "tooltip": ""
+        "tooltip": "Light the surface emits by itself. It lights nothing else\nin the viewport - this is the surface glowing, not a lamp."
       },
       {
         "key": "contrast",
@@ -8598,7 +8598,7 @@
         "type": "bool",
         "group": "Options",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Whether the surface blocks light. Turning it off is a\nlighting cheat, useful for glass and for foliage cards\nthat would otherwise shadow themselves into mud."
       },
       {
         "key": "receive_shadows",
@@ -8606,7 +8606,7 @@
         "type": "bool",
         "group": "Options",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Whether other things can cast shadows onto this surface."
       },
       {
         "key": "one_sided",
@@ -8630,7 +8630,7 @@
         "type": "bool",
         "group": "Options",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Keeps the surface out of reflections and refractions while\nleaving it visible to the camera. A compositing\nconvenience, not physics."
       },
       {
         "key": "ignore_lighting",
@@ -8662,7 +8662,7 @@
         "type": "bool",
         "group": "Options",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Turns off edge smoothing for this material. Only wanted\nwhere a hard pixel boundary is the point, such as an index\nor ID pass."
       },
       {
         "key": "mapping",
@@ -8709,7 +8709,7 @@
         "type": "int",
         "group": "Transform",
         "min": 1, "max": 8, "default": 3,
-        "tooltip": ""
+        "tooltip": "How many scales of small-scale disturbance ripple the\nsurface normal. This is shading detail only - it does not\nmove the geometry."
       },
       {
         "key": "turb_amplitude",
@@ -8717,7 +8717,7 @@
         "type": "float",
         "group": "Transform",
         "min": 0, "max": 0.5, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How strongly the disturbance tilts the surface normal. A\nlittle breaks up a surface that reads as too clean; a lot\nlooks like hammered metal."
       },
       {
         "key": "turb_scale",
@@ -8725,7 +8725,7 @@
         "type": "float",
         "group": "Transform",
         "min": 0.25, "max": 64, "default": 4,
-        "tooltip": ""
+        "tooltip": "How fine the disturbance is, in repeats across the\nsurface."
       },
       {
         "key": "turb_harmonics",
@@ -8798,7 +8798,7 @@
         "type": "choice",
         "group": "Mix",
         "choices": ["Simple blend", "Full blend (linear bumps)", "Full blend (cubic bumps)", "Cover", "Color and lighting blend"],
-        "tooltip": ""
+        "tooltip": "How the layers of the stack are combined into one surface."
       },
       {
         "key": "env_on",
@@ -8806,7 +8806,7 @@
         "type": "bool",
         "group": "Environment",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Whether the layers are allowed to react to altitude, slope\nand orientation at all. Off, they blend by their masks\nalone."
       },
       {
         "key": "alt_influence",
@@ -8830,7 +8830,7 @@
         "type": "float",
         "group": "Environment",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "How strongly the direction a slope faces counts toward\nwhich layer shows. This is what puts moss on the north\nface and dry grass on the south."
       },
       {
         "key": "orient_azimuth",
@@ -8862,7 +8862,7 @@
         "type": "float",
         "group": "Layer 1",
         "min": 0, "max": 1, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "How rough this layer's surface is: 0 is a mirror, 1\nis matt. Wet rock and ice sit low, dry scree and\ngrass high, and the difference between them is most\nof what tells one layer from another when they are\nthe same colour."
       },
       {
         "key": "rough_2",
@@ -8870,7 +8870,7 @@
         "type": "float",
         "group": "Layer 2",
         "min": 0, "max": 1, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "How rough this layer's surface is: 0 is a mirror, 1\nis matt. Wet rock and ice sit low, dry scree and\ngrass high, and the difference between them is most\nof what tells one layer from another when they are\nthe same colour."
       },
       {
         "key": "rough_3",
@@ -8878,7 +8878,7 @@
         "type": "float",
         "group": "Layer 3",
         "min": 0, "max": 1, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "How rough this layer's surface is: 0 is a mirror, 1\nis matt. Wet rock and ice sit low, dry scree and\ngrass high, and the difference between them is most\nof what tells one layer from another when they are\nthe same colour."
       },
       {
         "key": "rough_4",
@@ -8886,7 +8886,7 @@
         "type": "float",
         "group": "Layer 4",
         "min": 0, "max": 1, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "How rough this layer's surface is: 0 is a mirror, 1\nis matt. Wet rock and ice sit low, dry scree and\ngrass high, and the difference between them is most\nof what tells one layer from another when they are\nthe same colour."
       },
       {
         "key": "rough_5",
@@ -8894,7 +8894,7 @@
         "type": "float",
         "group": "Layer 5",
         "min": 0, "max": 1, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "How rough this layer's surface is: 0 is a mirror, 1\nis matt. Wet rock and ice sit low, dry scree and\ngrass high, and the difference between them is most\nof what tells one layer from another when they are\nthe same colour."
       },
       {
         "key": "rough_6",
@@ -8902,7 +8902,7 @@
         "type": "float",
         "group": "Layer 6",
         "min": 0, "max": 1, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "How rough this layer's surface is: 0 is a mirror, 1\nis matt. Wet rock and ice sit low, dry scree and\ngrass high, and the difference between them is most\nof what tells one layer from another when they are\nthe same colour."
       }
       ]
     },
@@ -8922,7 +8922,7 @@
         "label": "Base color",
         "type": "color",
         "group": "Colors",
-        "tooltip": ""
+        "tooltip": "The first of the two colours the grain runs between."
       },
       {
         "key": "use_color2",
@@ -8930,14 +8930,14 @@
         "type": "bool",
         "group": "Colors",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Off, the grain varies only in brightness. On, it runs\nbetween two colours, which is how granite gets its mixed\nmineral speckle."
       },
       {
         "key": "color2",
         "label": "Second color",
         "type": "color",
         "group": "Colors",
-        "tooltip": ""
+        "tooltip": "The second colour, when two are used."
       },
       {
         "key": "scale",
@@ -8961,7 +8961,7 @@
         "type": "float",
         "group": "Grain",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How sharply the grain separates. Low is a soft mottle;\nhigh gives distinct grains against a background."
       },
       {
         "key": "balance",
@@ -9004,7 +9004,7 @@
         "label": "Detail strength",
         "type": "float",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the detail normal is laid over the base one.\nThe two are combined so the fine map rides on the coarse\none rather than replacing its direction."
       }
       ]
     },
@@ -9037,28 +9037,28 @@
         "key": "asset",
         "label": "ambientCG asset ID",
         "type": "text",
-        "tooltip": ""
+        "tooltip": "Which surface from the library. Each brings its own\ncolour, normal, roughness and height maps together,\nalready matched."
       },
       {
         "key": "resolution",
         "label": "Resolution",
         "type": "choice",
         "choices": ["1K", "2K", "4K", "8K"],
-        "tooltip": ""
+        "tooltip": "Which size of the maps to load. Lower costs less memory\nand is invisible at a distance; the highest is for\nsurfaces the camera comes close to."
       },
       {
         "key": "mapping",
         "label": "Mapping",
         "type": "choice",
         "choices": ["Stretch", "Tile"],
-        "tooltip": ""
+        "tooltip": "How the maps are laid onto the surface. Triplanar projects\nfrom three directions and blends, which is what stops the\nstretching on a cliff face."
       },
       {
         "key": "tiles",
         "label": "Tiles across",
         "type": "float",
         "min": 1, "max": 64, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the surface repeats. Photographed materials\nshow their repeat if this is pushed too high."
       }
       ]
     },
@@ -9096,7 +9096,7 @@
         "label": "Normalize weights",
         "type": "bool",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Rescales the four channels so they sum to one at every\npoint. Splat weights that do not sum to one either darken\nthe surface or blow it out."
       }
       ]
     },
@@ -9117,14 +9117,14 @@
         "label": "Mode",
         "type": "choice",
         "choices": ["Normal", "Multiply", "Add", "Overlay", "Screen", "Height tint"],
-        "tooltip": ""
+        "tooltip": "How the two pictures are combined."
       },
       {
         "key": "opacity",
         "label": "Opacity",
         "type": "float",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the second picture shows over the first."
       }
       ]
     },
@@ -9142,7 +9142,7 @@
         "label": "Image file",
         "type": "filename",
         "group": "Picture",
-        "tooltip": ""
+        "tooltip": "The image file. Colour maps are read as sRGB and\neverything else as linear, so a normal or roughness map\nloaded here is not silently gamma-corrected."
       },
       {
         "key": "mapping",
@@ -9150,7 +9150,7 @@
         "type": "choice",
         "group": "Picture",
         "choices": ["Stretch", "Tile", "Tile offset"],
-        "tooltip": ""
+        "tooltip": "How the picture is laid onto the surface. Flat projection\nis fine on ground seen from above; triplanar projects from\nthree directions and blends, which is what stops the\nstretching on a cliff face."
       },
       {
         "key": "tiles",
@@ -9158,7 +9158,7 @@
         "type": "float",
         "group": "Picture",
         "min": 1, "max": 64, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the picture repeats across the surface.\nHigh counts show the repeat unless the picture was made\nseamless."
       },
       {
         "key": "brightness",
@@ -9166,7 +9166,7 @@
         "type": "float",
         "group": "Picture",
         "min": 0.2, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "Scales the picture after loading."
       },
       {
         "key": "gamma",
@@ -9182,7 +9182,7 @@
         "type": "choice",
         "group": "Picture",
         "choices": ["0", "90", "180", "270"],
-        "tooltip": ""
+        "tooltip": "Turns the picture on the surface."
       },
       {
         "key": "invert",
@@ -9190,7 +9190,7 @@
         "type": "bool",
         "group": "Picture",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Flips the picture's values. On a height or roughness map\nthis turns bumps into dents and gloss into matt."
       },
       {
         "key": "mirror_x",
@@ -9198,7 +9198,7 @@
         "type": "bool",
         "group": "Picture",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Mirrors alternate repeats across, which hides the seam of\na picture that does not tile."
       },
       {
         "key": "mirror_y",
@@ -9206,21 +9206,21 @@
         "type": "bool",
         "group": "Picture",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Mirrors alternate repeats down."
       },
       {
         "key": "scale",
         "label": "Picture scale",
         "type": "vec2",
         "group": "Picture",
-        "tooltip": ""
+        "tooltip": "Multiplies the picture's values after loading."
       },
       {
         "key": "offset",
         "label": "Image offset",
         "type": "vec2",
         "group": "Picture",
-        "tooltip": ""
+        "tooltip": "Added to the picture's values after loading."
       },
       {
         "key": "interpolation",
@@ -9228,7 +9228,7 @@
         "type": "choice",
         "group": "Picture",
         "choices": ["Linear", "Nearest"],
-        "tooltip": ""
+        "tooltip": "How the picture is sampled between its pixels. Smooth is\nright for nearly everything; nearest keeps hard pixel\nedges, which is what an index or ID map needs."
       }
       ]
     },
@@ -9247,7 +9247,7 @@
         "label": "Channel",
         "type": "choice",
         "choices": ["Luminance", "Red", "Green", "Blue", "Alpha"],
-        "tooltip": ""
+        "tooltip": "Which channel of the picture becomes the mask. Luminance\nis the usual choice; the single channels are for pictures\nthat were packed with a different mask in each one."
       }
       ]
     },
@@ -9265,20 +9265,20 @@
         "key": "tiles",
         "label": "Tiles",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "How many times the picture repeats across the surface."
       },
       {
         "key": "offset",
         "label": "Offset",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "Slides the picture across the surface."
       },
       {
         "key": "rotation",
         "label": "Rotation",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Turns the picture on the surface."
       },
       {
         "key": "mirror",
@@ -9781,7 +9781,7 @@
         "type": "float",
         "group": "Interaction",
         "min": 0.1, "max": 2000, "default": 25,
-        "tooltip": ""
+        "tooltip": "How far this population reaches to gather around the one\nbelow it, in metres."
       },
       {
         "key": "repulsion",
@@ -9797,7 +9797,7 @@
         "type": "float",
         "group": "Interaction",
         "min": 0.1, "max": 2000, "default": 8,
-        "tooltip": ""
+        "tooltip": "How far this population is pushed back from the one below\nit, in metres - the bare ring around the base of a tree."
       },
       {
         "key": "avoid_overlap",
@@ -10019,7 +10019,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp2_presence",
@@ -10035,7 +10035,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp3_presence",
@@ -10051,7 +10051,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp4_presence",
@@ -10067,7 +10067,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp5_presence",
@@ -10083,7 +10083,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp6_presence",
@@ -10099,7 +10099,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp7_presence",
@@ -10115,7 +10115,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "sp8_presence",
@@ -10131,7 +10131,7 @@
         "type": "float",
         "group": "Population",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "This species' size, as a multiple of the layer's own\noverall scaling. A population of one mesh at several\nsizes reads as a stand of different ages; every copy\nidentical reads as instancing."
       },
       {
         "key": "scale",
@@ -10139,7 +10139,7 @@
         "type": "float",
         "group": "Scaling",
         "min": 0.05, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "The size of one copy, as a multiple of the mesh's own\nsize."
       },
       {
         "key": "variation",
@@ -10171,7 +10171,7 @@
         "type": "choice",
         "group": "Scaling",
         "choices": ["Up axis", "None", "Driven"],
-        "tooltip": ""
+        "tooltip": "How far a copy may be turned about its up axis. Full\nrotation is right for anything without a front; less keeps\na set of objects aligned."
       },
       {
         "key": "rotation_max",
@@ -10211,7 +10211,7 @@
         "type": "float",
         "group": "Scaling",
         "min": 0.1, "max": 2000, "default": 30,
-        "tooltip": ""
+        "tooltip": "How close to the population below a copy must be before it\nis made smaller, in metres. This is what puts stunted\ngrowth under a canopy rather than an abrupt edge."
       },
       {
         "key": "lean",
@@ -10227,7 +10227,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How much copies differ in brightness from one another.\nIdentical tint across a whole population is the second\nclearest sign of instancing, after identical size."
       },
       {
         "key": "phase_range",
@@ -10289,7 +10289,7 @@
         "type": "choice",
         "group": "Density",
         "choices": ["Jittered", "Random", "Regular"],
-        "tooltip": ""
+        "tooltip": "How the candidate positions are laid out before anything\nis rejected. A jittered lattice covers ground evenly;\npurely random leaves clumps and bald patches, which is\nsometimes what you want."
       },
       {
         "key": "clump_amount",
@@ -10305,7 +10305,7 @@
         "type": "float",
         "group": "Density",
         "min": 0.5, "max": 5000, "default": 60,
-        "tooltip": ""
+        "tooltip": "How far across one clump of plants is, in metres.\nVegetation gathers where the ground suits it, and a\npopulation spread perfectly evenly is the clearest sign of\na generated one."
       },
       {
         "key": "seed",
@@ -10360,7 +10360,7 @@
         "type": "bool",
         "group": "Altitude",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to a band of heights."
       },
       {
         "key": "altitude_mode",
@@ -10368,7 +10368,7 @@
         "type": "choice",
         "group": "Altitude",
         "choices": ["By terrain", "Absolute", "Relative to sea"],
-        "tooltip": ""
+        "tooltip": "Whether the altitude band is read against the terrain's\nown range, in absolute height units, or from sea level."
       },
       {
         "key": "altitude",
@@ -10383,7 +10383,7 @@
         "type": "float",
         "group": "Altitude",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The height that counts as sea level, when the altitude\nband is measured from it rather than from the terrain's\nown range."
       },
       {
         "key": "altitude_fuzz",
@@ -10391,7 +10391,7 @@
         "type": "float",
         "group": "Altitude",
         "min": 0, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out at the edges of its\naltitude band. Zero draws a contour line across the\nhillside."
       },
       {
         "key": "use_slope",
@@ -10399,7 +10399,7 @@
         "type": "bool",
         "group": "Slope",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to a band of steepness."
       },
       {
         "key": "slope",
@@ -10414,7 +10414,7 @@
         "type": "float",
         "group": "Slope",
         "min": 0, "max": 45, "default": 6,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out at the edges of its\nslope band."
       },
       {
         "key": "use_orientation",
@@ -10422,7 +10422,7 @@
         "type": "bool",
         "group": "Orientation",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the layer to slopes facing a particular way."
       },
       {
         "key": "orientation",
@@ -10438,7 +10438,7 @@
         "type": "float",
         "group": "Orientation",
         "min": 5, "max": 180, "default": 60,
-        "tooltip": ""
+        "tooltip": "How wide an arc of facings counts as the favoured\ndirection. Narrow puts moss on the north face alone; wide\ncovers most of the hill."
       },
       {
         "key": "orient_fuzz",
@@ -10446,7 +10446,7 @@
         "type": "float",
         "group": "Orientation",
         "min": 0, "max": 90, "default": 20,
-        "tooltip": ""
+        "tooltip": "How gradually the layer gives out as a slope turns away\nfrom the favoured direction."
       },
       {
         "key": "height_scale",

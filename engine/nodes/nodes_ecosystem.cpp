@@ -44,9 +44,15 @@ REGISTER_NODE(
       n.add_out("points", DataType::Points);
       n.add_out("density", DataType::Heightmap);
 
-      add_text(n.attrs, "name", "Name", "Ecosystem", "Layer");
-      add_bool(n.attrs, "enabled", "Populate", true, "Layer");
-      add_bool(n.attrs, "invert_mask", "Invert presence", false, "Layer");
+      add_text(n.attrs, "name", "Name", "Ecosystem", "Layer")
+          .tooltip = "What this population is called in the stack and the\n"
+                     "Objects tree.";
+      add_bool(n.attrs, "enabled", "Populate", true, "Layer")
+          .tooltip = "Turns the layer off without removing it or losing its\n"
+                     "settings.";
+      add_bool(n.attrs, "invert_mask", "Invert presence", false, "Layer")
+          .tooltip = "Uses the mask the other way round: the layer appears where\n"
+                     "the mask is dark.";
       eco::declare_density(n);
       eco::declare_presence(n);
       eco::declare_interaction(n);

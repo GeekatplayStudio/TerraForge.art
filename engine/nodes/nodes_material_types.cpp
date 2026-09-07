@@ -55,7 +55,10 @@ REGISTER_NODE(
       add_int(n.attrs, "count", "Instances", 800, 1, 50000, "Population")
           .tooltip = "How many objects the presence places at full presence.";
       add_float(n.attrs, "min_dist", "Min spacing", 0.015f, 0.001f, 0.3f,
-                "Population");
+                "Population")
+          .tooltip = "The closest two placed items may come to one another. This\n"
+                     "is what stops a distribution clumping into overlapping\n"
+                     "piles at high density.";
       add_float(n.attrs, "threshold", "Presence threshold", 0.15f, 0.f, 1.f,
                 "Population")
           .tooltip = "Presence below this places nothing at all.";
@@ -136,11 +139,14 @@ REGISTER_NODE(
                      "Pressure: trodden or loaded ground. Wind: local air "
                      "movement. Light and Heat: exposure. Moisture: wetness. "
                      "Custom: whatever a script assigns it.";
-      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 4.f, "Effector");
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 4.f, "Effector")
+          .tooltip = "How strongly this layer pushes the layers below it around.";
       add_float(n.attrs, "falloff", "Falloff", 1.f, 0.1f, 6.f, "Effector")
           .tooltip = "A power on the mask: above 1 the field concentrates "
                      "where the mask is strongest, below 1 it spreads.";
-      add_bool(n.attrs, "invert", "Invert", false, "Effector");
+      add_bool(n.attrs, "invert", "Invert", false, "Effector")
+          .tooltip = "Pushes where it would have pulled, and the other way\n"
+                     "about.";
       add_bool(n.attrs, "show", "Tint the material by the field", false,
                "Effector")
           .tooltip = "Blends the field into the colour so it can be seen in "

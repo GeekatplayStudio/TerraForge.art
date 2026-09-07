@@ -63,8 +63,13 @@ def _find_call(src, key, span=None):
     caller can see whether a `.tooltip` already follows it.
     """
     lo, hi = span if span else (0, len(src))
-    m = re.compile(r'^([ \t]*)add_\w+\(\s*\w+\.attrs\s*,\s*"' + re.escape(key) + r'"',
-                   re.M).search(src, lo, hi)
+    # Two declaration styles in the codebase, both "call(attrset, "key", ...)":
+    # the node files use add_float / add_choice / ... on `n.attrs`, and
+    # engine/material_params.cpp uses one-letter helpers f/i/b/c on a bare
+    # `a`. Matching the shape rather than the name covers both, and the key
+    # in quotes is what makes it unambiguous either way.
+    m = re.compile(r'^([ \t]*)(?:add_\w+|[a-z])\(\s*\w+(?:\.attrs)?\s*,\s*"'
+                   + re.escape(key) + r'"', re.M).search(src, lo, hi)
     if not m:
         return None
     start, indent = m.start(), len(m.group(1))

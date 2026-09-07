@@ -19,22 +19,40 @@ inline void declare_presence(Node &n) {
   add_float(n.attrs, "slope_influence", "Slope influence", 0.5f, 0.f, 1.f, "Density")
       .tooltip = "1: instances thin out on steep ground. 0: the same density\n"
                  "whatever the slope.";
-  add_bool(n.attrs, "use_altitude", "By altitude", false, "Altitude");
+  add_bool(n.attrs, "use_altitude", "By altitude", false, "Altitude")
+      .tooltip = "Limits the layer to a band of heights.";
   add_choice(n.attrs, "altitude_mode", "Range of altitudes",
-             {"By terrain", "Absolute", "Relative to sea"}, 0, "Altitude");
+             {"By terrain", "Absolute", "Relative to sea"}, 0, "Altitude")
+      .tooltip = "Whether the altitude band is read against the terrain's\n"
+                 "own range, in absolute height units, or from sea level.";
   add_range(n.attrs, "altitude", "Altitude band", 0.f, 1.f, 0.f, 1.f, "Altitude")
       .tooltip = "As a fraction of the terrain's own height range.";
-  add_float(n.attrs, "sea_level", "Sea level", 0.f, 0.f, 1.f, "Altitude");
-  add_float(n.attrs, "altitude_fuzz", "Fade", 0.08f, 0.f, 0.5f, "Altitude");
-  add_bool(n.attrs, "use_slope", "By slope", false, "Slope");
+  add_float(n.attrs, "sea_level", "Sea level", 0.f, 0.f, 1.f, "Altitude")
+      .tooltip = "The height that counts as sea level, when the altitude\n"
+                 "band is measured from it rather than from the terrain's\n"
+                 "own range.";
+  add_float(n.attrs, "altitude_fuzz", "Fade", 0.08f, 0.f, 0.5f, "Altitude")
+      .tooltip = "How gradually the layer gives out at the edges of its\n"
+                 "altitude band. Zero draws a contour line across the\n"
+                 "hillside.";
+  add_bool(n.attrs, "use_slope", "By slope", false, "Slope")
+      .tooltip = "Limits the layer to a band of steepness.";
   add_range(n.attrs, "slope", "Slope band", 0.f, 30.f, 0.f, 90.f, "Slope")
       .tooltip = "Degrees from horizontal. 0 is flat, 90 is a cliff.";
-  add_float(n.attrs, "slope_fuzz", "Fade", 6.f, 0.f, 45.f, "Slope");
-  add_bool(n.attrs, "use_orientation", "By orientation", false, "Orientation");
+  add_float(n.attrs, "slope_fuzz", "Fade", 6.f, 0.f, 45.f, "Slope")
+      .tooltip = "How gradually the layer gives out at the edges of its\n"
+                 "slope band.";
+  add_bool(n.attrs, "use_orientation", "By orientation", false, "Orientation")
+      .tooltip = "Limits the layer to slopes facing a particular way.";
   add_float(n.attrs, "orientation", "Faces", 0.f, 0.f, 360.f, "Orientation")
       .tooltip = "Compass direction the surface looks towards. 0 is north.";
-  add_float(n.attrs, "orient_width", "Arc", 60.f, 5.f, 180.f, "Orientation");
-  add_float(n.attrs, "orient_fuzz", "Fade", 20.f, 0.f, 90.f, "Orientation");
+  add_float(n.attrs, "orient_width", "Arc", 60.f, 5.f, 180.f, "Orientation")
+      .tooltip = "How wide an arc of facings counts as the favoured\n"
+                 "direction. Narrow puts moss on the north face alone; wide\n"
+                 "covers most of the hill.";
+  add_float(n.attrs, "orient_fuzz", "Fade", 20.f, 0.f, 90.f, "Orientation")
+      .tooltip = "How gradually the layer gives out as a slope turns away\n"
+                 "from the favoured direction.";
   add_float(n.attrs, "height_scale", "Terrain height scale", 1.f, 0.001f, 100.f, "Slope", true)
       .tooltip = "World height of a heightmap unit as a fraction of the tile's\n"
                  "width; the studio keeps this in step with the project so a\n"
@@ -86,13 +104,17 @@ inline void declare_interaction(Node &n) {
       .tooltip = "Positive: instances gather around the instances of the\n"
                  "layer below (primroses around the trees) and thin out\n"
                  "elsewhere. Negative: everywhere except near them.";
-  add_float(n.attrs, "affinity_radius_m", "Affinity radius (m)", 25.f, 0.1f, 2000.f, "Interaction", true);
+  add_float(n.attrs, "affinity_radius_m", "Affinity radius (m)", 25.f, 0.1f, 2000.f, "Interaction", true)
+      .tooltip = "How far this population reaches to gather around the one\n"
+                 "below it, in metres.";
   add_float(n.attrs, "repulsion", "Repulsion from layer below", 0.f, -1.f, 1.f, "Interaction")
       .tooltip = "Sudden. Positive: a void around each instance below (no\n"
                  "grass under the canopy). Negative: only inside that void\n"
                  "(small stones at the foot of the boulder). Use both: near\n"
                  "the trees but not under them.";
-  add_float(n.attrs, "repulsion_radius_m", "Repulsion radius (m)", 8.f, 0.1f, 2000.f, "Interaction", true);
+  add_float(n.attrs, "repulsion_radius_m", "Repulsion radius (m)", 8.f, 0.1f, 2000.f, "Interaction", true)
+      .tooltip = "How far this population is pushed back from the one below\n"
+                 "it, in metres - the bare ring around the base of a tree.";
   add_bool(n.attrs, "avoid_overlap", "Avoid overlapping instances", true, "Interaction")
       .tooltip = "No two instances closer than their footprints allow.";
 }
@@ -120,9 +142,15 @@ inline void declare_transform(Node &n) {
     add_float(n.attrs, k + "_presence", "Species " + std::to_string(s) + " presence", 1.f, 0.f, 1.f, "Population")
         .tooltip = "Relative to the other species: raising every presence\n"
                    "places no more instances.";
-    add_float(n.attrs, k + "_scale", "Species " + std::to_string(s) + " scale", 1.f, 0.05f, 10.f, "Population", true);
+    add_float(n.attrs, k + "_scale", "Species " + std::to_string(s) + " scale", 1.f, 0.05f, 10.f, "Population", true)
+        .tooltip = "This species' size, as a multiple of the layer's own\n"
+                   "overall scaling. A population of one mesh at several\n"
+                   "sizes reads as a stand of different ages; every copy\n"
+                   "identical reads as instancing.";
   }
-  add_float(n.attrs, "scale", "Overall scaling", 1.f, 0.05f, 10.f, "Scaling", true);
+  add_float(n.attrs, "scale", "Overall scaling", 1.f, 0.05f, 10.f, "Scaling", true)
+      .tooltip = "The size of one copy, as a multiple of the mesh's own\n"
+                 "size.";
   add_float(n.attrs, "variation", "Size variation", 0.3f, 0.f, 1.f, "Scaling")
       .tooltip = "1: instances range from half to twice the size.";
   add_float(n.attrs, "keep_proportions", "Keep proportions", 1.f, 0.f, 1.f, "Scaling")
@@ -130,7 +158,10 @@ inline void declare_transform(Node &n) {
   add_float(n.attrs, "direction", "Direction from surface", 0.f, 0.f, 1.f, "Scaling")
       .tooltip = "0: instances grow vertically whatever the slope.\n"
                  "1: perpendicular to the ground (rocks); trees want 0.";
-  add_choice(n.attrs, "rotation", "Rotation", {"Up axis", "None", "Driven"}, 0, "Scaling");
+  add_choice(n.attrs, "rotation", "Rotation", {"Up axis", "None", "Driven"}, 0, "Scaling")
+      .tooltip = "How far a copy may be turned about its up axis. Full\n"
+                 "rotation is right for anything without a front; less keeps\n"
+                 "a set of objects aligned.";
   add_float(n.attrs, "rotation_max", "Maximum angle", 1.f, 0.f, 1.f, "Scaling")
       .tooltip = "As a fraction of a half turn either way.";
   add_float(n.attrs, "offset_m", "Offset from surface (m)", 0.f, -50.f, 50.f, "Scaling")
@@ -141,11 +172,17 @@ inline void declare_transform(Node &n) {
   add_float(n.attrs, "shrink", "Shrink at low density", 0.f, -1.f, 1.f, "Scaling")
       .tooltip = "Lone instances are smaller (negative: larger), as at the\n"
                  "edge of a wood.";
-  add_float(n.attrs, "shrink_radius_m", "Low-density radius (m)", 30.f, 0.1f, 2000.f, "Scaling", true);
+  add_float(n.attrs, "shrink_radius_m", "Low-density radius (m)", 30.f, 0.1f, 2000.f, "Scaling", true)
+      .tooltip = "How close to the population below a copy must be before it\n"
+                 "is made smaller, in metres. This is what puts stunted\n"
+                 "growth under a canopy rather than an abrupt edge.";
   add_float(n.attrs, "lean", "Lean out at low density", 0.f, 0.f, 1.f, "Scaling")
       .tooltip = "Lone instances lean into the slope, as plants reaching\n"
                  "for light.";
-  add_float(n.attrs, "color_variation", "Color variation", 0.3f, 0.f, 1.f, "Color");
+  add_float(n.attrs, "color_variation", "Color variation", 0.3f, 0.f, 1.f, "Color")
+      .tooltip = "How much copies differ in brightness from one another.\n"
+                 "Identical tint across a whole population is the second\n"
+                 "clearest sign of instancing, after identical size.";
   add_float(n.attrs, "phase_range", "Time offset range (s)", 1.f, 0.f, 10.f, "Animation")
       .tooltip = "Each instance's wind phase is shifted by up to this, so a\n"
                  "field sways as a crowd, not a marching army.";
@@ -187,10 +224,18 @@ inline void declare_density(Node &n) {
   add_float(n.attrs, "spacing_m", "Minimum spacing (m)", 5.f, 0.05f, 1000.f, "Density", true)
       .tooltip = "The lattice the candidates stand on. Changing the density\n"
                  "never moves an instance; changing this reseeds them all.";
-  add_choice(n.attrs, "placement", "Placement", {"Jittered", "Random", "Regular"}, 0, "Density");
+  add_choice(n.attrs, "placement", "Placement", {"Jittered", "Random", "Regular"}, 0, "Density")
+      .tooltip = "How the candidate positions are laid out before anything\n"
+                 "is rejected. A jittered lattice covers ground evenly;\n"
+                 "purely random leaves clumps and bald patches, which is\n"
+                 "sometimes what you want.";
   add_float(n.attrs, "clump_amount", "Clumping", 0.f, 0.f, 1.f, "Density")
       .tooltip = "Groups instances together as species do in nature.";
-  add_float(n.attrs, "clump_size_m", "Clump size (m)", 60.f, 0.5f, 5000.f, "Density", true);
+  add_float(n.attrs, "clump_size_m", "Clump size (m)", 60.f, 0.5f, 5000.f, "Density", true)
+      .tooltip = "How far across one clump of plants is, in metres.\n"
+                 "Vegetation gathers where the ground suits it, and a\n"
+                 "population spread perfectly evenly is the clearest sign of\n"
+                 "a generated one.";
   add_seed(n.attrs, "seed", "Seed", 0, "Density");
   add_bool(n.attrs, "unbounded", "Populate around the camera", false, "Density")
       .tooltip = "Off: the population covers the terrain tile, computed once.\n"

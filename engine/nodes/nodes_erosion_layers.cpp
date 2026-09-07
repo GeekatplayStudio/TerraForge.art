@@ -366,9 +366,13 @@ REGISTER_NODE(
       add_choice(n.attrs, "blend_method", "Blending method",
                  {"Simple blend", "Full blend (linear bumps)",
                   "Full blend (cubic bumps)", "Cover", "Color and lighting blend"},
-                 0, "Mix");
+                 0, "Mix")
+          .tooltip = "How the layers of the stack are combined into one surface.";
       add_bool(n.attrs, "env_on", "Distribution dependent on environment", false,
-               "Environment");
+               "Environment")
+          .tooltip = "Whether the layers are allowed to react to altitude, slope\n"
+                     "and orientation at all. Off, they blend by their masks\n"
+                     "alone.";
       add_float(n.attrs, "alt_influence", "Influence of altitude", 0.f, -1.f, 1.f,
                 "Environment")
           .tooltip = "Positive: material 2 higher up. Negative: lower down.";
@@ -376,7 +380,10 @@ REGISTER_NODE(
                 "Environment")
           .tooltip = "Positive: material 2 on steep faces. Negative: on flat.";
       add_float(n.attrs, "orient_influence", "Influence of orientation", 0.f, 0.f,
-                1.f, "Environment");
+                1.f, "Environment")
+          .tooltip = "How strongly the direction a slope faces counts toward\n"
+                     "which layer shows. This is what puts moss on the north\n"
+                     "face and dry grass on the south.";
       add_float(n.attrs, "orient_azimuth", "Azimuth", 0.f, 0.f, 360.f, "Environment")
           .tooltip = "Material 2 gathers on faces looking this way. 0 is north.";
       add_float(n.attrs, "height_blend", "Height blend", 0.5f, 0.f, 1.f, "Blending")
@@ -387,7 +394,12 @@ REGISTER_NODE(
           .tooltip = "How far below the winning layer others still show.";
       for (int k = 1; k <= 6; ++k)
         add_float(n.attrs, "rough_" + std::to_string(k), "Roughness", 0.8f, 0.f, 1.f,
-                  "Layer " + std::to_string(k));
+                  "Layer " + std::to_string(k))
+            .tooltip = "How rough this layer's surface is: 0 is a mirror, 1\n"
+                       "is matt. Wet rock and ice sit low, dry scree and\n"
+                       "grass high, and the difference between them is most\n"
+                       "of what tells one layer from another when they are\n"
+                       "the same colour.";
     },
     [](Node &n) {
       const Heightmap *M[6];
