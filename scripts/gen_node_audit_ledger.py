@@ -42,7 +42,7 @@ STEPS = [
 GUARD = {
     "preview": "`tests/cpp/test_nodes.cpp` - every node has an output "
                "`studio/preview.cpp` can draw",
-    "tested": "`tests/cpp/test_points_preview.cpp` - wired, evaluated, drawn",
+    "tested": "`build/param_audit` - wired to real upstream nodes, evaluated, every parameter moved",
     "ports": "`tests/cpp/test_nodes.cpp` - contract battery",
     "docs": "`tools/gen_node_docs.cpp` - regenerated from the registry",
     "described": "`tests/cpp/test_nodes.cpp` + `tools/node_audit.cpp`",
