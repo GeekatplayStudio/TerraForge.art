@@ -324,12 +324,11 @@ MCP_TOOLS = {
         "description": "A grounded object's settings, in metres: lock (base "
                        "follows the surface), offset_m the height over the "
                        "surface (negative for below it, and the same "
-                       "number as the object's Y), settle 0..1 where it "
-                       "rests in uneven ground (1 on the highest ground "
-                       "under its base so it never cuts in but hangs over a "
-                       "slope, 0 on the lowest so it touches everywhere - "
-                       "this is the control for the gap under an object), "
-                       "margin_m the flat "
+                       "number as the object's Y), sunk_m how far it is sunk "
+                       "INTO the ground below the highest point under its "
+                       "base - the ground does not react to this, so it is "
+                       "the control for the gap under an object on a slope "
+                       "and for burying one - margin_m the flat "
                        "patch past the walls, blend_m how far the ground "
                        "responds (0 = auto), sink_m a dead band before "
                        "digging starts. lift_m and dig_m cap how far the "
@@ -341,7 +340,7 @@ MCP_TOOLS = {
                        "the ground always follows.",
         "params": {"object": "str", "lock": "bool", "offset_m": "float",
                    "margin_m": "float", "blend_m": "float", "sink_m": "float",
-                   "lift_m": "float", "dig_m": "float", "settle": "float"},
+                   "lift_m": "float", "dig_m": "float", "sunk_m": "float"},
     },
     "studio_graph": {
         "description": "Merge a node-graph spec (terrain or material) into the "

@@ -123,8 +123,10 @@ void transform_ui(App &a, SceneObject &o) {
       prop_filter_match("Resolution")) {
     ImGui::SeparatorText("Resolution");
     int detail = o.primitive_detail;
-    if (ImGui::SliderInt("Segments", &detail, 3, 512)) {
-      detail = std::clamp(detail, 3, 512);
+    // A drag with a floor and no ceiling. The only cap is inside the
+    // generator, at a size that would exhaust memory, and it says so.
+    if (ImGui::DragInt("Segments", &detail, 0.5f, 3, 0)) {
+      detail = std::max(detail, 3);
       if (detail != o.primitive_detail &&
           scene_primitive_verts(o.path.substr(10), o.verts, detail)) {
         o.primitive_detail = detail;
@@ -206,21 +208,25 @@ void ground_ui(App &a, SceneObject &o) {
   // The gap. An object seated on the highest ground under its footprint
   // never intersects the terrain - and on any slope that means it touches at
   // one corner and hangs over the rest, which reads as floating.
-  float settle = 1.f - std::clamp(o.ground_settle, 0.f, 1.f);
-  if (ImGui::SliderFloat("Sink into the ground", &settle, 0.f, 1.f, "%.2f"))
-    o.ground_settle = 1.f - std::clamp(settle, 0.f, 1.f);
+  float sunk_m = o.ground_sunk * m;
+  if (ImGui::DragFloat("Sink into the ground", &sunk_m, dh, 0.f, 0.f, "%.2f m"))
+    o.ground_sunk = std::max(sunk_m, 0.f) / m;
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("How deep the object settles into uneven ground.\n\n"
-                      "0 seats it on the highest ground under its base, so it\n"
-                      "never cuts into the terrain - and on a slope it touches\n"
-                      "at one corner and hangs over the rest. That gap is what\n"
-                      "this closes.\n\n"
-                      "1 seats it on the lowest ground under its base, so it\n"
-                      "touches everywhere and the terrain rises through it\n"
-                      "where the ground is higher. Anything between splits the\n"
-                      "difference.\n\n"
-                      "This is where it *rests*. How far the ground may then\n"
-                      "move to meet it is below.");
+    ImGui::SetTooltip("How far the object is sunk into the ground, below the\n"
+                      "highest point under its base. The ground does NOT move:\n"
+                      "the object goes down into it and the terrain rises\n"
+                      "through it wherever the ground is higher.\n\n"
+                      "At zero it sits on its highest corner and, on a slope,\n"
+                      "hangs over the rest - that is the gap. Sink it by the\n"
+                      "unevenness shown below and it touches everywhere; sink\n"
+                      "it further and it is buried. No upper limit.\n\n"
+                      "This is different from a negative height, which the\n"
+                      "ground follows down.");
+  ImGui::SameLine();
+  ImGui::TextDisabled("(ground under it varies by %.2f m)", o.ground_uneven * m);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Highest minus lowest ground under the base. Sink by at\n"
+                      "least this much and no corner is left in the air.");
   float margin_m = o.ground_margin * tile_m;
   if (ImGui::DragFloat("Flat margin", &margin_m, dt, 0.f, 1e6f, "%.2f m"))
     o.ground_margin = std::max(margin_m, 0.f) / tile_m;

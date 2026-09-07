@@ -173,11 +173,20 @@ struct SceneObject {
   // Built-in primitives only: how finely the shape is tessellated, so it
   // can carry a displacement material rather than read as a facet count.
   int primitive_detail = 24;
-  // Where the base sits between the lowest and the highest ground under the
-  // footprint. 1 rests on the highest point, so the object never intersects
-  // the ground and hangs over the rest of it - which is the gap. 0 sinks it
-  // until it touches everywhere.
-  float ground_settle = 1.f;
+  // How far the base is sunk below the highest ground under its footprint,
+  // in heightmap units. Zero seats it on that highest point, so it never
+  // cuts into the terrain - and on any slope hangs over the rest, which is
+  // the gap. Sink it by the ground's own unevenness and it touches
+  // everywhere; sink it further and it is buried. Unlimited.
+  //
+  // The terrain does NOT react to this: the amount sunk is added to the
+  // imprint's dead band, so sinking an object into the ground leaves the
+  // ground where it was. That is the difference between this and a negative
+  // height, which the ground follows down.
+  float ground_sunk = 0.f;
+  // How uneven the ground under the base is (highest minus lowest sample),
+  // runtime only, so the panel can say how deep "touches everywhere" is.
+  float ground_uneven = 0.f;
   // What the ground lock last wrote into pos[1]. Runtime only, never saved:
   // it is how the lock tells its own writes from the user's, so that typing
   // an altitude, dragging the gizmo, driving it over the API or keyframing

@@ -40,7 +40,10 @@ bool scene_primitive_verts(const std::string &kind, std::vector<float> &v,
   // moment it fills any part of the frame - and the reason to have it low
   // was never measured, it was just never raised. A sphere at 256 is 130k
   // triangles, which the renderer draws without noticing.
-  const int N = std::clamp(detail, 3, 512);
+  // 2048 round is eight million triangles on a sphere - about 200 MB of
+  // vertices - and is the one cap in this path. It exists so a typo does not
+  // ask for a gigabyte, not because anything smaller is unreasonable.
+  const int N = std::clamp(detail, 3, 2048);
   const int R = std::max(2, N / 2); // rings: half the segments reads round
   if (kind == "cube") {
     float p[8][3];

@@ -135,7 +135,8 @@ GroundLockStep ground_lock_step(float pos_y, float last_y, bool seen,
 }
 
 std::string imprint_footprint_line(const Footprint &f, float sink, float margin,
-                                   float blend, float lift, float dig) {
+                                   float blend, float lift, float dig,
+                                   float below) {
   std::string s;
   char buf[96];
   std::snprintf(buf, sizeof buf, "%.6f %.6f %.6f %.6f %d", f.base, sink, margin, blend, (int)(f.xz.size() / 2));
@@ -147,7 +148,7 @@ std::string imprint_footprint_line(const Footprint &f, float sink, float margin,
   // Appended after the hull rather than inserted among the leading fields,
   // so a project saved before these existed still parses: the reader's
   // trailing read simply fails and its defaults stand.
-  std::snprintf(buf, sizeof buf, " %.6f %.6f", lift, dig);
+  std::snprintf(buf, sizeof buf, " %.6f %.6f %.6f", lift, dig, below);
   s += buf;
   s += '\n';
   return s;

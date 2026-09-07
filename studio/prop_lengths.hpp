@@ -68,7 +68,19 @@ inline void text_length(const char *label, float metres) {
 inline void labeled_scalar(const char *label, const char *id, float *v, float mn,
                     float mx) {
   ImGui::TextUnformatted(label);
-  scalar_float(id, v, mn, mx);
+  // These callers pass their range as constants, which would reset it every
+  // frame and make the "push past the end" rule a no-op for them. The
+  // widened range is remembered per control instead, so a sun intensity of
+  // 20 or a height scale of 3 is a drag away like everything else.
+  static std::map<std::string, std::pair<float, float>> remembered;
+  auto it = remembered.find(id);
+  if (it == remembered.end())
+    it = remembered.emplace(id, std::make_pair(mn, mx)).first;
+  // a range passed in wider than what we remember wins, so a caller that
+  // changes its own defaults is not pinned to an old memory
+  it->second.first = std::min(it->second.first, mn);
+  it->second.second = std::max(it->second.second, mx);
+  scalar_float(id, v, it->second.first, it->second.second);
 }
 
 

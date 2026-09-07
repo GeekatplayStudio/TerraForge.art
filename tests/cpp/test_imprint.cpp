@@ -275,6 +275,77 @@ static void test_altitude_is_the_users_to_set() {
   }
 }
 
+// Sinking an object into the ground does not move the ground.
+//
+// Reported twice. The first fix stopped the ground being DUG down to a sunk
+// base - but the ground below the base was still being LIFTED up to it, a
+// mound under the low side of any object on a slope. Both directions are
+// covered now: the sunk depth joins the dead band above the base, and
+// `below` - the unevenness the sink has not yet covered - keeps the ground
+// under the base where it was. This test is the sloped case, measured on the
+// ground rather than on the object.
+static void test_sinking_does_not_move_the_ground() {
+  std::printf("imprint: sinking leaves the ground alone...\n");
+  // a slope: 0.2 on the left edge rising to 0.8 on the right
+  auto slope = [] {
+    gpx::Heightmap g(64, 64);
+    for (int y = 0; y < 64; ++y)
+      for (int x = 0; x < 64; ++x) g.at(x, y) = 0.2f + 0.6f * x / 63.f;
+    return g;
+  };
+  const char *hull = "4 0.3 0.3 0.7 0.3 0.7 0.7 0.3 0.7"; // spans x 0.3..0.7
+  // under that footprint the ground runs about 0.38 .. 0.62: uneven by 0.24
+  gpx::ImprintParams prm;
+  prm.retain = 0.f;
+
+  // Seated on the highest ground (base 0.62), sunk by 0.1: base at 0.52.
+  // Dead band above: sink 0.1 covers ground up to 0.62. Below: 0.24 - 0.1 =
+  // 0.14 keeps ground down to 0.38. So NOTHING in the footprint moves.
+  {
+    gpx::Heightmap g = slope();
+    const gpx::Heightmap before = g;
+    // base 0.52, sink 0.1 (the sunk depth), margin 0, blend 0.05, hull,
+    // lift/dig unlimited, below 0.14
+    gpx::imprint_apply(g, std::string("0.52 0.1 0 0.05 ") + hull +
+                              " 1e9 1e9 0.14\n", prm, nullptr);
+    float worst = 0.f;
+    for (int y = 20; y < 44; ++y)
+      for (int x = 20; x < 44; ++x)
+        worst = std::max(worst, std::fabs(g.at(x, y) - before.at(x, y)));
+    CHECK(worst < 1e-5f,
+          "a sunk object leaves the sloped ground under it untouched, worst "
+          "move " + std::to_string(worst));
+  }
+
+  // Without `below` the low side is lifted to the base: this is what the
+  // bug looked like, and it stays reachable so the old behaviour is still
+  // pinned as the old behaviour.
+  {
+    gpx::Heightmap g = slope();
+    gpx::imprint_apply(g, std::string("0.52 0.1 0 0.05 ") + hull + "\n", prm,
+                       nullptr);
+    CHECK(near(g.at(22, 32), 0.52f),
+          "with no `below` the low side is lifted to the base, got " +
+              std::to_string(g.at(22, 32)));
+  }
+
+  // Sunk further than the ground is uneven, `below` is 0 and nothing sits
+  // under the base at all - so still nothing moves, from the other side.
+  {
+    gpx::Heightmap g = slope();
+    const gpx::Heightmap before = g;
+    // base 0.32 (sunk 0.3 from 0.62), sink 0.3 covers up to 0.62
+    gpx::imprint_apply(g, std::string("0.32 0.3 0 0.05 ") + hull +
+                              " 1e9 1e9 0\n", prm, nullptr);
+    float worst = 0.f;
+    for (int y = 20; y < 44; ++y)
+      for (int x = 20; x < 44; ++x)
+        worst = std::max(worst, std::fabs(g.at(x, y) - before.at(x, y)));
+    CHECK(worst < 1e-5f, "buried deeper than the unevenness: still untouched, "
+                         "worst move " + std::to_string(worst));
+  }
+}
+
 static void test_surface_features() {
   std::printf("imprint: surface features after placement...\n");
   gpx::Heightmap ground(64, 64);
@@ -309,6 +380,7 @@ int test_imprint_run() {
   test_band_and_fallbacks();
   test_altitude_is_the_users_to_set();
   test_ground_may_be_told_to_stay_put();
+  test_sinking_does_not_move_the_ground();
   test_surface_features();
   return g_fail;
 }

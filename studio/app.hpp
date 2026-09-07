@@ -260,7 +260,9 @@ void node_properties_ui(App &a, uint64_t node_id, bool any_workspace);
 void graph_editor_add(App &a, int domain);
 void scene_properties_ui(App &a);
 // the labelled slider + stepper used throughout the properties editor
-bool scalar_float(const char *id, float *v, float mn, float mx,
+// `mn` and `mx` by reference: the range grows when the value is pushed past
+// it, and the widened range is kept on the attribute it belongs to.
+bool scalar_float(const char *id, float *v, float &mn, float &mx,
                   bool log_scale = false);
 void world_properties_ui(App &a);
 void material_properties_ui(App &a);

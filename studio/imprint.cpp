@@ -97,9 +97,18 @@ std::string footprints_text(const SceneState &sc, float hs, bool &any) {
     Footprint f = imprint_footprint(o, hs);
     if (!f.valid()) continue;
     any = true;
-    text += imprint_footprint_line(f, o.ground_sink, o.ground_margin,
+    // The sunk depth joins the dead band. Without this the node saw a base
+    // below the ground and dug the ground down to it, so "sink into the
+    // ground" moved the ground instead of the object - which is the exact
+    // opposite of what it says.
+    // Sinking must not move the ground, in either direction. Above the
+    // base the sunk depth joins the dead band; below it, whatever of the
+    // natural unevenness the sink has not yet covered is left alone too.
+    const float sunk = std::max(o.ground_sunk, 0.f);
+    text += imprint_footprint_line(f, o.ground_sink + sunk, o.ground_margin,
                                     o.ground_blend, o.ground_lift,
-                                    o.ground_dig);
+                                    o.ground_dig,
+                                    std::max(o.ground_uneven - sunk, 0.f));
   }
   return text;
 }
@@ -160,8 +169,9 @@ void app_service_imprint(App &a) {
       };
       for (size_t k = 0; k < n; ++k) note(f.xz[k * 2], f.xz[k * 2 + 1]);
       note(f.cx, f.cz);
-      const float settle = std::clamp(o.ground_settle, 0.f, 1.f);
-      const float h = lo + (hi - lo) * settle;
+      if (std::fabs(o.ground_uneven - (hi - lo)) > 1e-6f) moved = true;
+      o.ground_uneven = hi - lo;
+      const float h = hi - std::max(o.ground_sunk, 0.f);
       const float base_rel = f.base - o.pos[1]; // the base below the pivot
       const float rest = h - base_rel;          // pos.y that seats the base
 

@@ -38,6 +38,11 @@ struct Footprint {
   // default, which is the behaviour before they existed; zero lets
   // the object float or stay buried while the ground ignores it.
   float lift = 1e30f, dig = 1e30f;
+  // How far below the base the ground may sit untouched. Zero is the
+  // old behaviour: any ground under the base is lifted to meet it. A
+  // sunk object sets it to the unevenness its sinking has not covered,
+  // so the ground it was sunk into is left exactly where it was.
+  float below = 0.f;
   float radius = 0.f;                   // sqrt(area / pi)
   float x0 = 0, z0 = 0, x1 = 0, z1 = 0; // bounds, margin and blend included
   // signed distance to the polygon: negative inside
@@ -93,10 +98,11 @@ std::vector<Footprint> parse_footprints(const std::string &text, float width_mul
     f.radius = (float)std::sqrt(0.5 * A / 3.14159265358979);
     // Trailing, so a line written before these existed still parses: the
     // read simply fails and the defaults stand.
-    float lift = 0, dig = 0;
+    float lift = 0, dig = 0, below = 0;
     if (ls >> lift >> dig) {
       f.lift = std::max(lift, 0.f);
       f.dig = std::max(dig, 0.f);
+      if (ls >> below) f.below = std::max(below, 0.f);
     }
     f.margin = std::max(f.margin, 0.f);
     f.sink = std::max(f.sink, 0.f);
@@ -210,8 +216,8 @@ void imprint_apply(Heightmap &ground, const std::string &footprints, const Impri
             // `sink` keeps its meaning: a dead band in which the ground is
             // not touched at all, so a boulder settled into a slope keeps
             // the slope it settled into.
-            if (h < f.base)
-              target = std::min(f.base, h + f.lift);
+            if (h < f.base - f.below)
+              target = std::min(f.base - f.below, h + f.lift);
             else if (h > f.base + f.sink)
               target = std::max(f.base + f.sink, h - f.dig);
             else
