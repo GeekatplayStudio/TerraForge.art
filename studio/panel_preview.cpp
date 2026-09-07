@@ -24,8 +24,12 @@
 namespace studio {
 
 namespace {
+// -3 follows whatever camera is selected, -2 the active one, -1 the free
+// viewport, >= 0 a particular object.
+constexpr int PV_SELECTED = -3, PV_ACTIVE = -2, PV_VIEWPORT = -1;
+
 struct PreviewState {
-  int camera = -2;    // -2 active camera, -1 free viewport, >= 0 object index
+  int camera = PV_SELECTED;
   int quality = 1;    // 0 = 25 %, 1 = 50 %, 2 = 100 %
   bool live = true;   // redraw every frame; otherwise on Refresh
   bool refresh = false;
@@ -36,6 +40,78 @@ struct PreviewState {
 };
 PreviewState P;
 constexpr int PREVIEW_SLOT = SLOT_PREVIEW;
+
+bool is_camera(const SceneState &sc, int i) {
+  return i >= 0 && i < (int)sc.objects.size() &&
+         sc.objects[(size_t)i].type == SceneObject::Camera;
+}
+
+// Which camera the panel is actually looking through. Selecting a camera in
+// the Objects tree should show it - that is the whole point of having both
+// panels open - and selecting something that is not a camera should leave
+// the picture alone rather than blanking it, so that case falls through to
+// the active camera and then to the first one in the scene.
+int resolve_camera(int mode) {
+  SceneState &sc = scene();
+  if (mode == PV_SELECTED) {
+    if (is_camera(sc, sc.selected)) return sc.selected;
+    mode = PV_ACTIVE;
+  }
+  if (mode == PV_ACTIVE) {
+    const int a = scene_active_camera();
+    if (is_camera(sc, a)) return a;
+    for (int i = 0; i < (int)sc.objects.size(); ++i)
+      if (is_camera(sc, i)) return i;
+    return -1;
+  }
+  return is_camera(sc, mode) ? mode : -1;
+}
+
+// Everything about the shot that, if it changes, means the picture is stale.
+//
+// This used to be the orbit camera's eye position, read from
+// renderer_get_camera - which is not the camera being previewed at all. Move
+// a scene camera, or animate one, or change its lens, and the panel showed
+// the old frame until the refresh timer happened to come round. AGENTS.md
+// has the rule: the viewport's orbit camera is not the scene's camera, and
+// asking the wrong one is a bug that looks like a stale cache.
+struct ShotSig {
+  int index = -2;
+  float eye[3] = {0, 0, 0}, target[3] = {0, 0, 0};
+  float focal = 0.f, aperture = 0.f, distortion = 0.f;
+  int format = -1;
+  bool optics = false;
+  bool operator!=(const ShotSig &o) const {
+    for (int k = 0; k < 3; ++k)
+      if (eye[k] != o.eye[k] || target[k] != o.target[k]) return true;
+    return index != o.index || focal != o.focal || aperture != o.aperture ||
+           distortion != o.distortion || format != o.format ||
+           optics != o.optics;
+  }
+};
+
+ShotSig shot_signature(int cam_index) {
+  ShotSig s;
+  s.index = cam_index;
+  if (cam_index < 0) {
+    // the free orbit: its own eye is the thing that moves
+    float fov;
+    renderer_get_camera(s.eye, s.target, &fov);
+    s.focal = fov;
+    return s;
+  }
+  const SceneObject &o = scene().objects[(size_t)cam_index];
+  for (int k = 0; k < 3; ++k) {
+    s.eye[k] = o.cam.eye[k];
+    s.target[k] = o.cam.target[k];
+  }
+  s.focal = o.cam.focal_mm;
+  s.aperture = o.cam.aperture;
+  s.distortion = o.cam.distortion;
+  s.format = o.cam.format;
+  s.optics = o.cam.optics;
+  return s;
+}
 } // namespace
 
 void draw_panel_preview(App &a) {
@@ -54,30 +130,39 @@ void draw_panel_preview(App &a) {
   std::vector<int> cams;
   for (int i = 0; i < (int)sc.objects.size(); ++i)
     if (sc.objects[i].type == SceneObject::Camera) cams.push_back(i);
-  int cam_index = P.camera;
-  if (cam_index == -2) {
-    cam_index = scene_active_camera();
-    // no camera active: the first one in the scene is still the shot
-    if (cam_index < 0 && !cams.empty()) cam_index = cams.front();
+  const int cam_index = P.camera == PV_VIEWPORT ? -1 : resolve_camera(P.camera);
+  // The label says which camera is actually on screen, not just which mode
+  // is chosen - "Selected" alone tells you nothing when the selection is a
+  // rock and the panel has quietly fallen back to the active camera.
+  std::string label;
+  if (P.camera == PV_VIEWPORT) {
+    label = tr("Viewport");
+  } else if (cam_index < 0) {
+    label = tr("No camera");
+  } else {
+    const std::string who = P.camera == PV_SELECTED  ? tr("Selected")
+                            : P.camera == PV_ACTIVE  ? tr("Active")
+                                                     : std::string();
+    label = who.empty() ? sc.objects[(size_t)cam_index].name
+                        : who + ": " + sc.objects[(size_t)cam_index].name;
   }
-  if (cam_index >= (int)sc.objects.size() ||
-      (cam_index >= 0 && sc.objects[cam_index].type != SceneObject::Camera))
-    cam_index = -1;
-  std::string label = P.camera == -2 ? tr("Active camera")
-                      : P.camera == -1 ? tr("Viewport")
-                                       : sc.objects[cam_index < 0 ? 0 : cam_index].name;
-  if (P.camera >= 0 && cam_index < 0) label = tr("Viewport");
-  ImGui::SetNextItemWidth(150);
+  ImGui::SetNextItemWidth(170);
   if (ImGui::BeginCombo("##pvcam", label.c_str())) {
-    if (ImGui::Selectable(tr("Active camera"), P.camera == -2)) P.camera = -2;
-    if (ImGui::Selectable(tr("Viewport (free orbit)"), P.camera == -1)) P.camera = -1;
+    if (ImGui::Selectable(tr("Selected camera"), P.camera == PV_SELECTED))
+      P.camera = PV_SELECTED;
+    if (ImGui::Selectable(tr("Active camera"), P.camera == PV_ACTIVE))
+      P.camera = PV_ACTIVE;
+    if (ImGui::Selectable(tr("Viewport (free orbit)"), P.camera == PV_VIEWPORT))
+      P.camera = PV_VIEWPORT;
     for (int i : cams)
       if (ImGui::Selectable(sc.objects[i].name.c_str(), P.camera == i)) P.camera = i;
     ImGui::EndCombo();
   }
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("%s", tr("Whose view to show. The active camera follows\n"
-                      "whatever camera is active for rendering."));
+    ImGui::SetTooltip("%s", tr("Whose view to show. Selected follows whatever\n"
+                      "camera you pick in the Objects tree, and falls back to\n"
+                      "the active one when the selection is not a camera.\n"
+                      "Active follows whatever is active for rendering."));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(72);
   P.quality = std::min(prefs().preview_quality, perf_quality().preview_quality_cap);
@@ -196,17 +281,15 @@ void draw_panel_preview(App &a) {
     // due: the rate says so, or something the picture depends on changed
     static double last_draw = -1.0;
     static uint64_t last_serial = 0;
-    static float last_eye[3] = {0, 0, 0};
-    float eye[3], tgt[3], fov;
-    renderer_get_camera(eye, tgt, &fov);
+    static ShotSig last_shot;
+    const ShotSig shot = shot_signature(cam_index);
     const double now = ImGui::GetTime();
-    bool changed = a.eval_serial != last_serial || eye[0] != last_eye[0] ||
-                   eye[1] != last_eye[1] || eye[2] != last_eye[2];
+    const bool changed = a.eval_serial != last_serial || shot != last_shot;
     bool due = now - last_draw >= 1.0 / std::max(std::min(prefs().preview_fps, perf_quality().preview_fps_cap), 1);
     if ((P.live && (due || changed)) || P.refresh || !P.last_tex) {
       last_draw = now;
       last_serial = a.eval_serial;
-      for (int k = 0; k < 3; ++k) last_eye[k] = eye[k];
+      last_shot = shot;
       P.refresh = false;
       const float q = P.quality == 0 ? 0.25f : P.quality == 1 ? 0.5f : 1.f;
       // Quantised to 8 pixels: a one-pixel change in the panel would
@@ -220,7 +303,9 @@ void draw_panel_preview(App &a) {
       P.vc.show_water_view = P.water;
       P.vc.grid = false;
       P.vc.outlines = false;
-      P.vc.scene_camera = P.camera == -2 ? -2 : (cam_index >= 0 ? cam_index : -1);
+      // The resolved index, never the mode: the renderer must be told which
+      // camera, not "whichever one the panel meant".
+      P.vc.scene_camera = cam_index;
       const bool clouds_saved = rs.clouds_on, shadows_saved = rs.shadows;
       rs.clouds_on = P.clouds && clouds_saved;
       rs.shadows = P.shadows && shadows_saved;

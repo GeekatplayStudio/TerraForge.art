@@ -3,6 +3,8 @@
 // old-file compatibility. Linked into undo_tests.
 #include "scene.hpp"
 #include "scene_io.hpp"
+#include "gpx/camera_math.hpp"
+#include <cmath>
 #include <cstdio>
 #include <string>
 
@@ -163,9 +165,29 @@ static void test_layer_colour_and_old_files() {
   scene() = SceneState{};
 }
 
+// A focal length is a physical thing and has to behave like one the moment
+// it is chosen. The optical simulation used to be off until found and ticked,
+// so picking a 14 mm lens gave a perfectly rectilinear picture and nothing on
+// screen said why. The two settings that are taste rather than physics stay
+// off, so the default is what the glass does and nothing more.
+static void test_camera_optics_default() {
+  CameraData cd;
+  CHECK(cd.optics, "a new camera simulates its lens");
+  CHECK(cd.distortion_auto,
+        "and its distortion follows the focal length by default");
+  CHECK(cd.chromatic == 0.f && !cd.flare,
+        "but fringing and flare, which are taste not physics, stay off");
+  // The default 35 mm is nearly rectilinear, so switching this on does not
+  // silently warp every existing shot - it only starts mattering when the
+  // author reaches for a wide or a long lens.
+  CHECK(std::fabs(gpx::cam::lens_distortion_k1(cd.focal_mm, 36.f)) < 0.005f,
+        "and the default lens is straight, so nothing changes until asked");
+}
+
 int test_scene_tree_run() {
   test_visibility_states();
   test_move_object();
   test_layer_colour_and_old_files();
+  test_camera_optics_default();
   return g_fail;
 }

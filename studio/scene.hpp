@@ -75,7 +75,14 @@ struct CameraData {
   // to it. Every part is adjustable and the two that are matters of taste
   // rather than physics - chromatic aberration and flare - are off until
   // asked for. Vue calls this the Advanced Camera Options (p333).
-  bool optics = false;
+  //
+  // On by default, because off it is a trap: choosing a 14 mm lens and
+  // seeing a perfectly rectilinear picture is wrong, and nothing on screen
+  // says why. A focal length is a physical thing and should behave like
+  // one the moment it is chosen. The two settings that are taste rather
+  // than physics stay off, so the default is what the glass does and
+  // nothing more.
+  bool optics = true;
   // Distortion follows the focal length unless the user overrides it:
   // wide lenses barrel, long lenses pincushion (gpx::cam::lens_distortion_k1).
   bool distortion_auto = true;
