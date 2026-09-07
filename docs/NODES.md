@@ -54,10 +54,10 @@ How much water passes through each point — the basis of streams and erosion pa
 | Logarithmic | toggle, default on | Accumulation spans several orders of magnitude — a few channels carry almost everything. Without this the map is black with a handful of bright lines. |
 | Channel threshold | float, 0 to 1, default 0 | Discards everything below this fraction, leaving only the established channels. |
 | Route through basins | toggle, default on | Water that reaches a hollow fills it and flows on. Off follows the raw surface, where every stream stops at the first pit it meets. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -89,10 +89,10 @@ Rebuilds the terrain at a coarser or finer sampling — detail control, not size
 | Sampling | choice: Half / Quarter / Double / Custom | Coarser sampling discards fine detail, which is how you get a smooth base to build on. Finer sampling cannot invent detail — it interpolates. |
 | Custom size | int, 8 to 8192, default 256 |  |
 | Smooth interpolation | toggle, default on | Off: nearest neighbour, which keeps hard edges and gives a deliberately blocky, terraced look. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -125,10 +125,10 @@ Where water collects — high in flat hollows fed from above, low on steep groun
 | Minimum slope | float, 0.0001 to 0.5, default 0.01 | Perfectly flat ground would divide by zero and give an infinitely wet pixel. This is the flattest slope the index will consider. |
 | Contrast | float, 0.1 to 4, default 1 |  |
 | Route through basins | toggle, default on | Water that reaches a hollow fills it and flows on. Off follows the raw surface, where every stream stops at the first pit it meets. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -970,10 +970,10 @@ Bakes a field into a heightmap so raster nodes (erosion, blur) can work on it
 | Region centre | x/y pair |  |
 | Region size | float, 0.001 to 100, default 1 | How much of the field's space this buffer covers. Smaller values zoom in — the field has no resolution of its own, so this is what decides the detail you capture. |
 | Sample height | float, -10 to 10, default 0 | The Y plane the field is sampled on, for 3D fields. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Sample
@@ -1698,10 +1698,10 @@ Remaps elevations through a drawn curve - the gradient's brightness is the trans
 | :--- | :--- | :--- |
 | Curve | gradient |  |
 | Strength | float, 0 to 1, default 1 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### DetailEqualizer
@@ -1767,10 +1767,10 @@ Spreads elevations across the full range - contrast back after a long chain
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Strength | float, 0 to 1, default 1 | 1 is full equalisation; lower blends back toward the original distribution. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### ExpandShrink
@@ -1863,10 +1863,10 @@ Removes single-cell spikes and pits without softening edges
 | :--- | :--- | :--- |
 | Radius | int, 1 to 3, default 1 | 1 looks at 3x3 cells, 2 at 5x5, 3 at 7x7. Larger wipes bigger artifacts and more real detail with them. |
 | Passes | int, 1 to 4, default 1 | Applying it again flattens what one pass left; a few passes approach a stable, blocky simplification. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Morphology
@@ -2314,10 +2314,10 @@ Distance to a shape - shoreline gradients, wetness falloffs, anything that happe
 | Measure from the outside | toggle, default off | Swap what counts as the shape: distance from dry land instead of distance from the water. |
 | Output | choice: Fade from the shape / Distance from the shape / Signed distance | Fade: 1 at the shape, falling to 0 at the reach - a ready-made falloff mask. Distance: 0 at the shape, 1 at the reach. Signed: 0.5 on the edge, below inside, above outside. |
 | Reach | float, 0.005 to 1, default 0.15 | How far the field extends, as a fraction of the tile. Everything further than this saturates. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### KMeans
@@ -2363,8 +2363,8 @@ Select by height band
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Edge softness | float, 0.001 to 1, default 0.1 |  |
-| Invert | toggle, default off |  |
+| Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
+| Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
 | Altitude band | range |  |
 
 ### SelectBlobs
@@ -2408,8 +2408,8 @@ Ambient-occlusion-like cavity map
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Edge softness | float, 0.001 to 1, default 0.1 |  |
-| Invert | toggle, default off |  |
+| Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
+| Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
 | Radius | float, 0.005 to 0.1, default 0.02 |  |
 
 ### SelectCurvature
@@ -2423,8 +2423,8 @@ Select concave (valleys) or convex (ridges)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Edge softness | float, 0.001 to 1, default 0.1 |  |
-| Invert | toggle, default off |  |
+| Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
+| Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
 | Mode | choice: Convex (ridges) / Concave (valleys) |  |
 | Feature scale | float, 0.002 to 0.1, default 0.01 |  |
 
@@ -2439,8 +2439,8 @@ Select the middle elevations
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Edge softness | float, 0.001 to 1, default 0.1 |  |
-| Invert | toggle, default off |  |
+| Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
+| Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
 | Center | float, 0 to 1, default 0.5 |  |
 | Width | float, 0.02 to 1, default 0.25 |  |
 
@@ -2455,8 +2455,8 @@ Select by slope steepness
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Edge softness | float, 0.001 to 1, default 0.1 |  |
-| Invert | toggle, default off |  |
+| Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
+| Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
 | Slope band | range |  |
 
 ### SelectTransitions
@@ -3235,10 +3235,10 @@ Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds
 | Depth | float, -0.5 to 0.5, default 0.08 | How deep the centre cuts below the surface. Negative raises instead: walls, levees, causeways. |
 | Profile | choice: Rounded (U) / Sharp (V) / Flat bed | The cross-section: U for rivers, V for gorges, a flat bed with shoulders for roads and canals. |
 | Grade along the path | float, 0 to 1, default 0.5 | 0 follows the terrain exactly - the cut is everywhere the same depth. 1 grades the bed toward the path's smoothed height, the way water and roadbuilders do, cutting deeper through rises and shallower in dips. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -3586,10 +3586,10 @@ Columnar basalt: hexagonal steps and cracks
 | Height steps | int, 2 to 24, default 6 | Each column's flat top snaps to one of this many levels, the way cooling lava fractures in tiers. |
 | Crack width | float, 0.01 to 0.4, default 0.06 |  |
 | Crack depth | float, 0 to 1, default 0.25 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Constant
@@ -3626,10 +3626,10 @@ Impact craters: bowl, rim lip, ejecta blanket (single or field)
 | Position | x/y pair |  |
 | Field count | int, 2 to 64, default 12 |  |
 | Seed | seed |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -3667,10 +3667,10 @@ Sand dunes: asymmetric slip faces, crest chaos, ripples
 | Ripples | float, 0 to 1, default 0.25 | Secondary small-scale ripple field on top. |
 | Ripple scale | float, 2 to 20, default 6 |  |
 | Seed | seed |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### FakeStones
@@ -3714,10 +3714,10 @@ Non-noise fractals: diamond-square, fault lines
 | Roughness | float, 0.3 to 1.6, default 0.9 |  |
 | Fault count | int, 10 to 2000, default 200 |  |
 | Fault softness | float, 0 to 0.2, default 0.02 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### GaborNoise
@@ -3737,10 +3737,10 @@ Oriented sparse-kernel noise (streaked rock)
 | Anisotropy | float, 0 to 1, default 0.85 | 1 locks every kernel to the orientation - streaks. 0 draws orientations at random - isotropic grain. |
 | Scale | float, 1 to 32, default 6 |  |
 | Flavor | choice: Gabor (amplitude) / Phasor sawtooth / Phasor sine / Phasor square | Phasor keeps only the phase of the kernel field, so the wave profile stays crisp everywhere - sawtooth reads as bedding planes, square as strata steps. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### GeologicalStrata
@@ -3759,10 +3759,10 @@ Layered rock strata from an input heightmap
 | Layer hardness | float, 1 to 8, default 2.5 |  |
 | Seed | seed |  |
 | Thickness variation | float, 0 to 1, default 0.5 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -3801,10 +3801,10 @@ Import a heightfield: 8/16-bit PNG, JPG, TGA, or SRTM .hgt real-world DEM
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Heightfield image | file path |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Landform
@@ -3823,10 +3823,10 @@ Geological set pieces: island, mountain, caldera, rift, mesa
 | Relief | float, 0 to 1, default 0.5 |  |
 | Direction ° | float, -180 to 180, default 0 |  |
 | Seed | seed |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### LineNoise
@@ -3846,10 +3846,10 @@ Cellular noise seeded by line segments
 | Reach | float, 0.01 to 0.5, default 0.08 |  |
 | Direction ° | float, -180 to 180, default 0 |  |
 | Direction jitter | float, 0 to 1, default 1 | 0 aligns every segment to the direction - bedding planes. 1 scatters them freely - shattered rock. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Noise
@@ -3871,13 +3871,13 @@ Coherent noise: fBm, ridged, billow, swiss, value, cellular
 | Ridge weight | float, 0 to 1, default 0.7 |  |
 | Swiss warp | float, 0 to 0.6, default 0.15 |  |
 | Cell jitter | float, 0 to 1, default 1 |  |
-| Wavenumber | x/y pair |  |
-| Offset | x/y pair |  |
-| Rotation ° | float, -180 to 180, default 0 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Wavenumber | x/y pair | How many times the pattern repeats across the tile, across and down. Higher is smaller features; the two differing stretches the pattern one way. |
+| Offset | x/y pair | Slides the pattern under the terrain. Use it to move a feature off a spot rather than reaching for a new seed, which would change everything at once. |
+| Rotation ° | float, -180 to 180, default 0 | Turns the pattern. Anything with a grain - strata, dunes, waves - reads very differently across the slope than along it. |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### NoiseFractal
@@ -3923,10 +3923,10 @@ Vue-class fractal: base noise over harmonics with stretch, combination modes, va
 | Amplitude | float, 0 to 4, default 1 |  |
 | Offset | float, -1 to 1, default 0 |  |
 | Rough areas: ref. feature size | float, 0 to 1, default 0 | Harmonics finer than this (fraction of the tile) count as roughness. 0 counts them all. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### RockyMountains
@@ -3960,10 +3960,10 @@ Vue's Rocky Mountains fractal: irregular ridge networks added per iteration, as 
 | Rock height | float, 0 to 1, default 0.3 |  |
 | Eroded | toggle, default off | The Eroded Rocky Mountains variant: gullied flanks. |
 | Rough areas: ref. feature size | float, 0 to 1, default 0 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Shape
@@ -3982,10 +3982,10 @@ Geometric base shapes: slope, bump, crater, cone, ridge line
 | Hardness | float, 0.2 to 8, default 1 |  |
 | Direction ° | float, -180 to 180, default 0 |  |
 | Frequency | float, 0.25 to 64, default 4 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### Stamp
@@ -4057,10 +4057,10 @@ Vue's Terrain Fractal: the fractal with a landscape type (plain, ridges, billows
 | Amplitude | float, 0 to 4, default 1 |  |
 | Offset | float, -1 to 1, default 0 |  |
 | Rough areas: ref. feature size | float, 0 to 1, default 0 | Harmonics finer than this (fraction of the tile) count as roughness. 0 counts them all. |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### TerrainFractal2
@@ -4094,10 +4094,10 @@ Vue's Terrain Fractal 2: rocks emerging from sedimentary soil, with regions of r
 | Processing strength | float, 0 to 1, default 0 |  |
 | Layer spacing | float, 0.01 to 0.5, default 0.08 |  |
 | Offset | float, -0.5 to 0.5, default 0 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### WaveletNoise
@@ -4114,10 +4114,10 @@ Band-limited noise that stays crisp
 | Octaves | int, 1 to 12, default 6 |  |
 | Scale | float, 1 to 64, default 8 |  |
 | Gain | float, 0.1 to 0.95, default 0.55 |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ### WhiteNoise
@@ -4131,10 +4131,10 @@ Raw per-cell white noise
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Remap to range | toggle, default on |  |
-| Output range | range |  |
-| Invert | toggle, default off |  |
-| Gain (gamma) | float, 0.05 to 4, default 1 |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 
 ## Render

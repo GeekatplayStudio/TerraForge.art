@@ -12,8 +12,14 @@ namespace gpx {
 static void setup_selector(Node &n) {
   n.add_in("input");
   n.add_out("mask");
-  add_float(n.attrs, "smoothing", "Edge softness", 0.1f, 0.001f, 1.f, "Selection");
-  add_bool(n.attrs, "invert", "Invert", false, "Selection");
+  add_float(n.attrs, "smoothing", "Edge softness", 0.1f, 0.001f, 1.f, "Selection")
+      .tooltip = "How gradually the selection gives out at its edges.\n"
+                 "Near zero gives a hard cut, which reads as drawn on; a\n"
+                 "soft edge is what lets one material give way to\n"
+                 "another.";
+  add_bool(n.attrs, "invert", "Invert", false, "Selection")
+      .tooltip = "Selects everything this node did not - the ground it\n"
+                 "rejected becomes the mask.";
 }
 
 static void finish_mask(Node &n, Heightmap &m) {

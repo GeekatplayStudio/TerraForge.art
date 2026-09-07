@@ -9,10 +9,23 @@
 namespace gpx {
 
 inline void setup_post(Node &n) {
-  add_bool(n.attrs, "post_remap", "Remap to range", true, "Output");
-  add_range(n.attrs, "post_range", "Output range", 0.f, 1.f, -1.f, 2.f, "Output");
-  add_bool(n.attrs, "post_invert", "Invert", false, "Output");
-  add_float(n.attrs, "post_gain", "Gain (gamma)", 1.f, 0.05f, 4.f, "Output");
+  add_bool(n.attrs, "post_remap", "Remap to range", true, "Output")
+      .tooltip = "Rescales the result so its lowest point sits at the\n"
+                 "bottom of the range below and its highest at the top.\n"
+                 "Off keeps the raw values, which is what you want when\n"
+                 "a node feeds arithmetic rather than a picture.";
+  add_range(n.attrs, "post_range", "Output range", 0.f, 1.f, -1.f, 2.f, "Output")
+      .tooltip = "The low and high the result is rescaled into. 0..1 is\n"
+                 "the terrain's own range; a narrower band makes this\n"
+                 "node a gentler contribution when it is added to\n"
+                 "another.";
+  add_bool(n.attrs, "post_invert", "Invert", false, "Output")
+      .tooltip = "Turns the result upside down within its range - peaks\n"
+                 "become hollows. Applied after the remap.";
+  add_float(n.attrs, "post_gain", "Gain (gamma)", 1.f, 0.05f, 4.f, "Output")
+      .tooltip = "Bends the result toward its low or high end. Below 1\n"
+                 "lifts the middle, so more of the map sits high; above\n"
+                 "1 pushes it down, so peaks become sparser and sharper.";
   add_float(n.attrs, "post_zero_edges", "Zero edges width", 0.f, 0.f, 0.5f,
             "Output")
       .tooltip = "Fades the terrain to zero at the borders over this\n"
@@ -61,9 +74,18 @@ inline void apply_post(Node &n, Heightmap &h) {
 
 // standard coordinate attrs for primitives
 inline void setup_coords(Node &n) {
-  add_vec2(n.attrs, "kw", "Wavenumber", 4.f, 4.f, 0.1f, 64.f, "Coordinates");
-  add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -16.f, 16.f, "Coordinates");
-  add_float(n.attrs, "angle", "Rotation °", 0.f, -180.f, 180.f, "Coordinates");
+  add_vec2(n.attrs, "kw", "Wavenumber", 4.f, 4.f, 0.1f, 64.f, "Coordinates")
+      .tooltip = "How many times the pattern repeats across the tile,\n"
+                 "across and down. Higher is smaller features; the two\n"
+                 "differing stretches the pattern one way.";
+  add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -16.f, 16.f, "Coordinates")
+      .tooltip = "Slides the pattern under the terrain. Use it to move a\n"
+                 "feature off a spot rather than reaching for a new\n"
+                 "seed, which would change everything at once.";
+  add_float(n.attrs, "angle", "Rotation °", 0.f, -180.f, 180.f, "Coordinates")
+      .tooltip = "Turns the pattern. Anything with a grain - strata,\n"
+                 "dunes, waves - reads very differently across the slope\n"
+                 "than along it.";
 }
 
 struct CoordMap {
