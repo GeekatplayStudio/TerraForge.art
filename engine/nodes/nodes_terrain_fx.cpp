@@ -122,8 +122,10 @@ REGISTER_NODE(
     Gravel, "Effect", "Loose debris that gathers on slopes and leaves flats clean",
     [](Node &n) {
       fx_setup(n);
-      add_float(n.attrs, "amount", "Amount", 0.03f, 0.f, 0.25f, "Gravel");
-      add_float(n.attrs, "scale", "Grain size", 120.f, 8.f, 400.f, "Gravel");
+      add_float(n.attrs, "amount", "Amount", 0.03f, 0.f, 0.25f, "Gravel")
+          .tooltip = "How much debris is laid down.";
+      add_float(n.attrs, "scale", "Grain size", 120.f, 8.f, 400.f, "Gravel")
+          .tooltip = "How coarse the debris is, in repeats across the tile.";
       add_float(n.attrs, "slope_bias", "Slope bias", 1.5f, 0.f, 4.f, "Gravel")
           .tooltip = "How strongly the debris prefers steep ground.\n"
                      "0 spreads it evenly, high values keep it on slopes.";
@@ -157,7 +159,10 @@ REGISTER_NODE(
     Peaks, "Effect", "Lifts high ground and digs the valleys deeper",
     [](Node &n) {
       fx_setup(n);
-      add_float(n.attrs, "strength", "Strength", 0.5f, 0.f, 1.f, "Peaks");
+      add_float(n.attrs, "strength", "Strength", 0.5f, 0.f, 1.f, "Peaks")
+          .tooltip = "How far the high ground is lifted and the low ground\n"
+                     "pushed down. This exaggerates the relief that is already\n"
+                     "there rather than adding new shapes.";
       add_float(n.attrs, "pivot", "Pivot altitude", 0.45f, 0.f, 1.f, "Peaks")
           .tooltip = "Ground above this rises, ground below sinks.\n"
                      "Lower it to keep more of the terrain high.";
@@ -195,7 +200,10 @@ REGISTER_NODE(
     Sharpen, "Effect", "Makes steep ground steeper — crisp ridges and crests",
     [](Node &n) {
       fx_setup(n);
-      add_float(n.attrs, "amount", "Amount", 0.6f, 0.f, 3.f, "Sharpen");
+      add_float(n.attrs, "amount", "Amount", 0.6f, 0.f, 3.f, "Sharpen")
+          .tooltip = "How much local contrast is added. It steepens what is\n"
+                     "already steep, so ridges come to a crest instead of a\n"
+                     "rounded top.";
       add_float(n.attrs, "radius", "Radius", 0.01f, 0.002f, 0.1f, "Sharpen")
           .tooltip = "Size of the detail that gets emphasized.";
       add_float(n.attrs, "slope_bias", "Steep areas only", 1.f, 0.f, 3.f,
@@ -229,7 +237,8 @@ REGISTER_NODE(
     Cracks, "Effect", "Narrow fissures cut into the surface, as after a quake",
     [](Node &n) {
       fx_setup(n);
-      add_float(n.attrs, "depth", "Depth", 0.06f, 0.f, 0.4f, "Cracks");
+      add_float(n.attrs, "depth", "Depth", 0.06f, 0.f, 0.4f, "Cracks")
+          .tooltip = "How deep the fissures cut.";
       add_float(n.attrs, "width", "Width", 0.35f, 0.05f, 1.f, "Cracks")
           .tooltip = "Thickness of the fissures. Low values give hairlines.";
       add_float(n.attrs, "scale", "Scale", 6.f, 0.5f, 40.f, "Cracks")

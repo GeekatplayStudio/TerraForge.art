@@ -190,7 +190,11 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("mask");
-      add_int(n.attrs, "radius", "Radius (px)", 24, 2, 128, "Relief");
+      add_int(n.attrs, "radius", "Radius (px)", 24, 2, 128, "Relief")
+          .tooltip = "How far out the surrounding ground is sampled before\n"
+                     "asking how high this point stands above it. Small radii\n"
+                     "find local bumps; large ones find whether you are on a\n"
+                     "ridge or in a valley at all.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

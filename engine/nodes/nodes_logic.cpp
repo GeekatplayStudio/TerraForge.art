@@ -9,9 +9,13 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("mask");
-      add_float(n.attrs, "level", "Level", 0.5f, 0.f, 1.f);
-      add_float(n.attrs, "softness", "Softness", 0.05f, 0.f, 0.5f);
-      add_bool(n.attrs, "invert", "Invert", false);
+      add_float(n.attrs, "level", "Level", 0.5f, 0.f, 1.f)
+          .tooltip = "The value the input is cut at.";
+      add_float(n.attrs, "softness", "Softness", 0.05f, 0.f, 0.5f)
+          .tooltip = "How gradually it crosses from 0 to 1. Zero gives a hard\n"
+                     "edge, which on terrain reads as drawn on.";
+      add_bool(n.attrs, "invert", "Invert", false)
+          .tooltip = "Selects below the level instead of above it.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -38,9 +42,14 @@ REGISTER_NODE(
       n.add_in("input B");
       n.add_out("mask");
       add_choice(n.attrs, "op", "Operation",
-                 {"A > B", "A < B", "|A - B| < tol", "|A - B| > tol"}, 0);
-      add_float(n.attrs, "tolerance", "Tolerance", 0.05f, 0.f, 1.f);
-      add_float(n.attrs, "softness", "Softness", 0.02f, 0.f, 0.3f);
+                 {"A > B", "A < B", "|A - B| < tol", "|A - B| > tol"}, 0)
+          .tooltip = "The comparison made at every point.";
+      add_float(n.attrs, "tolerance", "Tolerance", 0.05f, 0.f, 1.f)
+          .tooltip = "How close two values must be to count as equal, since\n"
+                     "exact equality between floats almost never happens.";
+      add_float(n.attrs, "softness", "Softness", 0.02f, 0.f, 0.3f)
+          .tooltip = "How gradually the result crosses from false to true, so\n"
+                     "the mask has an edge rather than a step.";
     },
     [](Node &n) {
       const Heightmap *a = require_in(n, "input A");
@@ -70,7 +79,9 @@ REGISTER_NODE(
       n.add_in("input A");
       n.add_in("input B", DataType::Heightmap, true);
       n.add_out("output");
-      add_bool(n.attrs, "use_b", "Use input B", false);
+      add_bool(n.attrs, "use_b", "Use input B", false)
+          .tooltip = "Passes the second input instead of the first. A plain\n"
+                     "either-or, for turning part of a graph on and off.";
     },
     [](Node &n) {
       const Heightmap *a = n.in_hmap("input A");
@@ -104,7 +115,10 @@ REGISTER_NODE(
       n.add_in("input 4", DataType::Heightmap, true);
       n.add_in("selector", DataType::Heightmap, true);
       n.add_out("output");
-      add_int(n.attrs, "index", "Index", 0, 0, 3);
+      add_int(n.attrs, "index", "Index", 0, 0, 3)
+          .tooltip = "Which input is passed through. Everything else is ignored,\n"
+                     "which is how you switch between variants of a graph\n"
+                     "without rewiring it.";
       add_bool(n.attrs, "by_map", "Blend by selector map", false)
           .tooltip = "When on, the selector map (0..1) cross-fades\n"
                      "between the connected inputs instead of the index.";
@@ -144,9 +158,12 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_out("output");
       add_choice(n.attrs, "op", "Operation",
-                 {"Smooth", "Thermal step", "Expand", "Shrink", "Fold ridges"}, 0);
-      add_int(n.attrs, "count", "Loop count", 4, 1, 64);
-      add_float(n.attrs, "strength", "Strength per pass", 0.5f, 0.05f, 1.f);
+                 {"Smooth", "Thermal step", "Expand", "Shrink", "Fold ridges"}, 0)
+          .tooltip = "What is done on each repeat.";
+      add_int(n.attrs, "count", "Loop count", 4, 1, 64)
+          .tooltip = "How many times it is repeated.";
+      add_float(n.attrs, "strength", "Strength per pass", 0.5f, 0.05f, 1.f)
+          .tooltip = "How much each repeat contributes.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

@@ -11,9 +11,18 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_out("output");
       add_seed(n.attrs);
-      add_float(n.attrs, "amplitude", "Amplitude", 0.08f, 0.f, 0.5f);
-      add_vec2(n.attrs, "kw", "Warp frequency", 3.f, 3.f, 0.2f, 32.f);
-      add_int(n.attrs, "octaves", "Octaves", 4, 1, 10);
+      add_float(n.attrs, "amplitude", "Amplitude", 0.08f, 0.f, 0.5f)
+          .tooltip = "How far the terrain is pushed sideways. Warping the\n"
+                     "coordinates rather than the heights is what turns a\n"
+                     "regular pattern into something organic - the lattice the\n"
+                     "noise sits on stops being visible.";
+      add_vec2(n.attrs, "kw", "Warp frequency", 3.f, 3.f, 0.2f, 32.f)
+          .tooltip = "How large the warping swirls are, across and down. Low\n"
+                     "values sweep the whole map about; high ones ripple its\n"
+                     "edges.";
+      add_int(n.attrs, "octaves", "Octaves", 4, 1, 10)
+          .tooltip = "How many scales of warping are layered. More gives a more\n"
+                     "intricately folded result.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -42,9 +51,14 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_float(n.attrs, "angle", "Direction °", 30.f, -180.f, 180.f);
-      add_float(n.attrs, "amplitude", "Amplitude", 0.02f, 0.f, 0.2f);
-      add_bool(n.attrs, "by_height", "Scale by height", true);
+      add_float(n.attrs, "angle", "Direction °", 30.f, -180.f, 180.f)
+          .tooltip = "Which way the terrain is dragged.";
+      add_float(n.attrs, "amplitude", "Amplitude", 0.02f, 0.f, 0.2f)
+          .tooltip = "How far it is dragged.";
+      add_bool(n.attrs, "by_height", "Scale by height", true)
+          .tooltip = "On, the high ground is dragged further than the low, so\n"
+                     "peaks lean over and reads as wind-shaped or as material\n"
+                     "having slumped. Off, the whole map shifts together.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -73,10 +87,17 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_vec2(n.attrs, "translate", "Translate", 0.f, 0.f, -1.f, 1.f);
-      add_vec2(n.attrs, "scale", "Scale", 1.f, 1.f, 0.1f, 8.f);
-      add_float(n.attrs, "angle", "Rotate °", 0.f, -180.f, 180.f);
-      add_choice(n.attrs, "extend", "Outside area", {"Clamp", "Mirror", "Tile"}, 0);
+      add_vec2(n.attrs, "translate", "Translate", 0.f, 0.f, -1.f, 1.f)
+          .tooltip = "Slides the terrain across the tile.";
+      add_vec2(n.attrs, "scale", "Scale", 1.f, 1.f, 0.1f, 8.f)
+          .tooltip = "Zooms the terrain in or out, across and down separately.";
+      add_float(n.attrs, "angle", "Rotate °", 0.f, -180.f, 180.f)
+          .tooltip = "Rotates the terrain.";
+      add_choice(n.attrs, "extend", "Outside area", {"Clamp", "Mirror", "Tile"}, 0)
+          .tooltip = "What fills the ground the transform has moved away from.\n"
+                     "Clamp smears the border outward, mirror reflects it, tile\n"
+                     "repeats the map - which only looks right if the terrain\n"
+                     "was seamless to begin with.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

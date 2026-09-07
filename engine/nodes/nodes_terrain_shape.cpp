@@ -69,7 +69,9 @@ REGISTER_NODE(
           .tooltip = "Where the shape sits on the tile. Outside 0..1 pushes\n"
                      "it off the edge, which is how you get a coast rather\n"
                      "than an island.";
-      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f, "Shape");
+      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f, "Shape")
+          .tooltip = "Turns the shape. Meaningless for a circle, and the whole\n"
+                     "point for a stretched one.";
       add_float(n.attrs, "corner", "Corner rounding", 0.3f, 0.f, 1.f, "Shape")
           .tooltip = "Rounded rectangle only: how much of the half-size the\n"
                      "corners round off. 1 is a full stadium.";

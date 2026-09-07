@@ -165,7 +165,10 @@ REGISTER_NODE(
           .tooltip = "Perfectly flat ground would divide by zero and give an\n"
                      "infinitely wet pixel. This is the flattest slope the\n"
                      "index will consider.";
-      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.1f, 4.f);
+      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.1f, 4.f)
+          .tooltip = "Stretches the wetness values apart. The raw index is\n"
+                     "bunched into a narrow band, so without this most of the\n"
+                     "map reads as the same dampness.";
       add_bool(n.attrs, "fill_pits", "Route through basins", true)
           .tooltip = "Water that reaches a hollow fills it and flows on.\n"
                      "Off follows the raw surface, where every stream stops\n"
@@ -212,7 +215,10 @@ REGISTER_NODE(
           .tooltip = "Coarser sampling discards fine detail, which is how you\n"
                      "get a smooth base to build on. Finer sampling cannot\n"
                      "invent detail — it interpolates.";
-      add_int(n.attrs, "custom", "Custom size", 256, 8, 8192);
+      add_int(n.attrs, "custom", "Custom size", 256, 8, 8192)
+          .tooltip = "The size to resample to, when Custom is chosen above.\n"
+                     "Resampling changes how much detail a buffer can hold\n"
+                     "without changing the graph's own resolution.";
       add_bool(n.attrs, "smooth", "Smooth interpolation", true)
           .tooltip = "Off: nearest neighbour, which keeps hard edges and gives\n"
                      "a deliberately blocky, terraced look.";
@@ -314,8 +320,14 @@ REGISTER_NODE(
       add_choice(n.attrs, "metric", "Metric",
                  {"Rugosity (local std dev)", "Ruggedness (TRI)",
                   "Shape index", "Unsphericity", "Valley depth"},
-                 0, "Metric");
-      add_int(n.attrs, "radius", "Radius (px)", 4, 1, 64, "Metric");
+                 0, "Metric")
+          .tooltip = "Which statistic is measured. Rugosity is surface area\n"
+                     "against footprint - how crumpled the ground is. TRI is the\n"
+                     "average height difference to the neighbours, which finds\n"
+                     "broken ground. Shape index separates domes from hollows.";
+      add_int(n.attrs, "radius", "Radius (px)", 4, 1, 64, "Metric")
+          .tooltip = "How far the measurement reaches. Small radii describe the\n"
+                     "surface texture; large ones describe the landform.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

@@ -101,7 +101,7 @@
         "type": "int",
         "group": "Relief",
         "min": 2, "max": 128, "default": 24,
-        "tooltip": ""
+        "tooltip": "How far out the surrounding ground is sampled before\nasking how high this point stands above it. Small radii\nfind local bumps; large ones find whether you are on a\nridge or in a valley at all."
       }
       ]
     },
@@ -128,7 +128,7 @@
         "label": "Custom size",
         "type": "int",
         "min": 8, "max": 8192, "default": 256,
-        "tooltip": ""
+        "tooltip": "The size to resample to, when Custom is chosen above.\nResampling changes how much detail a buffer can hold\nwithout changing the graph's own resolution."
       },
       {
         "key": "smooth",
@@ -202,7 +202,7 @@
         "type": "choice",
         "group": "Metric",
         "choices": ["Rugosity (local std dev)", "Ruggedness (TRI)", "Shape index", "Unsphericity", "Valley depth"],
-        "tooltip": ""
+        "tooltip": "Which statistic is measured. Rugosity is surface area\nagainst footprint - how crumpled the ground is. TRI is the\naverage height difference to the neighbours, which finds\nbroken ground. Shape index separates domes from hollows."
       },
       {
         "key": "radius",
@@ -210,7 +210,7 @@
         "type": "int",
         "group": "Metric",
         "min": 1, "max": 64, "default": 4,
-        "tooltip": ""
+        "tooltip": "How far the measurement reaches. Small radii describe the\nsurface texture; large ones describe the landform."
       }
       ]
     },
@@ -237,7 +237,7 @@
         "label": "Contrast",
         "type": "float",
         "min": 0.1, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "Stretches the wetness values apart. The raw index is\nbunched into a narrow band, so without this most of the\nmap reads as the same dampness."
       },
       {
         "key": "fill_pits",
@@ -1441,7 +1441,7 @@
         "type": "float",
         "group": "Cracks",
         "min": 0, "max": 0.4, "default": 0.06,
-        "tooltip": ""
+        "tooltip": "How deep the fissures cut."
       },
       {
         "key": "width",
@@ -1493,7 +1493,7 @@
         "type": "float",
         "group": "Gravel",
         "min": 0, "max": 0.25, "default": 0.03,
-        "tooltip": ""
+        "tooltip": "How much debris is laid down."
       },
       {
         "key": "scale",
@@ -1501,7 +1501,7 @@
         "type": "float",
         "group": "Gravel",
         "min": 8, "max": 400, "default": 120,
-        "tooltip": ""
+        "tooltip": "How coarse the debris is, in repeats across the tile."
       },
       {
         "key": "slope_bias",
@@ -1573,7 +1573,7 @@
         "type": "float",
         "group": "Peaks",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How far the high ground is lifted and the low ground\npushed down. This exaggerates the relief that is already\nthere rather than adding new shapes."
       },
       {
         "key": "pivot",
@@ -1602,7 +1602,7 @@
         "type": "float",
         "group": "Sharpen",
         "min": 0, "max": 3, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "How much local contrast is added. It steepens what is\nalready steep, so ridges come to a crest instead of a\nrounded top."
       },
       {
         "key": "radius",
@@ -1647,7 +1647,7 @@
         "type": "choice",
         "group": "Clipping",
         "choices": ["Leave alone", "Flatten", "Cut away (hole)"],
-        "tooltip": ""
+        "tooltip": "What happens below the low mark. Flatten gives a level\nfloor - a salt pan or a lake bed. Cut away removes the\nground entirely, which is how you punch a hole through the\nterrain."
       },
       {
         "key": "high_mode",
@@ -1655,7 +1655,7 @@
         "type": "choice",
         "group": "Clipping",
         "choices": ["Leave alone", "Flatten"],
-        "tooltip": ""
+        "tooltip": "What happens above the high mark. Flatten cuts the summits\noff level, which is what makes a mesa or a plateau out of\na hill."
       },
       {
         "key": "softness",
@@ -5729,7 +5729,7 @@
         "type": "float",
         "group": "Flood",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "The height the water stands at, as a fraction of the\nterrain's own range."
       },
       {
         "key": "mode",
@@ -5737,7 +5737,7 @@
         "type": "choice",
         "group": "Flood",
         "choices": ["Everywhere below", "Connected to the edge", "From source points"],
-        "tooltip": ""
+        "tooltip": "Everywhere below fills every hollow at once, whether or\nnot water could reach it. Connected to the edge floods\nonly what the sea can actually get into, so a walled basin\nstays dry. From source points floods outward from the\npoints you supply."
       },
       {
         "key": "normalize_depth",
@@ -5745,7 +5745,7 @@
         "type": "bool",
         "group": "Flood",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Scales the depth output to 0..1 so it can drive a mask\ndirectly. Off leaves it in terrain units."
       },
       {
         "key": "blend_invert",
@@ -5809,7 +5809,7 @@
         "type": "float",
         "group": "Lake",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Turns the lake's outline, which matters once Stretch has\npulled it away from round."
       },
       {
         "key": "shape",
@@ -6148,21 +6148,21 @@
         "label": "Operation",
         "type": "choice",
         "choices": ["A > B", "A < B", "|A - B| < tol", "|A - B| > tol"],
-        "tooltip": ""
+        "tooltip": "The comparison made at every point."
       },
       {
         "key": "tolerance",
         "label": "Tolerance",
         "type": "float",
         "min": 0, "max": 1, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How close two values must be to count as equal, since\nexact equality between floats almost never happens."
       },
       {
         "key": "softness",
         "label": "Softness",
         "type": "float",
         "min": 0, "max": 0.3, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How gradually the result crosses from false to true, so\nthe mask has an edge rather than a step."
       }
       ]
     },
@@ -6181,21 +6181,21 @@
         "label": "Operation",
         "type": "choice",
         "choices": ["Smooth", "Thermal step", "Expand", "Shrink", "Fold ridges"],
-        "tooltip": ""
+        "tooltip": "What is done on each repeat."
       },
       {
         "key": "count",
         "label": "Loop count",
         "type": "int",
         "min": 1, "max": 64, "default": 4,
-        "tooltip": ""
+        "tooltip": "How many times it is repeated."
       },
       {
         "key": "strength",
         "label": "Strength per pass",
         "type": "float",
         "min": 0.05, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much each repeat contributes."
       }
       ]
     },
@@ -6218,7 +6218,7 @@
         "label": "Index",
         "type": "int",
         "min": 0, "max": 3, "default": 0,
-        "tooltip": ""
+        "tooltip": "Which input is passed through. Everything else is ignored,\nwhich is how you switch between variants of a graph\nwithout rewiring it."
       },
       {
         "key": "by_map",
@@ -6245,7 +6245,7 @@
         "label": "Use input B",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Passes the second input instead of the first. A plain\neither-or, for turning part of a graph on and off."
       }
       ]
     },
@@ -6264,21 +6264,21 @@
         "label": "Level",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value the input is cut at."
       },
       {
         "key": "softness",
         "label": "Softness",
         "type": "float",
         "min": 0, "max": 0.5, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How gradually it crosses from 0 to 1. Zero gives a hard\nedge, which on terrain reads as drawn on."
       },
       {
         "key": "invert",
         "label": "Invert",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Selects below the level instead of above it."
       }
       ]
     },
@@ -6310,7 +6310,7 @@
         "type": "float",
         "group": "Blobs",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value above which a point counts as part of a patch."
       },
       {
         "key": "min_area",
@@ -6318,7 +6318,7 @@
         "type": "float",
         "group": "Blobs",
         "min": 0, "max": 0.5, "default": 0.001,
-        "tooltip": ""
+        "tooltip": "Patches smaller than this are removed. This is how you\nclear speckle out of a mask without blurring the edges of\nwhat is left."
       },
       {
         "key": "invert",
@@ -6326,7 +6326,7 @@
         "type": "bool",
         "group": "Blobs",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Removes the large patches and keeps the small ones\ninstead."
       }
       ]
     },
@@ -6433,7 +6433,7 @@
         "type": "int",
         "group": "Clustering",
         "min": 2, "max": 8, "default": 4,
-        "tooltip": ""
+        "tooltip": "How many regions the terrain is grouped into. Each point\njoins the group whose character it most resembles, so this\nis how many distinct kinds of ground you are claiming\nexist."
       },
       {
         "key": "slope_weight",
@@ -6441,7 +6441,7 @@
         "type": "float",
         "group": "Clustering",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much steepness counts against height when deciding\nwhich group a point belongs to. At 0 the grouping is\npurely by altitude."
       },
       {
         "key": "seed",
@@ -6474,7 +6474,7 @@
         "type": "float",
         "group": "Paint",
         "min": 0, "max": 0.05, "default": 0,
-        "tooltip": ""
+        "tooltip": "Blurs the painted mask, so a stroke's edge is a gradient\nrather than the hard rim of the brush."
       }
       ]
     },
@@ -6509,7 +6509,7 @@
         "label": "Altitude band",
         "type": "range",
         "group": "Selection",
-        "tooltip": ""
+        "tooltip": "The band of heights that is selected. Everything inside is\nchosen, everything outside rejected, with the edge\nsoftness above deciding how abruptly."
       }
       ]
     },
@@ -6529,7 +6529,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0.005, "max": 0.3, "default": 0.03,
-        "tooltip": ""
+        "tooltip": "The feature size to look for. This is a band-pass: blobs\nmuch larger or smaller than this are ignored."
       },
       {
         "key": "threshold",
@@ -6537,7 +6537,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0, "max": 1, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "How strongly a blob must stand out from its surroundings\nto be selected at all."
       },
       {
         "key": "hollows",
@@ -6545,7 +6545,7 @@
         "type": "bool",
         "group": "Selection",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Finds dips instead of bumps - the same detector run the\nother way up."
       }
       ]
     },
@@ -6565,7 +6565,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value that counts as inside the region whose border is\nwanted."
       },
       {
         "key": "reach",
@@ -6573,7 +6573,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0.002, "max": 0.5, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How wide the band along the boundary is."
       },
       {
         "key": "side",
@@ -6581,7 +6581,7 @@
         "type": "choice",
         "group": "Selection",
         "choices": ["Both", "Inward", "Outward"],
-        "tooltip": ""
+        "tooltip": "Whether the band lies inside the region, outside it, or\nstraddles the line. Inside is what you want to darken a\nshore; outside to spill something past an edge."
       }
       ]
     },
@@ -6617,7 +6617,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0.005, "max": 0.1, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How far the sampling reaches when deciding how enclosed a\npoint is. Larger radii find broad basins; small ones find\npits and crevices."
       }
       ]
     },
@@ -6653,7 +6653,7 @@
         "type": "choice",
         "group": "Selection",
         "choices": ["Convex (ridges)", "Concave (valleys)"],
-        "tooltip": ""
+        "tooltip": "Concave picks the hollows - valley floors, gullies, the\nplaces water and soil collect. Convex picks the ridges and\noutcrops where they are stripped away."
       },
       {
         "key": "scale",
@@ -6661,7 +6661,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0.002, "max": 0.1, "default": 0.01,
-        "tooltip": ""
+        "tooltip": "How large a feature counts. Small scales find surface\ncrinkles; large ones find whole landforms."
       }
       ]
     },
@@ -6697,7 +6697,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The height the selection is centred on, as a fraction of\nthe terrain's range."
       },
       {
         "key": "width",
@@ -6705,7 +6705,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0.02, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How far either side of the centre is still selected. This\nis the band-pass of the three altitude selectors: it takes\nthe middle ground and leaves the peaks and the floors."
       }
       ]
     },
@@ -6740,7 +6740,7 @@
         "label": "Slope band",
         "type": "range",
         "group": "Selection",
-        "tooltip": ""
+        "tooltip": "The band of steepness that is selected, 1 being flat\nground and 0 a vertical face. Rock wants a low band,\nmeadow a high one."
       }
       ]
     },
@@ -6761,7 +6761,7 @@
         "type": "float",
         "group": "Selection",
         "min": 0.001, "max": 0.5, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How close two surfaces must come before the place they\nmeet is called a transition."
       },
       {
         "key": "invert",
@@ -6769,7 +6769,7 @@
         "type": "bool",
         "group": "Selection",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Selects everywhere the two surfaces do not trade places."
       }
       ]
     },
@@ -6789,7 +6789,7 @@
         "type": "float",
         "group": "Skeleton",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value above which a point counts as part of the region\nbeing reduced to a centre line."
       }
       ]
     },
@@ -6809,7 +6809,7 @@
         "type": "float",
         "group": "Skeleton",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value above which a point counts as part of the region\nwhose centre line the distance is measured from."
       }
       ]
     },
@@ -9306,21 +9306,21 @@
         "label": "Mode",
         "type": "choice",
         "choices": ["Mix", "Add", "Subtract", "Multiply", "Min", "Max", "Smooth min", "Smooth max", "Overlay", "Screen", "Difference"],
-        "tooltip": ""
+        "tooltip": "How the two inputs are combined. Add and multiply are the\nworkhorses; max and min take whichever input is higher or\nlower at each point, which keeps both shapes rather than\naveraging them into mush."
       },
       {
         "key": "factor",
         "label": "Factor",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The balance between the two inputs, where the mode uses\none."
       },
       {
         "key": "smooth_k",
         "label": "Smooth k",
         "type": "float",
         "min": 0.01, "max": 0.5, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "Rounds the seam where max or min switches from one input\nto the other. A hard switch leaves a crease that catches\nthe light as a line; this is the difference between two\nterrains meeting and two terrains merging."
       }
       ]
     },
@@ -9340,14 +9340,14 @@
         "label": "Operation",
         "type": "choice",
         "choices": ["Multiply", "Add", "Power", "Absolute", "Negate", "One minus", "Square root", "Log1p", "Sine", "Smoothstep"],
-        "tooltip": ""
+        "tooltip": "The arithmetic applied to every point."
       },
       {
         "key": "value",
         "label": "Value",
         "type": "float",
         "min": -4, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "The constant the operation uses when nothing is wired to\nthe second input."
       },
       {
         "key": "blend_invert",
@@ -9392,7 +9392,7 @@
         "label": "Blend softness",
         "type": "float",
         "min": 0, "max": 0.4, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "Rounds the seam where one layer gives way to the next, so\nstacked terrains merge rather than meeting at a crease."
       }
       ]
     },
@@ -14043,7 +14043,7 @@
         "type": "float",
         "group": "Shape",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Turns the shape. Meaningless for a circle, and the whole\npoint for a stretched one."
       },
       {
         "key": "corner",
@@ -14509,27 +14509,27 @@
         "key": "translate",
         "label": "Translate",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "Slides the terrain across the tile."
       },
       {
         "key": "scale",
         "label": "Scale",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "Zooms the terrain in or out, across and down separately."
       },
       {
         "key": "angle",
         "label": "Rotate °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Rotates the terrain."
       },
       {
         "key": "extend",
         "label": "Outside area",
         "type": "choice",
         "choices": ["Clamp", "Mirror", "Tile"],
-        "tooltip": ""
+        "tooltip": "What fills the ground the transform has moved away from.\nClamp smears the border outward, mirror reflects it, tile\nrepeats the map - which only looks right if the terrain\nwas seamless to begin with."
       },
       {
         "key": "blend_invert",
@@ -14557,21 +14557,21 @@
         "label": "Direction °",
         "type": "float",
         "min": -180, "max": 180, "default": 30,
-        "tooltip": ""
+        "tooltip": "Which way the terrain is dragged."
       },
       {
         "key": "amplitude",
         "label": "Amplitude",
         "type": "float",
         "min": 0, "max": 0.2, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How far it is dragged."
       },
       {
         "key": "by_height",
         "label": "Scale by height",
         "type": "bool",
         "default": true,
-        "tooltip": ""
+        "tooltip": "On, the high ground is dragged further than the low, so\npeaks lean over and reads as wind-shaped or as material\nhaving slumped. Off, the whole map shifts together."
       },
       {
         "key": "blend_invert",
@@ -14605,20 +14605,20 @@
         "label": "Amplitude",
         "type": "float",
         "min": 0, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How far the terrain is pushed sideways. Warping the\ncoordinates rather than the heights is what turns a\nregular pattern into something organic - the lattice the\nnoise sits on stops being visible."
       },
       {
         "key": "kw",
         "label": "Warp frequency",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "How large the warping swirls are, across and down. Low\nvalues sweep the whole map about; high ones ripple its\nedges."
       },
       {
         "key": "octaves",
         "label": "Octaves",
         "type": "int",
         "min": 1, "max": 10, "default": 4,
-        "tooltip": ""
+        "tooltip": "How many scales of warping are layered. More gives a more\nintricately folded result."
       },
       {
         "key": "blend_invert",

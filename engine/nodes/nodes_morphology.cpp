@@ -147,10 +147,16 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("mask");
-      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Blobs");
+      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Blobs")
+          .tooltip = "The value above which a point counts as part of a patch.";
       add_float(n.attrs, "min_area", "Min area (fraction)", 0.001f, 0.f, 0.5f,
-                "Blobs");
-      add_bool(n.attrs, "invert", "Invert", false, "Blobs");
+                "Blobs")
+          .tooltip = "Patches smaller than this are removed. This is how you\n"
+                     "clear speckle out of a mask without blurring the edges of\n"
+                     "what is left.";
+      add_bool(n.attrs, "invert", "Invert", false, "Blobs")
+          .tooltip = "Removes the large patches and keeps the small ones\n"
+                     "instead.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -200,7 +206,9 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("mask");
-      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Skeleton");
+      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Skeleton")
+          .tooltip = "The value above which a point counts as part of the region\n"
+                     "being reduced to a centre line.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -255,7 +263,9 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("mask");
-      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Skeleton");
+      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Skeleton")
+          .tooltip = "The value above which a point counts as part of the region\n"
+                     "whose centre line the distance is measured from.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

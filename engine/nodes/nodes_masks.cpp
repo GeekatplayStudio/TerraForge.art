@@ -32,7 +32,10 @@ REGISTER_NODE(
     SelectAltitude, "Mask", "Select by height band",
     [](Node &n) {
       setup_selector(n);
-      add_range(n.attrs, "band", "Altitude band", 0.5f, 1.f, 0.f, 1.f, "Selection");
+      add_range(n.attrs, "band", "Altitude band", 0.5f, 1.f, 0.f, 1.f, "Selection")
+          .tooltip = "The band of heights that is selected. Everything inside is\n"
+                     "chosen, everything outside rejected, with the edge\n"
+                     "softness above deciding how abruptly.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -59,8 +62,13 @@ REGISTER_NODE(
     SelectMidrange, "Mask", "Select the middle elevations",
     [](Node &n) {
       setup_selector(n);
-      add_float(n.attrs, "center", "Center", 0.5f, 0.f, 1.f, "Selection");
-      add_float(n.attrs, "width", "Width", 0.25f, 0.02f, 1.f, "Selection");
+      add_float(n.attrs, "center", "Center", 0.5f, 0.f, 1.f, "Selection")
+          .tooltip = "The height the selection is centred on, as a fraction of\n"
+                     "the terrain's range.";
+      add_float(n.attrs, "width", "Width", 0.25f, 0.02f, 1.f, "Selection")
+          .tooltip = "How far either side of the centre is still selected. This\n"
+                     "is the band-pass of the three altitude selectors: it takes\n"
+                     "the middle ground and leaves the peaks and the floors.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -88,8 +96,11 @@ REGISTER_NODE(
       n.add_in("input B");
       n.add_out("mask");
       add_float(n.attrs, "tolerance", "Tolerance", 0.05f, 0.001f, 0.5f,
-                "Selection");
-      add_bool(n.attrs, "invert", "Invert", false, "Selection");
+                "Selection")
+          .tooltip = "How close two surfaces must come before the place they\n"
+                     "meet is called a transition.";
+      add_bool(n.attrs, "invert", "Invert", false, "Selection")
+          .tooltip = "Selects everywhere the two surfaces do not trade places.";
     },
     [](Node &n) {
       const Heightmap *a = require_in(n, "input A");
@@ -114,10 +125,16 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("mask");
-      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Selection");
-      add_float(n.attrs, "reach", "Reach", 0.05f, 0.002f, 0.5f, "Selection");
+      add_float(n.attrs, "threshold", "Threshold", 0.5f, 0.f, 1.f, "Selection")
+          .tooltip = "The value that counts as inside the region whose border is\n"
+                     "wanted.";
+      add_float(n.attrs, "reach", "Reach", 0.05f, 0.002f, 0.5f, "Selection")
+          .tooltip = "How wide the band along the boundary is.";
       add_choice(n.attrs, "side", "Side", {"Both", "Inward", "Outward"}, 0,
-                 "Selection");
+                 "Selection")
+          .tooltip = "Whether the band lies inside the region, outside it, or\n"
+                     "straddles the line. Inside is what you want to darken a\n"
+                     "shore; outside to spill something past an edge.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -153,10 +170,16 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("mask");
-      add_float(n.attrs, "size", "Blob size", 0.03f, 0.005f, 0.3f, "Selection");
-      add_float(n.attrs, "threshold", "Strength", 0.15f, 0.f, 1.f, "Selection");
+      add_float(n.attrs, "size", "Blob size", 0.03f, 0.005f, 0.3f, "Selection")
+          .tooltip = "The feature size to look for. This is a band-pass: blobs\n"
+                     "much larger or smaller than this are ignored.";
+      add_float(n.attrs, "threshold", "Strength", 0.15f, 0.f, 1.f, "Selection")
+          .tooltip = "How strongly a blob must stand out from its surroundings\n"
+                     "to be selected at all.";
       add_bool(n.attrs, "hollows", "Hollows instead of bumps", false,
-               "Selection");
+               "Selection")
+          .tooltip = "Finds dips instead of bumps - the same detector run the\n"
+                     "other way up.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -217,7 +240,10 @@ REGISTER_NODE(
     SelectSlope, "Mask", "Select by slope steepness",
     [](Node &n) {
       setup_selector(n);
-      add_range(n.attrs, "band", "Slope band", 0.3f, 1.f, 0.f, 1.f, "Selection");
+      add_range(n.attrs, "band", "Slope band", 0.3f, 1.f, 0.f, 1.f, "Selection")
+          .tooltip = "The band of steepness that is selected, 1 being flat\n"
+                     "ground and 0 a vertical face. Rock wants a low band,\n"
+                     "meadow a high one.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -256,8 +282,13 @@ REGISTER_NODE(
     [](Node &n) {
       setup_selector(n);
       add_choice(n.attrs, "mode", "Mode", {"Convex (ridges)", "Concave (valleys)"}, 0,
-                 "Selection");
-      add_float(n.attrs, "scale", "Feature scale", 0.01f, 0.002f, 0.1f, "Selection");
+                 "Selection")
+          .tooltip = "Concave picks the hollows - valley floors, gullies, the\n"
+                     "places water and soil collect. Convex picks the ridges and\n"
+                     "outcrops where they are stripped away.";
+      add_float(n.attrs, "scale", "Feature scale", 0.01f, 0.002f, 0.1f, "Selection")
+          .tooltip = "How large a feature counts. Small scales find surface\n"
+                     "crinkles; large ones find whole landforms.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -280,7 +311,10 @@ REGISTER_NODE(
     SelectCavities, "Mask", "Ambient-occlusion-like cavity map",
     [](Node &n) {
       setup_selector(n);
-      add_float(n.attrs, "radius", "Radius", 0.02f, 0.005f, 0.1f, "Selection");
+      add_float(n.attrs, "radius", "Radius", 0.02f, 0.005f, 0.1f, "Selection")
+          .tooltip = "How far the sampling reaches when deciding how enclosed a\n"
+                     "point is. Larger radii find broad basins; small ones find\n"
+                     "pits and crevices.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

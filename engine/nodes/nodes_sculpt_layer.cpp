@@ -75,9 +75,16 @@ REGISTER_NODE(
           .tooltip = "Ground below the low mark is cut away, ground above\n"
                      "the high mark is flattened. Normalized altitudes.";
       add_choice(n.attrs, "low_mode", "Below low mark",
-                 {"Leave alone", "Flatten", "Cut away (hole)"}, 1, "Clipping");
+                 {"Leave alone", "Flatten", "Cut away (hole)"}, 1, "Clipping")
+          .tooltip = "What happens below the low mark. Flatten gives a level\n"
+                     "floor - a salt pan or a lake bed. Cut away removes the\n"
+                     "ground entirely, which is how you punch a hole through the\n"
+                     "terrain.";
       add_choice(n.attrs, "high_mode", "Above high mark",
-                 {"Leave alone", "Flatten"}, 1, "Clipping");
+                 {"Leave alone", "Flatten"}, 1, "Clipping")
+          .tooltip = "What happens above the high mark. Flatten cuts the summits\n"
+                     "off level, which is what makes a mesa or a plateau out of\n"
+                     "a hill.";
       add_float(n.attrs, "softness", "Edge softness", 0.f, 0.f, 0.2f, "Clipping")
           .tooltip = "Blends the cut instead of leaving a hard step.";
     },
@@ -139,7 +146,9 @@ REGISTER_NODE(
           .tooltip = "Select this node and paint in the viewport with the\n"
                      "Terrain Editor brushes. Raise paints in, invert (or\n"
                      "the eraser) paints out.";
-      add_float(n.attrs, "soften", "Soften", 0.f, 0.f, 0.05f, "Paint");
+      add_float(n.attrs, "soften", "Soften", 0.f, 0.f, 0.05f, "Paint")
+          .tooltip = "Blurs the painted mask, so a stroke's edge is a gradient\n"
+                     "rather than the hard rim of the brush.";
     },
     [](Node &n) {
       Heightmap &m = n.out_hmap("mask");

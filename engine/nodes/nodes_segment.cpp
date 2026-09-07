@@ -80,9 +80,16 @@ REGISTER_NODE(
       n.add_out("mask A");
       n.add_out("mask B");
       n.add_out("mask C");
-      add_int(n.attrs, "k", "Clusters", 4, 2, 8, "Clustering");
+      add_int(n.attrs, "k", "Clusters", 4, 2, 8, "Clustering")
+          .tooltip = "How many regions the terrain is grouped into. Each point\n"
+                     "joins the group whose character it most resembles, so this\n"
+                     "is how many distinct kinds of ground you are claiming\n"
+                     "exist.";
       add_float(n.attrs, "slope_weight", "Slope weight", 1.f, 0.f, 4.f,
-                "Clustering");
+                "Clustering")
+          .tooltip = "How much steepness counts against height when deciding\n"
+                     "which group a point belongs to. At 0 the grouping is\n"
+                     "purely by altitude.";
       add_seed(n.attrs, "seed", "Seed", 0, "Clustering");
     },
     [](Node &n) {

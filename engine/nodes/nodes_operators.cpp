@@ -14,9 +14,19 @@ REGISTER_NODE(
       add_choice(n.attrs, "mode", "Mode",
                  {"Mix", "Add", "Subtract", "Multiply", "Min", "Max", "Smooth min",
                   "Smooth max", "Overlay", "Screen", "Difference"},
-                 0);
-      add_float(n.attrs, "factor", "Factor", 0.5f, 0.f, 1.f);
-      add_float(n.attrs, "smooth_k", "Smooth k", 0.1f, 0.01f, 0.5f);
+                 0)
+          .tooltip = "How the two inputs are combined. Add and multiply are the\n"
+                     "workhorses; max and min take whichever input is higher or\n"
+                     "lower at each point, which keeps both shapes rather than\n"
+                     "averaging them into mush.";
+      add_float(n.attrs, "factor", "Factor", 0.5f, 0.f, 1.f)
+          .tooltip = "The balance between the two inputs, where the mode uses\n"
+                     "one.";
+      add_float(n.attrs, "smooth_k", "Smooth k", 0.1f, 0.01f, 0.5f)
+          .tooltip = "Rounds the seam where max or min switches from one input\n"
+                     "to the other. A hard switch leaves a crease that catches\n"
+                     "the light as a line; this is the difference between two\n"
+                     "terrains meeting and two terrains merging.";
     },
     [](Node &n) {
       const Heightmap *a = require_in(n, "input A");
@@ -72,8 +82,11 @@ REGISTER_NODE(
       add_choice(n.attrs, "op", "Operation",
                  {"Multiply", "Add", "Power", "Absolute", "Negate", "One minus",
                   "Square root", "Log1p", "Sine", "Smoothstep"},
-                 0);
-      add_float(n.attrs, "value", "Value", 1.f, -4.f, 4.f);
+                 0)
+          .tooltip = "The arithmetic applied to every point.";
+      add_float(n.attrs, "value", "Value", 1.f, -4.f, 4.f)
+          .tooltip = "The constant the operation uses when nothing is wired to\n"
+                     "the second input.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -112,7 +125,9 @@ REGISTER_NODE(
       n.add_in("layer 3", DataType::Heightmap, true);
       n.add_in("layer 4", DataType::Heightmap, true);
       n.add_out("output");
-      add_float(n.attrs, "smooth_k", "Blend softness", 0.05f, 0.f, 0.4f);
+      add_float(n.attrs, "smooth_k", "Blend softness", 0.05f, 0.f, 0.4f)
+          .tooltip = "Rounds the seam where one layer gives way to the next, so\n"
+                     "stacked terrains merge rather than meeting at a crease.";
     },
     [](Node &n) {
       const Heightmap *l1 = require_in(n, "layer 1");

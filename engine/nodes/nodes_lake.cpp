@@ -85,7 +85,9 @@ REGISTER_NODE(
           .tooltip = "1 is round, which is the only shape Terragen's Lake\n"
                      "can be. Higher stretches it one way, so a lake can\n"
                      "lie along a valley.";
-      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f, "Lake");
+      add_float(n.attrs, "rotation", "Rotation", 0.f, -180.f, 180.f, "Lake")
+          .tooltip = "Turns the lake's outline, which matters once Stretch has\n"
+                     "pulled it away from round.";
       add_choice(n.attrs, "shape", "Outline",
                  {"Rectangle", "Rounded rectangle", "Round", "Diamond",
                   "From mask"},

@@ -72,7 +72,7 @@ Height relative to the neighborhood
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Radius (px) | int, 2 to 128, default 24 |  |
+| Radius (px) | int, 2 to 128, default 24 | How far out the surrounding ground is sampled before asking how high this point stands above it. Small radii find local bumps; large ones find whether you are on a ridge or in a valley at all. |
 
 ### Resample
 
@@ -87,7 +87,7 @@ Rebuilds the terrain at a coarser or finer sampling — detail control, not size
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Sampling | choice: Half / Quarter / Double / Custom | Coarser sampling discards fine detail, which is how you get a smooth base to build on. Finer sampling cannot invent detail — it interpolates. |
-| Custom size | int, 8 to 8192, default 256 |  |
+| Custom size | int, 8 to 8192, default 256 | The size to resample to, when Custom is chosen above. Resampling changes how much detail a buffer can hold without changing the graph's own resolution. |
 | Smooth interpolation | toggle, default on | Off: nearest neighbour, which keeps hard edges and gives a deliberately blocky, terraced look. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -107,8 +107,8 @@ Surface statistics: rugosity, TRI, shape index
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Metric | choice: Rugosity (local std dev) / Ruggedness (TRI) / Shape index / Unsphericity / Valley depth |  |
-| Radius (px) | int, 1 to 64, default 4 |  |
+| Metric | choice: Rugosity (local std dev) / Ruggedness (TRI) / Shape index / Unsphericity / Valley depth | Which statistic is measured. Rugosity is surface area against footprint - how crumpled the ground is. TRI is the average height difference to the neighbours, which finds broken ground. Shape index separates domes from hollows. |
+| Radius (px) | int, 1 to 64, default 4 | How far the measurement reaches. Small radii describe the surface texture; large ones describe the landform. |
 
 ### WetnessIndex
 
@@ -123,7 +123,7 @@ Where water collects — high in flat hollows fed from above, low on steep groun
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Minimum slope | float, 0.0001 to 0.5, default 0.01 | Perfectly flat ground would divide by zero and give an infinitely wet pixel. This is the flattest slope the index will consider. |
-| Contrast | float, 0.1 to 4, default 1 |  |
+| Contrast | float, 0.1 to 4, default 1 | Stretches the wetness values apart. The raw index is bunched into a narrow band, so without this most of the map reads as the same dampness. |
 | Route through basins | toggle, default on | Water that reaches a hollow fills it and flows on. Off follows the raw surface, where every stream stops at the first pit it meets. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -447,7 +447,7 @@ Narrow fissures cut into the surface, as after a quake
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Depth | float, 0 to 0.4, default 0.06 |  |
+| Depth | float, 0 to 0.4, default 0.06 | How deep the fissures cut. |
 | Width | float, 0.05 to 1, default 0.35 | Thickness of the fissures. Low values give hairlines. |
 | Scale | float, 0.5 to 40, default 6 | How many fissures cross the terrain. |
 | Wander | float, 0 to 2, default 0.35 | Makes the fissures meander instead of running straight. |
@@ -465,8 +465,8 @@ Loose debris that gathers on slopes and leaves flats clean
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Amount | float, 0 to 0.25, default 0.03 |  |
-| Grain size | float, 8 to 400, default 120 |  |
+| Amount | float, 0 to 0.25, default 0.03 | How much debris is laid down. |
+| Grain size | float, 8 to 400, default 120 | How coarse the debris is, in repeats across the tile. |
 | Slope bias | float, 0 to 4, default 1.5 | How strongly the debris prefers steep ground. 0 spreads it evenly, high values keep it on slopes. |
 | Seed | seed |  |
 
@@ -498,7 +498,7 @@ Lifts high ground and digs the valleys deeper
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Strength | float, 0 to 1, default 0.5 |  |
+| Strength | float, 0 to 1, default 0.5 | How far the high ground is lifted and the low ground pushed down. This exaggerates the relief that is already there rather than adding new shapes. |
 | Pivot altitude | float, 0 to 1, default 0.45 | Ground above this rises, ground below sinks. Lower it to keep more of the terrain high. |
 
 ### Sharpen
@@ -513,7 +513,7 @@ Makes steep ground steeper — crisp ridges and crests
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Amount | float, 0 to 3, default 0.6 |  |
+| Amount | float, 0 to 3, default 0.6 | How much local contrast is added. It steepens what is already steep, so ridges come to a crest instead of a rounded top. |
 | Radius | float, 0.002 to 0.1, default 0.01 | Size of the detail that gets emphasized. |
 | Steep areas only | float, 0 to 3, default 1 | 0 sharpens everything evenly; higher values leave flat ground untouched. |
 
@@ -531,8 +531,8 @@ Clip altitudes — flat tops above, holes below
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Clip range | range | Ground below the low mark is cut away, ground above the high mark is flattened. Normalized altitudes. |
-| Below low mark | choice: Leave alone / Flatten / Cut away (hole) |  |
-| Above high mark | choice: Leave alone / Flatten |  |
+| Below low mark | choice: Leave alone / Flatten / Cut away (hole) | What happens below the low mark. Flatten gives a level floor - a salt pan or a lake bed. Cut away removes the ground entirely, which is how you punch a hole through the terrain. |
+| Above high mark | choice: Leave alone / Flatten | What happens above the high mark. Flatten cuts the summits off level, which is what makes a mesa or a plateau out of a hill. |
 | Edge softness | float, 0 to 0.2, default 0 | Blends the cut instead of leaving a hard step. |
 
 ### TerrainImprint
@@ -2088,9 +2088,9 @@ Standing water at a set level
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Water level | float, 0 to 1, default 0.3 |  |
-| Fill | choice: Everywhere below / Connected to the edge / From source points |  |
-| Normalize depth | toggle, default on |  |
+| Water level | float, 0 to 1, default 0.3 | The height the water stands at, as a fraction of the terrain's own range. |
+| Fill | choice: Everywhere below / Connected to the edge / From source points | Everywhere below fills every hollow at once, whether or not water could reach it. Connected to the edge floods only what the sea can actually get into, so a walled basin stays dry. From source points floods outward from the points you supply. |
+| Normalize depth | toggle, default on | Scales the depth output to 0..1 so it can drive a mask directly. Off leaves it in terrain units. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Lake
@@ -2113,7 +2113,7 @@ A body of water at a place: centre, max radius and water level, with a wandering
 | Centre | x/y pair | Where the lake sits on the tile. |
 | Max radius (m) | float, 0.5 to 200000, default 400 | The furthest the water can reach from the centre, in metres. The wandering rim moves inside this, never past it - which is exactly what Terragen's Max radius means. |
 | Stretch | float, 0.05 to 20, default 1 | 1 is round, which is the only shape Terragen's Lake can be. Higher stretches it one way, so a lake can lie along a valley. |
-| Rotation | float, -180 to 180, default 0 |  |
+| Rotation | float, -180 to 180, default 0 | Turns the lake's outline, which matters once Stretch has pulled it away from round. |
 | Outline | choice: Rectangle / Rounded rectangle / Round / Diamond / From mask | From mask takes the outline from the mask input, so a lake can be traced from a real one. |
 | Shore wander | float, 0 to 1, default 0.3 | How far the waterline departs from the perfect curve, as a fraction of the radius. This is what makes bays and spits; 0 gives the drawing-board circle. |
 | Shore detail | float, 0.2 to 64, default 4 | How many bays and headlands around the shore. |
@@ -2207,9 +2207,9 @@ Compare two inputs into a mask
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Operation | choice: A > B / A < B / |A - B| < tol / |A - B| > tol |  |
-| Tolerance | float, 0 to 1, default 0.05 |  |
-| Softness | float, 0 to 0.3, default 0.02 |  |
+| Operation | choice: A > B / A < B / |A - B| < tol / |A - B| > tol | The comparison made at every point. |
+| Tolerance | float, 0 to 1, default 0.05 | How close two values must be to count as equal, since exact equality between floats almost never happens. |
+| Softness | float, 0 to 0.3, default 0.02 | How gradually the result crosses from false to true, so the mask has an edge rather than a step. |
 
 ### Repeat
 
@@ -2222,9 +2222,9 @@ Loop: apply an operation N times
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Operation | choice: Smooth / Thermal step / Expand / Shrink / Fold ridges |  |
-| Loop count | int, 1 to 64, default 4 |  |
-| Strength per pass | float, 0.05 to 1, default 0.5 |  |
+| Operation | choice: Smooth / Thermal step / Expand / Shrink / Fold ridges | What is done on each repeat. |
+| Loop count | int, 1 to 64, default 4 | How many times it is repeated. |
+| Strength per pass | float, 0.05 to 1, default 0.5 | How much each repeat contributes. |
 
 ### Select
 
@@ -2241,7 +2241,7 @@ Select one of four inputs by index or selector map
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Index | int, 0 to 3, default 0 |  |
+| Index | int, 0 to 3, default 0 | Which input is passed through. Everything else is ignored, which is how you switch between variants of a graph without rewiring it. |
 | Blend by selector map | toggle, default off | When on, the selector map (0..1) cross-fades between the connected inputs instead of the index. |
 
 ### Switch
@@ -2256,7 +2256,7 @@ Route input A or B to output
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Use input B | toggle, default off |  |
+| Use input B | toggle, default off | Passes the second input instead of the first. A plain either-or, for turning part of a graph on and off. |
 
 ### Threshold
 
@@ -2269,9 +2269,9 @@ Binary/soft threshold to a mask
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Level | float, 0 to 1, default 0.5 |  |
-| Softness | float, 0 to 0.5, default 0.05 |  |
-| Invert | toggle, default off |  |
+| Level | float, 0 to 1, default 0.5 | The value the input is cut at. |
+| Softness | float, 0 to 0.5, default 0.05 | How gradually it crosses from 0 to 1. Zero gives a hard edge, which on terrain reads as drawn on. |
+| Invert | toggle, default off | Selects below the level instead of above it. |
 
 ### Thru
 
@@ -2295,9 +2295,9 @@ Drop small connected blobs
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Threshold | float, 0 to 1, default 0.5 |  |
-| Min area (fraction) | float, 0 to 0.5, default 0.001 |  |
-| Invert | toggle, default off |  |
+| Threshold | float, 0 to 1, default 0.5 | The value above which a point counts as part of a patch. |
+| Min area (fraction) | float, 0 to 0.5, default 0.001 | Patches smaller than this are removed. This is how you clear speckle out of a mask without blurring the edges of what is left. |
+| Invert | toggle, default off | Removes the large patches and keeps the small ones instead. |
 
 ### DistanceField
 
@@ -2335,8 +2335,8 @@ Cluster the terrain into zones
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Clusters | int, 2 to 8, default 4 |  |
-| Slope weight | float, 0 to 4, default 1 |  |
+| Clusters | int, 2 to 8, default 4 | How many regions the terrain is grouped into. Each point joins the group whose character it most resembles, so this is how many distinct kinds of ground you are claiming exist. |
+| Slope weight | float, 0 to 4, default 1 | How much steepness counts against height when deciding which group a point belongs to. At 0 the grouping is purely by altitude. |
 | Seed | seed |  |
 
 ### MaskPaint
@@ -2350,7 +2350,7 @@ Paint a mask in the viewport
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Painted mask | painted buffer | Select this node and paint in the viewport with the Terrain Editor brushes. Raise paints in, invert (or the eraser) paints out. |
-| Soften | float, 0 to 0.05, default 0 |  |
+| Soften | float, 0 to 0.05, default 0 | Blurs the painted mask, so a stroke's edge is a gradient rather than the hard rim of the brush. |
 
 ### SelectAltitude
 
@@ -2365,7 +2365,7 @@ Select by height band
 | :--- | :--- | :--- |
 | Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
 | Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
-| Altitude band | range |  |
+| Altitude band | range | The band of heights that is selected. Everything inside is chosen, everything outside rejected, with the edge softness above deciding how abruptly. |
 
 ### SelectBlobs
 
@@ -2378,9 +2378,9 @@ Find blob-shaped features at a size
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Blob size | float, 0.005 to 0.3, default 0.03 |  |
-| Strength | float, 0 to 1, default 0.15 |  |
-| Hollows instead of bumps | toggle, default off |  |
+| Blob size | float, 0.005 to 0.3, default 0.03 | The feature size to look for. This is a band-pass: blobs much larger or smaller than this are ignored. |
+| Strength | float, 0 to 1, default 0.15 | How strongly a blob must stand out from its surroundings to be selected at all. |
+| Hollows instead of bumps | toggle, default off | Finds dips instead of bumps - the same detector run the other way up. |
 
 ### SelectBorder
 
@@ -2393,9 +2393,9 @@ A band along a mask's boundary
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Threshold | float, 0 to 1, default 0.5 |  |
-| Reach | float, 0.002 to 0.5, default 0.05 |  |
-| Side | choice: Both / Inward / Outward |  |
+| Threshold | float, 0 to 1, default 0.5 | The value that counts as inside the region whose border is wanted. |
+| Reach | float, 0.002 to 0.5, default 0.05 | How wide the band along the boundary is. |
+| Side | choice: Both / Inward / Outward | Whether the band lies inside the region, outside it, or straddles the line. Inside is what you want to darken a shore; outside to spill something past an edge. |
 
 ### SelectCavities
 
@@ -2410,7 +2410,7 @@ Ambient-occlusion-like cavity map
 | :--- | :--- | :--- |
 | Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
 | Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
-| Radius | float, 0.005 to 0.1, default 0.02 |  |
+| Radius | float, 0.005 to 0.1, default 0.02 | How far the sampling reaches when deciding how enclosed a point is. Larger radii find broad basins; small ones find pits and crevices. |
 
 ### SelectCurvature
 
@@ -2425,8 +2425,8 @@ Select concave (valleys) or convex (ridges)
 | :--- | :--- | :--- |
 | Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
 | Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
-| Mode | choice: Convex (ridges) / Concave (valleys) |  |
-| Feature scale | float, 0.002 to 0.1, default 0.01 |  |
+| Mode | choice: Convex (ridges) / Concave (valleys) | Concave picks the hollows - valley floors, gullies, the places water and soil collect. Convex picks the ridges and outcrops where they are stripped away. |
+| Feature scale | float, 0.002 to 0.1, default 0.01 | How large a feature counts. Small scales find surface crinkles; large ones find whole landforms. |
 
 ### SelectMidrange
 
@@ -2441,8 +2441,8 @@ Select the middle elevations
 | :--- | :--- | :--- |
 | Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
 | Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
-| Center | float, 0 to 1, default 0.5 |  |
-| Width | float, 0.02 to 1, default 0.25 |  |
+| Center | float, 0 to 1, default 0.5 | The height the selection is centred on, as a fraction of the terrain's range. |
+| Width | float, 0.02 to 1, default 0.25 | How far either side of the centre is still selected. This is the band-pass of the three altitude selectors: it takes the middle ground and leaves the peaks and the floors. |
 
 ### SelectSlope
 
@@ -2457,7 +2457,7 @@ Select by slope steepness
 | :--- | :--- | :--- |
 | Edge softness | float, 0.001 to 1, default 0.1 | How gradually the selection gives out at its edges. Near zero gives a hard cut, which reads as drawn on; a soft edge is what lets one material give way to another. |
 | Invert | toggle, default off | Selects everything this node did not - the ground it rejected becomes the mask. |
-| Slope band | range |  |
+| Slope band | range | The band of steepness that is selected, 1 being flat ground and 0 a vertical face. Rock wants a low band, meadow a high one. |
 
 ### SelectTransitions
 
@@ -2471,8 +2471,8 @@ Select where two surfaces trade places
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Tolerance | float, 0.001 to 0.5, default 0.05 |  |
-| Invert | toggle, default off |  |
+| Tolerance | float, 0.001 to 0.5, default 0.05 | How close two surfaces must come before the place they meet is called a transition. |
+| Invert | toggle, default off | Selects everywhere the two surfaces do not trade places. |
 
 ### Skeleton
 
@@ -2485,7 +2485,7 @@ Thin a mask to its centerlines
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Threshold | float, 0 to 1, default 0.5 |  |
+| Threshold | float, 0 to 1, default 0.5 | The value above which a point counts as part of the region being reduced to a centre line. |
 
 ### SkeletonDistance
 
@@ -2498,7 +2498,7 @@ How deep into the shape each cell sits
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Threshold | float, 0 to 1, default 0.5 |  |
+| Threshold | float, 0 to 1, default 0.5 | The value above which a point counts as part of the region whose centre line the distance is measured from. |
 
 ## Material
 
@@ -3164,9 +3164,9 @@ Blend two heightmaps (many modes)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Mode | choice: Mix / Add / Subtract / Multiply / Min / Max / Smooth min / Smooth max / Overlay / Screen / Difference |  |
-| Factor | float, 0 to 1, default 0.5 |  |
-| Smooth k | float, 0.01 to 0.5, default 0.1 |  |
+| Mode | choice: Mix / Add / Subtract / Multiply / Min / Max / Smooth min / Smooth max / Overlay / Screen / Difference | How the two inputs are combined. Add and multiply are the workhorses; max and min take whichever input is higher or lower at each point, which keeps both shapes rather than averaging them into mush. |
+| Factor | float, 0 to 1, default 0.5 | The balance between the two inputs, where the mode uses one. |
+| Smooth k | float, 0.01 to 0.5, default 0.1 | Rounds the seam where max or min switches from one input to the other. A hard switch leaves a crease that catches the light as a line; this is the difference between two terrains meeting and two terrains merging. |
 
 ### Math
 
@@ -3180,8 +3180,8 @@ Per-pixel math on one input
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Operation | choice: Multiply / Add / Power / Absolute / Negate / One minus / Square root / Log1p / Sine / Smoothstep |  |
-| Value | float, -4 to 4, default 1 |  |
+| Operation | choice: Multiply / Add / Power / Absolute / Negate / One minus / Square root / Log1p / Sine / Smoothstep | The arithmetic applied to every point. |
+| Value | float, -4 to 4, default 1 | The constant the operation uses when nothing is wired to the second input. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### MathGradient
@@ -3210,7 +3210,7 @@ Height-stack: stack up to 4 layers by max
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Blend softness | float, 0 to 0.4, default 0.05 |  |
+| Blend softness | float, 0 to 0.4, default 0.05 | Rounds the seam where one layer gives way to the next, so stacked terrains merge rather than meeting at a crease. |
 
 ## Path
 
@@ -4372,7 +4372,7 @@ The outline of the ground - rectangle, round, or your own mask - with a wanderin
 | Shape | choice: Rectangle / Rounded rectangle / Round / Diamond / From mask | Round is an ellipse when the width and height differ. From mask takes the outline from the mask input and only the edge treatment from here. |
 | Size | x/y pair | Width and height across, as a fraction of the tile. 1 touches the borders; less leaves ground around it. |
 | Centre | x/y pair | Where the shape sits on the tile. Outside 0..1 pushes it off the edge, which is how you get a coast rather than an island. |
-| Rotation | float, -180 to 180, default 0 |  |
+| Rotation | float, -180 to 180, default 0 | Turns the shape. Meaningless for a circle, and the whole point for a stretched one. |
 | Corner rounding | float, 0 to 1, default 0.3 | Rounded rectangle only: how much of the half-size the corners round off. 1 is a full stadium. |
 | Edge wander | float, 0 to 1, default 0.25 | How far the rim departs from the perfect curve, as a fraction of the radius. 0 is a drawing-board outline, which is the one thing no real coast has. |
 | Edge detail | float, 0.2 to 64, default 5 | How many bays and headlands there are around the rim. |
@@ -4538,10 +4538,10 @@ Translate / scale / rotate
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Translate | x/y pair |  |
-| Scale | x/y pair |  |
-| Rotate ° | float, -180 to 180, default 0 |  |
-| Outside area | choice: Clamp / Mirror / Tile |  |
+| Translate | x/y pair | Slides the terrain across the tile. |
+| Scale | x/y pair | Zooms the terrain in or out, across and down separately. |
+| Rotate ° | float, -180 to 180, default 0 | Rotates the terrain. |
+| Outside area | choice: Clamp / Mirror / Tile | What fills the ground the transform has moved away from. Clamp smears the border outward, mirror reflects it, tile repeats the map - which only looks right if the terrain was seamless to begin with. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### WarpDirectional
@@ -4556,9 +4556,9 @@ Warp along gradient — wind-swept shapes
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Direction ° | float, -180 to 180, default 30 |  |
-| Amplitude | float, 0 to 0.2, default 0.02 |  |
-| Scale by height | toggle, default on |  |
+| Direction ° | float, -180 to 180, default 30 | Which way the terrain is dragged. |
+| Amplitude | float, 0 to 0.2, default 0.02 | How far it is dragged. |
+| Scale by height | toggle, default on | On, the high ground is dragged further than the low, so peaks lean over and reads as wind-shaped or as material having slumped. Off, the whole map shifts together. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### WarpNoise
@@ -4574,8 +4574,8 @@ Domain warp by internal fBm noise
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Amplitude | float, 0 to 0.5, default 0.08 |  |
-| Warp frequency | x/y pair |  |
-| Octaves | int, 1 to 10, default 4 |  |
+| Amplitude | float, 0 to 0.5, default 0.08 | How far the terrain is pushed sideways. Warping the coordinates rather than the heights is what turns a regular pattern into something organic - the lattice the noise sits on stops being visible. |
+| Warp frequency | x/y pair | How large the warping swirls are, across and down. Low values sweep the whole map about; high ones ripple its edges. |
+| Octaves | int, 1 to 10, default 4 | How many scales of warping are layered. More gives a more intricately folded result. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 

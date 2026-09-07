@@ -73,12 +73,21 @@ REGISTER_NODE(
       n.add_out("output");
       n.add_out("depth");
       n.add_out("water_mask");
-      add_float(n.attrs, "level", "Water level", 0.3f, 0.f, 1.f, "Flood");
+      add_float(n.attrs, "level", "Water level", 0.3f, 0.f, 1.f, "Flood")
+          .tooltip = "The height the water stands at, as a fraction of the\n"
+                     "terrain's own range.";
       add_choice(n.attrs, "mode", "Fill",
                  {"Everywhere below", "Connected to the edge",
                   "From source points"},
-                 1, "Flood");
-      add_bool(n.attrs, "normalize_depth", "Normalize depth", true, "Flood");
+                 1, "Flood")
+          .tooltip = "Everywhere below fills every hollow at once, whether or\n"
+                     "not water could reach it. Connected to the edge floods\n"
+                     "only what the sea can actually get into, so a walled basin\n"
+                     "stays dry. From source points floods outward from the\n"
+                     "points you supply.";
+      add_bool(n.attrs, "normalize_depth", "Normalize depth", true, "Flood")
+          .tooltip = "Scales the depth output to 0..1 so it can drive a mask\n"
+                     "directly. Off leaves it in terrain units.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
