@@ -102,7 +102,11 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    and the ground moulds to its base through a TerrainImprint node)
 - {"op":"set_ground","object":"House","lock":true,"offset_m":0,"margin_m":0.5,
    "blend_m":6,"sink_m":0.3,"lift_m":0,"dig_m":0}
-   (offset_m is the height over the surface, negative for below it. margin_m
+   (offset_m is the height over the surface, negative for below it - the same
+   number as the object's Y, so setting either moves it. settle 0..1 is where
+   it rests in uneven ground: 1 on the highest ground under its base, so it
+   never cuts in but hangs over a slope; 0 on the lowest, so it touches
+   everywhere. That is the control for the gap under an object. margin_m
    is the flat patch past the walls, blend_m how far the ground responds,
    sink_m a dead band before digging starts. lift_m and dig_m cap how far the
    ground may travel to meet the object: both 0 and it holds the height you

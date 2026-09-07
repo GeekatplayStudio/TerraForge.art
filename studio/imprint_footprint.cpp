@@ -125,6 +125,15 @@ Footprint imprint_footprint(const SceneObject &o, float height_scale, float band
   return f;
 }
 
+GroundLockStep ground_lock_step(float pos_y, float last_y, bool seen,
+                                float rest, float offset) {
+  // Anything that moved the object since the last pass is the user choosing
+  // an altitude, and it becomes the offset. Otherwise the object is carried
+  // along at the offset it already has.
+  if (seen && std::fabs(pos_y - last_y) > 1e-6f) offset = pos_y - rest;
+  return {offset, rest + offset};
+}
+
 std::string imprint_footprint_line(const Footprint &f, float sink, float margin,
                                    float blend, float lift, float dig) {
   std::string s;

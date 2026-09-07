@@ -38,6 +38,7 @@ void object_transform_to_json(json &jo, const SceneObject &o) {
   // Written only when limited, so a scene that never touched them stays
   // byte-identical and reads back with the unlimited default.
   if (o.primitive_detail != 24) jo["primitive_detail"] = o.primitive_detail;
+  if (o.ground_settle != 1.f) jo["ground_settle"] = o.ground_settle;
   if (o.ground_lift < 1e8f) jo["ground_lift"] = o.ground_lift;
   if (o.ground_dig < 1e8f) jo["ground_dig"] = o.ground_dig;
   if (!o.deform.identity()) {
@@ -70,6 +71,7 @@ void object_transform_from_json(const json &jo, SceneObject &o) {
   o.ground_blend = jo.value("ground_blend", 0.f);
   o.ground_sink = jo.value("ground_sink", 0.f);
   o.primitive_detail = jo.value("primitive_detail", 24);
+  o.ground_settle = jo.value("ground_settle", 1.f);
   o.ground_lift = jo.value("ground_lift", 1e9f);
   o.ground_dig = jo.value("ground_dig", 1e9f);
   if (jo.contains("twist")) v3_from(jo["twist"], o.deform.twist);

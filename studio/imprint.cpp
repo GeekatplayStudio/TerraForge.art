@@ -137,29 +137,56 @@ void app_service_imprint(App &a) {
   const gpx::Heightmap *ground = app_natural_ground();
   if (!ground && node) ground = node->in_hmap("input");
   if (ground && !ground->v.empty()) {
-    int drag_obj = -1, drag_axis = -1;
-    const bool dragging = gizmo_dragging(drag_obj, drag_axis);
     bool moved = false;
     for (int i = 0; i < (int)sc.objects.size(); ++i) {
       SceneObject &o = sc.objects[i];
       if (imprint_ground_of(o) < 0 || !o.ground_lock) continue;
       Footprint f = imprint_footprint(o, hs);
       if (!f.valid()) continue;
-      // the ground under the footprint: its highest point, so no corner of
-      // the base is ever below the natural surface unless the user sinks it
-      float h = -1e30f;
+      // The ground under the footprint, sampled at its corners and centre.
+      //
+      // Resting on the *highest* of those is what leaves a gap: on any
+      // slope the base sits at the height of its highest corner and hangs
+      // over everything else. `ground_settle` says where between the lowest
+      // and the highest the base actually sits - 0 sinks it in until it
+      // touches everywhere, 1 keeps it clear of the ground entirely.
+      float hi = -1e30f, lo = 1e30f;
       const size_t n = f.xz.size() / 2;
-      for (size_t k = 0; k < n; ++k)
-        h = std::max(h, ground->sample(std::clamp(f.xz[k * 2], 0.f, 1.f), std::clamp(f.xz[k * 2 + 1], 0.f, 1.f)));
-      h = std::max(h, ground->sample(std::clamp(f.cx, 0.f, 1.f), std::clamp(f.cz, 0.f, 1.f)));
-      const float base_rel = f.base - o.pos[1]; // the base below the pivot, heightmap units
-      const float rest = h - base_rel;          // pos.y that puts the base on the ground
-      if (dragging && drag_obj == i && drag_axis == 1) {
-        o.ground_offset = o.pos[1] - rest; // the user is choosing the offset
-      } else if (std::fabs(o.pos[1] - (rest + o.ground_offset)) > 1e-6f) {
-        o.pos[1] = rest + o.ground_offset;
+      auto note = [&](float u, float v) {
+        const float g = ground->sample(std::clamp(u, 0.f, 1.f),
+                                       std::clamp(v, 0.f, 1.f));
+        hi = std::max(hi, g);
+        lo = std::min(lo, g);
+      };
+      for (size_t k = 0; k < n; ++k) note(f.xz[k * 2], f.xz[k * 2 + 1]);
+      note(f.cx, f.cz);
+      const float settle = std::clamp(o.ground_settle, 0.f, 1.f);
+      const float h = lo + (hi - lo) * settle;
+      const float base_rel = f.base - o.pos[1]; // the base below the pivot
+      const float rest = h - base_rel;          // pos.y that seats the base
+
+      // The height is the user's to set, from anywhere.
+      //
+      // This used to write o.pos[1] every frame and read it back only while
+      // a gizmo was being dragged on the Y axis, so typing an altitude in
+      // the Transform panel, or setting one over the API, or keyframing one,
+      // was silently overwritten on the next frame. The lock was not holding
+      // the object to the surface, it was holding it away from the user.
+      //
+      // Now anything that moves the object is taken as a new altitude:
+      // whatever changed pos[1] since the last pass wins, and becomes the
+      // offset from the surface. What the lock still does - the thing it is
+      // for - is carry that offset along as the object moves across the
+      // ground, or as the ground itself changes underneath it.
+      const GroundLockStep step = ground_lock_step(
+          o.pos[1], o.ground_last_y, o.ground_seen_y, rest, o.ground_offset);
+      o.ground_offset = step.offset;
+      if (std::fabs(o.pos[1] - step.y) > 1e-6f) {
+        o.pos[1] = step.y;
         moved = true;
       }
+      o.ground_last_y = o.pos[1];
+      o.ground_seen_y = true;
     }
     // the bases may have moved: rebuild the text so the node sees them
     if (moved) text = footprints_text(sc, hs, any);

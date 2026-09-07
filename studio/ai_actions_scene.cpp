@@ -78,6 +78,9 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         if (act.contains("sink_m")) o.ground_sink = std::max(act["sink_m"].get<float>(), 0.f) / hm_m;
         // How far the ground may travel to meet it. Absent leaves the
         // default, which is unlimited and is how it behaved before.
+        // 1 rests on the highest ground under the footprint (a gap on
+        // any slope), 0 sinks it in until it touches everywhere.
+        if (act.contains("settle")) o.ground_settle = std::clamp(act["settle"].get<float>(), 0.f, 1.f);
         if (act.contains("lift_m")) o.ground_lift = std::max(act["lift_m"].get<float>(), 0.f) / hm_m;
         if (act.contains("dig_m")) o.ground_dig = std::max(act["dig_m"].get<float>(), 0.f) / hm_m;
         ++applied;

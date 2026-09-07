@@ -198,8 +198,29 @@ void ground_ui(App &a, SceneObject &o) {
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Where the object sits relative to the ground under it.\n"
                       "Zero rests its base on the natural surface; negative\n"
-                      "puts it below, positive above. Whether the ground comes\n"
-                      "with it is the next two settings' business.");
+                      "puts it below, positive above.\n\n"
+                      "The Y in Transform is the same height by another name:\n"
+                      "set either and the other follows. Whether the ground\n"
+                      "comes with it is the two settings further down.");
+
+  // The gap. An object seated on the highest ground under its footprint
+  // never intersects the terrain - and on any slope that means it touches at
+  // one corner and hangs over the rest, which reads as floating.
+  float settle = 1.f - std::clamp(o.ground_settle, 0.f, 1.f);
+  if (ImGui::SliderFloat("Sink into the ground", &settle, 0.f, 1.f, "%.2f"))
+    o.ground_settle = 1.f - std::clamp(settle, 0.f, 1.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How deep the object settles into uneven ground.\n\n"
+                      "0 seats it on the highest ground under its base, so it\n"
+                      "never cuts into the terrain - and on a slope it touches\n"
+                      "at one corner and hangs over the rest. That gap is what\n"
+                      "this closes.\n\n"
+                      "1 seats it on the lowest ground under its base, so it\n"
+                      "touches everywhere and the terrain rises through it\n"
+                      "where the ground is higher. Anything between splits the\n"
+                      "difference.\n\n"
+                      "This is where it *rests*. How far the ground may then\n"
+                      "move to meet it is below.");
   float margin_m = o.ground_margin * tile_m;
   if (ImGui::DragFloat("Flat margin", &margin_m, dt, 0.f, 1e6f, "%.2f m"))
     o.ground_margin = std::max(margin_m, 0.f) / tile_m;

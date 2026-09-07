@@ -173,6 +173,17 @@ struct SceneObject {
   // Built-in primitives only: how finely the shape is tessellated, so it
   // can carry a displacement material rather than read as a facet count.
   int primitive_detail = 24;
+  // Where the base sits between the lowest and the highest ground under the
+  // footprint. 1 rests on the highest point, so the object never intersects
+  // the ground and hangs over the rest of it - which is the gap. 0 sinks it
+  // until it touches everywhere.
+  float ground_settle = 1.f;
+  // What the ground lock last wrote into pos[1]. Runtime only, never saved:
+  // it is how the lock tells its own writes from the user's, so that typing
+  // an altitude, dragging the gizmo, driving it over the API or keyframing
+  // it all set the height rather than being overwritten next frame.
+  float ground_last_y = 0.f;
+  bool ground_seen_y = false;
   float ground_lift = 1e9f;
   float ground_dig = 1e9f;
   // What the driver node last handed this object (its transform attributes,

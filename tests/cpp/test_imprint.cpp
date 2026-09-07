@@ -201,6 +201,80 @@ static void test_ground_may_be_told_to_stay_put() {
   }
 }
 
+// The altitude of a grounded object is the user's to set.
+//
+// This is the regression that mattered most and was reported repeatedly. The
+// lock wrote pos.y every frame and read it back only while a gizmo was being
+// dragged on the Y axis, so typing an altitude in the Transform panel, or
+// setting one over the API, or keyframing one, was overwritten on the next
+// frame and simply appeared to do nothing. The lock was not holding the
+// object to the surface, it was holding it away from whoever was using it.
+//
+// ground_lock_step is that decision on its own, so it can be checked here
+// rather than by dragging something in a running application.
+static void test_altitude_is_the_users_to_set() {
+  std::printf("imprint: the ground lock honours a set height...\n");
+  const float rest = 0.30f; // where the base would sit on the surface
+
+  // First pass: nothing has been written yet, so the offset simply applies.
+  {
+    GroundLockStep st = ground_lock_step(0.f, 0.f, false, rest, 0.f);
+    CHECK(near(st.y, rest) && near(st.offset, 0.f),
+          "with no offset the object rests on the surface");
+    GroundLockStep up = ground_lock_step(0.f, 0.f, false, rest, 0.1f);
+    CHECK(near(up.y, rest + 0.1f), "and an offset lifts it");
+  }
+
+  // The object is where we last put it: nothing changes.
+  {
+    GroundLockStep st = ground_lock_step(rest, rest, true, rest, 0.f);
+    CHECK(near(st.y, rest) && near(st.offset, 0.f),
+          "an untouched object stays where it is");
+  }
+
+  // Somebody typed a height. It is honoured, and it becomes the offset.
+  {
+    const float typed = 0.42f;
+    GroundLockStep st = ground_lock_step(typed, rest, true, rest, 0.f);
+    CHECK(near(st.y, typed),
+          "a typed height is honoured, not overwritten - got " +
+              std::to_string(st.y) + " for " + std::to_string(typed));
+    CHECK(near(st.offset, typed - rest),
+          "and becomes the offset from the surface, " +
+              std::to_string(st.offset));
+  }
+
+  // Below the surface too: that is the case that could not be expressed at
+  // all before, because the ground came down with it.
+  {
+    const float sunk = 0.22f;
+    GroundLockStep st = ground_lock_step(sunk, rest, true, rest, 0.f);
+    CHECK(near(st.y, sunk), "a height below the surface is honoured too");
+    CHECK(st.offset < 0.f, "and reads as a negative offset");
+  }
+
+  // Having taken it, the lock holds it: the ground moves, the object keeps
+  // the altitude it was given rather than the position it happened to have.
+  {
+    const float typed = 0.42f;
+    GroundLockStep set = ground_lock_step(typed, rest, true, rest, 0.f);
+    const float new_rest = 0.35f; // the terrain rose under it
+    GroundLockStep carried =
+        ground_lock_step(set.y, set.y, true, new_rest, set.offset);
+    CHECK(near(carried.y, new_rest + set.offset),
+          "the object rides the surface up at the height it was given");
+    CHECK(near(carried.y - new_rest, typed - rest),
+          "keeping the same distance above it");
+  }
+
+  // A move so small it is the float noise of our own write is not a new
+  // altitude - or the object would drift a little further every frame.
+  {
+    GroundLockStep st = ground_lock_step(rest + 1e-9f, rest, true, rest, 0.f);
+    CHECK(near(st.offset, 0.f), "a sub-epsilon jitter is not taken as a move");
+  }
+}
+
 static void test_surface_features() {
   std::printf("imprint: surface features after placement...\n");
   gpx::Heightmap ground(64, 64);
@@ -233,6 +307,7 @@ int test_imprint_run() {
   test_hull();
   test_cube_footprint();
   test_band_and_fallbacks();
+  test_altitude_is_the_users_to_set();
   test_ground_may_be_told_to_stay_put();
   test_surface_features();
   return g_fail;

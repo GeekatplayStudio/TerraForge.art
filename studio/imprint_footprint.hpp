@@ -31,6 +31,24 @@ Footprint imprint_footprint(const SceneObject &o, float height_scale, float band
 //   "base sink margin blend n x0 z0 x1 z1 ..."
 // base and sink in heightmap units, margin and blend in tile fractions
 // (blend <= 0 lets the node choose from the footprint's radius).
+// One step of the ground lock, as arithmetic, so it can be tested without a
+// scene or a frame (tests/cpp/test_imprint.cpp).
+//
+// The lock holds a grounded object at a chosen height above the surface as
+// the surface moves under it. The hard part is telling its own writes from
+// the user's: it used to write pos.y every frame and read it back only while
+// a gizmo was being dragged, so typing an altitude, setting one over the API
+// or keyframing one was silently overwritten on the next frame.
+//
+// `seen` is false on the first pass, when there is no previous write to
+// compare against and the offset must simply be honoured.
+struct GroundLockStep {
+  float offset; // the new offset from the surface
+  float y;      // where pos.y should be
+};
+GroundLockStep ground_lock_step(float pos_y, float last_y, bool seen,
+                                float rest, float offset);
+
 std::string imprint_footprint_line(const Footprint &f, float sink, float margin,
                                    float blend, float lift, float dig);
 
