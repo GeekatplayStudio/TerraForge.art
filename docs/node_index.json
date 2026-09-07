@@ -566,7 +566,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0.05, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "How thick the air is. It reddens the sun near the horizon\nand washes distance out to blue - the single strongest cue\nof scale in a landscape, because it tells the eye how far\naway a ridge is."
       },
       {
         "key": "ambient",
@@ -574,7 +574,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0, "max": 2, "default": 0.7,
-        "tooltip": ""
+        "tooltip": "How much light the sky itself throws down. This is what\nfills the shadows; too little and they read as black holes\nrather than shade."
       },
       {
         "key": "zenith_r",
@@ -582,7 +582,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0, "max": 1, "default": 0.18,
-        "tooltip": ""
+        "tooltip": "The red component of the sky straight overhead, linear\nrather than sRGB."
       },
       {
         "key": "zenith_g",
@@ -590,7 +590,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0, "max": 1, "default": 0.32,
-        "tooltip": ""
+        "tooltip": "The green component of the sky straight overhead, linear\nrather than sRGB."
       },
       {
         "key": "zenith_b",
@@ -598,7 +598,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0, "max": 1, "default": 0.58,
-        "tooltip": ""
+        "tooltip": "The blue component of the sky straight overhead, linear\nrather than sRGB."
       },
       {
         "key": "horizon_r",
@@ -606,7 +606,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0, "max": 1, "default": 0.62,
-        "tooltip": ""
+        "tooltip": "The red component of the sky at the horizon, linear rather\nthan sRGB."
       },
       {
         "key": "horizon_g",
@@ -614,7 +614,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0, "max": 1, "default": 0.65,
-        "tooltip": ""
+        "tooltip": "The green component of the sky at the horizon, linear\nrather than sRGB."
       },
       {
         "key": "horizon_b",
@@ -622,7 +622,7 @@
         "type": "float",
         "group": "Sky",
         "min": 0, "max": 1, "default": 0.7,
-        "tooltip": ""
+        "tooltip": "The blue component of the sky at the horizon, linear\nrather than sRGB."
       },
       {
         "key": "fog_type",
@@ -630,7 +630,7 @@
         "type": "choice",
         "group": "Fog",
         "choices": ["Off", "Haze", "Fog", "Pollution"],
-        "tooltip": ""
+        "tooltip": "How the fog is distributed. Uniform fills the air evenly;\nthe height-based kinds pool it in the valleys and leave\nthe peaks clear, which is what morning mist actually does."
       },
       {
         "key": "fog_density",
@@ -638,7 +638,7 @@
         "type": "float",
         "group": "Fog",
         "min": 0, "max": 6, "default": 0.9,
-        "tooltip": ""
+        "tooltip": "How thick the fog is."
       },
       {
         "key": "fog_level",
@@ -646,7 +646,7 @@
         "type": "float",
         "group": "Fog",
         "min": 0, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "The height the fog sits at, for the height-based kinds.\nBelow it the air is thick, above it clear."
       },
       {
         "key": "fog_falloff",
@@ -654,7 +654,7 @@
         "type": "float",
         "group": "Fog",
         "min": 0.5, "max": 24, "default": 6,
-        "tooltip": ""
+        "tooltip": "How quickly the fog thins above its level. Sharp gives a\ndefined top surface with peaks standing out of it; soft\ngives a haze that fades away."
       },
       {
         "key": "fog_r",
@@ -662,7 +662,7 @@
         "type": "float",
         "group": "Fog",
         "min": 0, "max": 1, "default": 0.55,
-        "tooltip": ""
+        "tooltip": "The red component of the fog, linear rather than sRGB."
       },
       {
         "key": "fog_g",
@@ -670,7 +670,7 @@
         "type": "float",
         "group": "Fog",
         "min": 0, "max": 1, "default": 0.63,
-        "tooltip": ""
+        "tooltip": "The green component of the fog, linear rather than sRGB."
       },
       {
         "key": "fog_b",
@@ -678,7 +678,7 @@
         "type": "float",
         "group": "Fog",
         "min": 0, "max": 1, "default": 0.75,
-        "tooltip": ""
+        "tooltip": "The blue component of the fog, linear rather than sRGB."
       },
       {
         "key": "fog_scatter",
@@ -686,7 +686,7 @@
         "type": "float",
         "group": "Fog",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much the fog glows toward the sun. This is what makes\nlooking into a misty sunrise bright and looking away from\nit flat, and without it fog reads as grey paint."
       }
       ]
     },
@@ -705,7 +705,7 @@
         "type": "bool",
         "group": "Layer",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Turns the cloud layer off without losing its settings."
       },
       {
         "key": "type",
@@ -713,7 +713,7 @@
         "type": "choice",
         "group": "Layer",
         "choices": ["Stratus", "Cumulus", "Cumulonimbus"],
-        "tooltip": ""
+        "tooltip": "The kind of cloud. Each has its own shape and altitude\nbehaviour - flat sheets, heaped cumulus, high wisps."
       },
       {
         "key": "coverage",
@@ -729,7 +729,7 @@
         "type": "float",
         "group": "Layer",
         "min": 0.1, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "How opaque the cloud is. Thin lets the sun through and\nlights the cloud from within; thick blocks it and casts\nshadow on the ground."
       },
       {
         "key": "altitude",
@@ -737,7 +737,7 @@
         "type": "float",
         "group": "Layer",
         "min": 0.2, "max": 4, "default": 1.4,
-        "tooltip": ""
+        "tooltip": "How high the layer sits."
       },
       {
         "key": "thickness",
@@ -745,7 +745,7 @@
         "type": "float",
         "group": "Layer",
         "min": 0.05, "max": 2, "default": 0.8,
-        "tooltip": ""
+        "tooltip": "How deep the layer is from base to top. Depth is what lets\na cloud be lit brightly on top and dark underneath."
       },
       {
         "key": "detail",
@@ -753,7 +753,7 @@
         "type": "float",
         "group": "Shape",
         "min": 0, "max": 1, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "How much fine structure the cloud has. Low gives soft\nblobs; high gives the wispy, torn edges of real cloud."
       },
       {
         "key": "anvil",
@@ -761,7 +761,7 @@
         "type": "float",
         "group": "Shape",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How far the cloud spreads out at its top, the way a storm\ncell flattens against the top of the troposphere."
       },
       {
         "key": "wind_speed",
@@ -769,7 +769,7 @@
         "type": "float",
         "group": "Motion",
         "min": 0, "max": 0.3, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How fast the layer drifts. Cloud is the only thing in a\nstill landscape that moves, so this is what makes a\nsequence read as time passing."
       },
       {
         "key": "wind_dir",
@@ -777,7 +777,7 @@
         "type": "float",
         "group": "Motion",
         "min": 0, "max": 360, "default": 45,
-        "tooltip": ""
+        "tooltip": "Which way the layer drifts."
       },
       {
         "key": "ambient",
@@ -785,7 +785,7 @@
         "type": "float",
         "group": "Lighting",
         "min": 0, "max": 2, "default": 0.55,
-        "tooltip": ""
+        "tooltip": "How much sky light the cloud picks up where the sun does\nnot reach it directly, which sets how dark its underside\ngoes."
       },
       {
         "key": "color_r",
@@ -793,7 +793,7 @@
         "type": "float",
         "group": "Lighting",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The red component of the cloud, linear rather than sRGB."
       },
       {
         "key": "color_g",
@@ -801,7 +801,7 @@
         "type": "float",
         "group": "Lighting",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The green component of the cloud, linear rather than sRGB."
       },
       {
         "key": "color_b",
@@ -809,7 +809,7 @@
         "type": "float",
         "group": "Lighting",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The blue component of the cloud, linear rather than sRGB."
       },
       {
         "key": "quality",
@@ -817,7 +817,7 @@
         "type": "choice",
         "group": "Lighting",
         "choices": ["Draft", "Normal", "High"],
-        "tooltip": ""
+        "tooltip": "How many samples the raymarcher takes through the cloud.\nThis is the direct trade between how solid the cloud looks\nand how fast the frame draws."
       }
       ]
     },
@@ -836,7 +836,7 @@
         "type": "choice",
         "group": "Direction",
         "choices": ["Manual", "Location & time"],
-        "tooltip": ""
+        "tooltip": "Whether the sun is placed by hand, or worked out from a\nplace and a time. By date and time is what you want when\nthe shot has to match a real location and hour."
       },
       {
         "key": "azimuth",
@@ -844,7 +844,7 @@
         "type": "float",
         "group": "Direction",
         "min": 0, "max": 360, "default": 135,
-        "tooltip": ""
+        "tooltip": "Which way the sun lies, in degrees around the compass."
       },
       {
         "key": "altitude",
@@ -852,7 +852,7 @@
         "type": "float",
         "group": "Direction",
         "min": 1, "max": 89, "default": 35,
-        "tooltip": ""
+        "tooltip": "How high the sun stands above the horizon. Low light is\nlong shadows and warm colour; overhead is short shadows\nand flat ground."
       },
       {
         "key": "latitude",
@@ -860,7 +860,7 @@
         "type": "float",
         "group": "Location",
         "min": -89, "max": 89, "default": 40.7,
-        "tooltip": ""
+        "tooltip": "Where on the earth the scene is, north or south. With the\ndate and hour this decides where the sun actually sits."
       },
       {
         "key": "longitude",
@@ -868,7 +868,7 @@
         "type": "float",
         "group": "Location",
         "min": -180, "max": 180, "default": -111.9,
-        "tooltip": ""
+        "tooltip": "Where on the earth the scene is, east or west."
       },
       {
         "key": "utc_offset",
@@ -876,7 +876,7 @@
         "type": "float",
         "group": "Location",
         "min": -12, "max": 14, "default": -7,
-        "tooltip": ""
+        "tooltip": "The time zone, so the hour below means local clock time."
       },
       {
         "key": "month",
@@ -884,7 +884,7 @@
         "type": "int",
         "group": "Location",
         "min": 1, "max": 12, "default": 6,
-        "tooltip": ""
+        "tooltip": "The month, which sets how high the sun can climb at this\nlatitude."
       },
       {
         "key": "day",
@@ -892,7 +892,7 @@
         "type": "int",
         "group": "Location",
         "min": 1, "max": 31, "default": 21,
-        "tooltip": ""
+        "tooltip": "The day of the month."
       },
       {
         "key": "hour",
@@ -900,7 +900,7 @@
         "type": "float",
         "group": "Location",
         "min": 0, "max": 24, "default": 14,
-        "tooltip": ""
+        "tooltip": "The hour of the day, local time."
       },
       {
         "key": "intensity",
@@ -908,7 +908,7 @@
         "type": "float",
         "group": "Light",
         "min": 0.2, "max": 8, "default": 2.6,
-        "tooltip": ""
+        "tooltip": "How bright the sun is."
       },
       {
         "key": "color_r",
@@ -916,7 +916,7 @@
         "type": "float",
         "group": "Light",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The red component of the sunlight, linear rather than\nsRGB."
       },
       {
         "key": "color_g",
@@ -924,7 +924,7 @@
         "type": "float",
         "group": "Light",
         "min": 0, "max": 1, "default": 0.93,
-        "tooltip": ""
+        "tooltip": "The green component of the sunlight, linear rather than\nsRGB."
       },
       {
         "key": "color_b",
@@ -932,7 +932,7 @@
         "type": "float",
         "group": "Light",
         "min": 0, "max": 1, "default": 0.82,
-        "tooltip": ""
+        "tooltip": "The blue component of the sunlight, linear rather than\nsRGB."
       },
       {
         "key": "shadows",
@@ -940,7 +940,7 @@
         "type": "bool",
         "group": "Light",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Whether the sun casts shadows. Turning them off is a great\ndeal faster and makes the terrain's form much harder to\nread."
       }
       ]
     },
@@ -959,7 +959,7 @@
         "type": "bool",
         "group": "Body",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Turns the water off without losing its settings."
       },
       {
         "key": "level",
@@ -967,7 +967,7 @@
         "type": "float",
         "group": "Body",
         "min": 0, "max": 1, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "The height the water surface sits at."
       },
       {
         "key": "clarity",
@@ -975,7 +975,7 @@
         "type": "float",
         "group": "Body",
         "min": 1, "max": 60, "default": 18,
-        "tooltip": ""
+        "tooltip": "How far light travels into the water before it is\nabsorbed. Clear water shows the bed in the shallows and\ngoes deep blue further out; murky water hides the bed at\nonce."
       },
       {
         "key": "opacity",
@@ -983,7 +983,7 @@
         "type": "float",
         "group": "Body",
         "min": 0.3, "max": 1, "default": 0.92,
-        "tooltip": ""
+        "tooltip": "How much the surface hides what is beneath it."
       },
       {
         "key": "deep_r",
@@ -991,7 +991,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "The red component of deep water, linear rather than sRGB."
       },
       {
         "key": "deep_g",
@@ -999,7 +999,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "The green component of deep water, linear rather than\nsRGB."
       },
       {
         "key": "deep_b",
@@ -1007,7 +1007,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.12,
-        "tooltip": ""
+        "tooltip": "The blue component of deep water, linear rather than sRGB."
       },
       {
         "key": "shallow_r",
@@ -1015,7 +1015,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "The red component of shallow water, linear rather than\nsRGB."
       },
       {
         "key": "shallow_g",
@@ -1023,7 +1023,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.26,
-        "tooltip": ""
+        "tooltip": "The green component of shallow water, linear rather than\nsRGB."
       },
       {
         "key": "shallow_b",
@@ -1031,7 +1031,7 @@
         "type": "float",
         "group": "Color",
         "min": 0, "max": 1, "default": 0.36,
-        "tooltip": ""
+        "tooltip": "The blue component of shallow water, linear rather than\nsRGB."
       },
       {
         "key": "wave_amp",
@@ -1039,7 +1039,7 @@
         "type": "float",
         "group": "Waves",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "How high the waves stand."
       },
       {
         "key": "wave_scale",
@@ -1047,7 +1047,7 @@
         "type": "float",
         "group": "Waves",
         "min": 0.2, "max": 6, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far apart the waves are. Together with the height this\nis what sets the apparent size of the body of water: small\nclose-set waves read as a pond however wide it is."
       },
       {
         "key": "wave_speed",
@@ -1055,7 +1055,7 @@
         "type": "float",
         "group": "Waves",
         "min": 0, "max": 5, "default": 1,
-        "tooltip": ""
+        "tooltip": "How fast the waves travel."
       },
       {
         "key": "foam",
@@ -1063,7 +1063,7 @@
         "type": "bool",
         "group": "Foam",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Turns foam on at the shoreline and the wave crests."
       },
       {
         "key": "foam_amount",
@@ -1071,7 +1071,7 @@
         "type": "float",
         "group": "Foam",
         "min": 0, "max": 2, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "How much foam there is."
       },
       {
         "key": "foam_crests",
@@ -1079,7 +1079,7 @@
         "type": "float",
         "group": "Foam",
         "min": 0, "max": 1, "default": 0.35,
-        "tooltip": ""
+        "tooltip": "How much foam appears on the wave tops as against at the\nshore. Open water foams on its crests; a beach foams where\nthe water meets the land."
       },
       {
         "key": "foam_scale",
@@ -1087,7 +1087,7 @@
         "type": "float",
         "group": "Foam",
         "min": 0.5, "max": 10, "default": 3,
-        "tooltip": ""
+        "tooltip": "How fine the foam's own texture is."
       }
       ]
     },
@@ -9720,7 +9720,7 @@
         "label": "Mask band",
         "type": "range",
         "group": "Filter",
-        "tooltip": ""
+        "tooltip": "The range of values a point must carry to be kept."
       },
       {
         "key": "keep",
@@ -9728,7 +9728,7 @@
         "type": "float",
         "group": "Filter",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "Whether points inside the band are the ones kept or the\nones dropped."
       },
       {
         "key": "seed",
@@ -9752,7 +9752,7 @@
         "key": "path",
         "label": "File",
         "type": "filename",
-        "tooltip": ""
+        "tooltip": "The CSV file to read points from. One row per point."
       }
       ]
     },
@@ -9854,7 +9854,7 @@
         "type": "int",
         "group": "Relax",
         "min": 1, "max": 50, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the points push each other apart. More\napproaches an even spacing; a few passes take the worst\nclumps out and leave the scatter looking natural."
       },
       {
         "key": "strength",
@@ -9862,7 +9862,7 @@
         "type": "float",
         "group": "Relax",
         "min": 0.01, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How hard each pass pushes."
       }
       ]
     },
@@ -9882,7 +9882,7 @@
         "type": "float",
         "group": "Distance",
         "min": 0.005, "max": 1, "default": 0.2,
-        "tooltip": ""
+        "tooltip": "How far from a point its influence extends."
       },
       {
         "key": "invert",
@@ -9890,7 +9890,7 @@
         "type": "bool",
         "group": "Distance",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Measures distance the other way, so the field is high near\nthe points instead of far from them."
       }
       ]
     },
@@ -9911,7 +9911,7 @@
         "type": "bool",
         "group": "Values",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Rescales the values written onto the points to 0..1."
       }
       ]
     },
@@ -9950,7 +9950,7 @@
         "type": "choice",
         "group": "Stamp",
         "choices": ["Gaussian", "Cone", "Disc"],
-        "tooltip": ""
+        "tooltip": "The shape stamped at each point. A soft falloff blends\ninto a smooth mask; a hard disc keeps every point\ncountable."
       },
       {
         "key": "radius",
@@ -9958,7 +9958,7 @@
         "type": "float",
         "group": "Stamp",
         "min": 0.001, "max": 0.5, "default": 0.03,
-        "tooltip": ""
+        "tooltip": "How large each stamp is."
       },
       {
         "key": "amplitude",
@@ -9966,7 +9966,7 @@
         "type": "float",
         "group": "Stamp",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strong each stamp is."
       },
       {
         "key": "scale_by_value",
@@ -9974,7 +9974,7 @@
         "type": "bool",
         "group": "Stamp",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Sizes each stamp by the value the point carries, so a\ncloud that already knows how big each thing is can say so."
       },
       {
         "key": "blend",
@@ -9982,7 +9982,7 @@
         "type": "choice",
         "group": "Stamp",
         "choices": ["Max", "Add"],
-        "tooltip": ""
+        "tooltip": "How overlapping stamps combine. Add piles them up, which\ncounts density; max keeps them at one, which draws\ncoverage."
       }
       ]
     },
@@ -10498,7 +10498,7 @@
         "type": "int",
         "group": "Scatter",
         "min": 1, "max": 50000, "default": 500,
-        "tooltip": ""
+        "tooltip": "How many points are scattered."
       },
       {
         "key": "mode",
@@ -10506,7 +10506,7 @@
         "type": "choice",
         "group": "Scatter",
         "choices": ["Random", "Jittered grid", "Spaced"],
-        "tooltip": ""
+        "tooltip": "How they are laid out. Purely random leaves clumps and\nbald patches; a jittered grid covers the ground evenly\nwhile still looking unplanned; spaced refuses to place any\ntwo closer than the minimum below."
       },
       {
         "key": "min_dist",
@@ -10514,7 +10514,7 @@
         "type": "float",
         "group": "Scatter",
         "min": 0.001, "max": 0.3, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "The closest two points may come, for the spaced mode. This\nis what turns scatter into a distribution."
       },
       {
         "key": "seed",
@@ -10537,7 +10537,7 @@
         "type": "float",
         "group": "Scatter",
         "min": 0.5, "max": 8, "default": 2,
-        "tooltip": ""
+        "tooltip": "How the spacing is enforced - a hard exclusion around each\npoint, or a softer falling-off preference."
       }
       ]
     },
@@ -13094,7 +13094,7 @@
         "type": "float",
         "group": "Grade",
         "min": 0.1, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much light the picture is given, in stops."
       },
       {
         "key": "saturation",
@@ -13102,14 +13102,14 @@
         "type": "float",
         "group": "Grade",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strong the colour is in the finished frame."
       },
       {
         "key": "tint",
         "label": "Tint",
         "type": "color",
         "group": "Grade",
-        "tooltip": ""
+        "tooltip": "A colour cast over the whole frame - the grade, not the\nlighting."
       },
       {
         "key": "vignette",
@@ -13135,14 +13135,14 @@
         "type": "bool",
         "group": "Image",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Turns the backdrop off without losing its settings."
       },
       {
         "key": "file",
         "label": "HDR image (.hdr / .exr / .png / .jpg)",
         "type": "filename",
         "group": "Image",
-        "tooltip": ""
+        "tooltip": "The panoramic image behind the scene. It lights nothing -\nthis is what the camera sees past the terrain, not an\nenvironment light."
       },
       {
         "key": "mapping",
@@ -13166,7 +13166,7 @@
         "type": "bool",
         "group": "Image",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Mirrors the panorama, for when it was shot or stored the\nother way round."
       },
       {
         "key": "yaw",
@@ -13174,7 +13174,7 @@
         "type": "float",
         "group": "Placement",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Turns the backdrop about the vertical, to put its\ninteresting part behind the shot."
       },
       {
         "key": "pitch",
@@ -13182,7 +13182,7 @@
         "type": "float",
         "group": "Placement",
         "min": -90, "max": 90, "default": 0,
-        "tooltip": ""
+        "tooltip": "Tilts the backdrop, to raise or drop its horizon against\nthe terrain's."
       },
       {
         "key": "exposure",
@@ -13190,14 +13190,14 @@
         "type": "float",
         "group": "Look",
         "min": -10, "max": 10, "default": 0,
-        "tooltip": ""
+        "tooltip": "How bright the backdrop is, in stops. Matching it to the\nscene's own exposure is what stops the join being visible."
       },
       {
         "key": "tint",
         "label": "Tint",
         "type": "color",
         "group": "Look",
-        "tooltip": ""
+        "tooltip": "A colour cast over the backdrop alone, for matching it to\nthe scene's light."
       },
       {
         "key": "blend",
@@ -13240,7 +13240,7 @@
         "type": "float",
         "group": "Tone",
         "min": 0.3, "max": 3, "default": 1.1,
-        "tooltip": ""
+        "tooltip": "How much light the picture is given, in stops."
       },
       {
         "key": "height_scale",
@@ -13248,7 +13248,7 @@
         "type": "float",
         "group": "Scene",
         "min": 0.02, "max": 0.8, "default": 0.22,
-        "tooltip": ""
+        "tooltip": "The terrain's vertical scale, so the render matches what\nthe viewport shows."
       },
       {
         "key": "terrain_size_m",
@@ -13256,7 +13256,7 @@
         "type": "float",
         "group": "Scene",
         "min": 100, "max": 100000, "default": 5000,
-        "tooltip": ""
+        "tooltip": "How wide the tile is in metres, so anything sized in real\nunits renders at the right size."
       }
       ]
     },
@@ -13297,7 +13297,7 @@
         "label": "Output file",
         "type": "filename",
         "group": "Output",
-        "tooltip": ""
+        "tooltip": "Where the finished image is written."
       },
       {
         "key": "format",
@@ -13313,7 +13313,7 @@
         "type": "int",
         "group": "Output",
         "min": 64, "max": 8192, "default": 1920,
-        "tooltip": ""
+        "tooltip": "The width of the rendered image, in pixels."
       },
       {
         "key": "height",
@@ -13321,7 +13321,7 @@
         "type": "int",
         "group": "Output",
         "min": 64, "max": 8192, "default": 1080,
-        "tooltip": ""
+        "tooltip": "The height of the rendered image, in pixels."
       },
       {
         "key": "engine",
@@ -13329,7 +13329,7 @@
         "type": "choice",
         "group": "Engine",
         "choices": ["Mitsuba 3", "Blender Cycles", "LuxCoreRender", "appleseed", "OpenGL viewport"],
-        "tooltip": ""
+        "tooltip": "Which renderer produces the frame. The viewport engine is\nimmediate; the path tracer is slower and resolves real\nlight transport."
       },
       {
         "key": "samples",
@@ -13337,7 +13337,7 @@
         "type": "int",
         "group": "Engine",
         "min": 8, "max": 4096, "default": 128,
-        "tooltip": ""
+        "tooltip": "How many samples each pixel gets. This is the direct trade\nbetween noise and time - noise falls with the square root,\nso four times the samples is half the noise."
       }
       ]
     },
@@ -13355,7 +13355,7 @@
         "type": "bool",
         "group": "Geometry",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of distance from the camera to the\nsurface beside the beauty pass, for compositing."
       },
       {
         "key": "normal",
@@ -13363,7 +13363,7 @@
         "type": "bool",
         "group": "Geometry",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of the direction each surface faces\nbeside the beauty pass, for compositing."
       },
       {
         "key": "position",
@@ -13371,7 +13371,7 @@
         "type": "bool",
         "group": "Geometry",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of the world position of each surface\npoint beside the beauty pass, for compositing."
       },
       {
         "key": "object_id",
@@ -13379,7 +13379,7 @@
         "type": "bool",
         "group": "Geometry",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of which object each pixel belongs to\nbeside the beauty pass, for compositing."
       },
       {
         "key": "water_mask",
@@ -13387,7 +13387,7 @@
         "type": "bool",
         "group": "Geometry",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of where water covers the frame beside\nthe beauty pass, for compositing."
       },
       {
         "key": "albedo",
@@ -13395,7 +13395,7 @@
         "type": "bool",
         "group": "Light",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of the surface colour with no lighting\non it beside the beauty pass, for compositing."
       },
       {
         "key": "direct",
@@ -13403,7 +13403,7 @@
         "type": "bool",
         "group": "Light",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of light arriving straight from a\nsource beside the beauty pass, for compositing."
       },
       {
         "key": "shadow",
@@ -13411,7 +13411,7 @@
         "type": "bool",
         "group": "Light",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of where light is blocked beside the\nbeauty pass, for compositing."
       },
       {
         "key": "ambient",
@@ -13419,7 +13419,7 @@
         "type": "bool",
         "group": "Light",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of light arriving from the sky as a\nwhole beside the beauty pass, for compositing."
       },
       {
         "key": "specular",
@@ -13427,7 +13427,7 @@
         "type": "bool",
         "group": "Light",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of the highlights alone beside the\nbeauty pass, for compositing."
       },
       {
         "key": "atmosphere",
@@ -13435,7 +13435,7 @@
         "type": "bool",
         "group": "Atmosphere",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of the haze and fog between camera and\nsurface beside the beauty pass, for compositing."
       },
       {
         "key": "environment",
@@ -13443,7 +13443,7 @@
         "type": "bool",
         "group": "Atmosphere",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes a linear EXR of light arriving from the backdrop\nbeside the beauty pass, for compositing."
       }
       ]
     },
@@ -13462,7 +13462,7 @@
         "type": "choice",
         "group": "Engine",
         "choices": ["Mitsuba 3", "Blender Cycles", "LuxCoreRender", "OpenGL viewport"],
-        "tooltip": ""
+        "tooltip": "Which renderer produces the frame."
       },
       {
         "key": "width",
@@ -13470,7 +13470,7 @@
         "type": "int",
         "group": "Output",
         "min": 64, "max": 8192, "default": 1920,
-        "tooltip": ""
+        "tooltip": "The width of the rendered image, in pixels."
       },
       {
         "key": "height",
@@ -13478,7 +13478,7 @@
         "type": "int",
         "group": "Output",
         "min": 64, "max": 8192, "default": 1080,
-        "tooltip": ""
+        "tooltip": "The height of the rendered image, in pixels."
       },
       {
         "key": "samples",
@@ -13486,14 +13486,14 @@
         "type": "int",
         "group": "Output",
         "min": 8, "max": 4096, "default": 128,
-        "tooltip": ""
+        "tooltip": "How many samples each pixel gets. Noise falls with the\nsquare root, so four times the samples is half the noise."
       },
       {
         "key": "path",
         "label": "Output file",
         "type": "filename",
         "group": "Output",
-        "tooltip": ""
+        "tooltip": "Where the finished image is written."
       }
       ]
     },
@@ -13572,7 +13572,7 @@
         "label": "Colour",
         "type": "color",
         "group": "Object",
-        "tooltip": ""
+        "tooltip": "The object's colour, where no material is assigned to it."
       },
       {
         "key": "x_m",
@@ -13580,7 +13580,7 @@
         "type": "float",
         "group": "Transform",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the object stands, in metres from the middle of the\ntile along east."
       },
       {
         "key": "y_m",
@@ -13588,7 +13588,7 @@
         "type": "float",
         "group": "Transform",
         "min": -10000, "max": 100000, "default": 0,
-        "tooltip": ""
+        "tooltip": "How high the object stands, in metres. Objects placed on\nthe terrain read the ground height for themselves; this\noffsets from it."
       },
       {
         "key": "z_m",
@@ -13596,7 +13596,7 @@
         "type": "float",
         "group": "Transform",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the object stands, in metres from the middle of the\ntile along north."
       },
       {
         "key": "size_m",
@@ -13612,7 +13612,7 @@
         "type": "float",
         "group": "Transform",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "How far the object is turned about the vertical, in\ndegrees."
       },
       {
         "key": "pitch",
@@ -13620,7 +13620,7 @@
         "type": "float",
         "group": "Transform",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "How far the object is tipped forward or back, in degrees."
       },
       {
         "key": "bank",
@@ -13628,7 +13628,7 @@
         "type": "float",
         "group": "Transform",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "How far the object is rolled about its own forward axis,\nin degrees."
       },
       {
         "key": "visible",
@@ -13636,7 +13636,7 @@
         "type": "bool",
         "group": "Transform",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Whether the object is drawn. Hiding is not deleting - it\nkeeps its place in the scene and all of its settings."
       }
       ]
     },
@@ -13919,7 +13919,7 @@
         "type": "float",
         "group": "Transform",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the object stands, in metres from the middle of the\ntile along east."
       },
       {
         "key": "y_m",
@@ -13927,7 +13927,7 @@
         "type": "float",
         "group": "Transform",
         "min": -10000, "max": 100000, "default": 0,
-        "tooltip": ""
+        "tooltip": "How high the object stands, in metres. Objects placed on\nthe terrain read the ground height for themselves; this\noffsets from it."
       },
       {
         "key": "z_m",
@@ -13935,7 +13935,7 @@
         "type": "float",
         "group": "Transform",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the object stands, in metres from the middle of the\ntile along north."
       },
       {
         "key": "size_m",
@@ -13951,7 +13951,7 @@
         "type": "float",
         "group": "Transform",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "How far the object is turned about the vertical, in\ndegrees."
       },
       {
         "key": "pitch",
@@ -13959,7 +13959,7 @@
         "type": "float",
         "group": "Transform",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "How far the object is tipped forward or back, in degrees."
       },
       {
         "key": "bank",
@@ -13967,7 +13967,7 @@
         "type": "float",
         "group": "Transform",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "How far the object is rolled about its own forward axis,\nin degrees."
       },
       {
         "key": "visible",
@@ -13975,7 +13975,7 @@
         "type": "bool",
         "group": "Transform",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Whether the object is drawn. Hiding is not deleting - it\nkeeps its place in the scene and all of its settings."
       }
       ]
     },

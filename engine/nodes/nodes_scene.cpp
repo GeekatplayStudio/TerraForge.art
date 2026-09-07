@@ -27,15 +27,29 @@ void planned(Node &n, const char *what, const char *phase) {
 
 // The transform block shared by anything that sits in the world.
 void add_transform(Node &n, float size_m) {
-  add_float(n.attrs, "x_m", "X (m)", 2500.f, -100000.f, 100000.f, "Transform");
-  add_float(n.attrs, "y_m", "Height (m)", 0.f, -10000.f, 100000.f, "Transform");
-  add_float(n.attrs, "z_m", "Z (m)", 2500.f, -100000.f, 100000.f, "Transform");
+  add_float(n.attrs, "x_m", "X (m)", 2500.f, -100000.f, 100000.f, "Transform")
+      .tooltip = "Where the object stands, in metres from the middle of the\n"
+                 "tile along east.";
+  add_float(n.attrs, "y_m", "Height (m)", 0.f, -10000.f, 100000.f, "Transform")
+      .tooltip = "How high the object stands, in metres. Objects placed on\n"
+                 "the terrain read the ground height for themselves; this\n"
+                 "offsets from it.";
+  add_float(n.attrs, "z_m", "Z (m)", 2500.f, -100000.f, 100000.f, "Transform")
+      .tooltip = "Where the object stands, in metres from the middle of the\n"
+                 "tile along north.";
   add_float(n.attrs, "size_m", "Size (m)", size_m, 0.01f, 100000.f, "Transform", true)
       .tooltip = "Uniform size of the object's unit box.";
-  add_float(n.attrs, "heading", "Heading °", 0.f, -180.f, 180.f, "Transform");
-  add_float(n.attrs, "pitch", "Pitch °", 0.f, -180.f, 180.f, "Transform");
-  add_float(n.attrs, "bank", "Bank °", 0.f, -180.f, 180.f, "Transform");
-  add_bool(n.attrs, "visible", "Visible", true, "Transform");
+  add_float(n.attrs, "heading", "Heading °", 0.f, -180.f, 180.f, "Transform")
+      .tooltip = "How far the object is turned about the vertical, in\n"
+                 "degrees.";
+  add_float(n.attrs, "pitch", "Pitch °", 0.f, -180.f, 180.f, "Transform")
+      .tooltip = "How far the object is tipped forward or back, in degrees.";
+  add_float(n.attrs, "bank", "Bank °", 0.f, -180.f, 180.f, "Transform")
+      .tooltip = "How far the object is rolled about its own forward axis,\n"
+                 "in degrees.";
+  add_bool(n.attrs, "visible", "Visible", true, "Transform")
+      .tooltip = "Whether the object is drawn. Hiding is not deleting - it\n"
+                 "keeps its place in the scene and all of its settings.";
 }
 } // namespace
 
@@ -49,7 +63,8 @@ REGISTER_NODE(
           "STL, PLY and OFF. The Load button on the node card opens the dialog.";
       add_text(n.attrs, "object", "Scene object", "", "Object").tooltip =
           "Name in the Objects tree. Empty: the file name.";
-      add_color(n.attrs, "color", "Colour", 0.62f, 0.60f, 0.57f, 1.f, "Object");
+      add_color(n.attrs, "color", "Colour", 0.62f, 0.60f, 0.57f, 1.f, "Object")
+          .tooltip = "The object's colour, where no material is assigned to it.";
       add_transform(n, 400.f);
     },
     [](Node &) {})

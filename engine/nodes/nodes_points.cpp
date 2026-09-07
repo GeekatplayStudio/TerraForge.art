@@ -32,11 +32,18 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("density", DataType::Heightmap, true);
       n.add_out("points", DataType::Points);
-      add_int(n.attrs, "count", "Point count", 500, 1, 50000, "Scatter");
+      add_int(n.attrs, "count", "Point count", 500, 1, 50000, "Scatter")
+          .tooltip = "How many points are scattered.";
       add_choice(n.attrs, "mode", "Mode",
-                 {"Random", "Jittered grid", "Spaced"}, 0, "Scatter");
+                 {"Random", "Jittered grid", "Spaced"}, 0, "Scatter")
+          .tooltip = "How they are laid out. Purely random leaves clumps and\n"
+                     "bald patches; a jittered grid covers the ground evenly\n"
+                     "while still looking unplanned; spaced refuses to place any\n"
+                     "two closer than the minimum below.";
       add_float(n.attrs, "min_dist", "Min spacing", 0.02f, 0.001f, 0.3f,
-                "Scatter");
+                "Scatter")
+          .tooltip = "The closest two points may come, for the spaced mode. This\n"
+                     "is what turns scatter into a distribution.";
       add_seed(n.attrs, "seed", "Seed", 0, "Scatter");
       add_choice(n.attrs, "value_dist", "Value distribution",
                  {"Uniform", "Power law", "Weibull"}, 0, "Scatter")
@@ -44,7 +51,9 @@ REGISTER_NODE(
                      "(many small, few large - natural size mixes), or\n"
                      "Weibull (clustered around a typical size).";
       add_float(n.attrs, "dist_shape", "Distribution shape", 2.f, 0.5f, 8.f,
-                "Scatter");
+                "Scatter")
+          .tooltip = "How the spacing is enforced - a hard exclusion around each\n"
+                     "point, or a softer falling-off preference.";
     },
     [](Node &n) {
       PointCloud &out = n.out_points("points");
@@ -113,8 +122,12 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("points", DataType::Points);
       n.add_out("points", DataType::Points);
-      add_int(n.attrs, "iterations", "Iterations", 8, 1, 50, "Relax");
-      add_float(n.attrs, "strength", "Strength", 0.5f, 0.01f, 1.f, "Relax");
+      add_int(n.attrs, "iterations", "Iterations", 8, 1, 50, "Relax")
+          .tooltip = "How many times the points push each other apart. More\n"
+                     "approaches an even spacing; a few passes take the worst\n"
+                     "clumps out and leave the scatter looking natural.";
+      add_float(n.attrs, "strength", "Strength", 0.5f, 0.01f, 1.f, "Relax")
+          .tooltip = "How hard each pass pushes.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("points");
@@ -167,8 +180,11 @@ REGISTER_NODE(
       n.add_in("points", DataType::Points);
       n.add_in("mask", DataType::Heightmap, true);
       n.add_out("points", DataType::Points);
-      add_range(n.attrs, "band", "Mask band", 0.5f, 1.f, 0.f, 1.f, "Filter");
-      add_float(n.attrs, "keep", "Keep fraction", 1.f, 0.f, 1.f, "Filter");
+      add_range(n.attrs, "band", "Mask band", 0.5f, 1.f, 0.f, 1.f, "Filter")
+          .tooltip = "The range of values a point must carry to be kept.";
+      add_float(n.attrs, "keep", "Keep fraction", 1.f, 0.f, 1.f, "Filter")
+          .tooltip = "Whether points inside the band are the ones kept or the\n"
+                     "ones dropped.";
       add_seed(n.attrs, "seed", "Seed", 0, "Filter");
     },
     [](Node &n) {
@@ -196,11 +212,21 @@ REGISTER_NODE(
       n.add_in("points", DataType::Points);
       n.add_out("mask", DataType::Heightmap);
       add_choice(n.attrs, "kernel", "Kernel", {"Gaussian", "Cone", "Disc"}, 0,
-                 "Stamp");
-      add_float(n.attrs, "radius", "Radius", 0.03f, 0.001f, 0.5f, "Stamp");
-      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 4.f, "Stamp");
-      add_bool(n.attrs, "scale_by_value", "Scale by point value", false, "Stamp");
-      add_choice(n.attrs, "blend", "Blend", {"Max", "Add"}, 0, "Stamp");
+                 "Stamp")
+          .tooltip = "The shape stamped at each point. A soft falloff blends\n"
+                     "into a smooth mask; a hard disc keeps every point\n"
+                     "countable.";
+      add_float(n.attrs, "radius", "Radius", 0.03f, 0.001f, 0.5f, "Stamp")
+          .tooltip = "How large each stamp is.";
+      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 4.f, "Stamp")
+          .tooltip = "How strong each stamp is.";
+      add_bool(n.attrs, "scale_by_value", "Scale by point value", false, "Stamp")
+          .tooltip = "Sizes each stamp by the value the point carries, so a\n"
+                     "cloud that already knows how big each thing is can say so.";
+      add_choice(n.attrs, "blend", "Blend", {"Max", "Add"}, 0, "Stamp")
+          .tooltip = "How overlapping stamps combine. Add piles them up, which\n"
+                     "counts density; max keeps them at one, which draws\n"
+                     "coverage.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("points");
@@ -243,8 +269,11 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("points", DataType::Points);
       n.add_out("distance", DataType::Heightmap);
-      add_float(n.attrs, "reach", "Reach", 0.2f, 0.005f, 1.f, "Distance");
-      add_bool(n.attrs, "invert", "Invert", false, "Distance");
+      add_float(n.attrs, "reach", "Reach", 0.2f, 0.005f, 1.f, "Distance")
+          .tooltip = "How far from a point its influence extends.";
+      add_bool(n.attrs, "invert", "Invert", false, "Distance")
+          .tooltip = "Measures distance the other way, so the field is high near\n"
+                     "the points instead of far from them.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("points");
@@ -327,7 +356,8 @@ REGISTER_NODE(
       n.add_in("points", DataType::Points);
       n.add_in("source", DataType::Heightmap);
       n.add_out("points", DataType::Points);
-      add_bool(n.attrs, "normalize", "Normalize 0..1", true, "Values");
+      add_bool(n.attrs, "normalize", "Normalize 0..1", true, "Values")
+          .tooltip = "Rescales the values written onto the points to 0..1.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("points");

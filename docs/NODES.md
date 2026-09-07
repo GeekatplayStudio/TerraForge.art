@@ -224,22 +224,22 @@ Sky colors, density, haze/fog and light absorption
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Atmosphere density | float, 0.05 to 3, default 1 |  |
-| Ambient light | float, 0 to 2, default 0.7 |  |
-| Zenith R | float, 0 to 1, default 0.18 |  |
-| Zenith G | float, 0 to 1, default 0.32 |  |
-| Zenith B | float, 0 to 1, default 0.58 |  |
-| Horizon R | float, 0 to 1, default 0.62 |  |
-| Horizon G | float, 0 to 1, default 0.65 |  |
-| Horizon B | float, 0 to 1, default 0.7 |  |
-| Fog type | choice: Off / Haze / Fog / Pollution |  |
-| Fog density | float, 0 to 6, default 0.9 |  |
-| Fog level | float, 0 to 1, default 0.25 |  |
-| Vertical falloff | float, 0.5 to 24, default 6 |  |
-| Fog R | float, 0 to 1, default 0.55 |  |
-| Fog G | float, 0 to 1, default 0.63 |  |
-| Fog B | float, 0 to 1, default 0.75 |  |
-| Sun scattering | float, 0 to 1, default 0.5 |  |
+| Atmosphere density | float, 0.05 to 3, default 1 | How thick the air is. It reddens the sun near the horizon and washes distance out to blue - the single strongest cue of scale in a landscape, because it tells the eye how far away a ridge is. |
+| Ambient light | float, 0 to 2, default 0.7 | How much light the sky itself throws down. This is what fills the shadows; too little and they read as black holes rather than shade. |
+| Zenith R | float, 0 to 1, default 0.18 | The red component of the sky straight overhead, linear rather than sRGB. |
+| Zenith G | float, 0 to 1, default 0.32 | The green component of the sky straight overhead, linear rather than sRGB. |
+| Zenith B | float, 0 to 1, default 0.58 | The blue component of the sky straight overhead, linear rather than sRGB. |
+| Horizon R | float, 0 to 1, default 0.62 | The red component of the sky at the horizon, linear rather than sRGB. |
+| Horizon G | float, 0 to 1, default 0.65 | The green component of the sky at the horizon, linear rather than sRGB. |
+| Horizon B | float, 0 to 1, default 0.7 | The blue component of the sky at the horizon, linear rather than sRGB. |
+| Fog type | choice: Off / Haze / Fog / Pollution | How the fog is distributed. Uniform fills the air evenly; the height-based kinds pool it in the valleys and leave the peaks clear, which is what morning mist actually does. |
+| Fog density | float, 0 to 6, default 0.9 | How thick the fog is. |
+| Fog level | float, 0 to 1, default 0.25 | The height the fog sits at, for the height-based kinds. Below it the air is thick, above it clear. |
+| Vertical falloff | float, 0.5 to 24, default 6 | How quickly the fog thins above its level. Sharp gives a defined top surface with peaks standing out of it; soft gives a haze that fades away. |
+| Fog R | float, 0 to 1, default 0.55 | The red component of the fog, linear rather than sRGB. |
+| Fog G | float, 0 to 1, default 0.63 | The green component of the fog, linear rather than sRGB. |
+| Fog B | float, 0 to 1, default 0.75 | The blue component of the fog, linear rather than sRGB. |
+| Sun scattering | float, 0 to 1, default 0.5 | How much the fog glows toward the sun. This is what makes looking into a misty sunrise bright and looking away from it flat, and without it fog reads as grey paint. |
 
 ### CloudLayer
 
@@ -251,21 +251,21 @@ Volumetric cloud layer: type, coverage, altitude, wind
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Enabled | toggle, default on |  |
-| Cloud type | choice: Stratus / Cumulus / Cumulonimbus |  |
+| Enabled | toggle, default on | Turns the cloud layer off without losing its settings. |
+| Cloud type | choice: Stratus / Cumulus / Cumulonimbus | The kind of cloud. Each has its own shape and altitude behaviour - flat sheets, heaped cumulus, high wisps. |
 | Coverage | float, 0 to 1, default 0.55 | 0 = clear sky, 1 = solid overcast. |
-| Density | float, 0.1 to 3, default 1 |  |
-| Base altitude | float, 0.2 to 4, default 1.4 |  |
-| Thickness | float, 0.05 to 2, default 0.8 |  |
-| Detail erosion | float, 0 to 1, default 0.6 |  |
-| Anvil spread | float, 0 to 1, default 0.3 |  |
-| Wind speed | float, 0 to 0.3, default 0.02 |  |
-| Wind direction | float, 0 to 360, default 45 |  |
-| Sky light | float, 0 to 2, default 0.55 |  |
-| Color R | float, 0 to 1, default 1 |  |
-| Color G | float, 0 to 1, default 1 |  |
-| Color B | float, 0 to 1, default 1 |  |
-| Quality | choice: Draft / Normal / High |  |
+| Density | float, 0.1 to 3, default 1 | How opaque the cloud is. Thin lets the sun through and lights the cloud from within; thick blocks it and casts shadow on the ground. |
+| Base altitude | float, 0.2 to 4, default 1.4 | How high the layer sits. |
+| Thickness | float, 0.05 to 2, default 0.8 | How deep the layer is from base to top. Depth is what lets a cloud be lit brightly on top and dark underneath. |
+| Detail erosion | float, 0 to 1, default 0.6 | How much fine structure the cloud has. Low gives soft blobs; high gives the wispy, torn edges of real cloud. |
+| Anvil spread | float, 0 to 1, default 0.3 | How far the cloud spreads out at its top, the way a storm cell flattens against the top of the troposphere. |
+| Wind speed | float, 0 to 0.3, default 0.02 | How fast the layer drifts. Cloud is the only thing in a still landscape that moves, so this is what makes a sequence read as time passing. |
+| Wind direction | float, 0 to 360, default 45 | Which way the layer drifts. |
+| Sky light | float, 0 to 2, default 0.55 | How much sky light the cloud picks up where the sun does not reach it directly, which sets how dark its underside goes. |
+| Color R | float, 0 to 1, default 1 | The red component of the cloud, linear rather than sRGB. |
+| Color G | float, 0 to 1, default 1 | The green component of the cloud, linear rather than sRGB. |
+| Color B | float, 0 to 1, default 1 | The blue component of the cloud, linear rather than sRGB. |
+| Quality | choice: Draft / Normal / High | How many samples the raymarcher takes through the cloud. This is the direct trade between how solid the cloud looks and how fast the frame draws. |
 
 ### SunLight
 
@@ -277,20 +277,20 @@ Sun: direction (manual or geographic), color, intensity
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Direction mode | choice: Manual / Location & time |  |
-| Azimuth | float, 0 to 360, default 135 |  |
-| Altitude | float, 1 to 89, default 35 |  |
-| Latitude | float, -89 to 89, default 40.7 |  |
-| Longitude | float, -180 to 180, default -111.9 |  |
-| UTC offset | float, -12 to 14, default -7 |  |
-| Month | int, 1 to 12, default 6 |  |
-| Day | int, 1 to 31, default 21 |  |
-| Local time | float, 0 to 24, default 14 |  |
-| Intensity | float, 0.2 to 8, default 2.6 |  |
-| Color R | float, 0 to 1, default 1 |  |
-| Color G | float, 0 to 1, default 0.93 |  |
-| Color B | float, 0 to 1, default 0.82 |  |
-| Cast shadows | toggle, default on |  |
+| Direction mode | choice: Manual / Location & time | Whether the sun is placed by hand, or worked out from a place and a time. By date and time is what you want when the shot has to match a real location and hour. |
+| Azimuth | float, 0 to 360, default 135 | Which way the sun lies, in degrees around the compass. |
+| Altitude | float, 1 to 89, default 35 | How high the sun stands above the horizon. Low light is long shadows and warm colour; overhead is short shadows and flat ground. |
+| Latitude | float, -89 to 89, default 40.7 | Where on the earth the scene is, north or south. With the date and hour this decides where the sun actually sits. |
+| Longitude | float, -180 to 180, default -111.9 | Where on the earth the scene is, east or west. |
+| UTC offset | float, -12 to 14, default -7 | The time zone, so the hour below means local clock time. |
+| Month | int, 1 to 12, default 6 | The month, which sets how high the sun can climb at this latitude. |
+| Day | int, 1 to 31, default 21 | The day of the month. |
+| Local time | float, 0 to 24, default 14 | The hour of the day, local time. |
+| Intensity | float, 0.2 to 8, default 2.6 | How bright the sun is. |
+| Color R | float, 0 to 1, default 1 | The red component of the sunlight, linear rather than sRGB. |
+| Color G | float, 0 to 1, default 0.93 | The green component of the sunlight, linear rather than sRGB. |
+| Color B | float, 0 to 1, default 0.82 | The blue component of the sunlight, linear rather than sRGB. |
+| Cast shadows | toggle, default on | Whether the sun casts shadows. Turning them off is a great deal faster and makes the terrain's form much harder to read. |
 
 ### WaterLayer
 
@@ -302,23 +302,23 @@ Water body: level, colors, waves and foam
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Enabled | toggle, default on |  |
-| Level | float, 0 to 1, default 0.08 |  |
-| Clarity | float, 1 to 60, default 18 |  |
-| Opacity | float, 0.3 to 1, default 0.92 |  |
-| Deep R | float, 0 to 1, default 0.02 |  |
-| Deep G | float, 0 to 1, default 0.08 |  |
-| Deep B | float, 0 to 1, default 0.12 |  |
-| Shallow R | float, 0 to 1, default 0.1 |  |
-| Shallow G | float, 0 to 1, default 0.26 |  |
-| Shallow B | float, 0 to 1, default 0.36 |  |
-| Wave amplitude | float, 0 to 4, default 1 |  |
-| Wave scale | float, 0.2 to 6, default 1 |  |
-| Wave speed | float, 0 to 5, default 1 |  |
-| Foam | toggle, default on |  |
-| Shoreline foam | float, 0 to 2, default 0.6 |  |
-| Crest foam | float, 0 to 1, default 0.35 |  |
-| Foam scale | float, 0.5 to 10, default 3 |  |
+| Enabled | toggle, default on | Turns the water off without losing its settings. |
+| Level | float, 0 to 1, default 0.08 | The height the water surface sits at. |
+| Clarity | float, 1 to 60, default 18 | How far light travels into the water before it is absorbed. Clear water shows the bed in the shallows and goes deep blue further out; murky water hides the bed at once. |
+| Opacity | float, 0.3 to 1, default 0.92 | How much the surface hides what is beneath it. |
+| Deep R | float, 0 to 1, default 0.02 | The red component of deep water, linear rather than sRGB. |
+| Deep G | float, 0 to 1, default 0.08 | The green component of deep water, linear rather than sRGB. |
+| Deep B | float, 0 to 1, default 0.12 | The blue component of deep water, linear rather than sRGB. |
+| Shallow R | float, 0 to 1, default 0.1 | The red component of shallow water, linear rather than sRGB. |
+| Shallow G | float, 0 to 1, default 0.26 | The green component of shallow water, linear rather than sRGB. |
+| Shallow B | float, 0 to 1, default 0.36 | The blue component of shallow water, linear rather than sRGB. |
+| Wave amplitude | float, 0 to 4, default 1 | How high the waves stand. |
+| Wave scale | float, 0.2 to 6, default 1 | How far apart the waves are. Together with the height this is what sets the apparent size of the body of water: small close-set waves read as a pond however wide it is. |
+| Wave speed | float, 0 to 5, default 1 | How fast the waves travel. |
+| Foam | toggle, default on | Turns foam on at the shoreline and the wave crests. |
+| Shoreline foam | float, 0 to 2, default 0.6 | How much foam there is. |
+| Crest foam | float, 0 to 1, default 0.35 | How much foam appears on the wave tops as against at the shore. Open water foams on its crests; a beach foams where the water meets the land. |
+| Foam scale | float, 0.5 to 10, default 3 | How fine the foam's own texture is. |
 
 ## Camera
 
@@ -3343,8 +3343,8 @@ Keep points by mask and chance
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Mask band | range |  |
-| Keep fraction | float, 0 to 1, default 1 |  |
+| Mask band | range | The range of values a point must carry to be kept. |
+| Keep fraction | float, 0 to 1, default 1 | Whether points inside the band are the ones kept or the ones dropped. |
 | Seed | seed |  |
 
 ### PointsFromCsv
@@ -3357,7 +3357,7 @@ Read points from a CSV file
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| File | file path |  |
+| File | file path | The CSV file to read points from. One row per point. |
 
 ### PointsInteract
 
@@ -3403,8 +3403,8 @@ Even out point spacing
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Iterations | int, 1 to 50, default 8 |  |
-| Strength | float, 0.01 to 1, default 0.5 |  |
+| Iterations | int, 1 to 50, default 8 | How many times the points push each other apart. More approaches an even spacing; a few passes take the worst clumps out and leave the scatter looking natural. |
+| Strength | float, 0.01 to 1, default 0.5 | How hard each pass pushes. |
 
 ### PointsSDF
 
@@ -3417,8 +3417,8 @@ Distance to the nearest point
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Reach | float, 0.005 to 1, default 0.2 |  |
-| Invert | toggle, default off |  |
+| Reach | float, 0.005 to 1, default 0.2 | How far from a point its influence extends. |
+| Invert | toggle, default off | Measures distance the other way, so the field is high near the points instead of far from them. |
 
 ### PointsSetValues
 
@@ -3432,7 +3432,7 @@ Point values from the terrain
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Normalize 0..1 | toggle, default on |  |
+| Normalize 0..1 | toggle, default on | Rescales the values written onto the points to 0..1. |
 
 ### PointsShuffle
 
@@ -3458,11 +3458,11 @@ Stamp points into a raster
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Kernel | choice: Gaussian / Cone / Disc |  |
-| Radius | float, 0.001 to 0.5, default 0.03 |  |
-| Amplitude | float, 0 to 4, default 1 |  |
-| Scale by point value | toggle, default off |  |
-| Blend | choice: Max / Add |  |
+| Kernel | choice: Gaussian / Cone / Disc | The shape stamped at each point. A soft falloff blends into a smooth mask; a hard disc keeps every point countable. |
+| Radius | float, 0.001 to 0.5, default 0.03 | How large each stamp is. |
+| Amplitude | float, 0 to 4, default 1 | How strong each stamp is. |
+| Scale by point value | toggle, default off | Sizes each stamp by the value the point carries, so a cloud that already knows how big each thing is can say so. |
+| Blend | choice: Max / Add | How overlapping stamps combine. Add piles them up, which counts density; max keeps them at one, which draws coverage. |
 
 ### PointsTransform
 
@@ -3561,12 +3561,12 @@ Scatter points over the tile
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Point count | int, 1 to 50000, default 500 |  |
-| Mode | choice: Random / Jittered grid / Spaced |  |
-| Min spacing | float, 0.001 to 0.3, default 0.02 |  |
+| Point count | int, 1 to 50000, default 500 | How many points are scattered. |
+| Mode | choice: Random / Jittered grid / Spaced | How they are laid out. Purely random leaves clumps and bald patches; a jittered grid covers the ground evenly while still looking unplanned; spaced refuses to place any two closer than the minimum below. |
+| Min spacing | float, 0.001 to 0.3, default 0.02 | The closest two points may come, for the spaced mode. This is what turns scatter into a distribution. |
 | Seed | seed |  |
 | Value distribution | choice: Uniform / Power law / Weibull | The per-point value stream: uniform 0..1, a power law (many small, few large - natural size mixes), or Weibull (clustered around a typical size). |
-| Distribution shape | float, 0.5 to 8, default 2 |  |
+| Distribution shape | float, 0.5 to 8, default 2 | How the spacing is enforced - a hard exclusion around each point, or a softer falling-off preference. |
 
 ## Primitive
 
@@ -4145,9 +4145,9 @@ Image finishing after tone mapping: exposure, saturation, colour tint
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Exposure multiplier | float, 0.1 to 10, default 1 |  |
-| Saturation | float, 0 to 2, default 1 |  |
-| Tint | color |  |
+| Exposure multiplier | float, 0.1 to 10, default 1 | How much light the picture is given, in stops. |
+| Saturation | float, 0 to 2, default 1 | How strong the colour is in the finished frame. |
+| Tint | color | A colour cast over the whole frame - the grade, not the lighting. |
 | Vignette | float, 0 to 1, default 0 | Recorded for the offline post pass; the viewport ignores it for now (roadmap P6 post-render options). |
 
 ### RenderBackdrop
@@ -4156,15 +4156,15 @@ An HDR image dome at infinity behind the scene, hazed and clouded by the atmosph
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Enabled | toggle, default on |  |
-| HDR image (.hdr / .exr / .png / .jpg) | file path |  |
+| Enabled | toggle, default on | Turns the backdrop off without losing its settings. |
+| HDR image (.hdr / .exr / .png / .jpg) | file path | The panoramic image behind the scene. It lights nothing - this is what the camera sees past the terrain, not an environment light. |
 | Mapping | choice: Equirectangular (lat-long) / Angular map (light probe) / Mirror ball / Cube map cross / Cylindrical panorama / Sky dome (hemisphere) / Planar backdrop | How pixels map onto directions. Lat-long is what HDRI libraries ship; a cross is detected as horizontal or vertical by its aspect; cylindrical and planar use the vertical field of view below. |
 | Vertical field of view ° | float, 5 to 179, default 90 | Cylindrical panorama and planar backdrop only. |
-| Mirror horizontally | toggle, default off |  |
-| Rotate ° | float, -180 to 180, default 0 |  |
-| Tilt ° | float, -90 to 90, default 0 |  |
-| Exposure (EV) | float, -10 to 10, default 0 |  |
-| Tint | color |  |
+| Mirror horizontally | toggle, default off | Mirrors the panorama, for when it was shot or stored the other way round. |
+| Rotate ° | float, -180 to 180, default 0 | Turns the backdrop about the vertical, to put its interesting part behind the shot. |
+| Tilt ° | float, -90 to 90, default 0 | Tilts the backdrop, to raise or drop its horizon against the terrain's. |
+| Exposure (EV) | float, -10 to 10, default 0 | How bright the backdrop is, in stops. Matching it to the scene's own exposure is what stops the join being visible. |
+| Tint | color | A colour cast over the backdrop alone, for matching it to the scene's light. |
 | Blend over the sky | float, 0 to 1, default 1 | 1 replaces the procedural sky with the image; lower values mix. Where a mapping has no pixel (below a sky dome, outside a planar backdrop) the procedural sky shows through. |
 | Atmosphere on the dome | float, 0 to 1, default 1 | How much horizon haze and fog the dome receives, as if at infinite distance. Clouds always draw in front of it. |
 | Hide the sun disc | toggle, default on | An HDRI usually contains its own sun. |
@@ -4179,9 +4179,9 @@ Camera and tone mapping for the render
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Exposure | float, 0.3 to 3, default 1.1 |  |
-| Terrain height scale | float, 0.02 to 0.8, default 0.22 |  |
-| Terrain size (m) | float, 100 to 100000, default 5000 |  |
+| Exposure | float, 0.3 to 3, default 1.1 | How much light the picture is given, in stops. |
+| Terrain height scale | float, 0.02 to 0.8, default 0.22 | The terrain's vertical scale, so the render matches what the viewport shows. |
+| Terrain size (m) | float, 100 to 100000, default 5000 | How wide the tile is in metres, so anything sized in real units renders at the right size. |
 
 ### RenderLayers
 
@@ -4198,12 +4198,12 @@ Master output: file, format, size, engine and samples of the render
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Output file | file path |  |
+| Output file | file path | Where the finished image is written. |
 | Beauty format | choice: PNG 8-bit (tone mapped) / EXR float (linear) / HDR Radiance (linear) | Passes are always written as linear float EXR beside the beauty, whatever this is. |
-| Width | int, 64 to 8192, default 1920 |  |
-| Height | int, 64 to 8192, default 1080 |  |
-| Engine | choice: Mitsuba 3 / Blender Cycles / LuxCoreRender / appleseed / OpenGL viewport |  |
-| Samples | int, 8 to 4096, default 128 |  |
+| Width | int, 64 to 8192, default 1920 | The width of the rendered image, in pixels. |
+| Height | int, 64 to 8192, default 1080 | The height of the rendered image, in pixels. |
+| Engine | choice: Mitsuba 3 / Blender Cycles / LuxCoreRender / appleseed / OpenGL viewport | Which renderer produces the frame. The viewport engine is immediate; the path tracer is slower and resolves real light transport. |
+| Samples | int, 8 to 4096, default 128 | How many samples each pixel gets. This is the direct trade between noise and time - noise falls with the square root, so four times the samples is half the noise. |
 
 ### RenderPasses
 
@@ -4211,18 +4211,18 @@ Which channels the render writes beside the beauty: depth, normal, id, light, at
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Depth (metres) | toggle, default on |  |
-| World normal | toggle, default on |  |
-| World position | toggle, default off |  |
-| Object id | toggle, default on |  |
-| Water mask | toggle, default off |  |
-| Albedo | toggle, default on |  |
-| Direct sun light | toggle, default off |  |
-| Shadow mask | toggle, default off |  |
-| Sky / ambient light | toggle, default off |  |
-| Specular / reflection | toggle, default off |  |
-| Fog & haze (rgb + transmittance) | toggle, default off |  |
-| Sky & backdrop only | toggle, default off |  |
+| Depth (metres) | toggle, default on | Writes a linear EXR of distance from the camera to the surface beside the beauty pass, for compositing. |
+| World normal | toggle, default on | Writes a linear EXR of the direction each surface faces beside the beauty pass, for compositing. |
+| World position | toggle, default off | Writes a linear EXR of the world position of each surface point beside the beauty pass, for compositing. |
+| Object id | toggle, default on | Writes a linear EXR of which object each pixel belongs to beside the beauty pass, for compositing. |
+| Water mask | toggle, default off | Writes a linear EXR of where water covers the frame beside the beauty pass, for compositing. |
+| Albedo | toggle, default on | Writes a linear EXR of the surface colour with no lighting on it beside the beauty pass, for compositing. |
+| Direct sun light | toggle, default off | Writes a linear EXR of light arriving straight from a source beside the beauty pass, for compositing. |
+| Shadow mask | toggle, default off | Writes a linear EXR of where light is blocked beside the beauty pass, for compositing. |
+| Sky / ambient light | toggle, default off | Writes a linear EXR of light arriving from the sky as a whole beside the beauty pass, for compositing. |
+| Specular / reflection | toggle, default off | Writes a linear EXR of the highlights alone beside the beauty pass, for compositing. |
+| Fog & haze (rgb + transmittance) | toggle, default off | Writes a linear EXR of the haze and fog between camera and surface beside the beauty pass, for compositing. |
+| Sky & backdrop only | toggle, default off | Writes a linear EXR of light arriving from the backdrop beside the beauty pass, for compositing. |
 
 ### RenderQuality
 
@@ -4234,11 +4234,11 @@ Offline render engine, resolution and sampling
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Engine | choice: Mitsuba 3 / Blender Cycles / LuxCoreRender / OpenGL viewport |  |
-| Width | int, 64 to 8192, default 1920 |  |
-| Height | int, 64 to 8192, default 1080 |  |
-| Samples | int, 8 to 4096, default 128 |  |
-| Output file | file path |  |
+| Engine | choice: Mitsuba 3 / Blender Cycles / LuxCoreRender / OpenGL viewport | Which renderer produces the frame. |
+| Width | int, 64 to 8192, default 1920 | The width of the rendered image, in pixels. |
+| Height | int, 64 to 8192, default 1080 | The height of the rendered image, in pixels. |
+| Samples | int, 8 to 4096, default 128 | How many samples each pixel gets. Noise falls with the square root, so four times the samples is half the noise. |
+| Output file | file path | Where the finished image is written. |
 
 ### RenderRegion
 
@@ -4268,15 +4268,15 @@ An imported 3D model (FBX, glTF/GLB, OBJ, STL, PLY, OFF) placed in the scene, wi
 | :--- | :--- | :--- |
 | Model file | file path | FBX, glTF and GLB with their textures; OBJ with its MTL pictures; STL, PLY and OFF. The Load button on the node card opens the dialog. |
 | Scene object | text | Name in the Objects tree. Empty: the file name. |
-| Colour | color |  |
-| X (m) | float, -100000 to 100000, default 2500 |  |
-| Height (m) | float, -10000 to 100000, default 0 |  |
-| Z (m) | float, -100000 to 100000, default 2500 |  |
+| Colour | color | The object's colour, where no material is assigned to it. |
+| X (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along east. |
+| Height (m) | float, -10000 to 100000, default 0 | How high the object stands, in metres. Objects placed on the terrain read the ground height for themselves; this offsets from it. |
+| Z (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along north. |
 | Size (m) | float, 0.01 to 100000, default 400 | Uniform size of the object's unit box. |
-| Heading ° | float, -180 to 180, default 0 |  |
-| Pitch ° | float, -180 to 180, default 0 |  |
-| Bank ° | float, -180 to 180, default 0 |  |
-| Visible | toggle, default on |  |
+| Heading ° | float, -180 to 180, default 0 | How far the object is turned about the vertical, in degrees. |
+| Pitch ° | float, -180 to 180, default 0 | How far the object is tipped forward or back, in degrees. |
+| Bank ° | float, -180 to 180, default 0 | How far the object is rolled about its own forward axis, in degrees. |
+| Visible | toggle, default on | Whether the object is drawn. Hiding is not deleting - it keeps its place in the scene and all of its settings. |
 
 ### InfiniteTerrain
 
@@ -4336,14 +4336,14 @@ A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene
 | Shape | choice: Cube / Sphere / Plane / Cylinder / Cone |  |
 | Scene object | text | Name in the Objects tree. Empty: the shape's name. |
 | Colour | color |  |
-| X (m) | float, -100000 to 100000, default 2500 |  |
-| Height (m) | float, -10000 to 100000, default 0 |  |
-| Z (m) | float, -100000 to 100000, default 2500 |  |
+| X (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along east. |
+| Height (m) | float, -10000 to 100000, default 0 | How high the object stands, in metres. Objects placed on the terrain read the ground height for themselves; this offsets from it. |
+| Z (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along north. |
 | Size (m) | float, 0.01 to 100000, default 400 | Uniform size of the object's unit box. |
-| Heading ° | float, -180 to 180, default 0 |  |
-| Pitch ° | float, -180 to 180, default 0 |  |
-| Bank ° | float, -180 to 180, default 0 |  |
-| Visible | toggle, default on |  |
+| Heading ° | float, -180 to 180, default 0 | How far the object is turned about the vertical, in degrees. |
+| Pitch ° | float, -180 to 180, default 0 | How far the object is tipped forward or back, in degrees. |
+| Bank ° | float, -180 to 180, default 0 | How far the object is rolled about its own forward axis, in degrees. |
+| Visible | toggle, default on | Whether the object is drawn. Hiding is not deleting - it keeps its place in the scene and all of its settings. |
 
 ### TerrainObject
 

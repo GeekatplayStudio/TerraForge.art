@@ -131,7 +131,8 @@ REGISTER_NODE(
     PointsFromCsv, "Points", "Read points from a CSV file",
     [](Node &n) {
       n.add_out("points", DataType::Points);
-      add_filename(n.attrs, "path", "File", "");
+      add_filename(n.attrs, "path", "File", "")
+          .tooltip = "The CSV file to read points from. One row per point.";
     },
     [](Node &n) {
       PointCloud &out = n.out_points("points");
