@@ -350,6 +350,10 @@ void renderer_camera_look_at(const float target[3], float distance);
 // the infinite surround is drawn about. Read by the populations that cover
 // ground the tile does not (studio/eco_dynamic.cpp).
 float renderer_ground_base();
+
+// The ground under a point of the tile, in world units, from the picking
+// copy of the heightmap. What the orbit pivot settles onto as you zoom in.
+float renderer_ground_under(float x, float z);
 // Set for the duration of one view's draw (see ViewConfig::scene_camera).
 int &renderer_camera_override();
 // world-space right/up/forward of a view, for the corner orientation gizmo

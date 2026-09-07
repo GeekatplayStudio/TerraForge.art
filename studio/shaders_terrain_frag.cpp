@@ -105,9 +105,15 @@ vec3 get_normal(vec2 uv){
   // normal with the same octaves the vertex stage used, plus finer ones
   if (u_frac_amount > 0.0){
     float dist = length(u_cam - v_world);
-    int oct = gp_octaves(dist, 11.0);
+    int oct = gp_octaves(dist, 12.0);
     if (oct > 0){
-      float e2 = max(u_texel * 0.35, 1e-5);
+      // The step this is differenced over has to shrink with the camera or
+      // the finer octaves are computed and then averaged away: a texel is
+      // ~10 m on a 5 km tile, and the eleventh octave is 5 cm across. Held
+      // at a texel, close ground shaded as though every one of those
+      // octaves were flat, which is most of why zooming in used to arrive
+      // at a smooth blob.
+      float e2 = clamp(dist * 0.02, 2.0e-7, u_texel * 0.35);
       float c  = gp_detail(uv, u_frac_scale, oct, 0.5);
       float dx = gp_detail(uv + vec2(e2,0), u_frac_scale, oct, 0.5) - c;
       float dy = gp_detail(uv + vec2(0,e2), u_frac_scale, oct, 0.5) - c;

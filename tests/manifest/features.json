@@ -1425,6 +1425,22 @@
       "description": "The terrain's field-displacement shading normal is differenced over a step taken from the camera distance rather than one heightmap texel (about 10 m at 5 km), so relief finer than a texel - a stone field - shades as the shape it is instead of as flat ground; floored against underflow and capped at a texel so distant ground is no noisier",
       "test_file": "test_engine.cpp",
       "test_symbol": "test_field_glsl"
+    },
+    {
+      "id": "camera.zoom_to_ground",
+      "area": "studio",
+      "phase": "40",
+      "description": "A zoom that reaches the ground: the orbit pivot's height above the terrain shrinks with the camera distance instead of staying at the 400 m it was constructed with (which stopped every close approach in mid-air), panning eases the pivot onto the ground, the dolly does the same, and camera_matrices guards the forward vector so a zoom to the distance floor cannot NaN every matrix in the frame",
+      "test_file": "test_render.cpp",
+      "test_symbol": "test_frustum_extraction"
+    },
+    {
+      "id": "render.near_plane_floor",
+      "area": "studio",
+      "phase": "40",
+      "description": "The near plane is floored at 5e-7 tile units so znear*2^24 stays past the horizon: below a camera distance of 1.6 m the old znear = cam_d*0.002 made distant terrain quantise to depth exactly 1.0, fail GL_LESS against the clear and never draw, leaving the sky and its 54% horizon haze - the white view when zooming in. The fragment fractal normal is also differenced over a camera-scaled step instead of a frozen 3.4 m, so octaves finer than a texel stop being averaged flat",
+      "test_file": "test_render.cpp",
+      "test_symbol": "test_frustum_extraction"
     }
   ]
 }

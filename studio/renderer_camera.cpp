@@ -63,12 +63,17 @@ bool camera_object_input(float dx, float dy, float wheel, bool rotating,
 }
 
 
+static void zoom_toward_ground(float before); // below
+
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly) {
   if (camera_object_input(dx, dy, wheel, rotating, panning, dolly)) return;
-  if (dolly)
+  if (dolly) {
+    const float before = CAM.dist;
     CAM.dist = std::fmin(
         std::fmax(CAM.dist * (1.f + dy * 0.005f), 1e-8f), 100000.f);
+    zoom_toward_ground(before); // a dolly in converges on the ground too
+  }
   renderer_handle_input(dx, dy, wheel, rotating, panning);
 }
 
@@ -98,6 +103,32 @@ void renderer_camera_look_at(const float target[3], float distance) {
 }
 
 
+// The ground under a point of the tile, in world units. The picking copy is
+// coarse (256 across, ~20 m a texel at 5 km) but it is the only ground the
+// CPU has, and it is four hundred metres better than the alternative below.
+float renderer_ground_under(float x, float z) {
+  if (cpu_height.empty()) return 0.f;
+  return cpu_height.sample(std::clamp(x, 0.f, 1.f), std::clamp(z, 0.f, 1.f)) *
+         render_settings().height_scale;
+}
+
+// Zooming in pulls the pivot down onto the ground.
+//
+// The pivot's height was set once and never moved again: 0.08 world units,
+// which is 400 m on a 5 km tile. Since the eye converges on the pivot, over
+// any ground lower than that the zoom simply stopped, hundreds of metres up,
+// with nothing in the code that looked like a limit - the distance clamp
+// reaches 0.05 mm and never gets the chance. Keeping the pivot's height
+// above the ground proportional to the distance is what makes a zoom
+// converge on the surface: halve the distance, halve the gap, and centimetre
+// range is reachable in the same number of notches as everything else.
+static void zoom_toward_ground(float before) {
+  if (CAM.dist >= before) return; // pulling out leaves the pivot alone
+  const float k = CAM.dist / std::max(before, 1e-30f);
+  const float g = renderer_ground_under(CAM.target[0], CAM.target[2]);
+  CAM.target[1] = g + (CAM.target[1] - g) * k;
+}
+
 void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
                            bool panning) {
   if (rotating) {
@@ -109,11 +140,19 @@ void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
     float cy = std::cos(CAM.yaw), sy = std::sin(CAM.yaw);
     CAM.target[0] += (-dx * cy - dy * sy) * s;
     CAM.target[2] += (dx * sy - dy * cy) * s;
+    // panning across the ground keeps the pivot on the ground, so a zoom
+    // from anywhere lands on the surface rather than in the air over it
+    const float g = renderer_ground_under(CAM.target[0], CAM.target[2]);
+    const float gap = CAM.target[1] - g;
+    if (std::fabs(gap) < CAM.dist) CAM.target[1] = g + gap * 0.9f;
   }
   // zoom range spans a grain of sand to a whole planetary neighbourhood
-  if (wheel != 0)
+  if (wheel != 0) {
+    const float before = CAM.dist;
     CAM.dist = std::fmin(
         std::fmax(CAM.dist * (1.f - wheel * 0.12f), 1e-8f), 100000.f);
+    zoom_toward_ground(before);
+  }
 }
 
 
@@ -239,6 +278,14 @@ void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
   float fovy_rad = perspective_eye_target(eye, target);
   float fz[3] = {target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]};
   float fl = std::sqrt(fz[0] * fz[0] + fz[1] * fz[1] + fz[2] * fz[2]);
+  // A zoom that reaches the distance floor puts the eye on the pivot, and
+  // dividing by that length would make every matrix in the frame NaN - a
+  // black window with no error anywhere. renderer_view_basis already
+  // guards the same computation; this one did not.
+  if (!(fl > 1e-9f)) {
+    fz[0] = 0.f; fz[1] = 0.f; fz[2] = 1.f;
+    fl = 1.f;
+  }
   for (float &v : fz) v /= fl;
   float up[3] = {0, 1, 0};
   if (std::fabs(fz[1]) > 0.999f) { up[0] = 1; up[1] = 0; }
@@ -256,9 +303,22 @@ void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
   float aspect = w / float(h);
   g_last_fovy = fovy_rad;
   float cam_d = std::sqrt((eye[0]-target[0])*(eye[0]-target[0]) + (eye[1]-target[1])*(eye[1]-target[1]) + (eye[2]-target[2])*(eye[2]-target[2]));
-  // the near plane follows the zoom all the way down: a sub-millimetre
-  // planet is 2e-8 tile units across and has to be walkable too
-  float znear = std::clamp(cam_d * 0.002f, 1e-11f, 0.5f);
+  // The near plane follows the zoom down, but only so far.
+  //
+  // A 24-bit fixed-point depth buffer resolves a fragment from the cleared
+  // 1.0 only while `znear / z > 2^-24`, so the furthest thing that can write
+  // depth at all is `znear * 2^24`. With znear = cam_d * 0.002 that is
+  // cam_d * 33554: at a camera distance of 1 cm it is 335 m, and every piece
+  // of ground beyond quantises to exactly 1.0, fails GL_LESS against the
+  // clear, and is never drawn - the sky shows through instead and the view
+  // goes pale. That is the whole of the "it goes white when I zoom in" bug,
+  // and it starts at about 1.6 m.
+  //
+  // The floor is the fix: 5e-7 tile units keeps `znear * 2^24` at 8.4 tiles,
+  // past the horizon of the tile and its surround, for any zoom. It costs
+  // the ability to see something closer than 2.5 mm to the eye, which is
+  // below the 0.3 mm the world's float coordinates can express anyway.
+  float znear = std::clamp(cam_d * 0.002f, 5e-7f, 0.5f);
   // the far plane follows the zoom so pulling out reveals the whole planetary
   // neighborhood; planets themselves render as a depth-write-free sky layer,
   // so they are never clipped by it regardless
