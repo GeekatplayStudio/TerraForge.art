@@ -192,6 +192,16 @@ inline void declare_density(Node &n) {
       .tooltip = "Groups instances together as species do in nature.";
   add_float(n.attrs, "clump_size_m", "Clump size (m)", 60.f, 0.5f, 5000.f, "Density", true);
   add_seed(n.attrs, "seed", "Seed", 0, "Density");
+  add_bool(n.attrs, "unbounded", "Populate around the camera", false, "Density")
+      .tooltip = "Off: the population covers the terrain tile, computed once.\n"
+                 "On: it covers the ground wherever the camera goes - a planet\n"
+                 "or an infinite terrain has no tile to cover - generated in\n"
+                 "cells on demand and thrown away behind you. What a cell\n"
+                 "holds never depends on where it was seen from.";
+  add_float(n.attrs, "population_m", "Populate within (m)", 2000.f, 10.f, 200000.f,
+            "Density", true)
+      .tooltip = "How far from the camera the ground is populated when\n"
+                 "'Populate around the camera' is on.";
   add_float(n.attrs, "size_m", "Terrain size (m)", 5000.f, 1.f, 1000000.f, "Density", true)
       .tooltip = "The tile's width; the studio keeps this in step with the\n"
                  "project so the rate above means what it says.";

@@ -46,6 +46,7 @@ void renderer_set_terrain_base(float ground) {
   g_terrain_base_set = true;
 }
 GLuint prog_lines = 0, prog_bg = 0, prog_mesh = 0, prog_gizmo = 0;
+GLuint prog_billboard = 0;
 GLuint prog_matprev = 0;
 GLuint matprev_fbo = 0, matprev_tex = 0, matprev_depth = 0;
 int matprev_size = 0;

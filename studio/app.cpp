@@ -36,6 +36,7 @@ void build_workspace_default_layout(App &a, unsigned dockspace_id);
 void eval_worker(App &a);
 void app_service_upload_shutdown();
 void app_service_scatter(App &a);
+void app_service_population(App &a); // eco_dynamic.cpp
 
 
 void run_main() {
@@ -264,6 +265,9 @@ void run_main() {
     // scatter instances: every Mesh object bound to a Points node gets its
     // copy list rebuilt when the evaluation moves
     app_service_scatter(a);
+    // and the populations that cover ground the tile does not: the cells of
+    // a world lattice near the camera, realised a few per frame
+    app_service_population(a);
 
     perf_mark("upload");
     // Apply completed terrain/scene updates before displaying either view.

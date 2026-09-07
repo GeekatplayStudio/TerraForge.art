@@ -30,6 +30,7 @@
 #include "gpx/heightmap.hpp"
 #include "gpx/points.hpp"
 #include <cstdint>
+#include <functional>
 
 namespace gpx::scatter {
 
@@ -54,12 +55,34 @@ void candidates(const CandidateParams &p, PointCloud &out);
 // The lattice size the params imply (cells per side).
 int lattice_n(const CandidateParams &p);
 
+// One cell of a lattice anchored in the WORLD, not in a tile: the ground a
+// planet or an infinite terrain offers has no 0..1 domain to divide, so the
+// cell index itself is the coordinate. `cell_x`/`cell_z` index a lattice of
+// `p.spacing`-sized cells whose origin is the world origin; the points come
+// back in the same units the spacing is given in.
+//
+// A cell's instances depend on nothing but (seed, cell index, candidate
+// index), so a cell evaluated when the camera is 10 m away holds exactly
+// the instances it held when the camera was 10 km away and the cell was
+// last visited. That is what lets a population be generated on demand, in
+// pieces, and never shimmer as the pieces are re-entered.
+void candidates_cell(const CandidateParams &p, long long cell_x, long long cell_z,
+                     PointCloud &out);
+
 // ------------------------------------------------------------- presence
 struct Presence {
   const Heightmap *mask = nullptr; // 0..1, multiplies; null = everywhere
   bool invert_mask = false;
   float threshold = 0.f;           // presence below this places nothing
   const Heightmap *terrain = nullptr; // for altitude / slope / orientation
+  // A ground with no tile to sample: a planet's surface, an infinite
+  // terrain. Takes a position in the same units the candidates are in and
+  // returns a height in those units; when set it is used instead of
+  // `terrain`, and the slope comes from differences `step` apart. The
+  // altitude band is then read as absolute (mode 0 has no range to
+  // normalise against), so `alt_lo`/`alt_hi` are heights.
+  std::function<float(float, float)> ground;
+  float step = 1.f;
   bool use_altitude = false;
   int altitude_mode = 0;           // 0 by terrain range, 1 absolute, 2 above sea
   float alt_lo = 0.f, alt_hi = 1.f, alt_fuzz = 0.08f, sea = 0.f;

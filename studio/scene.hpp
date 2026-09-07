@@ -207,6 +207,14 @@ struct SceneObject {
   unsigned lod_vao[2] = {0, 0}, lod_vbo[2] = {0, 0};
   int lod_count[2] = {0, 0};
   bool lod_tried = false;
+  // the card the copies become past the billboard distance: the mesh
+  // rasterised straight on, its own pictures cut out (studio/billboard.cpp)
+  std::vector<uint8_t> card_rgba;
+  int card_px = 0;
+  unsigned card_tex = 0, card_vao = 0;
+  float card_size[2] = {0.f, 0.f};   // model-space width and height
+  float card_centre[3] = {0, 0, 0};  // model-space centre it stands about
+  bool card_tried = false;
   unsigned long long inst_revision = 0; // transient, never serialized
   // Animation: one track per keyed property component, keyed by the path
   // studio/anim_targets.hpp defines ("pos.x", "light.intensity"...). Empty

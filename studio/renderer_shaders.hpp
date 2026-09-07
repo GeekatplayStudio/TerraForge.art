@@ -53,6 +53,10 @@ extern const char *const VS_MESH;
 
 extern const char *const FS_MESH;
 
+// the card a scattered copy becomes at distance (shaders_billboard.cpp)
+extern const char *const VS_BILLBOARD;
+extern const char *const FS_BILLBOARD;
+
 extern const char *const VS_GIZMO;
 
 extern const char *const FS_GIZMO;

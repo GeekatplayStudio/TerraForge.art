@@ -51,6 +51,10 @@ void scene_rebuild_scatter_instances(App &a) {
       continue;
     }
     gpx::Node *sn = a.graph.find_node(o.scatter_node);
+    // a population that covers the ground around the camera is realised
+    // cell by cell instead (studio/eco_dynamic.cpp); its meshes' copies are
+    // not the graph's to clear
+    if (sn && sn->type == "EcosystemLayer" && sn->attrs.get_b("unbounded", false)) continue;
     const gpx::PointCloud *pc = nullptr;
     if (sn)
       for (const gpx::Port &p : sn->ports)

@@ -93,6 +93,7 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"scatter_lod_full_m", 'f', &rs.scatter_lod_full_m},
       {"scatter_lod_far_m", 'f', &rs.scatter_lod_far_m},
       {"scatter_lod_cull_m", 'f', &rs.scatter_lod_cull_m},
+      {"scatter_lod_billboard_m", 'f', &rs.scatter_lod_billboard_m},
       {"scatter_lod_min_keep", 'f', &rs.scatter_lod_min_keep},
       {"terrain_lod", 'f', &rs.terrain_lod},
       // terrain surface material

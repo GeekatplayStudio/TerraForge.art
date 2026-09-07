@@ -1385,6 +1385,30 @@
       "description": "Level of detail for scattered copies: bucketed by 16x16 tile cell and sorted by a per-instance key at rebuild, per view a keep fraction by distance (1 inside full, min_keep at far, 0 past cull) draws a prefix of each cell with base-instance draws, survivors grow to keep the cover, reduced meshes (quadric, 25% and 6%) by distance for meshes without parts, frustum-skipped cells, the shadow pass thins identically from the view camera, the governor scales the distances, instances_drawn/total in the API; the terrain height texture is mipmapped and read at a distance-chosen level (terrain_lod) in both passes",
       "test_file": "test_render.cpp",
       "test_symbol": "test_scatter_lod"
+    },
+    {
+      "id": "render.scatter_billboards",
+      "area": "studio",
+      "phase": "38",
+      "description": "The last rung of the scattered-copy ladder: past scatter_lod_billboard_m a copy is a camera-facing card, four vertices with no vertex buffer, textured with the mesh rasterised straight on (mesh_raster with the model's pictures, their cut-outs and a transparent background); cylindrical so a tree stays upright from above, taking the same wind lean as the geometry, skipped in the render passes and the shadow map; instances_cards published in the API and the Environment panel",
+      "test_file": "test_render.cpp",
+      "test_symbol": "test_scatter_lod"
+    },
+    {
+      "id": "scatter.world_cells",
+      "area": "engine",
+      "phase": "38",
+      "description": "Populations for ground with no tile: candidates_cell hashes a world-anchored lattice cell so its contents never depend on when or from where it was realised, and Presence::ground takes a height function instead of a raster (slope from differences, altitude absolute) - a planet's surface or an infinite terrain",
+      "test_file": "test_ecosystem.cpp",
+      "test_symbol": "test_world_cells"
+    },
+    {
+      "id": "scene.dynamic_population",
+      "area": "studio",
+      "phase": "38",
+      "description": "EcosystemLayer's 'Populate around the camera': the node emits nothing and studio/eco_dynamic.cpp realises the world cells near the active camera a few per frame, caching them, retiring them behind, standing the copies on the tile inside it and on the infinite surround's own layers (its shader's amplitude and base) outside; each world cell becomes one LOD cell; verified live 17 km outside the authored tile",
+      "test_file": "test_render.cpp",
+      "test_symbol": "test_scatter_lod"
     }
   ]
 }

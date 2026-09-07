@@ -72,6 +72,14 @@ REGISTER_NODE(
       pts.clear();
       if (!n.attrs.get_b("enabled", true)) return;
 
+      // Populated around the camera instead of over the tile: the studio
+      // realises the cells the camera can see (studio/eco_dynamic.cpp) and
+      // the node holds only the rule. It emits nothing here on purpose -
+      // there is no tile for a planet's surface to be a picture of.
+      if (n.attrs.get_b("unbounded", false)) {
+        n.out_hmap("density") = Heightmap();
+        return;
+      }
       const float size_m = std::max(n.attrs.get_f("size_m", 5000.f), 1.f);
       float rate = 1.f;
       scatter::CandidateParams cp = eco::read_candidates(n, rate);

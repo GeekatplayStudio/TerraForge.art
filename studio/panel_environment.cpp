@@ -3,6 +3,7 @@
 #include "app.hpp"
 #include "gpu_timer.hpp"
 #include "render_settings.hpp"
+#include "renderer_instances.hpp"
 #include <imgui.h>
 
 namespace studio {
@@ -180,6 +181,26 @@ static void section_subdivision(RenderSettings &rs) {
       ImGui::SetTooltip("Far ground reads a calmer, averaged relief so stone fields\n"
                         "and grass at the horizon stop shimmering. 0 keeps every\n"
                         "texel at every distance.");
+    ImGui::SeparatorText("Scattered copies");
+    ImGui::DragFloat("Full detail within (m)", &rs.scatter_lod_full_m, 1.f, 1.f, 1e6f, "%.0f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Every copy is drawn, from the mesh itself, inside this.");
+    ImGui::DragFloat("Thinned by (m)", &rs.scatter_lod_far_m, 10.f, 1.f, 1e7f, "%.0f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("By this distance only the share below is drawn, and the\n"
+                        "survivors grow so the ground stays as covered.");
+    ImGui::SliderFloat("Far crowd share", &rs.scatter_lod_min_keep, 0.01f, 1.f, "%.2f");
+    ImGui::DragFloat("Cards beyond (m)", &rs.scatter_lod_billboard_m, 10.f, 1.f, 1e8f, "%.0f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Past this a copy is a flat card facing the camera,\n"
+                        "baked from the mesh, instead of geometry.");
+    ImGui::DragFloat("Nothing beyond (m)", &rs.scatter_lod_cull_m, 10.f, 1.f, 1e8f, "%.0f");
+    {
+      int drawn = 0, total = 0, cards = 0;
+      renderer_instance_stats(drawn, total, &cards);
+      if (total)
+        ImGui::TextDisabled("%d of %d copies drawn last frame, %d as cards", drawn, total, cards);
+    }
     Checkbox("Cull patches off screen", &rs.frustum_cull);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Discard a patch before subdividing it when its whole\n"

@@ -26,13 +26,26 @@ uniform subsample of it. Each frame, per view:
    use). A mesh with material parts - a plant's textured leaf cards - keeps
    its geometry at every level and relies on thinning alone; a reducer
    would tear its pictures.
+5. past `scatter_lod_billboard_m` a copy is a **card**: four vertices
+   facing the camera, textured with the mesh rasterised straight on
+   (`studio/billboard.cpp`, the same CPU rasteriser that draws the node
+   thumbnails, with the model's own pictures and their cut-outs kept and
+   the background left transparent). The card turns about the world's up
+   axis only, so a tree stays upright when the camera looks down at it,
+   and it takes the same wind lean the geometry does so nothing jumps at
+   the boundary. Measured on a meadow of 20,387 drawn copies: 3.54 ms of
+   GPU as geometry, 2.02 ms as cards. Cards are skipped in the render
+   passes (an AOV wants geometry, not a picture of it) and in the shadow
+   map, where at that distance a copy's shadow is smaller than a texel.
 
 The shadow pass makes the same decision from the view camera, so a copy's
 shadow is where the copy is. Adjacent cells drawn whole become one draw.
 
-Defaults: full 150 m, far 1500 m, cull 6000 m, minimum share 0.15. The
-performance governor (`studio/perf.cpp`) scales the far and cull
-distances down (0.6, then 0.35) as it lightens the frame.
+Defaults: full 150 m, far 1500 m, cards past 2500 m, cull 6000 m, minimum
+share 0.15. The performance governor (`studio/perf.cpp`) scales the far,
+card and cull distances down (0.6, then 0.35) as it lightens the frame.
+A mesh always falls back down the ladder to what it actually has: no card
+baked, no reduced copies, and it is drawn as itself.
 
 ## The terrain's relief
 
@@ -55,9 +68,11 @@ Environment panel > Surface detail: **Relief detail by distance**
 `scatter_lod_min_keep`), saved with the scene and set from a script with
 `set_viewport` (MCP: `studio_set_viewport`).
 
-`scene_state.json` > `viewport` reports `instances_drawn` and
-`instances_total` for the last frame, so "LOD is on" is a number: move the
-camera away and drawn falls while total does not.
+`scene_state.json` > `viewport` reports `instances_drawn`,
+`instances_total` and `instances_cards` for the last frame, so "LOD is on"
+is a number: move the camera away and drawn falls while total does not,
+and pull `scatter_lod_billboard_m` in and cards climbs to meet drawn. The
+Environment panel prints the same line under Surface detail.
 
 ## Gates (tests/cpp/test_render.cpp, `render_tests`)
 
@@ -65,5 +80,8 @@ camera away and drawn falls while total does not.
   and its bounds hold its copies; a cell's first half has the lower keys;
 - keep is 1 inside full, monotone non-increasing, `min_keep` at far and
   between far and cull, 0 past cull; the governor's scale pulls far in;
-- survivors grow by `sqrt(1/keep)` capped at 2; the mesh level steps with
-  distance.
+- survivors grow by `sqrt(1/keep)` capped at 2; the level ladder steps
+  with distance and only ever coarsens, ending at the card;
+- the cells a camera asks for are inside its radius, nearest first, the
+  same set in the same order every time, a budget keeps the nearest, and
+  a step of one cell keeps most of the previous set.

@@ -36,6 +36,7 @@ extern GLuint prog_depth_mesh;
 // says whether any of them moved
 unsigned long long mesh_shadow_key();
 extern GLuint prog_lines, prog_bg, prog_mesh, prog_gizmo;
+extern GLuint prog_billboard; // far scattered copies, as cards
 extern GLuint prog_matprev;
 extern GLuint matprev_fbo, matprev_tex, matprev_depth;
 extern int matprev_size;
@@ -208,6 +209,8 @@ struct FrameCtx {
 void upload_scene_lights(unsigned prog, float hscale);
 void pass_shadow(const FrameCtx &F);
 void pass_shadow_meshes(const FrameCtx &F); // renderer_shadow_meshes.cpp
+// every visible mesh, its copies and their cards (renderer_meshes.cpp)
+void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere);
 void pass_sky(const FrameCtx &F);
 void pass_terrain(const FrameCtx &F);
 void pass_water(const FrameCtx &F);

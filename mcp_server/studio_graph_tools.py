@@ -216,6 +216,8 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "copy inside this), scatter_lod_far_m (the far share "
                        "is reached here), scatter_lod_cull_m (nothing beyond), "
                        "scatter_lod_min_keep (0-1, the far crowd's share), "
+                       "scatter_lod_billboard_m (past this a copy is a flat "
+                       "card baked from the mesh), "
                        "terrain_lod (0-1, far ground reads a calmer relief). "
                        "Read viewport.instances_drawn / instances_total back.",
         "params": {"tessellation": "bool", "tess_pixels": "float",
@@ -231,6 +233,7 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                    "cloud_scatter_depth": "float",
                    "scatter_lod_full_m": "float", "scatter_lod_far_m": "float",
                    "scatter_lod_cull_m": "float", "scatter_lod_min_keep": "float",
+                   "scatter_lod_billboard_m": "float",
                    "terrain_lod": "float"},
     },
     "studio_capture": {

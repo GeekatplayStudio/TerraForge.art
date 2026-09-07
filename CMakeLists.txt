@@ -338,6 +338,11 @@ set(STUDIO_SOURCES
     studio/scatter_lod.cpp
     studio/renderer_instances.cpp
     studio/renderer_mesh_upload.cpp
+    studio/renderer_meshes.cpp
+    studio/renderer_billboards.cpp
+    studio/shaders_billboard.cpp
+    studio/billboard.cpp
+    studio/eco_dynamic.cpp
     studio/mesh_lod.cpp
     studio/panel_material_hierarchy.cpp
     studio/material_channel_ui.cpp

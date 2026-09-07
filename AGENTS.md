@@ -311,7 +311,21 @@ each one was a bug we already paid for. Do not regress them.
 5. **LOD thins, it never re-scatters.** Cells are sorted by a per-instance
    key at rebuild; a pass draws a prefix. Both passes take the decision
    from the *view* camera, so a copy's shadow is where the copy is. A mesh
-   with material parts is never decimated (its pictures would tear).
+   with material parts is never decimated (its pictures would tear), and
+   every level falls back to what the mesh actually has.
+6. **A camera-driven service must use the camera the viewport draws
+   with.** `renderer_get_camera` returns the orbit camera; when a scene
+   camera is activated the view comes from *that* one instead. The
+   dynamic population followed the orbit camera and generated its whole
+   crowd behind the viewer - drawn 0, total 200k - which reads exactly
+   like a broken generator. Read `scene_active_camera()` first
+   (studio/eco_dynamic.cpp).
+7. **What a world cell holds may never depend on the camera.** Only
+   *which* cells exist does. A cell is `hash(seed, cell index, candidate
+   index)` and nothing else, so re-entering it from the other side gives
+   back the same instances; the moment a cell's contents read the eye,
+   distance or frame, a population re-grows as you walk and the whole
+   on-demand model is worthless.
 
 ## Performance rules
 

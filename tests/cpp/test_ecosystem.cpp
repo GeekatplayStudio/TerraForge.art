@@ -354,6 +354,70 @@ static void test_transform() {
   check(lone.sx[0] < lone.sx[5] * 0.7f, "shrink at low density: the lone one is smaller");
 }
 
+// A population with no tile: cells anchored in the world, a ground that is
+// a function rather than a raster. The property that makes on-demand
+// population possible is that a cell's contents do not depend on when, or
+// from where, the cell was computed.
+static void test_world_cells() {
+  std::printf("world cells (planets, infinite ground)...\n");
+  scatter::CandidateParams p;
+  p.spacing = 20.f;  // 20 m cells, in world metres
+  p.per_cell = 6;
+  p.seed = 3;
+  PointCloud a, b;
+  scatter::candidates_cell(p, 12, -7, a);
+  scatter::candidates_cell(p, 12, -7, b);
+  check(a.size() == 6 && same_cloud(a, b), "a world cell is the same cell every time");
+  bool inside = true;
+  for (size_t i = 0; i < a.size(); ++i) {
+    inside &= a.x[i] >= 12 * 20.f && a.x[i] <= 13 * 20.f;
+    inside &= a.y[i] >= -7 * 20.f && a.y[i] <= -6 * 20.f;
+  }
+  check(inside, "its candidates stay inside the cell");
+  PointCloud other;
+  scatter::candidates_cell(p, 13, -7, other);
+  bool distinct = true;
+  for (uint64_t id : other.id)
+    for (uint64_t mine : a.id) distinct &= id != mine;
+  check(distinct, "neighbouring cells share no identity");
+  // the same lattice reached far from the origin: no drift, no repetition
+  PointCloud far_cell;
+  scatter::candidates_cell(p, 500000, 900000, far_cell);
+  check(far_cell.size() == 6 && far_cell.id[0] != a.id[0],
+        "a cell a thousand kilometres out is still one cell");
+
+  // a ground that is a function: a slope band must pick the same ground as
+  // the raster path does
+  scatter::Presence pr;
+  pr.ground = [](float x, float z) { (void)z; return x * 0.5f; }; // 26.57 degrees
+  pr.step = 1.f;
+  pr.use_slope = true;
+  pr.slope_lo = 0.f; pr.slope_hi = 20.f; pr.slope_fuzz = 0.f;
+  check(scatter::presence_at(pr, 100.f, 100.f) == 0.f, "a 26 degree function ground is outside a 0..20 band");
+  pr.slope_hi = 30.f;
+  check(scatter::presence_at(pr, 100.f, 100.f) == 1.f, "and inside a 0..30 band");
+  // altitude is absolute for a function: a band in metres
+  scatter::Presence pa;
+  pa.ground = [](float x, float z) { (void)z; return x; };
+  pa.step = 1.f;
+  pa.use_altitude = true;
+  pa.alt_lo = 100.f; pa.alt_hi = 200.f; pa.alt_fuzz = 0.f;
+  check(pa.ground && scatter::presence_at(pa, 150.f, 0.f) == 1.f &&
+            scatter::presence_at(pa, 50.f, 0.f) == 0.f && scatter::presence_at(pa, 250.f, 0.f) == 0.f,
+        "an altitude band on a function ground is metres above zero");
+  // filtering a world cell keeps the stability property
+  PointCloud cell;
+  scatter::candidates_cell(p, 4, 4, cell);
+  PointCloud half = cell, most = cell;
+  scatter::Presence none;
+  scatter::filter(half, none, 0.4f);
+  scatter::filter(most, none, 0.9f);
+  std::set<uint64_t> in_most(most.id.begin(), most.id.end());
+  bool superset = true;
+  for (uint64_t id : half.id) superset &= in_most.count(id) > 0;
+  check(superset, "density is still a superset inside a world cell");
+}
+
 static void test_layer_node() {
   std::printf("EcosystemLayer node...\n");
   Graph g;
@@ -476,6 +540,7 @@ int main() {
   test_presence_environment();
   test_interaction();
   test_transform();
+  test_world_cells();
   test_layer_node();
   test_stack_and_nodes_agree();
   std::printf("%d checks, %s\n", checks, failures ? "FAILED" : "all passed");

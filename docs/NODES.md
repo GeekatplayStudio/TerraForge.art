@@ -2545,6 +2545,8 @@ Ecosystem layer: a population placed by the layer's presence, reacting to the la
 | Clumping | float, 0 to 1, default 0 | Groups instances together as species do in nature. |
 | Clump size (m) | float, 0.5 to 5000, default 60 |  |
 | Seed | seed |  |
+| Populate around the camera | toggle, default off | Off: the population covers the terrain tile, computed once. On: it covers the ground wherever the camera goes - a planet or an infinite terrain has no tile to cover - generated in cells on demand and thrown away behind you. What a cell holds never depends on where it was seen from. |
+| Populate within (m) | float, 10 to 200000, default 2000 | How far from the camera the ground is populated when 'Populate around the camera' is on. |
 | Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the rate above means what it says. |
 | Presence threshold | float, 0 to 1, default 0.05 | Presence below this places nothing at all. |
 | Slope influence | float, 0 to 1, default 0.5 | 1: instances thin out on steep ground. 0: the same density whatever the slope. |
@@ -2560,6 +2562,7 @@ Ecosystem layer: a population placed by the layer's presence, reacting to the la
 | Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards. 0 is north. |
 | Arc | float, 5 to 180, default 60 |  |
 | Fade | float, 0 to 90, default 20 |  |
+| Terrain height scale | float, 0.001 to 100, default 1 | World height of a heightmap unit as a fraction of the tile's width; the studio keeps this in step with the project so a slope in degrees is the slope the viewport shows. |
 | Decay near objects | float, 0 to 1, default 0 | Thins the population around the objects standing on the terrain (the 'objects' input: 0 at an object, 1 far away). 1 leaves a void right at them. |
 | Reach | float, 0.001 to 0.5, default 0.05 | How far from the objects the decay extends, as a fraction of the terrain. |
 | Falloff | float, -1 to 1, default 0 | 0 linear. Positive: the void is larger and more sudden. Negative: gentler. |
@@ -3423,6 +3426,8 @@ Scatter by density per hectare and the presence of the ground
 | Clumping | float, 0 to 1, default 0 | Groups instances together as species do in nature. |
 | Clump size (m) | float, 0.5 to 5000, default 60 |  |
 | Seed | seed |  |
+| Populate around the camera | toggle, default off | Off: the population covers the terrain tile, computed once. On: it covers the ground wherever the camera goes - a planet or an infinite terrain has no tile to cover - generated in cells on demand and thrown away behind you. What a cell holds never depends on where it was seen from. |
+| Populate within (m) | float, 10 to 200000, default 2000 | How far from the camera the ground is populated when 'Populate around the camera' is on. |
 | Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the rate above means what it says. |
 | Presence threshold | float, 0 to 1, default 0.05 | Presence below this places nothing at all. |
 | Slope influence | float, 0 to 1, default 0.5 | 1: instances thin out on steep ground. 0: the same density whatever the slope. |
@@ -3438,6 +3443,7 @@ Scatter by density per hectare and the presence of the ground
 | Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards. 0 is north. |
 | Arc | float, 5 to 180, default 60 |  |
 | Fade | float, 0 to 90, default 20 |  |
+| Terrain height scale | float, 0.001 to 100, default 1 | World height of a heightmap unit as a fraction of the tile's width; the studio keeps this in step with the project so a slope in degrees is the slope the viewport shows. |
 | Decay near objects | float, 0 to 1, default 0 | Thins the population around the objects standing on the terrain (the 'objects' input: 0 at an object, 1 far away). 1 leaves a void right at them. |
 | Reach | float, 0.001 to 0.5, default 0.05 | How far from the objects the decay extends, as a fraction of the terrain. |
 | Falloff | float, -1 to 1, default 0 | 0 linear. Positive: the void is larger and more sudden. Negative: gentler. |

@@ -201,6 +201,7 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_f(act, "scatter_lod_full_m", rs.scatter_lod_full_m, 0.f, 1e6f);
   n += take_f(act, "scatter_lod_far_m", rs.scatter_lod_far_m, 1.f, 1e7f);
   n += take_f(act, "scatter_lod_cull_m", rs.scatter_lod_cull_m, 1.f, 1e8f);
+  n += take_f(act, "scatter_lod_billboard_m", rs.scatter_lod_billboard_m, 1.f, 1e8f);
   n += take_f(act, "scatter_lod_min_keep", rs.scatter_lod_min_keep, 0.f, 1.f);
   n += take_f(act, "terrain_lod", rs.terrain_lod, 0.f, 1.f);
 

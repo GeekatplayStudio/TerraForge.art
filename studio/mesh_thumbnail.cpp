@@ -12,23 +12,25 @@
 
 namespace studio {
 
-std::vector<uint8_t> mesh_thumbnail(const SceneObject &o, int size) {
+std::vector<uint8_t> mesh_raster(const SceneObject &o, int size,
+                                 const MeshRasterOptions &opt) {
   const int W = size, H = size;
   std::vector<uint8_t> rgba((size_t)W * H * 4, 0);
   std::vector<float> depth((size_t)W * H, 1e30f);
-  // the canvas: a dark plate, so the card reads as a picture
-  for (int i = 0; i < W * H; ++i) {
-    rgba[(size_t)i * 4 + 0] = 34;
-    rgba[(size_t)i * 4 + 1] = 34;
-    rgba[(size_t)i * 4 + 2] = 36;
-    rgba[(size_t)i * 4 + 3] = 255;
-  }
+  // the canvas: a dark plate, so a thumbnail reads as a picture. A card that
+  // will stand in for the mesh in the world keeps it transparent instead.
+  if (opt.plate)
+    for (int i = 0; i < W * H; ++i) {
+      rgba[(size_t)i * 4 + 0] = 34;
+      rgba[(size_t)i * 4 + 1] = 34;
+      rgba[(size_t)i * 4 + 2] = 36;
+      rgba[(size_t)i * 4 + 3] = 255;
+    }
   const int n = o.vert_count;
   if (n < 3 || o.verts.size() < (size_t)n * 6) return rgba;
 
-  // a view from the front-right and above: rotate about Y by 35 degrees,
-  // then tilt down by 25, then an orthographic fit of the bounds
-  const float ay = 35.f * 0.017453f, ax = -25.f * 0.017453f;
+  // rotate about Y, then tilt, then an orthographic fit of the bounds
+  const float ay = opt.yaw_deg * 0.017453f, ax = opt.pitch_deg * 0.017453f;
   const float cy = std::cos(ay), sy = std::sin(ay), cx = std::cos(ax), sx = std::sin(ax);
   auto view = [&](const float *p, float *out) {
     float x = p[0] * cy + p[2] * sy, z = -p[0] * sy + p[2] * cy, y = p[1];
@@ -104,6 +106,7 @@ std::vector<uint8_t> mesh_thumbnail(const SceneObject &o, int size) {
           v -= std::floor(v);
           int tx = std::min(part->w - 1, (int)(u * part->w)), ty = std::min(part->h - 1, (int)(v * part->h));
           const uint8_t *s = &part->rgba[((size_t)ty * part->w + tx) * 4];
+          if (opt.alpha_cutout && s[3] < 128) continue; // a leaf's cut-out
           for (int k = 0; k < 3; ++k) col[k] *= s[k] / 255.f;
         }
         uint8_t *dst = &rgba[((size_t)y * W + x) * 4];
@@ -112,6 +115,10 @@ std::vector<uint8_t> mesh_thumbnail(const SceneObject &o, int size) {
       }
   }
   return rgba;
+}
+
+std::vector<uint8_t> mesh_thumbnail(const SceneObject &o, int size) {
+  return mesh_raster(o, size, MeshRasterOptions{});
 }
 
 } // namespace studio

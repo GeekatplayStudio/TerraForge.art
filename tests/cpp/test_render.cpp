@@ -463,10 +463,58 @@ static void test_scatter_lod() {
   CHECK(studio::scatter_grow(1.f) == 1.f && studio::scatter_grow(0.25f) == 2.f && studio::scatter_grow(0.01f) == 2.f,
         "survivors grow by sqrt(1/keep), capped at 2");
   p.scale = 1.f;
+  p.billboard_m = 4000.f;
   CHECK(studio::scatter_lod_level(50, p) == 0 && studio::scatter_lod_level(300, p) == 1 && studio::scatter_lod_level(2000, p) == 2,
         "mesh level by distance");
+  CHECK(studio::scatter_lod_level(4500, p) == studio::SCATTER_LOD_BILLBOARD &&
+            studio::scatter_lod_level(3999, p) == 2,
+        "past the billboard distance a copy is a card");
+  bool steps = true;
+  int prev_level = 0;
+  for (float d = 0; d <= 8000; d += 20) {
+    int l = studio::scatter_lod_level(d, p);
+    steps &= l >= prev_level; // never goes back to finer geometry with distance
+    prev_level = l;
+  }
+  CHECK(steps, "the level ladder only ever coarsens with distance");
   const float q[3] = {0, 0, 0}, lo[3] = {1, 0, 0}, hi[3] = {2, 1, 1};
   CHECK(std::fabs(studio::aabb_distance(q, lo, hi) - 1.f) < 1e-6f, "distance to a box");
+
+  // cells around the camera, for a population with no tile
+  std::vector<studio::WorldCell> wc, again;
+  studio::visible_cells(1050.f, -450.f, 300.f, 100.f, 1000, wc);
+  CHECK(!wc.empty(), "the camera has cells around it");
+  bool within = true, nearest_first = true;
+  for (size_t i = 0; i < wc.size(); ++i) {
+    within &= wc[i].dist <= 300.f;
+    if (i) nearest_first &= wc[i].dist >= wc[i - 1].dist - 1e-4f;
+  }
+  CHECK(within && nearest_first, "every cell is inside the radius, nearest first");
+  CHECK(wc[0].dist == 0.f && wc[0].x == 10 && wc[0].z == -5,
+        "the camera's own cell comes first");
+  studio::visible_cells(1050.f, -450.f, 300.f, 100.f, 1000, again);
+  bool identical = wc.size() == again.size();
+  for (size_t i = 0; i < wc.size() && identical; ++i)
+    identical = wc[i].x == again[i].x && wc[i].z == again[i].z;
+  CHECK(identical, "the same camera asks for the same cells in the same order");
+  // a budget cuts the far tail, never the near cells
+  std::vector<studio::WorldCell> few;
+  studio::visible_cells(1050.f, -450.f, 300.f, 100.f, 9, few);
+  bool prefix = few.size() == 9;
+  for (size_t i = 0; i < few.size() && prefix; ++i)
+    prefix = few[i].x == wc[i].x && few[i].z == wc[i].z;
+  CHECK(prefix, "a budget keeps the nearest cells");
+  // moving a whole cell over shifts the set by one cell, it does not reshuffle
+  std::vector<studio::WorldCell> moved;
+  studio::visible_cells(1150.f, -450.f, 300.f, 100.f, 1000, moved);
+  size_t shared = 0;
+  for (const studio::WorldCell &m : moved)
+    for (const studio::WorldCell &c : wc)
+      if (m.x == c.x && m.z == c.z) { ++shared; break; }
+  CHECK(shared > wc.size() / 2, "a step of one cell keeps most of the set");
+  std::vector<studio::WorldCell> none;
+  studio::visible_cells(0.f, 0.f, 1e9f, 1.f, 100, none);
+  CHECK(none.empty(), "an absurd radius asks for nothing rather than sweeping forever");
 }
 
 int main() {

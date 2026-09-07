@@ -154,6 +154,7 @@ bool renderer_init() {
   std::string fs_mesh = inject_sky(FS_MESH); // fog and the pass writer
   prog_mesh = link_prog(inject_sky(VS_MESH).c_str(), fs_mesh.c_str());
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
+  prog_billboard = link_prog(VS_BILLBOARD, inject_sky(FS_BILLBOARD).c_str());
   prog_matprev = link_prog(VS_MATPREV, inject_sky(FS_MATPREV).c_str());
   make_preview_shapes();
   planet_renderer_init();
@@ -318,6 +319,8 @@ void renderer_shutdown() {
   delete_program(prog_bg);
   delete_program(prog_mesh);
   delete_program(prog_gizmo);
+  if (prog_billboard) delete_program(prog_billboard);
+  prog_billboard = 0;
 }
 
 

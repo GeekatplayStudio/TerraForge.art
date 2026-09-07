@@ -75,9 +75,41 @@ float scatter_grow(float keep) {
 
 int scatter_lod_level(float dist_m, const LodParams &p) {
   const float far = std::max(p.far_m * p.scale, p.full_m);
+  const float card = std::max(p.billboard_m * p.scale, far);
   if (dist_m <= p.full_m) return 0;
   if (dist_m <= (p.full_m + far) * 0.5f) return 1;
-  return 2;
+  if (dist_m <= card) return 2;
+  return SCATTER_LOD_BILLBOARD;
+}
+
+void visible_cells(float eye_x, float eye_z, float radius_m, float cell_m,
+                   size_t budget, std::vector<WorldCell> &out) {
+  out.clear();
+  if (radius_m <= 0.f || cell_m <= 0.f || budget == 0) return;
+  const long long lo_x = (long long)std::floor((eye_x - radius_m) / cell_m);
+  const long long hi_x = (long long)std::floor((eye_x + radius_m) / cell_m);
+  const long long lo_z = (long long)std::floor((eye_z - radius_m) / cell_m);
+  const long long hi_z = (long long)std::floor((eye_z + radius_m) / cell_m);
+  // a radius far wider than the cell would ask for more cells than any
+  // budget could hold; the clamp keeps the sweep itself bounded too
+  const long long span = (long long)std::ceil(2.f * radius_m / cell_m) + 2;
+  if (span > 4096) return;
+  for (long long cz = lo_z; cz <= hi_z; ++cz)
+    for (long long cx = lo_x; cx <= hi_x; ++cx) {
+      const float x0 = (float)(cx * (double)cell_m), x1 = x0 + cell_m;
+      const float z0 = (float)(cz * (double)cell_m), z1 = z0 + cell_m;
+      const float dx = eye_x < x0 ? x0 - eye_x : eye_x > x1 ? eye_x - x1 : 0.f;
+      const float dz = eye_z < z0 ? z0 - eye_z : eye_z > z1 ? eye_z - z1 : 0.f;
+      const float d = std::sqrt(dx * dx + dz * dz);
+      if (d > radius_m) continue;
+      out.push_back({cx, cz, d});
+    }
+  std::stable_sort(out.begin(), out.end(), [](const WorldCell &a, const WorldCell &b) {
+    if (a.dist != b.dist) return a.dist < b.dist;
+    if (a.z != b.z) return a.z < b.z;
+    return a.x < b.x;
+  });
+  if (out.size() > budget) out.resize(budget);
 }
 
 float aabb_distance(const float q[3], const float lo[3], const float hi[3]) {

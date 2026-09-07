@@ -142,8 +142,8 @@ static void publish_state(App &a) {
   // performance claim can be checked from a script instead of asserted: the
   // frame time is the renderer's own, and patches_visible is the count the
   // culling shader arrived at.
-  int inst_drawn = 0, inst_total = 0;
-  renderer_instance_stats(inst_drawn, inst_total);
+  int inst_drawn = 0, inst_total = 0, inst_cards = 0;
+  renderer_instance_stats(inst_drawn, inst_total, &inst_cards);
   j["viewport"] = {{"tessellation", rs.tessellation},
                    {"tess_pixels", rs.tess_pixels},
                    {"tess_min", rs.tess_min},
@@ -158,10 +158,12 @@ static void publish_state(App &a) {
                    {"scatter_lod_full_m", rs.scatter_lod_full_m},
                    {"scatter_lod_far_m", rs.scatter_lod_far_m},
                    {"scatter_lod_cull_m", rs.scatter_lod_cull_m},
+                   {"scatter_lod_billboard_m", rs.scatter_lod_billboard_m},
                    {"scatter_lod_min_keep", rs.scatter_lod_min_keep},
                    {"terrain_lod", rs.terrain_lod},
                    {"instances_drawn", inst_drawn},
                    {"instances_total", inst_total},
+                   {"instances_cards", inst_cards},
                    {"planet_radius", rs.planet_radius},
                    {"fractal_detail", rs.fractal_detail},
                    {"field_displacement", rs.field_displacement},

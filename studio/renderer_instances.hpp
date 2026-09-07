@@ -40,9 +40,10 @@ void instances_draw_range(unsigned prog, const std::vector<InstanceRun> &runs, i
 // Draw the reduced levels: every run whose level is 1 or 2, from that VAO.
 void instances_draw_lods(unsigned prog, SceneObject &o, const std::vector<InstanceRun> &runs);
 
-// How many copies the colour passes drew this frame, and how many exist.
-void renderer_instance_stats(int &drawn, int &total);
-void instances_count(int drawn, int total);
+// How many copies the colour passes drew this frame, how many exist, and
+// how many of the drawn ones were cards rather than geometry.
+void renderer_instance_stats(int &drawn, int &total, int *cards = nullptr);
+void instances_count(int drawn, int total, int cards);
 
 // The frame's LOD dials from the settings and the governor.
 LodParams instance_lod_params();

@@ -77,8 +77,47 @@ The same five, on the node graph, in metres:
   distance to the nearest object standing on the terrain, so the grass
   thins around the house that the ground moulds to.
 - **Level of detail** for the copies - thinned by distance, drawn from
-  reduced meshes far away, culled beyond a distance - is in
-  [LOD.md](LOD.md).
+  reduced meshes and then from cards far away, culled beyond a distance -
+  is in [LOD.md](LOD.md).
+
+## Ground with no tile: populate around the camera
+
+A planet's surface and an infinite terrain are *functions*, not pictures.
+There is no 0..1 domain to divide into a lattice and no heightmap to stand
+the copies on, so a population over them cannot be computed once and kept.
+
+Turn on **Populate around the camera** (Density tab) and the layer stops
+emitting a tile population altogether; instead `studio/eco_dynamic.cpp`
+realises the cells of a world-anchored lattice near the camera, a few per
+frame, and drops them again as the camera leaves. **Populate within** sets
+how far. The ground a copy stands on is the tile's heightmap inside the
+tile and the infinite surround's own layers outside it, at the amplitude
+and base the surround shader draws with, so a copy stands on the ground
+the camera can see 17 km from the authored tile as surely as on it.
+
+What makes this possible is that a cell's contents depend on nothing but
+(seed, cell index, candidate index): a cell re-entered from the other side
+holds exactly what it held before. Nothing grows, shimmers or re-seeds as
+you travel. Each world cell becomes one cell of the LOD lattice, so the
+distance thinning and the cards need no idea any of it happened.
+
+Honest limits of the first version:
+
+- **Affinity and repulsion need a tile.** They read the population below
+  as one cloud; an unbounded layer has no such cloud yet, so those dials
+  do nothing while it is on. Overlap avoidance still works, within a cell.
+- **Masks need a tile too** - a mask is a picture of one. An unbounded
+  population is placed by the environment alone: altitude, slope,
+  orientation, clumping, density.
+- **Altitude bands are read against the terrain you authored on**: the
+  band you set against the tile's own height range means those same
+  heights, in metres, out on the surround.
+- The population follows **one** camera - the activated scene camera, or
+  the orbit camera when none is active - so a second viewport looking
+  somewhere else sees the first one's crowd.
+- A copy stands on the relief at a fixed octave count; the surround's
+  drawn relief drops octaves with distance, so far out a copy can sit a
+  fraction of the missing octaves' amplitude off the drawn surface.
 
 `examples/macros/ecosystem_layers.json` builds a meadow: trees in two
 species, clumped, off the steep ground; grass on top that gathers near the
@@ -123,6 +162,11 @@ Species: **Species** (1..8), per species a **presence** (relative) and a
   half to twice; a lone instance shrinks;
 - 50 per hectare over 100 ha places about 5000; grass keeps out from under
   the canopy of a tree layer; the Points nodes equal the layer;
+- a world cell is the same cell every time it is asked for, its candidates
+  stay inside it, neighbouring cells share no identity, and a cell a
+  thousand kilometres out is still one cell; a slope band on a ground
+  *function* picks the same ground as the raster path, an altitude band
+  there is metres, and density is still a superset inside a cell;
 - the Material Studio's stack surgery keeps an ecosystem reacting to the
   population beneath it through a colour layer, and unlinks it when that
   population is removed (undo_tests).

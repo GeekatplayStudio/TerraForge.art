@@ -99,6 +99,54 @@ void candidates(const CandidateParams &p, PointCloud &out) {
   out.radius.assign(total, 0.f); out.offset.assign(total, 0.f);
 }
 
+void candidates_cell(const CandidateParams &p, long long cell_x, long long cell_z,
+                     PointCloud &out) {
+  out.clear();
+  const int k = std::clamp(p.per_cell, 1, 64);
+  const float cell = std::max(p.spacing, 1e-9f);
+  const int sub = std::max(1, (int)std::ceil(std::sqrt((float)k)));
+  const float clump_cell = std::max(p.clump_size, cell);
+  const float pull = std::clamp(p.clump_amount, 0.f, 1.f);
+  out.ensure_attrs();
+  for (int j = 0; j < k; ++j) {
+    // the cell index is the hash's coordinate, so the same cell is the same
+    // set of candidates whichever visit computed it
+    const uint64_t id = hash64(p.seed, (uint64_t)cell_x, (uint64_t)cell_z, (uint64_t)j);
+    float fx, fy;
+    if (p.mode == 2) {
+      fx = (j % sub + 0.5f) / sub;
+      fy = (j / sub + 0.5f) / sub;
+    } else if (p.mode == 1) {
+      fx = unit(id, 100);
+      fy = unit(id, 101);
+    } else {
+      fx = (j % sub + unit(id, 100)) / sub;
+      fy = (j / sub + unit(id, 101)) / sub;
+    }
+    float px = (cell_x + fx) * cell, py = (cell_z + fy) * cell;
+    if (pull > 0.f) {
+      const long long qx = (long long)std::floor(px / clump_cell);
+      const long long qz = (long long)std::floor(py / clump_cell);
+      const uint64_t cid = hash64(p.seed ^ 0xC1u, (uint64_t)qx, (uint64_t)qz, 7);
+      const float ccx = (qx + unit(cid, 0)) * clump_cell;
+      const float ccy = (qz + unit(cid, 1)) * clump_cell;
+      const float w = pull * std::sqrt(unit(id, 102));
+      px += (ccx - px) * w;
+      py += (ccy - py) * w;
+    }
+    out.x.push_back(px);
+    out.y.push_back(py);
+    out.v.push_back(1.f);
+    out.id.push_back(id);
+  }
+  const size_t total = out.x.size();
+  out.species.assign(total, 0);
+  out.sx.assign(total, 1.f); out.sy.assign(total, 1.f); out.sz.assign(total, 1.f);
+  out.yaw.assign(total, 0.f); out.tilt.assign(total, 0.f);
+  out.tint.assign(total, 1.f); out.phase.assign(total, 0.f);
+  out.radius.assign(total, 0.f); out.offset.assign(total, 0.f);
+}
+
 // ---------------------------------------------------------- neighbourhood
 namespace {
 

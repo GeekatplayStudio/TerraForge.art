@@ -210,6 +210,7 @@ EcosystemLayer.density|float
 EcosystemLayer.direction|float
 EcosystemLayer.enabled|bool
 EcosystemLayer.footprint_m|float
+EcosystemLayer.height_scale|float
 EcosystemLayer.invert_mask|bool
 EcosystemLayer.keep_proportions|float
 EcosystemLayer.lean|float
@@ -220,6 +221,7 @@ EcosystemLayer.orient_width|float
 EcosystemLayer.orientation|float
 EcosystemLayer.phase_range|float
 EcosystemLayer.placement|choice
+EcosystemLayer.population_m|float
 EcosystemLayer.repulsion_radius_m|float
 EcosystemLayer.repulsion|float
 EcosystemLayer.rotation_max|float
@@ -252,6 +254,7 @@ EcosystemLayer.sp8_scale|float
 EcosystemLayer.spacing_m|float
 EcosystemLayer.species|int
 EcosystemLayer.threshold|float
+EcosystemLayer.unbounded|bool
 EcosystemLayer.use_altitude|bool
 EcosystemLayer.use_orientation|bool
 EcosystemLayer.use_slope|bool
@@ -1068,11 +1071,13 @@ ScatterArea.decay_falloff|float
 ScatterArea.decay_influence|float
 ScatterArea.decay_reach|float
 ScatterArea.density|float
+ScatterArea.height_scale|float
 ScatterArea.invert_mask|bool
 ScatterArea.orient_fuzz|float
 ScatterArea.orient_width|float
 ScatterArea.orientation|float
 ScatterArea.placement|choice
+ScatterArea.population_m|float
 ScatterArea.sea_level|float
 ScatterArea.seed|seed
 ScatterArea.size_m|float
@@ -1081,6 +1086,7 @@ ScatterArea.slope_influence|float
 ScatterArea.slope|range
 ScatterArea.spacing_m|float
 ScatterArea.threshold|float
+ScatterArea.unbounded|bool
 ScatterArea.use_altitude|bool
 ScatterArea.use_orientation|bool
 ScatterArea.use_slope|bool

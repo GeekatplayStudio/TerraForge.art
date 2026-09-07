@@ -131,6 +131,7 @@ struct RenderSettings {
   float scatter_lod_full_m = 150.f;  // every copy inside this
   float scatter_lod_far_m = 1500.f;  // the far share is reached here
   float scatter_lod_cull_m = 6000.f; // nothing beyond
+  float scatter_lod_billboard_m = 2500.f; // past this a copy is a flat card
   float scatter_lod_min_keep = 0.15f; // the far crowd's share of the copies
   float terrain_lod = 0.5f;          // 0 off .. 1 the relief calms early
 
@@ -344,6 +345,11 @@ int renderer_patches_visible();
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);
 void renderer_camera_look_at(const float target[3], float distance);
+
+// The height the ground outside the tile settles to, in world units - what
+// the infinite surround is drawn about. Read by the populations that cover
+// ground the tile does not (studio/eco_dynamic.cpp).
+float renderer_ground_base();
 // Set for the duration of one view's draw (see ViewConfig::scene_camera).
 int &renderer_camera_override();
 // world-space right/up/forward of a view, for the corner orientation gizmo

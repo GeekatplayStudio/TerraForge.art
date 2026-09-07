@@ -1,5 +1,6 @@
 // Geekatplay TerraForge - see renderer_instances.hpp.
 #include "renderer_instances.hpp"
+#include "billboard.hpp"
 #include "mesh_lod.hpp"
 #include "perf.hpp"
 #include "renderer_internal.hpp"
@@ -32,20 +33,22 @@ void attach(GLuint vao, GLuint vbo) {
   glBindVertexArray(0);
 }
 
-int g_drawn = 0, g_total = 0, g_frame = -1;
+int g_drawn = 0, g_total = 0, g_cards = 0, g_frame = -1;
 
 } // namespace
 
-void instances_count(int drawn, int total) {
+void instances_count(int drawn, int total, int cards) {
   const int f = ImGui::GetFrameCount();
-  if (f != g_frame) { g_frame = f; g_drawn = g_total = 0; }
+  if (f != g_frame) { g_frame = f; g_drawn = g_total = g_cards = 0; }
   g_drawn += drawn;
   g_total += total;
+  g_cards += cards;
 }
 
-void renderer_instance_stats(int &drawn, int &total) {
+void renderer_instance_stats(int &drawn, int &total, int *cards) {
   drawn = g_drawn;
   total = g_total;
+  if (cards) *cards = g_cards;
 }
 
 LodParams instance_lod_params() {
@@ -54,6 +57,7 @@ LodParams instance_lod_params() {
   p.full_m = RS.scatter_lod_full_m;
   p.far_m = RS.scatter_lod_far_m;
   p.cull_m = RS.scatter_lod_cull_m;
+  p.billboard_m = RS.scatter_lod_billboard_m;
   p.min_keep = RS.scatter_lod_min_keep;
   p.scale = perf_quality().lod_scale;
   return p;
@@ -91,6 +95,28 @@ void instances_upload(SceneObject &o) {
     // a new mesh means the stream must be re-attached to the new VAOs
     g_buffers[o.vao].revision = ~0ull;
   }
+  // the card the copies become past the billboard distance: baked on the
+  // CPU once, uploaded here, drawn from a VAO that carries only the
+  // instance stream (its four corners come from gl_VertexID)
+  if (!o.card_tried) {
+    billboard_build(o);
+    if (o.card_px > 0 && !o.card_rgba.empty()) {
+      if (!o.card_tex) glGenTextures(1, &o.card_tex);
+      glBindTexture(GL_TEXTURE_2D, o.card_tex);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, o.card_px, o.card_px, 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, o.card_rgba.data());
+      glGenerateMipmap(GL_TEXTURE_2D);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      glBindTexture(GL_TEXTURE_2D, 0);
+      if (!o.card_vao) glGenVertexArrays(1, &o.card_vao);
+      o.card_rgba.clear(); // it lives on the GPU now
+      o.card_rgba.shrink_to_fit();
+      g_buffers[o.vao].revision = ~0ull;
+    }
+  }
   auto &buffer = g_buffers[o.vao];
   if (!buffer.vbo) glGenBuffers(1, &buffer.vbo);
   if (buffer.revision != o.inst_revision) {
@@ -98,6 +124,7 @@ void instances_upload(SceneObject &o) {
     glBufferData(GL_ARRAY_BUFFER, o.inst.size() * sizeof(float), o.inst.data(), GL_STATIC_DRAW);
     attach(o.vao, buffer.vbo);
     for (int k = 0; k < 2; ++k) if (o.lod_vao[k]) attach(o.lod_vao[k], buffer.vbo);
+    if (o.card_vao) attach(o.card_vao, buffer.vbo);
     glBindVertexArray(o.vao);
     buffer.revision = o.inst_revision;
   }
@@ -128,8 +155,11 @@ void instance_runs(const SceneObject &o, const float eye[3], const Frustum *fr,
     InstanceRun r;
     r.base = c.first;
     r.count = n;
-    r.level = o.lod_count[0] > 0 ? scatter_lod_level(dist_m, p) : 0;
+    r.level = scatter_lod_level(dist_m, p);
+    // fall back down the ladder to whatever this mesh actually has
+    if (r.level == SCATTER_LOD_BILLBOARD && !o.card_tex) r.level = 2;
     if (r.level == 2 && o.lod_count[1] <= 0) r.level = 1;
+    if (r.level >= 1 && r.level <= 2 && o.lod_count[0] <= 0) r.level = 0;
     r.grow = scatter_grow(keep);
     // adjacent full cells at the same level become one draw
     if (!runs.empty()) {

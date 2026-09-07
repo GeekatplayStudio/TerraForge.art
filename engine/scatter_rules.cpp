@@ -64,26 +64,59 @@ Ground ground_at(const Heightmap *t, float u, float v, const TerrainRange &r, fl
 
 } // namespace
 
+namespace {
+
+// The environment at a world position, from a ground function rather than
+// a raster: the height is the function's, the slope and the aspect come
+// from two differences a `step` apart. Same formulas as the raster path, so
+// a slope band means the same thing on a planet as on the tile.
+Ground ground_from_fn(const Presence &p, float x, float z) {
+  Ground g;
+  const float h = p.ground(x, z);
+  const float s = std::max(p.step, 1e-6f);
+  const float gx = (p.ground(x + s, z) - p.ground(x - s, z)) / (2.f * s);
+  const float gz = (p.ground(x, z + s) - p.ground(x, z - s)) / (2.f * s);
+  g.h = h;
+  g.steep = std::sqrt(gx * gx + gz * gz);
+  g.slope_deg = std::atan(g.steep) * 180.f / PI_F;
+  float az = std::atan2(-gx, -gz) * 180.f / PI_F;
+  if (az < 0.f) az += 360.f;
+  g.aspect_deg = az;
+  return g;
+}
+
+} // namespace
+
 float presence_at(const Presence &p, float u, float v) {
   float pr = 1.f;
-  if (p.mask && !p.mask->empty()) {
+  // a mask is a picture of a tile; a world-domain population has no tile to
+  // read it over, so it is the environment alone that places those
+  if (!p.ground && p.mask && !p.mask->empty()) {
     float m = std::clamp(p.mask->sample(u, v), 0.f, 1.f);
     pr = p.invert_mask ? 1.f - m : m;
-  } else if (p.invert_mask) {
+  } else if (!p.ground && p.invert_mask) {
     pr = 0.f; // inverting an absent mask means "nowhere"
   }
   if (pr <= 0.f) return 0.f;
-  const bool env = p.terrain && !p.terrain->empty() &&
-                   (p.use_altitude || p.use_slope || p.use_orientation ||
-                    p.slope_influence > 0.f);
+  const bool wants_env =
+      p.use_altitude || p.use_slope || p.use_orientation || p.slope_influence > 0.f;
+  const bool env = wants_env && (p.ground || (p.terrain && !p.terrain->empty()));
   if (env) {
-    static thread_local const Heightmap *cached = nullptr;
-    static thread_local TerrainRange range(nullptr);
-    if (cached != p.terrain) { cached = p.terrain; range = TerrainRange(p.terrain); }
-    Ground g = ground_at(p.terrain, u, v, range, std::max(p.height_scale, 1e-6f));
+    Ground g;
+    TerrainRange range(nullptr); // absolute: a function has no range to scan
+    if (p.ground) {
+      g = ground_from_fn(p, u, v);
+    } else {
+      static thread_local const Heightmap *cached = nullptr;
+      static thread_local TerrainRange cached_range(nullptr);
+      if (cached != p.terrain) { cached = p.terrain; cached_range = TerrainRange(p.terrain); }
+      range = cached_range;
+      g = ground_at(p.terrain, u, v, range, std::max(p.height_scale, 1e-6f));
+    }
     if (p.use_altitude) {
       float h = g.h;
-      if (p.altitude_mode == 0) h = (h - range.lo) / (range.hi - range.lo);
+      // a function's height is absolute already; only a raster has a range
+      if (p.altitude_mode == 0 && !p.ground) h = (h - range.lo) / (range.hi - range.lo);
       else if (p.altitude_mode == 2) h -= p.sea;
       pr *= band(h, p.alt_lo, p.alt_hi, p.alt_fuzz);
     }
@@ -99,7 +132,9 @@ float presence_at(const Presence &p, float u, float v) {
       pr *= 1.f - p.slope_influence * s;
     }
   }
-  if (pr > 0.f && p.distance && !p.distance->empty() && p.decay_influence > 0.f) {
+  // the objects map is a tile raster; a world-domain population reads it
+  // only where it has one
+  if (pr > 0.f && !p.ground && p.distance && !p.distance->empty() && p.decay_influence > 0.f) {
     // decay near foreign objects: a void that grows with influence and
     // sharpens with falloff, like Vue's two dials (p1101)
     float d = std::clamp(p.distance->sample(u, v) / std::max(p.decay_reach, 1e-6f), 0.f, 1.f);

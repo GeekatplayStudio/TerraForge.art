@@ -31,7 +31,8 @@ struct LodParams {
   float far_m = 1500.f;   // min_keep reached here
   float cull_m = 6000.f;  // nothing beyond
   float min_keep = 0.15f; // the far crowd's share
-  float scale = 1.f;      // the governor's multiplier on far_m and cull_m
+  float billboard_m = 2500.f; // past this a copy is a flat card, not geometry
+  float scale = 1.f;      // the governor's multiplier on the distances
 };
 
 // The share of a cell to draw at `dist_m`: 1 inside full, falling smoothly
@@ -42,10 +43,31 @@ float scatter_keep(float dist_m, const LodParams &p);
 // sqrt(1/keep), capped so a far tree does not become a tower.
 float scatter_grow(float keep);
 
-// The mesh level for a distance: 0 full, 1 reduced, 2 coarse.
+// The level for a distance: 0 the mesh itself, 1 reduced, 2 coarse,
+// 3 a camera-facing card baked from the mesh (Vue's ladder ends the same
+// way - smooth, flat, box, billboard, none).
+inline constexpr int SCATTER_LOD_BILLBOARD = 3;
 int scatter_lod_level(float dist_m, const LodParams &p);
 
 // Distance from a point to an axis-aligned box (0 inside).
 float aabb_distance(const float p[3], const float lo[3], const float hi[3]);
+
+// ------------------------------------------------- cells around the camera
+// A population with no tile (a planet, an infinite terrain) is generated in
+// pieces: the cells of a world-anchored lattice that are near enough to the
+// camera to be worth having. Which cells those are depends on the camera;
+// what is *in* a cell never does (engine/gpx/scatter.hpp), so a cell
+// re-entered from another direction holds what it held before.
+struct WorldCell {
+  long long x = 0, z = 0;
+  float dist = 0.f; // from the camera to the cell's nearest edge, in metres
+};
+
+// Cells whose nearest edge is within `radius_m` of (eye_x, eye_z), nearest
+// first, at most `budget` of them. Deterministic: ties break on the cell
+// index, so the same camera always asks for the same cells in the same
+// order and a budget cuts the same tail.
+void visible_cells(float eye_x, float eye_z, float radius_m, float cell_m,
+                   size_t budget, std::vector<WorldCell> &out);
 
 } // namespace studio
