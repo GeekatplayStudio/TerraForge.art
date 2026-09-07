@@ -310,7 +310,8 @@ void apply_object_nodes(App &a) {
     else if (n.type == "AnimationSequence") apply_sequence(a, n);
     else if (n.type == "CameraPath") apply_camera_path(a, n, size_m);
     else if (n.type == "EcosystemLayer" || n.type == "ScatterArea" ||
-             n.type == "PointsInteract" || n.type == "PointsTransform") {
+             n.type == "PointsInteract" || n.type == "PointsTransform" ||
+             n.type == "FieldStones") {
       // a population's dials are in metres; the node learns the tile's
       // width here so "20 per hectare" means what it says
       bool moved = false;

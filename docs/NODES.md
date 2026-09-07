@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 241 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 242 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -19,7 +19,7 @@ Every node in Geekatplay TerraForge — 241 across 31 categories. Generated from
 | [Field Input](#field-input) | 9 |
 | [Field Material](#field-material) | 1 |
 | [Field Math](#field-math) | 6 |
-| [Field Noise](#field-noise) | 3 |
+| [Field Noise](#field-noise) | 4 |
 | [Filter](#filter) | 23 |
 | [Group](#group) | 1 |
 | [Hydrology](#hydrology) | 2 |
@@ -1540,6 +1540,31 @@ Analytic shapes - waves, bands, bumps, cones and steps, as a function
 | Phase | float, -2 to 2, default 0 |  |
 | Amplitude | float, 0 to 8, default 1 |  |
 | Offset | float, -4 to 4, default 0 |  |
+
+### FieldStones
+
+A field of stones - boulders, cobbles and gravel - as a function, at any scale
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| position | in (optional) | field (vector) |
+| out | out | field (number) |
+| mask | out | field (number) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Stone size (m) | float, 0.02 to 200, default 0.6 | The largest stones' diameter, in metres. Each octave below it is half the size and twice as many, so one field holds boulders, cobbles and gravel together. |
+| Sizes | int, 1 to 5, default 3 | How many halvings of the stone size to add. 1 is one size of stone; 4 reaches gravel a sixteenth as wide. Distance takes octaves away again, so this is a ceiling, not a cost. |
+| Density | float, 0 to 1, default 0.7 | The share of the ground that holds a stone. |
+| Tallness | float, 0.05 to 2, default 0.6 | A stone's height as a fraction of its radius. |
+| Size spread | float, 0 to 1, default 0.7 | 0: every stone the same size. 1: the power-law spectrum a scree slope has - many small, a few large. |
+| Flatten | float, 0 to 1, default 0.25 | Raises the top into a plateau while keeping the footprint: 0 boulders, 1 slabs. |
+| Settled into the ground | float, 0 to 0.9, default 0.25 | How deep a stone sits. Buried stones show only their tops, and the ground cuts their outline instead of meeting them tangentially. |
+| Elongation | float, 0 to 1, default 0.5 | How much longer a stone may be one way than the other, turned as it fell. Round in plan is the tell of a procedural field. |
+| Outline roughness | float, 0 to 1, default 0.45 | How far the outline departs from an ellipse. |
+| Lean | float, 0 to 1, default 0.35 | Moves each stone's high point off centre, so it has a downhill side rather than being a dome. |
+| Seed | seed |  |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the size above means metres. |
 
 ### FieldVoronoi
 

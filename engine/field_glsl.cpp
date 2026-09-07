@@ -83,6 +83,78 @@ vec3 gpxf_cell(vec3 p, uint seed, float jitter, int metric){
   }
   return vec3(f1, f2, id);
 }
+// A field of stones, mirroring gpx::stones::field (gpx/stones.hpp) line for
+// line. Returns (height, coverage). A heightmap cannot hold a stone; this
+// can, because it is a function and has no resolution.
+vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
+                 float flatten, float bury, float tilt, float spread,
+                 float elongation, float rough, uint seed, int oct){
+  float total = 0.0, cover = 0.0;
+  float cs = max(cell, 1e-9);
+  for (int o = 0; o < 5; ++o){
+    if (o >= oct) break;
+    uint oseed = seed + uint(o) * 7919u;
+    float inv = 1.0 / cs;
+    float fx = xz.x * inv, fz = xz.y * inv;
+    float ix = floor(fx), iz = floor(fz);
+    for (int dz = -1; dz <= 1; ++dz)
+    for (int dx = -1; dx <= 1; ++dx){
+      float cxi = ix + float(dx), czi = iz + float(dz);
+      uint h = gpxf_hash_bits(vec3(cxi, 0.0, czi), oseed);
+      float exist = float(h & 0xfffu) * (1.0/4095.0);
+      if (exist > density) continue;
+      uint h2 = gpxf_hash_bits(vec3(cxi, 1.0, czi), oseed);
+      float ox = float((h >> 12u) & 0x3ffu) * (1.0/1023.0);
+      float oz = float((h >> 22u) & 0x3ffu) * (1.0/1023.0);
+      float t = float(h2 & 0x3ffu) * (1.0/1023.0);
+      float sz = 1.0 - spread + spread * t * t * t;
+      float rad = 0.5 * sz;
+      uint h3 = gpxf_hash_bits(vec3(cxi, 2.0, czi), oseed);
+      float ddx = fx - (cxi + ox), ddz = fz - (czi + oz);
+      // no angles: a turn is a hashed unit vector, and the harmonics that
+      // roughen the outline are the multiple-angle identities on it
+      float vx = float(h3 & 0x3ffu) * (2.0/1023.0) - 1.0;
+      float vz = float((h3 >> 10u) & 0x3ffu) * (2.0/1023.0) - 1.0;
+      float vl = sqrt(vx*vx + vz*vz);
+      float inv_vl = vl > 1e-6 ? 1.0/vl : 1.0;
+      float cr = vx * inv_vl, sr = vz * inv_vl;
+      float rx = ddx * cr + ddz * sr, rz = -ddx * sr + ddz * cr;
+      float aspect = 1.0 + elongation * 2.0 * float((h3 >> 20u) & 0x3ffu) * (1.0/1023.0);
+      float ex = rx / aspect, ez = rz;
+      float rr = sqrt(ex*ex + ez*ez);
+      float inv_rr = rr > 1e-9 ? 1.0/rr : 0.0;
+      float c1 = ex * inv_rr, s1 = ez * inv_rr;
+      float c2 = c1*c1 - s1*s1, s2 = 2.0*c1*s1;
+      float c3 = c1*c2 - s1*s2, s3 = s1*c2 + c1*s2;
+      float c5 = c3*c2 - s3*s2, s5 = s3*c2 + c3*s2;
+      float q1 = float((h3 >> 30u) & 0x3u) * (2.0/3.0) - 1.0;
+      float q2 = float((h2 >> 24u) & 0x3u) * (2.0/3.0) - 1.0;
+      float wob = 1.0 + rough * (0.13 * (s3 * (1.0 - abs(q1)) + c3 * q1) +
+                                 0.07 * (s5 * (1.0 - abs(q2)) + c5 * q2));
+      rr /= max(wob, 0.2);
+      float r2 = (rr*rr) / (rad*rad);
+      if (r2 >= 1.0) continue;
+      float base = 1.0 - r2;
+      float e = 0.35 + 0.5 * float((h2 >> 10u) & 0xffu) * (1.0/255.0);
+      float prof = pow(base, e);
+      prof = min(prof / max(1.0 - flatten * 0.85, 0.15), 1.0);
+      float lx = float((h2 >> 18u) & 0x3fu) * (2.0/63.0) - 1.0;
+      float lz = float((h2 >> 24u) & 0x3fu) * (2.0/63.0) - 1.0;
+      float ll = sqrt(lx*lx + lz*lz);
+      float inv_ll = ll > 1e-6 ? 1.0/ll : 1.0;
+      float lean = (ex * lx * inv_ll + ez * lz * inv_ll) / rad;
+      prof += tilt * lean * base * 0.5;
+      float hv = float((h2 >> 26u) & 0x3fu) * (1.0/63.0);
+      float H = rad * cs * tallness * (0.6 + 0.8 * hv);
+      float hs = H * prof - bury * H;
+      if (hs <= 0.0) continue;
+      total = max(total, hs);
+      cover = max(cover, min(base * 3.0, 1.0));
+    }
+    cs *= 0.5;
+  }
+  return vec2(total, cover);
+}
 // guarded division: the CPU side returns 0 rather than NaN, so must this
 float gpxf_div(float a, float b){ return abs(b) > 1e-9 ? a/b : 0.0; }
 // RGB <-> HSV, mirroring gpx::rgb_to_hsv / hsv_to_rgb (gpx/color_math.hpp)

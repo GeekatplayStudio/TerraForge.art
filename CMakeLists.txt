@@ -191,6 +191,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_field.cpp
     engine/nodes/nodes_field_math.cpp
     engine/nodes/nodes_field_shapes.cpp
+    engine/nodes/nodes_field_stones.cpp
     engine/nodes/nodes_path.cpp
     engine/nodes/nodes_path_ops.cpp
     engine/nodes/nodes_displace.cpp

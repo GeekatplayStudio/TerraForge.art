@@ -1409,6 +1409,22 @@
       "description": "EcosystemLayer's 'Populate around the camera': the node emits nothing and studio/eco_dynamic.cpp realises the world cells near the active camera a few per frame, caching them, retiring them behind, standing the copies on the tile inside it and on the infinite surround's own layers (its shader's amplitude and base) outside; each world cell becomes one LOD cell; verified live 17 km outside the authored tile",
       "test_file": "test_render.cpp",
       "test_symbol": "test_scatter_lod"
+    },
+    {
+      "id": "field.stones",
+      "area": "engine",
+      "phase": "39",
+      "description": "FieldStones: a field of stones as a function of position, sized in metres, with a power-law size spectrum, a height and a lean per stone, elongation and a turn, an irregular outline, burial and plateau flattening, and octaves that halve the stone and quadruple the count; out and mask outputs, octave budget from the field LOD, no transcendentals in the inner loop; the raster FakeStones could express no stone smaller than 14 m and no more than 25 to the hectare",
+      "test_file": "test_nodes.cpp",
+      "test_symbol": "check_field_transpiles"
+    },
+    {
+      "id": "render.field_normal_step",
+      "area": "studio",
+      "phase": "39",
+      "description": "The terrain's field-displacement shading normal is differenced over a step taken from the camera distance rather than one heightmap texel (about 10 m at 5 km), so relief finer than a texel - a stone field - shades as the shape it is instead of as flat ground; floored against underflow and capped at a texel so distant ground is no noisier",
+      "test_file": "test_engine.cpp",
+      "test_symbol": "test_field_glsl"
     }
   ]
 }

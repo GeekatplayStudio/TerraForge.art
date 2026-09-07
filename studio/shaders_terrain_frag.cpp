@@ -83,13 +83,22 @@ vec3 get_normal(vec2 uv){
   // move with it or the lighting describes a surface that is not there.
   // Central differences, matching FieldComputeNormal on the CPU.
   if (u_field_strength != 0.0){
-    float lodf = gp_octavesf(length(u_cam - v_world), 9.0);
+    float dist = length(u_cam - v_world);
+    float lodf = gp_octavesf(dist, 9.0);
+    // The step this is differenced over decides the finest form the shading
+    // can see. A texel wide (u_texel, ~10 m on a 5 km tile at 512) it sees
+    // the terrain's own shape and nothing smaller: a field of stones moves
+    // the geometry and then shades as if the ground were flat. Step with
+    // the pixel instead - a fraction of the distance to the camera, floored
+    // so it never underflows and capped at a texel so distant ground is no
+    // noisier than it was.
+    float fe = clamp(dist * 0.0015, 1.0e-6, u_texel);
     vec3 pc = v_world;
-    float fxp = gpx_terrain_field(pc + vec3(e,0,0), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
-    float fxm = gpx_terrain_field(pc - vec3(e,0,0), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
-    float fzp = gpx_terrain_field(pc + vec3(0,0,e), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
-    float fzm = gpx_terrain_field(pc - vec3(0,0,e), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
-    float k = u_field_strength / max(2.0*e, 1e-5);
+    float fxp = gpx_terrain_field(pc + vec3(fe,0,0), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float fxm = gpx_terrain_field(pc - vec3(fe,0,0), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float fzp = gpx_terrain_field(pc + vec3(0,0,fe), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float fzm = gpx_terrain_field(pc - vec3(0,0,fe), vec3(0,1,0), pc.y, 1.0, 0.0, 0.0, lodf).x;
+    float k = u_field_strength / max(2.0*fe, 1e-6);
     n = normalize(n + vec3(-(fxp-fxm)*k, 0.0, -(fzp-fzm)*k));
   }
   // fractal detail continues below the heightmap's resolution: perturb the

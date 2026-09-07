@@ -574,6 +574,14 @@ wanted his students to have.
   meadows on the flats. `examples/macros/rocks_grass_layers.json` builds
   it; [docs/DISPLACEMENT_LAYERS.md](docs/DISPLACEMENT_LAYERS.md) says how it
   maps to Terragen and where a heightmap's resolution ends.
+- **Stone fields that are functions, not texels:** `FieldStones` evaluates
+  on the GPU per vertex and per pixel, so a 20 cm cobble and a 3 m boulder
+  come out of one node and there is no ceiling on how many - where the
+  raster `FakeStones` could express no stone smaller than 14 m and no more
+  than 25 to the hectare. Power-law sizes, a height and a lean per stone,
+  elongation, irregular outlines, burial and slabs; CPU and GPU verified
+  identical to 6.2e-5 over 16 cases.
+  [docs/STONE_FIELDS.md](docs/STONE_FIELDS.md).
 - **Ecosystems - intelligent distribution of objects**, Vue's EcoSystem as
   a layer in the material stack: `EcosystemLayer` places a population per
   hectare by the layer's presence (mask, altitude, slope, orientation,

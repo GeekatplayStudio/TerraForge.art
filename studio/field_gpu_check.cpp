@@ -381,6 +381,59 @@ std::string field_gpu_verify_all(App &a) {
     }
   }
 
+  // ---- stone fields ------------------------------------------------------
+  // The stone field is the most branch-heavy function either side runs: a
+  // 3x3 cell loop with three early-outs, per-stone bit fields for size,
+  // height, lean and profile, and a pow(). A single bit slice off between
+  // the two spellings still yields a plausible field of stones - just a
+  // different one - so every dial that changes a branch gets a case, and
+  // both outputs are checked (the mask takes the same path but returns the
+  // other component).
+  {
+    struct Case { const char *name; const char *key; float value; };
+    const Case cases[] = {
+        {"stones (defaults)", nullptr, 0.f},
+        {"stones dense", "density", 1.f},
+        {"stones sparse", "density", 0.15f},
+        {"stones one size", "spread", 0.f},
+        {"stones flat slabs", "flatten", 1.f},
+        {"stones buried", "bury", 0.85f},
+        {"stones unburied", "bury", 0.f},
+        {"stones leaning", "tilt", 1.f},
+        {"stones upright", "tilt", 0.f},
+        {"stones tall", "tallness", 2.f},
+        {"stones round in plan", "elongation", 0.f},
+        {"stones long", "elongation", 1.f},
+        {"stones smooth outline", "rough", 0.f},
+        {"stones ragged outline", "rough", 1.f},
+    };
+    for (const Case &c : cases) {
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldStones");
+      // a cell of about a tenth of the sampled span, so the 64x64 grid sees
+      // whole stones and their edges rather than one stone's interior
+      n->attrs.find("stone_m")->f = 400.f;
+      n->attrs.find("size_m")->f = 1000.f;
+      if (c.key) n->attrs.find(c.key)->f = c.value;
+      run(c.name, g, n);
+    }
+    {   // every octave, which is where the cell halving and reseeding live
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldStones");
+      n->attrs.find("stone_m")->f = 400.f;
+      n->attrs.find("size_m")->f = 1000.f;
+      n->attrs.find("octaves")->i = 5;
+      run("stones x5 octaves", g, n);
+    }
+    {   // the mask output: the same walk, the other component
+      gpx::Graph g;
+      gpx::Node *n = g.add_node("FieldStones");
+      n->attrs.find("stone_m")->f = 400.f;
+      n->attrs.find("size_m")->f = 1000.f;
+      run_port("stones mask", g, n, "mask");
+    }
+  }
+
   // ---- analytic shapes ---------------------------------------------------
   // Every waveform, because each mode emits its own formula and an untested
   // mode is an unmirrored one. The frame (direction projection, centre) is

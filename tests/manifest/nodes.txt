@@ -75,6 +75,7 @@ FieldRedirect|Field Displace
 FieldRemap|Field Math
 FieldShape|Field Noise
 FieldSlope|Field Input
+FieldStones|Field Noise
 FieldTexCoordCombine|Field Convert
 FieldTexCoordSplit|Field Convert
 FieldTexCoord|Field Input
