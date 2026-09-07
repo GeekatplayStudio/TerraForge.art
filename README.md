@@ -184,11 +184,13 @@ wanted his students to have.
   the whole application drops to when nothing is happening (it wakes on the
   first input), and the Preview panel's own rate and render scale — so six
   views and a live preview never hold the GPU while you think.
-- **Preview panel:** the chosen camera's view at the camera's aspect ratio,
-  with its own sky/clouds/water/shadow switches and render scale, redrawn
-  live as the graph changes even when the working viewports have all of
-  that turned off; one button renders it with the camera's final engine
-  and shows the passes as they arrive.
+- **Preview panel:** follows whichever camera is selected in the Objects
+  tree (falling back to the active one when the selection is not a camera),
+  at that camera's own aspect ratio, with its own sky/clouds/water/shadow
+  switches and render scale. It watches the camera actually on screen — its
+  position, lens and optics — so moving or animating that camera redraws at
+  once rather than on the next timer tick. One button renders it with the
+  camera's final engine and shows the passes as they arrive.
 
 ### Displacement
 - **Redirect** moves where another field is evaluated. Warp, flow, swirl and
@@ -392,9 +394,12 @@ wanted his students to have.
   external applications, the folders the asset index watches.
 
 ### The lens, simulated
-- **One switch per camera.** Off, the lens is perfect. On, the picture goes
-  through what that lens would actually do to it — in the viewport, in the
-  Preview panel and in every captured image, so what you see is what you get.
+- **One switch per camera, on by default.** A focal length is a physical
+  thing and behaves like one the moment it is chosen — pick a 14 mm and the
+  picture barrels at once, in the viewport, in the Preview panel and in
+  every captured image. Off, the lens is perfect; the two settings that are
+  taste rather than physics, chromatic aberration and flare, stay off until
+  asked for.
 - **Distortion follows the focal length.** A 14 mm barrels, a 35 mm is nearly
   rectilinear, a 200 mm pincushions — derived from the focal length and the
   sensor format, or dialled by hand. The frame is scaled to stay filled, as a
@@ -824,22 +829,32 @@ ollama pull llava                  # AI terrain from a photograph
 ./test.sh       # macOS / Linux
 ```
 
-Seven suites, all of which must pass before a commit:
+`test.ps1`/`test.sh` run the seven suites below, all of which must pass
+before a commit:
 
 | Suite | Covers |
 |---|---|
 | `nodeterrain_tests` | The original solver library and CLI |
 | `engine_tests` | Registry, evaluation and caching, cycle rejection, determinism, erosion, materials, serialization, field domain, GLSL transpiler, bypass, MetaNodes, blend, animation |
 | `undo_tests` | Restore correctness, redo branching, history jumps, node library round-trip |
-| `node_tests` | **Universal node contract** — one data-driven battery over all 118 node types: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
-| `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, 14 committed projects must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
+| `node_tests` | **Universal node contract** — one data-driven battery over every node type: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
+| `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, every committed project must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
+| `render_tests` | Renderer maths that needs no GL context: patch culling, blue-noise/LOD scatter, planet placement |
 | `pytest` | Render backends and AI helpers |
 
 The contract and regression suites are the reason features do not quietly
-disappear: 6,056 contract assertions and 1,726 regression checks over 118
-node types, 540 attributes and 61 manifest features. If a change to a golden
-is intentional, `regression_tests --update` re-records it — review that diff
-rather than trusting it.
+disappear: 20,000+ contract assertions and 4,400+ regression checks over
+245 node types, 1,500 attributes and 183 manifest features. If a change to
+a golden is intentional, `regression_tests --update` re-records it —
+review that diff rather than trusting it (the update tool can also just
+rewrite line endings with no content change - check `git diff --stat`, not
+only that a diff exists).
+
+`ctest --test-dir build` runs the complete battery — the seven above
+plus per-area suites (ecosystem, shapes/lake, scene tree/undo of the studio
+UI, i18n, layout, mesh pipeline, material editor, config, icons, AI
+services, assets) and a performance guard — 18 suites in all, which is
+what CI runs.
 
 ---
 
