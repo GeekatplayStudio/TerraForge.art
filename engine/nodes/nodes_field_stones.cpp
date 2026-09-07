@@ -34,7 +34,7 @@ stones::Params read(const Node &n) {
   stones::Params p;
   // one stone's worth of ground: the cell is the stone's own diameter, so
   // density is the only thing that decides how packed a field is
-  p.cell = std::max(n.attrs.get_f("stone_m", 0.6f), 1e-3f) / tile_m(n);
+  p.cell = std::max(n.attrs.get_f("stone_m", 0.35f), 1e-4f) / tile_m(n);
   p.density = n.attrs.get_f("density", 0.7f);
   p.tallness = n.attrs.get_f("tallness", 0.6f);
   p.flatten = n.attrs.get_f("flatten", 0.25f);
@@ -43,6 +43,14 @@ stones::Params read(const Node &n) {
   p.spread = n.attrs.get_f("spread", 0.7f);
   p.elongation = n.attrs.get_f("elongation", 0.5f);
   p.rough = n.attrs.get_f("rough", 0.45f);
+  p.facet = n.attrs.get_f("facet", 0.55f);
+  p.bumpy = n.attrs.get_f("bumpy", 0.4f);
+  p.cluster = n.attrs.get_f("cluster", 0.5f);
+  // a drift is given in metres and held in cells, because the cell is the
+  // stone: "drifts about 5 m across" survives a change of stone size
+  p.cluster_cells = std::max(n.attrs.get_f("cluster_m", 5.f) /
+                                 std::max(n.attrs.get_f("stone_m", 0.35f), 1e-3f),
+                             1.f);
   p.seed = n.attrs.get_seed("seed");
   return p;
 }
@@ -62,10 +70,13 @@ REGISTER_NODE(
     "A field of stones - boulders, cobbles and gravel - as a function, at any scale",
     [](Node &n) {
       n.add_field_in("position", FieldType::Vector, true);
-      add_float(n.attrs, "stone_m", "Stone size (m)", 0.6f, 0.02f, 200.f, "Stones", true)
-          .tooltip = "The largest stones' diameter, in metres. Each octave\n"
-                     "below it is half the size and twice as many, so one\n"
-                     "field holds boulders, cobbles and gravel together.";
+      add_float(n.attrs, "stone_m", "Largest stone (m)", 0.35f, 0.005f, 200.f, "Stones", true)
+          .tooltip = "The biggest stone's width across, in metres, and it is\n"
+                     "really metres: 0.35 is a stone you could pick up, 0.05\n"
+                     "is gravel, 3 is a boulder. Every size below it comes\n"
+                     "from the octaves, each half as wide and four times as\n"
+                     "many, so one field holds boulders, cobbles and grit at\n"
+                     "once.";
       add_int(n.attrs, "octaves", "Sizes", 3, 1, 5, "Stones")
           .tooltip = "How many halvings of the stone size to add. 1 is one\n"
                      "size of stone; 4 reaches gravel a sixteenth as wide.\n"
@@ -91,9 +102,23 @@ REGISTER_NODE(
                      "procedural field.";
       add_float(n.attrs, "rough", "Outline roughness", 0.45f, 0.f, 1.f, "Shape")
           .tooltip = "How far the outline departs from an ellipse.";
+      add_float(n.attrs, "facet", "Broken faces", 0.55f, 0.f, 1.f, "Shape")
+          .tooltip = "Cuts flat faces into each stone. 0 leaves rounded\n"
+                     "pebbles; high values give the angular, broken look of\n"
+                     "quarried or frost-shattered rock.";
+      add_float(n.attrs, "bumpy", "Surface relief", 0.4f, 0.f, 1.f, "Shape")
+          .tooltip = "How far a stone's own surface departs from a smooth\n"
+                     "shell. 0 is polished.";
       add_float(n.attrs, "tilt", "Lean", 0.35f, 0.f, 1.f, "Shape")
           .tooltip = "Moves each stone's high point off centre, so it has a\n"
                      "downhill side rather than being a dome.";
+      add_float(n.attrs, "cluster", "Clustering", 0.5f, 0.f, 1.f, "Stones")
+          .tooltip = "Stones are not spread evenly: they collect in drifts\n"
+                     "with bare ground between. 0 scatters them uniformly,\n"
+                     "1 gathers them hard. The count is unchanged either\n"
+                     "way - this rearranges a field, it does not thin it.";
+      add_float(n.attrs, "cluster_m", "Drift size (m)", 5.f, 0.05f, 2000.f, "Stones", true)
+          .tooltip = "How far across one drift of stones is, in metres.";
       add_seed(n.attrs, "seed", "Seed", 0, "Stones");
       add_float(n.attrs, "size_m", "Terrain size (m)", 5000.f, 1.f, 1000000.f, "Stones", true)
           .tooltip = "The tile's width; the studio keeps this in step with\n"
@@ -146,6 +171,8 @@ std::string emit_stones(const Node &n, const glslgen::InputFn &in,
           f2s(sp.density) + ", " + f2s(sp.tallness) + ", " + f2s(sp.flatten) +
           ", " + f2s(sp.bury) + ", " + f2s(sp.tilt) + ", " + f2s(sp.spread) +
           ", " + f2s(sp.elongation) + ", " + f2s(sp.rough) + ", " +
+          f2s(sp.facet) + ", " + f2s(sp.bumpy) + ", " + f2s(sp.cluster) +
+          ", " + f2s(sp.cluster_cells) + ", " +
           std::to_string((unsigned)sp.seed) + "u, " + oct + ")");
   return "vec4(" + v + (component == 0 ? ".x" : ".y") + ", 0.0, 0.0, 1.0)";
 }

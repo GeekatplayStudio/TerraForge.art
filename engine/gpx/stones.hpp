@@ -45,8 +45,40 @@ struct Params {
   float spread = 0.7f;   // size spectrum: 0 all alike, 1 many tiny, few large
   float elongation = 0.5f; // 0 round in plan, 1 up to three times as long
   float rough = 0.45f;     // how far the outline departs from an ellipse
+  float facet = 0.55f;     // flat broken faces cut into the form
+  float bumpy = 0.4f;      // relief across a stone's own surface
+  float cluster = 0.5f;    // 0 stones spread evenly, 1 drifts and bare ground
+  float cluster_cells = 14.f; // a drift is this many cells across
   uint32_t seed = 0;
 };
+
+// A cheap second and third 32 bits from one hash. A full pl_hash_bits per
+// stone would be a fourth integer hash in the innermost loop of the
+// innermost loop; this avalanche is two operations and is just as
+// uncorrelated for choosing a facet's direction.
+inline uint32_t remix(uint32_t h) {
+  h *= 2654435761u;
+  h ^= h >> 15;
+  return h;
+}
+
+// Smooth 0..1 noise on the cluster lattice, from four corner hashes. Cells
+// ask this whether they are in a drift of stones or on bare ground between
+// them; it is deliberately a coarse, cheap field, because a drift is tens
+// of cells across and does not need detail of its own.
+inline float cluster_at(float gx, float gz, uint32_t seed) {
+  const float fx = std::floor(gx), fz = std::floor(gz);
+  const int qx = (int)fx, qz = (int)fz;
+  float ax = gx - fx, az = gz - fz;
+  ax = ax * ax * (3.f - 2.f * ax);
+  az = az * az * (3.f - 2.f * az);
+  const float n00 = (float)(planet::pl_hash_bits(qx, 5, qz, seed) & 0xffffu) * (1.f / 65535.f);
+  const float n10 = (float)(planet::pl_hash_bits(qx + 1, 5, qz, seed) & 0xffffu) * (1.f / 65535.f);
+  const float n01 = (float)(planet::pl_hash_bits(qx, 5, qz + 1, seed) & 0xffffu) * (1.f / 65535.f);
+  const float n11 = (float)(planet::pl_hash_bits(qx + 1, 5, qz + 1, seed) & 0xffffu) * (1.f / 65535.f);
+  return (n00 * (1.f - ax) + n10 * ax) * (1.f - az) +
+         (n01 * (1.f - ax) + n11 * ax) * az;
+}
 
 inline constexpr int MAX_OCTAVES = 5;
 
@@ -66,9 +98,19 @@ inline void field(const Params &p, float x, float z, int oct, float &height,
       for (int dx = -1; dx <= 1; ++dx) {
         const int cxi = ix + dx, czi = iz + dz;
         const uint32_t h = planet::pl_hash_bits(cxi, 0, czi, oseed);
-        // does this cell hold a stone at all
+        // Does this cell hold a stone at all - and stones are not spread
+        // evenly. They collect in drifts with bare ground between, so the
+        // chance is modulated by a slow field over the cell lattice. The
+        // mean is preserved, so raising the clustering rearranges a field
+        // without thinning it.
+        float local_density = p.density;
+        if (p.cluster > 0.f) {
+          const float inv_cc = 1.f / std::max(p.cluster_cells, 1.f);
+          const float cn = cluster_at((float)cxi * inv_cc, (float)czi * inv_cc, oseed ^ 0x5bd1u);
+          local_density *= 1.f - p.cluster + p.cluster * cn * 2.f;
+        }
         const float exist = (float)(h & 0xfffu) * (1.f / 4095.f);
-        if (exist > p.density) continue;
+        if (exist > local_density) continue;
         const uint32_t h2 = planet::pl_hash_bits(cxi, 1, czi, oseed);
         // its centre, anywhere in the cell - a stone on the border is as
         // likely as one in the middle, or the lattice stays visible
@@ -123,6 +165,31 @@ inline void field(const Params &p, float x, float z, int oct, float &height,
         // flattening raises the top into a plateau and keeps the footprint,
         // which is what a slab is; scaling the dome only makes it smaller
         prof = std::min(prof / std::max(1.f - p.flatten * 0.85f, 0.15f), 1.f);
+        const uint32_t h4 = remix(h2), h5 = remix(h3);
+        // Facets. A stone is a broken thing, not a bubble: two planes cut
+        // flat faces into the dome, each with its own hashed direction and
+        // its own distance from the centre. This is what stops a field of
+        // these reading as droplets, and it costs two dot products.
+        if (p.facet > 0.f) {
+          const float ux = ex * inv_rr, uz = ez * inv_rr;
+          const float r01 = std::sqrt(std::max(r2, 0.f)); // 0 centre .. 1 rim
+          float cut = 1.f;
+          for (int k = 0; k < 2; ++k) {
+            const uint32_t hk = k == 0 ? h4 : h5;
+            const float nx = (float)((hk >> 8) & 0xffu) * (2.f / 255.f) - 1.f;
+            const float nz = (float)((hk >> 16) & 0xffu) * (2.f / 255.f) - 1.f;
+            const float nl = std::sqrt(nx * nx + nz * nz);
+            const float inv_nl = nl > 1e-6f ? 1.f / nl : 1.f;
+            const float off = 0.35f + 0.5f * (float)((hk >> 24) & 0xffu) * (1.f / 255.f);
+            cut = std::min(cut, off - r01 * (ux * nx + uz * nz) * inv_nl);
+          }
+          prof *= 1.f - p.facet * (1.f - std::clamp(cut * 2.0f, 0.f, 1.f));
+        }
+        // and the surface itself is not polished: relief that varies both
+        // around the stone and out from its middle
+        if (p.bumpy > 0.f)
+          prof *= 1.f + p.bumpy * 0.22f *
+                            (s3 * (2.f * base - 1.f) + c5 * (1.f - base));
         // the lean: the apex moves off centre, so the stone has a high side
         // the lean's direction: another hashed vector, no angle
         const float lx = (float)((h2 >> 18) & 0x3fu) * (2.f / 63.f) - 1.f;
@@ -131,8 +198,9 @@ inline void field(const Params &p, float x, float z, int oct, float &height,
         const float inv_ll = ll > 1e-6f ? 1.f / ll : 1.f;
         const float lean = (ex * lx * inv_ll + ez * lz * inv_ll) / rad;
         prof += p.tilt * lean * base * 0.5f;
-        // this stone's own height
-        const float hv = (float)((h2 >> 26) & 0x3fu) * (1.f / 63.f);
+        // this stone's own height (its own bits: the old ones overlapped
+        // the lean's, so tall stones leaned the same way)
+        const float hv = (float)(h4 & 0x3fu) * (1.f / 63.f);
         const float H = rad * cs * p.tallness * (0.6f + 0.8f * hv);
         const float hs = H * prof - p.bury * H;
         if (hs <= 0.f) continue;

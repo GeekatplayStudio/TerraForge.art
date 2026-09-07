@@ -1419,6 +1419,14 @@
       "test_symbol": "check_field_transpiles"
     },
     {
+      "id": "field.stones_shape",
+      "area": "engine",
+      "phase": "41",
+      "description": "What makes a stone field read as rock: two hashed planes cut broken flat facets into each stone, a surface-relief term breaks up its shell, and stones gather into drifts of a size given in metres (a smooth field over the cell lattice modulating the per-cell chance, mean preserved so clustering rearranges rather than thins). Sizes are metres from 5 mm to 200 m; the height bits no longer overlap the lean's, which had made tall stones lean alike",
+      "test_file": "test_nodes.cpp",
+      "test_symbol": "check_field_transpiles"
+    },
+    {
       "id": "render.field_normal_step",
       "area": "studio",
       "phase": "39",

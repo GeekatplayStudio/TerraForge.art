@@ -86,9 +86,23 @@ vec3 gpxf_cell(vec3 p, uint seed, float jitter, int metric){
 // A field of stones, mirroring gpx::stones::field (gpx/stones.hpp) line for
 // line. Returns (height, coverage). A heightmap cannot hold a stone; this
 // can, because it is a function and has no resolution.
+uint gpxf_remix(uint h){ h *= 2654435761u; h ^= h >> 15u; return h; }
+float gpxf_cluster_at(float gx, float gz, uint seed){
+  float fx = floor(gx), fz = floor(gz);
+  float ax = gx - fx, az = gz - fz;
+  ax = ax * ax * (3.0 - 2.0 * ax);
+  az = az * az * (3.0 - 2.0 * az);
+  float n00 = float(gpxf_hash_bits(vec3(fx,       5.0, fz      ), seed) & 0xffffu) * (1.0/65535.0);
+  float n10 = float(gpxf_hash_bits(vec3(fx + 1.0, 5.0, fz      ), seed) & 0xffffu) * (1.0/65535.0);
+  float n01 = float(gpxf_hash_bits(vec3(fx,       5.0, fz + 1.0), seed) & 0xffffu) * (1.0/65535.0);
+  float n11 = float(gpxf_hash_bits(vec3(fx + 1.0, 5.0, fz + 1.0), seed) & 0xffffu) * (1.0/65535.0);
+  return (n00 * (1.0 - ax) + n10 * ax) * (1.0 - az) +
+         (n01 * (1.0 - ax) + n11 * ax) * az;
+}
 vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
                  float flatten, float bury, float tilt, float spread,
-                 float elongation, float rough, uint seed, int oct){
+                 float elongation, float rough, float facet, float bumpy,
+                 float cluster, float cluster_cells, uint seed, int oct){
   float total = 0.0, cover = 0.0;
   float cs = max(cell, 1e-9);
   for (int o = 0; o < 5; ++o){
@@ -101,8 +115,14 @@ vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
     for (int dx = -1; dx <= 1; ++dx){
       float cxi = ix + float(dx), czi = iz + float(dz);
       uint h = gpxf_hash_bits(vec3(cxi, 0.0, czi), oseed);
+      float local_density = density;
+      if (cluster > 0.0){
+        float inv_cc = 1.0 / max(cluster_cells, 1.0);
+        float cn = gpxf_cluster_at(cxi * inv_cc, czi * inv_cc, oseed ^ 0x5bd1u);
+        local_density *= 1.0 - cluster + cluster * cn * 2.0;
+      }
       float exist = float(h & 0xfffu) * (1.0/4095.0);
-      if (exist > density) continue;
+      if (exist > local_density) continue;
       uint h2 = gpxf_hash_bits(vec3(cxi, 1.0, czi), oseed);
       float ox = float((h >> 12u) & 0x3ffu) * (1.0/1023.0);
       float oz = float((h >> 22u) & 0x3ffu) * (1.0/1023.0);
@@ -138,13 +158,31 @@ vec2 gpxf_stones(vec2 xz, float cell, float density, float tallness,
       float e = 0.35 + 0.5 * float((h2 >> 10u) & 0xffu) * (1.0/255.0);
       float prof = pow(base, e);
       prof = min(prof / max(1.0 - flatten * 0.85, 0.15), 1.0);
+      uint h4 = gpxf_remix(h2), h5 = gpxf_remix(h3);
+      if (facet > 0.0){
+        float ux = ex * inv_rr, uz = ez * inv_rr;
+        float r01 = sqrt(max(r2, 0.0));
+        float cut = 1.0;
+        for (int k = 0; k < 2; ++k){
+          uint hk = k == 0 ? h4 : h5;
+          float nx = float((hk >> 8u) & 0xffu) * (2.0/255.0) - 1.0;
+          float nz = float((hk >> 16u) & 0xffu) * (2.0/255.0) - 1.0;
+          float nl = sqrt(nx*nx + nz*nz);
+          float inv_nl = nl > 1e-6 ? 1.0/nl : 1.0;
+          float off = 0.35 + 0.5 * float((hk >> 24u) & 0xffu) * (1.0/255.0);
+          cut = min(cut, off - r01 * (ux * nx + uz * nz) * inv_nl);
+        }
+        prof *= 1.0 - facet * (1.0 - clamp(cut * 2.0, 0.0, 1.0));
+      }
+      if (bumpy > 0.0)
+        prof *= 1.0 + bumpy * 0.22 * (s3 * (2.0 * base - 1.0) + c5 * (1.0 - base));
       float lx = float((h2 >> 18u) & 0x3fu) * (2.0/63.0) - 1.0;
       float lz = float((h2 >> 24u) & 0x3fu) * (2.0/63.0) - 1.0;
       float ll = sqrt(lx*lx + lz*lz);
       float inv_ll = ll > 1e-6 ? 1.0/ll : 1.0;
       float lean = (ex * lx * inv_ll + ez * lz * inv_ll) / rad;
       prof += tilt * lean * base * 0.5;
-      float hv = float((h2 >> 26u) & 0x3fu) * (1.0/63.0);
+      float hv = float(h4 & 0x3fu) * (1.0/63.0);
       float H = rad * cs * tallness * (0.6 + 0.8 * hv);
       float hs = H * prof - bury * H;
       if (hs <= 0.0) continue;

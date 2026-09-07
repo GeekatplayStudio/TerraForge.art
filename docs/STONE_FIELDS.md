@@ -37,6 +37,17 @@ Feed it to `TerrainDisplacement` (strength 1 - the node emits world units,
 so the metres you type are the metres you get) and to a material through
 its `mask` output.
 
+**Sizes are metres and mean metres.** `Largest stone` is the width across
+of the biggest stone in the field, from **5 mm to 200 m**; every size below
+it comes from the octaves, each half as wide and four times as many.
+Useful settings, all measured in the viewport:
+
+| ground | largest stone | octaves | drift |
+| :--- | ---: | ---: | ---: |
+| grit and gravel | 0.05 m | 3 | 0.8 m |
+| a stony path | 0.35 m | 4 | 4 m |
+| a boulder field | 3 m | 5 | 40 m |
+
 What makes a field of these read as stone rather than as bumps, each of
 which the raster node lacks:
 
@@ -50,6 +61,15 @@ which the raster node lacks:
   is the signature of a procedural field;
 - **an irregular outline**, two harmonics per stone, so no stone is an
   ellipse;
+- **broken faces**: two hashed planes cut flat facets into each stone, so a
+  field of them reads as rock rather than as droplets. A stone is a broken
+  thing, not a bubble, and this is the single control that most decides
+  whether the field looks like stone;
+- **surface relief** across each stone, so its own shell is not polished;
+- **drifts**: stones are not spread evenly. A slow field over the cell
+  lattice gathers them into clusters with barer ground between, at a size
+  given in metres. The mean is preserved, so clustering rearranges a field
+  without thinning it;
 - **a lean**, so the high point is off centre and a stone has a downhill
   side;
 - **burial** (`Settled into the ground`), so a stone shows only its top and
@@ -95,10 +115,11 @@ times four evaluations a pixel is no place for a sine.
 ## Where it is verified
 
 `studio/field_gpu_check.cpp` runs the generated shader against the CPU
-evaluator over a 64x64 grid and compares every component: 16 stone cases
+evaluator over a 64x64 grid and compares every component: 23 stone cases
 (density, spread, flattening, burial, lean, tallness, elongation, outline
-roughness, all five octaves, and the mask output), 16,384 samples each.
-Worst case **6.2e-5** against a 2e-4 bar, most at ~1e-6. Run it from the
+roughness, facets, surface relief, clustering and its size, all five
+octaves, and the mask output), 16,384 samples each. Worst case **4.6e-5**
+against a 2e-4 bar, most at ~1e-6. Run it from the
 API with `{"op":"verify_field_gpu"}`.
 
 ## Known limits

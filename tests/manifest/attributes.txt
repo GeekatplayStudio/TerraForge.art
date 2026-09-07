@@ -381,9 +381,13 @@ FieldShape.mode|choice
 FieldShape.offset|float
 FieldShape.phase|float
 FieldShape.width|float
+FieldStones.bumpy|float
 FieldStones.bury|float
+FieldStones.cluster_m|float
+FieldStones.cluster|float
 FieldStones.density|float
 FieldStones.elongation|float
+FieldStones.facet|float
 FieldStones.flatten|float
 FieldStones.octaves|int
 FieldStones.rough|float

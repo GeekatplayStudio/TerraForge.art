@@ -406,6 +406,13 @@ std::string field_gpu_verify_all(App &a) {
         {"stones long", "elongation", 1.f},
         {"stones smooth outline", "rough", 0.f},
         {"stones ragged outline", "rough", 1.f},
+        {"stones no facets", "facet", 0.f},
+        {"stones fully faceted", "facet", 1.f},
+        {"stones polished", "bumpy", 0.f},
+        {"stones rough surface", "bumpy", 1.f},
+        {"stones spread evenly", "cluster", 0.f},
+        {"stones in drifts", "cluster", 1.f},
+        {"stones tight drifts", "cluster_m", 0.5f},
     };
     for (const Case &c : cases) {
       gpx::Graph g;
