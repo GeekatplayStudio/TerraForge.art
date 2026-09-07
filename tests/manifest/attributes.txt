@@ -1109,7 +1109,6 @@ RockyMountains.rocks|choice
 RockyMountains.rough_ref|float
 RockyMountains.roughness|float
 RockyMountains.scale_factor|float
-RockyMountains.scale_ratio|float
 RockyMountains.seed|seed
 RockyMountains.separate|bool
 RockyMountains.stretch_factor|float
@@ -1172,6 +1171,12 @@ Select.index|int
 SelectAltitude.band|range
 SelectAltitude.invert|bool
 SelectAltitude.smoothing|float
+SelectAspect.facing|float
+SelectAspect.invert|bool
+SelectAspect.min_slope|float
+SelectAspect.scale|float
+SelectAspect.smoothing|float
+SelectAspect.spread|float
 SelectBlobs.hollows|bool
 SelectBlobs.size|float
 SelectBlobs.threshold|float
@@ -1220,6 +1225,9 @@ Shear.seed|seed
 Shear.self_modulated|bool
 Skeleton.threshold|float
 SkeletonDistance.threshold|float
+SkyExposure.blend_invert|bool
+SkyExposure.directions|int
+SkyExposure.relief|float
 Skylight.phase|text
 Skylight.plan|text
 Smooth.radius|float
@@ -1262,6 +1270,12 @@ StreamPower.method|choice
 StreamPower.n_exp|float
 StreamPower.smooth|float
 StreamPower.uplift_rate|float
+SunExposure.altitude|float
+SunExposure.arc|float
+SunExposure.azimuth|float
+SunExposure.blend_invert|bool
+SunExposure.directions|int
+SunExposure.relief|float
 SunLight.altitude|float
 SunLight.azimuth|float
 SunLight.color_b|float

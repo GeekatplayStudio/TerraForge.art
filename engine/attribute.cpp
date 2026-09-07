@@ -20,6 +20,15 @@ const Attribute *AttrSet::find(const std::string &key) const {
   return nullptr;
 }
 
+bool AttrSet::remove(const std::string &key) {
+  for (size_t i = 0; i < items.size(); ++i)
+    if (items[i].key == key) {
+      items.erase(items.begin() + (ptrdiff_t)i);
+      return true;
+    }
+  return false;
+}
+
 float AttrSet::get_f(const std::string &k, float def) const {
   auto *a = find(k);
   return a ? a->f : def;

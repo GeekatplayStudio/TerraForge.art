@@ -158,6 +158,11 @@ const std::map<std::string, const char *> READ_ELSEWHERE = {
     {"MaterialStack",
      "the layer blending rules are applied by the studio's material stack, "
      "not during graph evaluation"},
+    {"TerrainSculpt",
+     "shapes the terrain from brush strokes painted in the viewport; with an "
+     "empty stroke buffer every control is correctly a no-op"},
+    {"MaskPaint",
+     "the mask is painted in the viewport; nothing here paints"},
 };
 
 const char *known_inert(const std::string &type, const std::string &key) {
@@ -180,7 +185,19 @@ int gate_variants(const Attribute &a) {
     // influence 0" is what makes decay reach and decay falloff do nothing,
     // and neither of them is broken.
     case AttrType::Float:
-      return (std::fabs(a.f - a.fmin) < 1e-6f && a.fmax > a.fmin) ? 1 : 0;
+      // Zero anywhere in the range, not just at the bottom of it: a
+      // repulsion that runs -1..1 and sits at 0 is switched off exactly as
+      // much as an influence that runs 0..1 and sits at 0.
+      return (std::fabs(a.f) < 1e-6f && a.fmax > a.fmin) ? 1 : 0;
+    // An identity curve makes the strength that blends towards it a no-op.
+    case AttrType::Gradient:
+      return a.stops.size() >= 2 ? 1 : 0;
+    // A tile count of one is a gate too: with a single tile there is nothing
+    // for "mirror repeat" to mirror and nothing for an extend mode to
+    // extend, and both reported themselves dead.
+    case AttrType::Vec2:
+    case AttrType::Range:
+      return a.v2max > a.v2min ? 1 : 0;
     default: return 0;
   }
 }
@@ -208,6 +225,34 @@ bool set_gate(Attribute &a, int opt, std::string &label) {
       label = std::to_string(v);
       return true;
     }
+    case AttrType::Vec2:
+    case AttrType::Range: {
+      const float v = a.v2min + 0.4f * (a.v2max - a.v2min);
+      if (std::fabs(v - a.v2[0]) < 1e-9f && std::fabs(v - a.v2[1]) < 1e-9f)
+        return false;
+      a.v2[0] = a.v2[1] = v;
+      label = std::to_string(v);
+      return true;
+    }
+    case AttrType::Gradient: {
+      // reverse it: the identity ramp becomes an inverting one, which is the
+      // difference between "this curve does nothing" and "this curve does
+      // something for the strength to be a fraction of"
+      std::vector<GradientStop> flipped = a.stops;
+      bool differs = false;
+      for (size_t i = 0; i < flipped.size(); ++i) {
+        const GradientStop &src = a.stops[a.stops.size() - 1 - i];
+        differs = differs || src.r != flipped[i].r || src.g != flipped[i].g ||
+                  src.b != flipped[i].b;
+        flipped[i].r = src.r;
+        flipped[i].g = src.g;
+        flipped[i].b = src.b;
+      }
+      if (!differs) return false;
+      a.stops = flipped;
+      label = "reversed";
+      return true;
+    }
     default:
       return false;
   }
@@ -224,7 +269,13 @@ bool perturb(Attribute &a, int variant, std::string &what) {
   switch (a.type) {
     case AttrType::Float: {
       if (a.fmax - a.fmin < 1e-9f) return false;
-      const float v = far_from(a.f, a.fmin, a.fmax);
+      // Two probes, not one. A reference feature size whose slider runs to
+      // the whole tile does nothing above the fractal's own wavelength, so
+      // the far end of its range is a dead zone that is not the parameter's
+      // fault. Moving it the other way finds the live half.
+      const float v = variant == 0 ? far_from(a.f, a.fmin, a.fmax)
+                                   : a.fmin + 0.07f * (a.fmax - a.fmin);
+      if (std::fabs(v - a.f) < 1e-9f) return false;
       what = std::to_string(a.f) + " -> " + std::to_string(v);
       a.f = v;
       return true;
@@ -306,7 +357,8 @@ int main(int argc, char **argv) {
       if (!n) continue;
       for (const Attribute &a : n->attrs.items) {
         variants.push_back(a.type == AttrType::Choice ? (int)a.labels.size()
-                                                      : 1);
+                           : a.type == AttrType::Float ? 2
+                                                       : 1);
         gates.push_back(gate_variants(a));
       }
     }
@@ -381,6 +433,14 @@ int main(int argc, char **argv) {
       // parameters and was right about a handful, which is how a report
       // teaches people to close it.
       std::string conditional;
+      // Two sweeps. The first tries each gate on its own, which is the
+      // reading you want when it works: "this needs that switch". The
+      // second turns every toggle on alongside it, for the parameters that
+      // sit two gates deep. They are not merged because switching
+      // everything on can silence a node outright - an ecosystem told to
+      // populate around the camera emits no tile at all, and under that one
+      // flag every control on it looks dead.
+      for (int boost = 0; boost < 2 && conditional.empty(); ++boost)
       for (size_t ci = 0; ci < gates.size() && conditional.empty(); ++ci) {
         if (ci == ai) continue;
         for (int opt = 0; opt < gates[ci]; ++opt) {
@@ -391,6 +451,15 @@ int main(int argc, char **argv) {
           std::string label;
           if (!set_gate(n->attrs.items[ci], opt, label)) continue;
           const std::string sw_key = n->attrs.items[ci].key;
+          // and switch every other toggle on at the same time. Some
+          // parameters sit two gates deep - a sea level needs both "By
+          // altitude" and the mode that measures from the sea - and trying
+          // gates strictly one at a time never reaches them.
+          if (boost)
+            for (size_t bi = 0; bi < gates.size(); ++bi)
+              if (bi != ci && bi != ai &&
+                  n->attrs.items[bi].type == AttrType::Bool)
+                n->attrs.items[bi].b = true;
           g.mark_all_dirty();
           g.evaluate();
           const double under = fingerprint(n);

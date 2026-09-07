@@ -72,6 +72,10 @@ public:
   Attribute &add(Attribute a);
   Attribute *find(const std::string &key);
   const Attribute *find(const std::string &key) const;
+  // Drop one a shared setup helper added that this node supersedes. Rare and
+  // deliberate: showing somebody two controls for the same thing, one of
+  // which does nothing, is worse than showing them one.
+  bool remove(const std::string &key);
   std::vector<Attribute> items;
 
   // typed getters (assert-free, tolerant)

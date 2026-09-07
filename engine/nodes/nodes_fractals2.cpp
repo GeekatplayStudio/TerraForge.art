@@ -206,12 +206,22 @@ REGISTER_NODE(
     "Vue's Rocky Mountains fractal: irregular ridge networks added per iteration, as separate mountains or basins between ridges, stretched, with optional rocks and an eroded variant",
     [](Node &n) {
       setup_base(n);
+      // This fractal builds its own octaves and drives both the wavelength
+      // and the amplitude from one "Scale factor" below, so the shared
+      // "Scale ratio" the base setup adds means nothing here. It was shown
+      // anyway, in the Base group, next to a control that does the same job
+      // and works - which is a worse thing to show somebody than nothing.
+      // tools/param_audit found it by moving every slider in the catalogue.
+      n.attrs.remove("scale_ratio");
       add_bool(n.attrs, "separate", "Separate mountains", true, "Overall aspect")
           .tooltip = "On: independent mountain blocks side by side.\n"
                      "Off: basins separated by irregular ridges.";
       add_float(n.attrs, "scale_factor", "Scale factor", 0.55f, 0.3f, 0.9f,
                 "Overall aspect")
-          .tooltip = "How much smaller each new iteration's features are.";
+          .tooltip = "How much smaller each new iteration's features are,\n"
+                     "and how much less they add. This is the whole scale\n"
+                     "control for this fractal - it stands in for the\n"
+                     "separate ratio and persistence the others have.";
       add_float(n.attrs, "flat_level", "Flat level (per iteration)", 0.3f, 0.f, 1.f,
                 "Overall aspect")
           .tooltip = "Balance of smooth areas against ridged ones per iteration.";

@@ -188,6 +188,7 @@ ScatterPoints|Points
 SceneCamera|Camera
 SedimentDeposit|Erosion
 SelectAltitude|Mask
+SelectAspect|Mask
 SelectBlobs|Mask
 SelectBorder|Mask
 SelectCavities|Mask
@@ -202,6 +203,7 @@ Sharpen|Effect
 Shear|Transform
 SkeletonDistance|Mask
 Skeleton|Mask
+SkyExposure|Analysis
 Skylight|Light
 SmoothFill|Filter
 Smooth|Filter
@@ -212,6 +214,7 @@ Splatmap|Material
 Stamp|Primitive
 Stratify|Filter
 StreamPower|Erosion
+SunExposure|Analysis
 SunLight|Atmosphere
 SurfaceDisplacement|Export
 Switch|Logic

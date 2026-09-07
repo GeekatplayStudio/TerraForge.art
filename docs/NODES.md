@@ -3997,12 +3997,11 @@ Vue's Rocky Mountains fractal: irregular ridge networks added per iteration, as 
 | Seed | seed |  |
 | Wavelength | float, 0.01 to 4, default 0.35 | The size of the largest feature, as a fraction of the tile. 1 is one landform filling the map; 0.1 is ten across it. |
 | Iterations | int, 1 to 16, default 8 | How many times the pattern is added at a smaller size. Each adds finer detail and costs about as much again; once an octave is finer than a texel it buys nothing. |
-| Scale ratio | float, 0.1 to 0.9, default 0.5 | How much smaller each iteration is than the last. 0.5 halves it, which is the classic choice; higher leaves a gap between the scales and reads as two patterns rather than one surface. |
 | Roughness | float, 0 to 2, default 1 | How much strength each iteration keeps. Low is smooth and dominated by the big forms; high is broken at every scale. |
 | Gain | float, 0.2 to 10, default 1 | Contrast of the result: pushes the highs up and the lows down about the middle. |
 | Distortion | float, 0 to 1, default 0 | Smears the pattern around as if pushed by a slow flow, which breaks up the lattice the noise sits on. |
 | Separate mountains | toggle, default on | On: independent mountain blocks side by side. Off: basins separated by irregular ridges. |
-| Scale factor | float, 0.3 to 0.9, default 0.55 | How much smaller each new iteration's features are. |
+| Scale factor | float, 0.3 to 0.9, default 0.55 | How much smaller each new iteration's features are, and how much less they add. This is the whole scale control for this fractal - it stands in for the separate ratio and persistence the others have. |
 | Flat level (per iteration) | float, 0 to 1, default 0.3 | Balance of smooth areas against ridged ones per iteration. |
 | Ground level | float, -1 to 1, default 0 | Sinks the fractal into the ground. |
 | Subdivision quality | int, 0 to 2, default 1 | Higher hides the approximation's discontinuities, at a cost. |
