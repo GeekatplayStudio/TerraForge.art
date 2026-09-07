@@ -3890,6 +3890,72 @@ static void test_material_layers() {
   CHECK(out->px(5, hi)[1] > 0.9f, "inside it the layer shows");
 }
 
+// A slope band reads texel-to-texel rise over run, so "degrees" is only
+// true if the vertical scale is known. It was not: the node had no
+// height_scale attribute at all, so a ramp that is a gentle 3 degree grade
+// at the project's real height_scale (as ground_at() in
+// engine/scatter_rules.cpp, used by scattering, has always computed it)
+// read as whatever the raw 0..1 heightmap slope happened to be - wildly
+// steeper than the real terrain on any project where height_scale != 1,
+// which is nearly every real one.
+static void test_material_layer_slope_reads_real_degrees() {
+  std::printf("material layer slope reads real degrees...\n");
+  gpx::Graph g;
+  g.resolution = 64;
+
+  // a known ramp: rises `rise` (0..1 heightmap units) over the full height
+  // of the map, so its raw gradient is exactly rise per texel-run
+  auto make_ramp = [&](float rise) {
+    gpx::Node *ter = g.add_node("Constant");
+    g.evaluate();
+    gpx::Heightmap *h = ter->port("output", gpx::PortDir::Out)->hmap.get();
+    for (int y = 0; y < h->h; ++y)
+      for (int x = 0; x < h->w; ++x) h->at(x, y) = rise * y / float(h->h - 1);
+    ter->dirty = false;
+    return ter;
+  };
+
+  gpx::Node *ter = make_ramp(0.02f); // a shallow, realistic rise
+  gpx::Node *col = g.add_node("FlatColor");
+  gpx::Node *layer = g.add_node("MaterialLayer");
+  g.add_link(col->id, "texture", layer->id, "albedo");
+  g.add_link(ter->id, "output", layer->id, "terrain");
+  layer->attrs.find("use_slope")->b = true;
+  // a band that only a correctly-scaled slope can land inside: at
+  // height_scale 1 this ramp's slope is ~1.2 degrees (fails a 5..90 band);
+  // at height_scale 50 - a plausible real terrain, 0.02 of a 5 km tile's
+  // heightmap range meaning 100 m of relief - it is ~45 degrees
+  layer->attrs.find("slope")->v2[0] = 5.f;
+  layer->attrs.find("slope")->v2[1] = 90.f;
+  layer->attrs.find("slope_fuzz")->f = 0.f;
+
+  layer->attrs.find("height_scale")->f = 1.f;
+  g.mark_dirty(layer->id);
+  CHECK(g.evaluate(), "layer with a slope band evaluates");
+  const gpx::Heightmap *pz1 =
+      layer->port("presence", gpx::PortDir::Out)->hmap.get();
+  CHECK(pz1 && pz1->at(5, 32) < 0.01f,
+        "height_scale 1: the raw heightmap slope is little over a degree, "
+        "outside the band");
+
+  layer->attrs.find("height_scale")->f = 50.f;
+  g.mark_dirty(layer->id);
+  g.evaluate();
+  const gpx::Heightmap *pz2 =
+      layer->port("presence", gpx::PortDir::Out)->hmap.get();
+  CHECK(pz2 && pz2->at(5, 32) > 0.9f,
+        "height_scale 50: the same ramp is now a real ~34 degree grade, "
+        "inside the band - the node reads the vertical scale rather than "
+        "assuming it is 1");
+
+  // and the attribute defaults to 1, so an old saved project (no
+  // height_scale ever written) evaluates exactly as it always did until the
+  // studio syncs the real value in - see scene_nodes_objects.cpp
+  gpx::Node *fresh = g.add_node("MaterialLayer");
+  CHECK(std::fabs(fresh->attrs.get_f("height_scale", -1.f) - 1.f) < 1e-6f,
+        "a new layer defaults to height_scale 1, unchanged behaviour");
+}
+
 // Vue's procedural colour: a fractal, a filter, then a colour map that hands
 // back colour and alpha together. The alpha is the half that makes it useful
 // as a layer mask, so it has to actually vary.
@@ -5168,6 +5234,7 @@ int main() {
   test_terrain_imprint();
   test_displacement_layers();
   test_material_layers();
+  test_material_layer_slope_reads_real_degrees();
   test_fractal_color();
   test_vue_fractals();
   if (g_failures == 0) {

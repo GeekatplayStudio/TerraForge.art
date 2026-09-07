@@ -677,6 +677,7 @@ MaterialLayer.blend|choice
 MaterialLayer.disp_add|float
 MaterialLayer.disp_amount|float
 MaterialLayer.enabled|bool
+MaterialLayer.height_scale|float
 MaterialLayer.highlight_color|color
 MaterialLayer.highlight|bool
 MaterialLayer.invert_mask|bool

@@ -258,6 +258,16 @@ REGISTER_NODE(
       add_range(n.attrs, "slope", "Slope band", 0.f, 30.f, 0.f, 90.f, "Slope")
           .tooltip = "Degrees from horizontal. 0 is flat, 90 is a cliff.";
       add_float(n.attrs, "slope_fuzz", "Fade", 6.f, 0.f, 45.f, "Slope");
+      // Degrees means degrees only if the vertical scale is known: a
+      // heightmap stores 0..1, and the terrain's actual rise over its run is
+      // that times height_scale. The studio keeps this in step with the
+      // project (studio/scene_nodes_objects.cpp), the same way it does for
+      // FieldStones, FieldGrass and the scatter nodes.
+      add_float(n.attrs, "height_scale", "Height scale", 1.f, 1e-4f, 1000.f,
+                "Slope", true)
+          .tooltip = "The terrain's vertical scale, so 'By slope' and\n"
+                     "'By orientation' read real degrees. Kept in step with\n"
+                     "the project automatically.";
 
       add_bool(n.attrs, "use_orientation", "By orientation", false,
                "Orientation");
@@ -337,8 +347,12 @@ REGISTER_NODE(
         for (float v : TR->v) { hlo = std::min(hlo, v); hhi = std::max(hhi, v); }
         if (hhi - hlo < 1e-6f) hhi = hlo + 1.f;
       }
-      // world size per texel, so a slope in degrees means degrees
+      // world size per texel, so a slope in degrees means degrees - and the
+      // vertical scale too, or a project with height_scale != 1 (nearly
+      // every real one) reads every slope wrong. See ground_at() in
+      // engine/scatter_rules.cpp, which the same fix was already applied to.
       const float cell = TR ? 1.f / std::max(TR->w, 1) : 1.f;
+      const float hs = std::max(n.attrs.get_f("height_scale", 1.f), 1e-6f);
 
       TextureRGBA &oa = n.out_tex("albedo");
       TextureRGBA &onm = n.out_tex("normal");
@@ -372,7 +386,7 @@ REGISTER_NODE(
                 p *= band(h, alo, ahi, afz);
               }
               if (p > 0.f && (us || uo)) {
-                float gx = dx / cell, gy = dy / cell;
+                float gx = dx / cell * hs, gy = dy / cell * hs;
                 if (us) {
                   float deg = std::atan(std::sqrt(gx * gx + gy * gy)) * 180.f / PI_F;
                   p *= band(deg, slo, shi, sfz);

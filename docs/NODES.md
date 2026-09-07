@@ -2854,6 +2854,7 @@ One layer of a material stack: its own maps, its own mask, and its own reaction 
 | By slope | toggle, default off |  |
 | Slope band | range | Degrees from horizontal. 0 is flat, 90 is a cliff. |
 | Fade | float, 0 to 45, default 6 |  |
+| Height scale | float, 0.0001 to 1000, default 1 | The terrain's vertical scale, so 'By slope' and 'By orientation' read real degrees. Kept in step with the project automatically. |
 | By orientation | toggle, default off |  |
 | Faces | float, 0 to 360, default 0 | Compass direction the surface looks towards, in degrees. 0 is north. North faces hold snow; south faces dry out. |
 | Arc | float, 5 to 180, default 60 | How far either side of that direction still counts. |

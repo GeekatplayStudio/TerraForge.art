@@ -87,6 +87,17 @@ rather than reinvented.
 - **Orientation** is the compass azimuth the surface faces, with a tightness
   controlling how wide the favoured arc is.
 
+**Degrees mean degrees only if the vertical scale is known.** A heightmap
+stores 0..1; the terrain's real rise over its run is that times
+`height_scale`. The slope and orientation bands read a `height_scale`
+attribute the studio keeps in step with the project, exactly as it does for
+`FieldStones`, `FieldGrass` and the scatter nodes. Without it the bands read
+the raw heightmap gradient, which on a typical project - 0.02 of the height
+range standing for 100 m of relief - calls a real 45 degree face about one
+degree, and every slope-keyed layer lands in the wrong place. It defaults to
+1, so a project saved before this existed evaluates exactly as it did until
+the studio syncs the real value in.
+
 **Placement** is per-layer: tiling, offset and rotation applied to the sample
 coordinates of that layer's own maps. This is the "position, angle, orientation"
 half of the request.
