@@ -589,6 +589,18 @@ wanted his students to have.
   `examples/macros/stone_field_material.json` wires it in one go. CPU and
   GPU verified identical over 33 cases.
   [docs/STONE_FIELDS.md](docs/STONE_FIELDS.md).
+- **The shape of the ground, and the water on it:** `TerrainShape` gives
+  the tile an outline - rectangle, rounded rectangle, round, diamond or
+  your own mask - with a fractal rim that only ever eats inward, so the
+  size stays a maximum you can reason about. Its edge blend is the three
+  questions one slider used to run together: how far in it reaches, the
+  curve it takes from the centre out (a plateau with a cliff, or a beach),
+  and how far down the rim actually goes. `Lake` puts a body of water
+  somewhere in particular, keeping Terragen's Water level, Centre and Max
+  radius and going past its always-round flat disc - a wandering shore, a
+  lake that settles into the valley it is in, a carved bed and a banked
+  shore, with depth, mask and beach outputs.
+  [docs/SHAPES_AND_WATER.md](docs/SHAPES_AND_WATER.md).
 - **Ecosystems - intelligent distribution of objects**, Vue's EcoSystem as
   a layer in the material stack: `EcosystemLayer` places a population per
   hectare by the layer's presence (mask, altitude, slope, orientation,

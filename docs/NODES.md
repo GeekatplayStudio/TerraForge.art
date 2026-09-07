@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 242 across 31 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 244 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -22,7 +22,7 @@ Every node in Geekatplay TerraForge — 242 across 31 categories. Generated from
 | [Field Noise](#field-noise) | 4 |
 | [Filter](#filter) | 23 |
 | [Group](#group) | 1 |
-| [Hydrology](#hydrology) | 2 |
+| [Hydrology](#hydrology) | 3 |
 | [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 14 |
@@ -33,6 +33,7 @@ Every node in Geekatplay TerraForge — 242 across 31 categories. Generated from
 | [Primitive](#primitive) | 22 |
 | [Render](#render) | 8 |
 | [Scene](#scene) | 7 |
+| [Shape](#shape) | 1 |
 | [Texture](#texture) | 3 |
 | [Transform](#transform) | 8 |
 
@@ -2055,6 +2056,39 @@ Standing water at a set level
 | Fill | choice: Everywhere below / Connected to the edge / From source points |  |
 | Normalize depth | toggle, default on |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### Lake
+
+A body of water at a place: centre, max radius and water level, with a wandering shore, a carved bed and a beach mask
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+| water | out | heightmap |
+| depth | out | heightmap |
+| mask | out | heightmap |
+| shore | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Water level | float, 0 to 1, default 0.32 | The height of the water surface, as a fraction of the terrain's own range. Terragen states this as a height above the planet; here it follows the terrain so a lake stays put when the relief is re-scaled. |
+| Centre | x/y pair | Where the lake sits on the tile. |
+| Max radius (m) | float, 0.5 to 200000, default 400 | The furthest the water can reach from the centre, in metres. The wandering rim moves inside this, never past it - which is exactly what Terragen's Max radius means. |
+| Stretch | float, 0.05 to 20, default 1 | 1 is round, which is the only shape Terragen's Lake can be. Higher stretches it one way, so a lake can lie along a valley. |
+| Rotation | float, -180 to 180, default 0 |  |
+| Outline | choice: Rectangle / Rounded rectangle / Round / Diamond / From mask | From mask takes the outline from the mask input, so a lake can be traced from a real one. |
+| Shore wander | float, 0 to 1, default 0.3 | How far the waterline departs from the perfect curve, as a fraction of the radius. This is what makes bays and spits; 0 gives the drawing-board circle. |
+| Shore detail | float, 0.2 to 64, default 4 | How many bays and headlands around the shore. |
+| Shore roughness | int, 1 to 10, default 4 | How much finer detail rides on the large bays. |
+| Shore width | float, 0.001 to 1, default 0.12 | How far in from the rim the water shallows, as a fraction of the lake's radius. This is the band the 'shore' output marks. |
+| Shore gradient | float, 0.05 to 8, default 1 | The profile from the middle out to the shore. Below 1 the water stays deep and shallows abruptly - a tarn in a rock basin. Above 1 it shallows from far out - a wide beach. |
+| Seed | seed |  |
+| Follow the ground | toggle, default on | On, the lake only fills where the ground is already below the water level, so it settles into the valley it is in. Off, it is a flat disc that ignores the terrain, which is what Terragen's Lake object is. |
+| Carve the bed | float, 0 to 1, default 0.35 | Pulls the ground under the lake down below the water, deepest in the middle. 0 leaves the terrain alone and the water may be a film over it. |
+| Bank the shore | float, 0 to 1, default 0.5 | Levels the ground just outside the waterline toward the water, so the lake meets a shore rather than a wall. This is the thing that reads as a lake. |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width; the studio keeps this in step with the project so the radius above means metres. |
 
 ## Light
 
@@ -4282,6 +4316,37 @@ A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene
 | :--- | :--- | :--- |
 | Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
 | Roadmap phase | text |  |
+
+## Shape
+
+### TerrainShape
+
+The outline of the ground - rectangle, round, or your own mask - with a wandering rim and an edge that gives way over a distance you set
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+| mask | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Shape | choice: Rectangle / Rounded rectangle / Round / Diamond / From mask | Round is an ellipse when the width and height differ. From mask takes the outline from the mask input and only the edge treatment from here. |
+| Size | x/y pair | Width and height across, as a fraction of the tile. 1 touches the borders; less leaves ground around it. |
+| Centre | x/y pair | Where the shape sits on the tile. Outside 0..1 pushes it off the edge, which is how you get a coast rather than an island. |
+| Rotation | float, -180 to 180, default 0 |  |
+| Corner rounding | float, 0 to 1, default 0.3 | Rounded rectangle only: how much of the half-size the corners round off. 1 is a full stadium. |
+| Edge wander | float, 0 to 1, default 0.25 | How far the rim departs from the perfect curve, as a fraction of the radius. 0 is a drawing-board outline, which is the one thing no real coast has. |
+| Edge detail | float, 0.2 to 64, default 5 | How many bays and headlands there are around the rim. |
+| Edge roughness | int, 1 to 10, default 4 | How much finer detail rides on the large bays. |
+| Seed | seed |  |
+| Blend extent | float, 0.001 to 1, default 0.3 | How far in from the rim the blend reaches, as a fraction of the shape's own radius - so it means the same on a big island and a small one. 1 blends from the very centre. |
+| Blend gradient | float, 0.05 to 8, default 1 | The curve from the centre out to the sides. Below 1 the ground stays high and drops away near the rim - a plateau with a cliff. Above 1 it starts falling from well inside - a beach. 1 is the plain S-curve. |
+| Blend intensity | float, 0 to 1, default 1 | How far down the edge actually goes. 1 takes it all the way to the base level; less leaves the rim standing proud of it. |
+| Base level | choice: Lowest in the terrain / Zero / Set below | What the ground outside the shape falls to. |
+| Level | float, -1 to 2, default 0 | Used when Base level is 'Set below'. |
+| Keep relief outside | toggle, default off | On, the terrain outside keeps its shape and is only pulled down toward the base - an island on a seabed that still has hills. Off, outside is flat. |
 
 ## Texture
 

@@ -1411,6 +1411,22 @@
       "test_symbol": "test_scatter_lod"
     },
     {
+      "id": "terrain.shape",
+      "area": "engine",
+      "phase": "44",
+      "description": "TerrainShape: the outline of the ground as a rectangle, rounded rectangle, round, diamond or a supplied mask, with a fractal rim that only ever eats inward so the size stays a maximum you can reason about, and an edge blend split into the three questions the old single post_zero_edges slider ran together - extent (how far in it reaches, as a fraction of the shape's own radius), gradient (the curve from the centre out, below 1 a plateau with a cliff and above 1 a beach) and intensity (how far down the rim actually goes); terrain and shape-mask outputs, and relief optionally kept outside so an island sits on a seabed that still has hills",
+      "test_file": "test_shape_lake.cpp",
+      "test_symbol": "test_terrain_shape_node"
+    },
+    {
+      "id": "hydro.lake",
+      "area": "engine",
+      "phase": "44",
+      "description": "Lake: a body of water at a place rather than a level applied everywhere, keeping Terragen's Water level, Centre and Max radius under their own names and going past its always-round always-flat disc - a wandering shore with bays and spits, Follow the ground so the lake settles into the valley it is in (off gives Terragen's literal disc with rock poking through), a carved bed so the water is a body and not a film on a hillside, a banked shore, and shore width and gradient as the same two questions the terrain edge asks; output, water, depth, mask and shore outputs, mask keyed on the water surface rather than its depth so conforming and not-conforming differ",
+      "test_file": "test_shape_lake.cpp",
+      "test_symbol": "test_lake_node"
+    },
+    {
       "id": "field.stones",
       "area": "engine",
       "phase": "39",
