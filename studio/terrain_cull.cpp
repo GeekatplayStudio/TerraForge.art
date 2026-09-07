@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — per-patch visibility for the terrain surface.
 #include "terrain_cull.hpp"
 #include "gpx/heightmap.hpp"
+#include "gpx/parallel.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -61,32 +62,42 @@ std::vector<float> patch_height_bounds(const gpx::Heightmap &h, int patches) {
   out.assign((size_t)patches * patches * 2, 0.f);
   if (h.w <= 0 || h.h <= 0 || h.v.empty()) return out;
 
-  for (int py = 0; py < patches; ++py) {
-    // Texel span of this patch, widened by one on every side. Bilinear
-    // filtering inside the patch can reach the neighbouring texel, and a bound
-    // that does not cover what the shader can sample is a bound that lies.
-    int y0 = (int)std::floor((float)py / patches * h.h) - 1;
-    int y1 = (int)std::ceil((float)(py + 1) / patches * h.h) + 1;
-    y0 = std::max(y0, 0);
-    y1 = std::min(y1, h.h - 1);
-    for (int px = 0; px < patches; ++px) {
-      int x0 = (int)std::floor((float)px / patches * h.w) - 1;
-      int x1 = (int)std::ceil((float)(px + 1) / patches * h.w) + 1;
-      x0 = std::max(x0, 0);
-      x1 = std::min(x1, h.w - 1);
-      float lo = h.v[(size_t)y0 * h.w + x0], hi = lo;
-      for (int y = y0; y <= y1; ++y) {
-        const float *row = &h.v[(size_t)y * h.w];
-        for (int x = x0; x <= x1; ++x) {
-          lo = std::min(lo, row[x]);
-          hi = std::max(hi, row[x]);
+  // One row of patches per band. Each writes only its own patches and reads
+  // only the heightmap, so the answer cannot depend on the thread count -
+  // which matters, because these bounds decide what is drawn.
+  //
+  // Parallel because this scales with the patch grid, and the grid is a knob
+  // now: at 256 patches an edge over a 1024 heightmap it is 2.4 million
+  // samples, and it runs again every time the terrain changes.
+  gpx::parallel_rows(patches, [&](int p0, int p1) {
+    for (int py = p0; py < p1; ++py) {
+      // Texel span of this patch, widened by one on every side. Bilinear
+      // filtering inside the patch can reach the neighbouring texel, and a
+      // bound that does not cover what the shader can sample is a bound that
+      // lies.
+      int y0 = (int)std::floor((float)py / patches * h.h) - 1;
+      int y1 = (int)std::ceil((float)(py + 1) / patches * h.h) + 1;
+      y0 = std::max(y0, 0);
+      y1 = std::min(y1, h.h - 1);
+      for (int px = 0; px < patches; ++px) {
+        int x0 = (int)std::floor((float)px / patches * h.w) - 1;
+        int x1 = (int)std::ceil((float)(px + 1) / patches * h.w) + 1;
+        x0 = std::max(x0, 0);
+        x1 = std::min(x1, h.w - 1);
+        float lo = h.v[(size_t)y0 * h.w + x0], hi = lo;
+        for (int y = y0; y <= y1; ++y) {
+          const float *row = &h.v[(size_t)y * h.w];
+          for (int x = x0; x <= x1; ++x) {
+            lo = std::min(lo, row[x]);
+            hi = std::max(hi, row[x]);
+          }
         }
+        size_t i = ((size_t)py * patches + px) * 2;
+        out[i] = lo;
+        out[i + 1] = hi;
       }
-      size_t i = ((size_t)py * patches + px) * 2;
-      out[i] = lo;
-      out[i + 1] = hi;
     }
-  }
+  });
   return out;
 }
 

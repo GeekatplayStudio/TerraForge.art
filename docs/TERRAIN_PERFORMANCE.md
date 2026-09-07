@@ -170,6 +170,41 @@ every level tried. That trades away the reason `fractional_odd_spacing` was
 chosen — an integer level steps, and a stepping subdivision pops.
 
 Deciding between the pop, a skirt that hides the seam, and CDLOD-style
-morphing that closes it properly is the real design decision in front of a
-patch quadtree. It was worth a day's arithmetic to find that out before
-writing the shader.
+morphing that closes it properly would be the real design decision in front
+of a patch quadtree.
+
+## A uniform grid can simply have more patches
+
+A quadtree is not the only way to make a patch smaller, and the alternative
+has no T-junctions to close because it has no level boundaries. Sweeping
+`TERRAIN_PATCHES_PER_EDGE` at the shipping settings:
+
+| | 64 (today) | 128 | 256 |
+| :--- | ---: | ---: | ---: |
+| ground | 0.24 ms / 92,568 tris | 0.31 ms / 190,644 | 0.47 ms / 516,604 |
+| patches after culling, ground | 363 | 1,164 | 4,112 |
+| orbital | 0.03 ms | 0.03 ms | 0.07 ms |
+| **finest triangle, 5 km tile** | **1.22 m** | **0.61 m** | **0.31 m** |
+
+And the test that showed the cap was binding, repeated on the finer grid. At
+`tess_pixels 2`, raising the cap from 32 to 64:
+
+| grid | extra triangles at ground level |
+| :--- | ---: |
+| 64 | **+60%** — patches pinned against the ceiling |
+| 256 | **+1.1%** — the ceiling is no longer reached |
+
+A 256 grid buys a finest triangle of 0.31 m instead of 1.22 m — the thing a
+stone that breaks a silhouette needs — for roughly 0.2 ms, with no cracks
+possible, nothing popping, and no new code. That is the answer, and a
+quadtree is not needed for it.
+
+One justification for a quadtree survives and is untouched by any of this: it
+is the only structure that extends past a single tile. Multi-tile terrain
+will want one. That is a different feature, with a different trigger.
+
+Two things follow before the grid is raised, and they are in the backlog:
+making the grid a setting rather than a compile-time constant, and retuning
+`tess_min` — the floor is charged per patch, so sixteen times the patches is
+sixteen times the floor, which is most of that 0.24 → 0.47 ms and buys
+nothing.

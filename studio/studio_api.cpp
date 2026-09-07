@@ -10,6 +10,7 @@
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "renderer_instances.hpp"
+#include "terrain_cull.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
 #include <imgui.h>
@@ -152,7 +153,8 @@ static void publish_state(App &a) {
                    {"tess_max", rs.tess_max},
                    {"frustum_cull", rs.frustum_cull},
                    {"patches_visible", renderer_patches_visible()},
-                   {"patches_total", 64 * 64},
+                   {"patches_total",
+                    TERRAIN_PATCHES_PER_EDGE * TERRAIN_PATCHES_PER_EDGE},
                    {"frame_ms", ImGui::GetIO().DeltaTime * 1000.0f},
                    {"terrain_gpu_ms", gpu_timer_ms("terrain")},
                    // What the tessellator actually emitted. The patch count
