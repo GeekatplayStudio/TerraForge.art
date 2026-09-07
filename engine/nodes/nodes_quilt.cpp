@@ -19,7 +19,11 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_out("output");
       add_seed(n.attrs);
-      add_float(n.attrs, "patch", "Patch size", 0.12f, 0.03f, 0.4f, "Quilt");
+      add_float(n.attrs, "patch", "Patch size", 0.12f, 0.03f, 0.4f, "Quilt")
+          .tooltip = "How large the patches taken from the source are, as a\n"
+                     "fraction of the tile. Large patches keep more of the\n"
+                     "original's structure; small ones mix more freely and\n"
+                     "repeat less.";
       add_float(n.attrs, "overlap", "Overlap", 0.25f, 0.1f, 0.5f, "Quilt")
           .tooltip = "As a fraction of the patch. Wider overlaps hide seams\n"
                      "better and repeat more.";

@@ -19,6 +19,7 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/serialization.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <set>
@@ -298,14 +299,43 @@ static std::vector<float> snapshot(gpx::Node *n) {
 static void check_metadata(const gpx::NodeDef *d) {
   CHECK(!d->category.empty(), "has a category");
   CHECK(!d->description.empty(), "has a description");
-  CHECK(d->description.size() >= 12,
-        "description is meaningful (>=12 chars), got: " + d->description);
+  // Raised from 12 to 25 once the node audit swept the catalogue: a dozen
+  // characters is "Constant level", which names the node again rather than
+  // saying what it is for. This text is the manual entry and the library's
+  // hover, so it has to earn its place.
+  CHECK(d->description.size() >= 25,
+        "description says what the node is for (>=25 chars), got: " +
+            d->description);
+  // The display name is what a person reads; the type is a C++ identifier
+  // and always will be. A multi-word type shown raw means the case splitter
+  // did nothing and engine/node_names.cpp needs an override.
+  const std::string &shown = gpx::node_display_name(d->type);
+  CHECK(!shown.empty(), "has a display name");
+  if (shown == d->type) {
+    int caps = 0;
+    for (char c : d->type)
+      if (std::isupper((unsigned char)c)) ++caps;
+    CHECK(caps < 2, "display name '" + shown +
+                        "' is still the raw identifier - add an override to "
+                        "engine/node_names.cpp");
+  }
 }
 
-static void check_attributes(gpx::Node *n) {
+static void check_attributes(gpx::Node *n, const gpx::NodeDef *d) {
+  // A [Planned] node is a named placeholder with no real parameters yet, so
+  // it is exempt from the tooltip rule below - and only from that one.
+  const bool planned = d->description.rfind("[Planned]", 0) == 0;
   std::set<std::string> keys;
   for (const gpx::Attribute &a : n->attrs.items) {
     CHECK(!a.key.empty(), "attribute has a key");
+    // Every parameter explains itself. The tooltip is what the properties
+    // panel shows on hover and what docs/NODES.md prints, so a parameter
+    // without one is undocumented in both places at once. A seed is the one
+    // exception: "the random seed" is not worth anybody's screen space.
+    if (a.type != gpx::AttrType::Seed && !planned)
+      CHECK(!a.tooltip.empty(), "parameter '" + a.key +
+                                    "' has a tooltip - see "
+                                    "scripts/add_tooltip.py");
     CHECK(keys.insert(a.key).second, "attribute key '" + a.key + "' is unique");
     CHECK(!a.label.empty(), "attribute '" + a.key + "' has a label");
     switch (a.type) {
@@ -572,7 +602,7 @@ void test_all_nodes_contract() {
         fail("could not be instantiated");
         continue;
       }
-      check_attributes(n);
+      check_attributes(n, d);
       check_ports(n);
     }
     if (writes_file(d->type)) {

@@ -395,7 +395,7 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    WhiteNoise, "Primitive", "Raw per-cell white noise",
+    WhiteNoise, "Primitive", "Uncorrelated noise, one independent value per cell - grain and dither rather than landform",
     [](Node &n) {
       n.add_out("output");
       add_seed(n.attrs);
@@ -519,7 +519,7 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    Constant, "Primitive", "Constant level",
+    Constant, "Primitive", "One height everywhere - flat ground to build on with displacement, or to see a material against",
     [](Node &n) {
       n.add_out("output");
       add_float(n.attrs, "value", "Value", 0.5f, -1.f, 2.f)

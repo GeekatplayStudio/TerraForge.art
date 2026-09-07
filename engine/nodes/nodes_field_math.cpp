@@ -39,11 +39,14 @@ REGISTER_NODE(
       add_choice(n.attrs, "op", "Operation",
                  {"Add", "Subtract", "Multiply", "Divide", "Minimum", "Maximum",
                   "Power", "Modulo", "Absolute difference"},
-                 0);
+                 0)
+          .tooltip = "The arithmetic applied to the two inputs.";
       add_float(n.attrs, "a_default", "A (when unconnected)", 0.f, -100.f, 100.f,
-                "Defaults");
+                "Defaults")
+          .tooltip = "The first value, when nothing is wired to it.";
       add_float(n.attrs, "b_default", "B (when unconnected)", 1.f, -100.f, 100.f,
-                "Defaults");
+                "Defaults")
+          .tooltip = "The second value, when nothing is wired to it.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float a = self.in_number("a", ctx, self.attrs.get_f("a_default", 0.f));
@@ -72,11 +75,14 @@ REGISTER_NODE(
                  {"Sine", "Cosine", "Tangent", "Arc sine", "Arc cosine",
                   "Arc tangent", "Hyperbolic sine", "Hyperbolic cosine",
                   "Hyperbolic tangent"},
-                 0);
+                 0)
+          .tooltip = "The trigonometric function applied.";
       add_bool(n.attrs, "degrees", "Work in degrees", false)
           .tooltip = "Interpret the input (and produce the output of the\n"
                      "inverse functions) in degrees rather than radians.";
-      add_float(n.attrs, "scale", "Input scale", 1.f, -32.f, 32.f);
+      add_float(n.attrs, "scale", "Input scale", 1.f, -32.f, 32.f)
+          .tooltip = "Multiplies the input before the function, which sets how\n"
+                     "many cycles it goes through across the terrain.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float x = self.in_number("in", ctx, 0.f) * self.attrs.get_f("scale", 1.f);
@@ -108,9 +114,14 @@ REGISTER_NODE(
     FieldRemap, "Field Math", "Rescales a value from one range into another",
     [](Node &n) {
       n.add_field_in("in", FieldType::Number, true);
-      add_range(n.attrs, "from", "Input range", -1.f, 1.f, -100.f, 100.f);
-      add_range(n.attrs, "to", "Output range", 0.f, 1.f, -100.f, 100.f);
-      add_bool(n.attrs, "clamp", "Clamp to the output range", true);
+      add_range(n.attrs, "from", "Input range", -1.f, 1.f, -100.f, 100.f)
+          .tooltip = "The span of input values that is rescaled.";
+      add_range(n.attrs, "to", "Output range", 0.f, 1.f, -100.f, 100.f)
+          .tooltip = "The span they are rescaled into. Reversing it turns the\n"
+                     "value upside down.";
+      add_bool(n.attrs, "clamp", "Clamp to the output range", true)
+          .tooltip = "Holds the result inside the output range instead of\n"
+                     "letting it run past the ends.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float x = self.in_number("in", ctx, 0.f);
@@ -132,9 +143,13 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_field_in("in", FieldType::Number, true);
       add_choice(n.attrs, "shape", "Shape",
-                 {"Gain (gamma)", "Smoothstep", "Step", "Bias", "Invert"}, 0);
-      add_float(n.attrs, "amount", "Amount", 1.f, 0.05f, 8.f);
-      add_range(n.attrs, "edges", "Edges", 0.f, 1.f, -4.f, 4.f);
+                 {"Gain (gamma)", "Smoothstep", "Step", "Bias", "Invert"}, 0)
+          .tooltip = "The curve applied to the value.";
+      add_float(n.attrs, "amount", "Amount", 1.f, 0.05f, 8.f)
+          .tooltip = "How strongly the curve bends.";
+      add_range(n.attrs, "edges", "Edges", 0.f, 1.f, -4.f, 4.f)
+          .tooltip = "The two values the curve runs between, for the step and\n"
+                     "smoothstep shapes.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float x = self.in_number("in", ctx, 0.f);
@@ -167,7 +182,9 @@ REGISTER_NODE(
       n.add_field_in("a", FieldType::Number, true);
       n.add_field_in("b", FieldType::Number, true);
       n.add_field_in("factor", FieldType::Number, true);
-      add_float(n.attrs, "amount", "Blend (when unconnected)", 0.5f, 0.f, 1.f);
+      add_float(n.attrs, "amount", "Blend (when unconnected)", 0.5f, 0.f, 1.f)
+          .tooltip = "How far between the two inputs the result sits, when\n"
+                     "nothing is wired to the factor.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float a = self.in_number("a", ctx, 0.f);

@@ -81,8 +81,11 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("path", DataType::Points);
       n.add_out("path", DataType::Points);
-      add_float(n.attrs, "spacing", "Spacing", 0.02f, 0.002f, 0.5f, "Path");
-      add_int(n.attrs, "smooth", "Smoothing", 0, 0, 6, "Path");
+      add_float(n.attrs, "spacing", "Spacing", 0.02f, 0.002f, 0.5f, "Path")
+          .tooltip = "How far apart the resampled points are, as a fraction of\n"
+                     "the tile.";
+      add_int(n.attrs, "smooth", "Smoothing", 0, 0, 6, "Path")
+          .tooltip = "How much the path is smoothed as it is resampled.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("path");
@@ -114,8 +117,12 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("path", DataType::Points);
       n.add_out("path", DataType::Points);
-      add_int(n.attrs, "iterations", "Iterations", 4, 1, 8, "Fractal");
-      add_float(n.attrs, "amplitude", "Amplitude", 0.4f, 0.f, 1.f, "Fractal");
+      add_int(n.attrs, "iterations", "Iterations", 4, 1, 8, "Fractal")
+          .tooltip = "How many times each segment is split and its midpoint\n"
+                     "pushed aside. Each pass doubles the detail, so a few turn\n"
+                     "a straight line into a natural wander.";
+      add_float(n.attrs, "amplitude", "Amplitude", 0.4f, 0.f, 1.f, "Fractal")
+          .tooltip = "How far the midpoints are pushed.";
       add_seed(n.attrs, "seed", "Seed", 0, "Fractal");
     },
     [](Node &n) {
@@ -158,8 +165,12 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("path", DataType::Points);
       n.add_out("path", DataType::Points);
-      add_int(n.attrs, "samples", "Samples per segment", 8, 2, 64, "Spline");
-      add_float(n.attrs, "tension", "Tension", 0.5f, 0.f, 1.f, "Spline");
+      add_int(n.attrs, "samples", "Samples per segment", 8, 2, 64, "Spline")
+          .tooltip = "How many points are generated along each original segment.\n"
+                     "More gives a smoother curve and a heavier cloud.";
+      add_float(n.attrs, "tension", "Tension", 0.5f, 0.f, 1.f, "Spline")
+          .tooltip = "How tightly the curve hugs its control points. Low sweeps\n"
+                     "wide between them; high pulls it close and can overshoot.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("path");

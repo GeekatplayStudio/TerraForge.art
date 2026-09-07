@@ -119,10 +119,16 @@ REGISTER_NODE(
           .tooltip = "Offset moves the evaluation point by the vector.\n"
                      "Replace evaluates at the vector itself, which is how you\n"
                      "project one space onto another.";
-      add_float(n.attrs, "strength", "Strength", 1.f, -32.f, 32.f);
-      add_float(n.attrs, "scale_x", "Scale X", 1.f, -8.f, 8.f, "Per axis");
-      add_float(n.attrs, "scale_y", "Scale Y", 1.f, -8.f, 8.f, "Per axis");
-      add_float(n.attrs, "scale_z", "Scale Z", 1.f, -8.f, 8.f, "Per axis");
+      add_float(n.attrs, "strength", "Strength", 1.f, -32.f, 32.f)
+          .tooltip = "How far the sampling point is moved. This warps where\n"
+                     "another field is read rather than what it returns, which\n"
+                     "is what turns a regular pattern into a flowing one.";
+      add_float(n.attrs, "scale_x", "Scale X", 1.f, -8.f, 8.f, "Per axis")
+          .tooltip = "How much of the displacement applies along X.";
+      add_float(n.attrs, "scale_y", "Scale Y", 1.f, -8.f, 8.f, "Per axis")
+          .tooltip = "How much applies along Y.";
+      add_float(n.attrs, "scale_z", "Scale Z", 1.f, -8.f, 8.f, "Per axis")
+          .tooltip = "How much applies along Z.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float off[3];
@@ -167,14 +173,18 @@ REGISTER_NODE(
                  {"Real units", "Relative to a size"}, 0)
           .tooltip = "Real units keep the displacement fixed when the scene is\n"
                      "rescaled; relative keeps its proportion.";
-      add_float(n.attrs, "depth", "Depth", 1.f, -1000.f, 1000.f);
+      add_float(n.attrs, "depth", "Depth", 1.f, -1000.f, 1000.f)
+          .tooltip = "How far the value moves the surface. Negative presses in.";
       add_float(n.attrs, "relative_size", "Reference size", 1.f, 0.001f, 1000.f)
           .tooltip = "The size 'relative' depth is a fraction of.";
       add_float(n.attrs, "smoothing", "Smoothing", 0.f, 0.f, 1.f, "Quality")
           .tooltip = "Softens the displacement by sampling around each point.\n"
                      "Costs four extra evaluations when above zero.";
       add_float(n.attrs, "smooth_radius", "Smoothing radius", 0.01f, 0.0001f, 1.f,
-                "Quality");
+                "Quality")
+          .tooltip = "How far apart the surface is sampled when working out\n"
+                     "which way it faces. Too small reads noise as shape; too\n"
+                     "large flattens real detail.";
       add_int(n.attrs, "quality", "Quality boost", 0, 0, 6, "Quality")
           .tooltip = "Extra octaves of detail for this displacement only, beyond\n"
                      "the caller's budget. Use when relief needs to be finer\n"
@@ -182,9 +192,14 @@ REGISTER_NODE(
       add_bool(n.attrs, "outwards_only", "Displace outwards only", false)
           .tooltip = "Discards negative displacement, so the surface can only\n"
                      "be pushed out and never dented inward.";
-      add_float(n.attrs, "dir_x", "Direction X", 0.f, -1.f, 1.f, "Fixed direction");
-      add_float(n.attrs, "dir_y", "Direction Y", 1.f, -1.f, 1.f, "Fixed direction");
-      add_float(n.attrs, "dir_z", "Direction Z", 0.f, -1.f, 1.f, "Fixed direction");
+      add_float(n.attrs, "dir_x", "Direction X", 0.f, -1.f, 1.f, "Fixed direction")
+          .tooltip = "The X part of the direction the surface is pushed, when a\n"
+                     "fixed direction is chosen rather than the normal.";
+      add_float(n.attrs, "dir_y", "Direction Y", 1.f, -1.f, 1.f, "Fixed direction")
+          .tooltip = "The Y part of that direction. Straight up is the usual\n"
+                     "choice for terrain.";
+      add_float(n.attrs, "dir_z", "Direction Z", 0.f, -1.f, 1.f, "Fixed direction")
+          .tooltip = "The Z part of that direction.";
 
       // The displaced height — what a terrain graph reads.
       n.add_field_out("out", FieldType::Number, [](const Node &self,
@@ -221,8 +236,14 @@ REGISTER_NODE(
           .tooltip = "How far apart the samples are taken. Too small and the\n"
                      "normal is noise; too large and it smooths real detail\n"
                      "away. Roughly one pixel of the scale you care about.";
-      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 64.f);
-      add_bool(n.attrs, "flip", "Flip", false);
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.f, 64.f)
+          .tooltip = "How strongly the recovered normal tilts. This node exists\n"
+                     "so that nodes after a displacement see the surface it\n"
+                     "actually made rather than the flat plane it started as -\n"
+                     "which is what makes a slope-keyed material follow the\n"
+                     "displaced rock.";
+      add_bool(n.attrs, "flip", "Flip", false)
+          .tooltip = "Turns the recovered normal the other way up.";
       n.add_field_out("normal", FieldType::Vector, [](const Node &self,
                                                       const FieldContext &ctx) {
         float e = std::max(self.attrs.get_f("epsilon", 0.01f), 1e-6f);
@@ -272,10 +293,17 @@ REGISTER_NODE(
     "Texture coordinates for this point — the input to any mapped texture",
     [](Node &n) {
       add_choice(n.attrs, "plane", "Projection",
-                 {"Top down (XZ)", "Front (XY)", "Side (ZY)"}, 0);
-      add_vec2(n.attrs, "scale", "Scale", 1.f, 1.f, -64.f, 64.f);
-      add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -64.f, 64.f);
-      add_float(n.attrs, "angle", "Rotation °", 0.f, -180.f, 180.f);
+                 {"Top down (XZ)", "Front (XY)", "Side (ZY)"}, 0)
+          .tooltip = "Which way the coordinates are projected. Top down suits\n"
+                     "ground; the other two suit walls and cliff faces, where a\n"
+                     "top-down projection smears.";
+      add_vec2(n.attrs, "scale", "Scale", 1.f, 1.f, -64.f, 64.f)
+          .tooltip = "How many times the texture repeats across and along.";
+      add_vec2(n.attrs, "offset", "Offset", 0.f, 0.f, -64.f, 64.f)
+          .tooltip = "Slides the coordinates, which moves the texture on the\n"
+                     "surface.";
+      add_float(n.attrs, "angle", "Rotation °", 0.f, -180.f, 180.f)
+          .tooltip = "Turns the coordinates, which rotates the texture.";
       n.add_field_out("out", FieldType::TexCoord, [](const Node &self,
                                                      const FieldContext &ctx) {
         float u, v;
@@ -306,11 +334,15 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_field_in("inside", FieldType::Number, true);
       n.add_field_in("outside", FieldType::Number, true);
-      add_choice(n.attrs, "shape", "Shape", {"Sphere", "Box"}, 0);
+      add_choice(n.attrs, "shape", "Shape", {"Sphere", "Box"}, 0)
+          .tooltip = "The region the inner field is confined to.";
       add_vec2(n.attrs, "center", "Centre (X,Z)", 0.f, 0.f, -1000.f, 1000.f,
-               "Region");
-      add_float(n.attrs, "center_y", "Centre Y", 0.f, -1000.f, 1000.f, "Region");
-      add_float(n.attrs, "size", "Size", 1.f, 0.001f, 1000.f, "Region");
+               "Region")
+          .tooltip = "Where that region sits, across and along.";
+      add_float(n.attrs, "center_y", "Centre Y", 0.f, -1000.f, 1000.f, "Region")
+          .tooltip = "The height the region is centred at.";
+      add_float(n.attrs, "size", "Size", 1.f, 0.001f, 1000.f, "Region")
+          .tooltip = "How large the region is.";
       add_float(n.attrs, "fade", "Fade", 0.25f, 0.f, 1.f, "Region")
           .tooltip = "Width of the transition, as a fraction of the size.\n"
                      "Zero gives a hard edge, which will show.";

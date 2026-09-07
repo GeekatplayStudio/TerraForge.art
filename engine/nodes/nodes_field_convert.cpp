@@ -65,10 +65,14 @@ REGISTER_NODE(
       n.add_field_in("g", FieldType::Number, true);
       n.add_field_in("b", FieldType::Number, true);
       n.add_field_in("a", FieldType::Number, true);
-      add_float(n.attrs, "r", "Red (when unconnected)", 0.5f, 0.f, 1.f);
-      add_float(n.attrs, "g", "Green (when unconnected)", 0.5f, 0.f, 1.f);
-      add_float(n.attrs, "b", "Blue (when unconnected)", 0.5f, 0.f, 1.f);
-      add_float(n.attrs, "a", "Alpha (when unconnected)", 1.f, 0.f, 1.f);
+      add_float(n.attrs, "r", "Red (when unconnected)", 0.5f, 0.f, 1.f)
+          .tooltip = "The value used when nothing is wired to this input.";
+      add_float(n.attrs, "g", "Green (when unconnected)", 0.5f, 0.f, 1.f)
+          .tooltip = "The value used when nothing is wired to this input.";
+      add_float(n.attrs, "b", "Blue (when unconnected)", 0.5f, 0.f, 1.f)
+          .tooltip = "The value used when nothing is wired to this input.";
+      add_float(n.attrs, "a", "Alpha (when unconnected)", 1.f, 0.f, 1.f)
+          .tooltip = "The value used when nothing is wired to this input.";
       n.add_field_out("out", FieldType::Color, [](const Node &self,
                                                   const FieldContext &ctx) {
         return FieldValue::color(
@@ -108,9 +112,12 @@ REGISTER_NODE(
       n.add_field_in("x", FieldType::Number, true);
       n.add_field_in("y", FieldType::Number, true);
       n.add_field_in("z", FieldType::Number, true);
-      add_float(n.attrs, "x", "X (when unconnected)", 0.f, -1000.f, 1000.f);
-      add_float(n.attrs, "y", "Y (when unconnected)", 0.f, -1000.f, 1000.f);
-      add_float(n.attrs, "z", "Z (when unconnected)", 0.f, -1000.f, 1000.f);
+      add_float(n.attrs, "x", "X (when unconnected)", 0.f, -1000.f, 1000.f)
+          .tooltip = "The value used when nothing is wired to this input.";
+      add_float(n.attrs, "y", "Y (when unconnected)", 0.f, -1000.f, 1000.f)
+          .tooltip = "The value used when nothing is wired to this input.";
+      add_float(n.attrs, "z", "Z (when unconnected)", 0.f, -1000.f, 1000.f)
+          .tooltip = "The value used when nothing is wired to this input.";
       n.add_field_out("out", FieldType::Vector, [](const Node &self,
                                                    const FieldContext &ctx) {
         return FieldValue::vector(
@@ -145,8 +152,10 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_field_in("u", FieldType::Number, true);
       n.add_field_in("v", FieldType::Number, true);
-      add_float(n.attrs, "u", "U (when unconnected)", 0.f, -64.f, 64.f);
-      add_float(n.attrs, "v", "V (when unconnected)", 0.f, -64.f, 64.f);
+      add_float(n.attrs, "u", "U (when unconnected)", 0.f, -64.f, 64.f)
+          .tooltip = "The value used when nothing is wired to this input.";
+      add_float(n.attrs, "v", "V (when unconnected)", 0.f, -64.f, 64.f)
+          .tooltip = "The value used when nothing is wired to this input.";
       n.add_field_out("out", FieldType::TexCoord, [](const Node &self,
                                                      const FieldContext &ctx) {
         return FieldValue::texcoord(
@@ -203,7 +212,9 @@ REGISTER_NODE(
     "Any value as a colour: grey from a number, RGB from a vector, with an alpha",
     [](Node &n) {
       n.add_field_in("in", FieldType::Color, true);
-      add_float(n.attrs, "alpha", "Alpha (non-colour inputs)", 1.f, 0.f, 1.f);
+      add_float(n.attrs, "alpha", "Alpha (non-colour inputs)", 1.f, 0.f, 1.f)
+          .tooltip = "The alpha given to a value that has no colour of its own -\n"
+                     "a number or a vector.";
       add_bool(n.attrs, "signed_vector", "Vector is -1..1 (remap to 0..1)", true)
           .tooltip = "A direction or normal spans -1..1; on it maps that range\n"
                      "onto 0..1 the way a normal map does.";
@@ -231,7 +242,9 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_field_in("in", FieldType::Vector, true);
       add_choice(n.attrs, "plane", "Texture coordinates lie on",
-                 {"XZ (ground)", "XY (front)", "ZY (side)"}, 0);
+                 {"XZ (ground)", "XY (front)", "ZY (side)"}, 0)
+          .tooltip = "Which plane the texture coordinates are treated as lying\n"
+                     "on when they are read back as a vector.";
       n.add_field_out("out", FieldType::Vector, [](const Node &self,
                                                    const FieldContext &ctx) {
         FieldValue fv = self.in_field("in", ctx, FieldValue(0.f));
@@ -256,7 +269,10 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_field_in("in", FieldType::TexCoord, true);
       add_choice(n.attrs, "plane", "Project a vector on",
-                 {"XZ (ground)", "XY (front)", "ZY (side)"}, 0);
+                 {"XZ (ground)", "XY (front)", "ZY (side)"}, 0)
+          .tooltip = "Which plane a vector is flattened onto to become texture\n"
+                     "coordinates. Ground is what you want for anything lying on\n"
+                     "the terrain; the other two are for walls and cliffs.";
       n.add_field_out("out", FieldType::TexCoord, [](const Node &self,
                                                      const FieldContext &ctx) {
         FieldValue fv = self.in_field("in", ctx, FieldValue(0.f));

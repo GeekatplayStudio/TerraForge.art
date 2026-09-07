@@ -22,7 +22,9 @@ REGISTER_NODE(
       n.add_in("terrain", DataType::Heightmap, true);
       n.add_in("objects", DataType::Heightmap, true);
       n.add_out("points", DataType::Points);
-      add_bool(n.attrs, "invert_mask", "Invert presence", false, "Density");
+      add_bool(n.attrs, "invert_mask", "Invert presence", false, "Density")
+          .tooltip = "Uses the presence mask the other way round: things are\n"
+                     "placed where it is dark.";
       eco::declare_density(n);
       eco::declare_presence(n);
     },
@@ -45,7 +47,10 @@ REGISTER_NODE(
       n.add_in("below", DataType::Points, true);
       n.add_out("points", DataType::Points);
       eco::declare_interaction(n);
-      add_float(n.attrs, "size_m", "Terrain size (m)", 5000.f, 1.f, 1000000.f, "Interaction", true);
+      add_float(n.attrs, "size_m", "Terrain size (m)", 5000.f, 1.f, 1000000.f, "Interaction", true)
+          .tooltip = "The tile's width in metres, so the distances above mean\n"
+                     "real metres. The studio keeps this in step with the\n"
+                     "project.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("points");
@@ -72,7 +77,10 @@ REGISTER_NODE(
       n.add_in("driver", DataType::Heightmap, true);
       n.add_out("points", DataType::Points);
       eco::declare_transform(n);
-      add_float(n.attrs, "size_m", "Terrain size (m)", 5000.f, 1.f, 1000000.f, "Scaling", true);
+      add_float(n.attrs, "size_m", "Terrain size (m)", 5000.f, 1.f, 1000000.f, "Scaling", true)
+          .tooltip = "The tile's width in metres, so the distances above mean\n"
+                     "real metres. The studio keeps this in step with the\n"
+                     "project.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("points");

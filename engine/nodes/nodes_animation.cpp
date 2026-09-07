@@ -41,11 +41,17 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_field_in("time", FieldType::Number, true);
       add_choice(n.attrs, "shape", "Waveform", {"Sine", "Triangle", "Square", "Sawtooth"},
-                 0);
-      add_float(n.attrs, "frequency", "Frequency (Hz)", 0.5f, 0.001f, 100.f, "", true);
-      add_float(n.attrs, "phase", "Phase", 0.f, 0.f, 1.f);
-      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 1000.f);
-      add_float(n.attrs, "offset", "Offset", 0.f, -1000.f, 1000.f);
+                 0)
+          .tooltip = "The wave the value follows over time.";
+      add_float(n.attrs, "frequency", "Frequency (Hz)", 0.5f, 0.001f, 100.f, "", true)
+          .tooltip = "How many cycles a second.";
+      add_float(n.attrs, "phase", "Phase", 0.f, 0.f, 1.f)
+          .tooltip = "Where in the cycle it starts, as a fraction of one cycle.\n"
+                     "Use it to run two oscillators out of step.";
+      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 1000.f)
+          .tooltip = "How far the value swings either side of the offset.";
+      add_float(n.attrs, "offset", "Offset", 0.f, -1000.f, 1000.f)
+          .tooltip = "The value the wave is centred on.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float t = self.in_number("time", ctx, ctx.time);
@@ -62,9 +68,14 @@ REGISTER_NODE(
     "Speeds, offsets, loops or ping-pongs time before it reaches a graph",
     [](Node &n) {
       n.add_field_in("time", FieldType::Number, true);
-      add_float(n.attrs, "speed", "Speed", 1.f, -100.f, 100.f);
-      add_float(n.attrs, "offset", "Offset (s)", 0.f, -10000.f, 10000.f);
-      add_float(n.attrs, "loop", "Loop length (s, 0 = none)", 0.f, 0.f, 10000.f);
+      add_float(n.attrs, "speed", "Speed", 1.f, -100.f, 100.f)
+          .tooltip = "How fast time runs for everything downstream. Negative\n"
+                     "runs it backwards.";
+      add_float(n.attrs, "offset", "Offset (s)", 0.f, -10000.f, 10000.f)
+          .tooltip = "Shifts time before it reaches the graph, so a downstream\n"
+                     "animation starts earlier or later without moving its keys.";
+      add_float(n.attrs, "loop", "Loop length (s, 0 = none)", 0.f, 0.f, 10000.f)
+          .tooltip = "The length of time after which it repeats. 0 never loops.";
       add_bool(n.attrs, "pingpong", "Ping-pong", false).tooltip =
           "With a loop length: run forward then backward instead of jumping.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
@@ -91,17 +102,31 @@ REGISTER_NODE(
     AnimationSequence, "Animation",
     "The shot: frame range, frame rate, output size and folder for the sequence renderer",
     [](Node &n) {
-      add_float(n.attrs, "start", "Start (s)", 0.f, 0.f, 100000.f, "Range");
-      add_float(n.attrs, "end", "End (s)", 10.f, 0.f, 100000.f, "Range");
-      add_float(n.attrs, "fps", "Frames per second", 30.f, 1.f, 240.f, "Range");
-      add_int(n.attrs, "width", "Width", 1280, 64, 8192, "Output");
-      add_int(n.attrs, "height", "Height", 720, 64, 8192, "Output");
-      add_text(n.attrs, "dir", "Output folder", "sequence", "Output");
-      add_bool(n.attrs, "sun_sweep", "Sweep the sun", false, "Day cycle");
-      add_float(n.attrs, "sun_from_az", "Sun from: azimuth °", 90.f, 0.f, 360.f, "Day cycle");
-      add_float(n.attrs, "sun_from_alt", "Sun from: altitude °", 10.f, -10.f, 90.f, "Day cycle");
-      add_float(n.attrs, "sun_to_az", "Sun to: azimuth °", 270.f, 0.f, 360.f, "Day cycle");
-      add_float(n.attrs, "sun_to_alt", "Sun to: altitude °", 10.f, -10.f, 90.f, "Day cycle");
+      add_float(n.attrs, "start", "Start (s)", 0.f, 0.f, 100000.f, "Range")
+          .tooltip = "When the sequence begins, in seconds.";
+      add_float(n.attrs, "end", "End (s)", 10.f, 0.f, 100000.f, "Range")
+          .tooltip = "When it ends.";
+      add_float(n.attrs, "fps", "Frames per second", 30.f, 1.f, 240.f, "Range")
+          .tooltip = "Frames rendered per second of the sequence. This decides\n"
+                     "how many frames the range above becomes.";
+      add_int(n.attrs, "width", "Width", 1280, 64, 8192, "Output")
+          .tooltip = "The width of each rendered frame, in pixels.";
+      add_int(n.attrs, "height", "Height", 720, 64, 8192, "Output")
+          .tooltip = "The height of each rendered frame, in pixels.";
+      add_text(n.attrs, "dir", "Output folder", "sequence", "Output")
+          .tooltip = "The folder the numbered frames are written into.";
+      add_bool(n.attrs, "sun_sweep", "Sweep the sun", false, "Day cycle")
+          .tooltip = "Moves the sun across the sequence, from the first pair of\n"
+                     "angles below to the second. The quickest way to a day-\n"
+                     "cycle without keyframing anything.";
+      add_float(n.attrs, "sun_from_az", "Sun from: azimuth °", 90.f, 0.f, 360.f, "Day cycle")
+          .tooltip = "Which way the sun lies at the start of the sequence.";
+      add_float(n.attrs, "sun_from_alt", "Sun from: altitude °", 10.f, -10.f, 90.f, "Day cycle")
+          .tooltip = "How high the sun stands at the start.";
+      add_float(n.attrs, "sun_to_az", "Sun to: azimuth °", 270.f, 0.f, 360.f, "Day cycle")
+          .tooltip = "Which way the sun lies at the end.";
+      add_float(n.attrs, "sun_to_alt", "Sun to: altitude °", 10.f, -10.f, 90.f, "Day cycle")
+          .tooltip = "How high the sun stands at the end.";
     },
     [](Node &) {})
 

@@ -22,18 +22,29 @@ REGISTER_NODE(
       n.add_out("heightmap");
       n.add_out("albedo", DataType::Texture);
       add_choice(n.attrs, "combine", "Combine layers", {"Add", "Max (merge)", "Min"},
-                 0, "Combine");
+                 0, "Combine")
+          .tooltip = "How the extra height layers are folded into the main one.\n"
+                     "Max keeps both shapes where they overlap; add sums them\n"
+                     "and can double the relief.";
       add_float(n.attrs, "layer_strength", "Layer strength", 1.f, 0.f, 2.f,
-                "Combine");
+                "Combine")
+          .tooltip = "How strongly the extra layers count.";
       add_float(n.attrs, "zero_edges", "Zero edges width", 0.12f, 0.f, 0.5f,
                 "Edges")
           .tooltip = "Fades terrain to zero at the borders — the final\n"
                      "island/tile edge treatment.";
       add_choice(n.attrs, "edge_curve", "Edge curve",
-                 {"Smooth", "Linear", "Steep (cliff)"}, 0, "Edges");
+                 {"Smooth", "Linear", "Steep (cliff)"}, 0, "Edges")
+          .tooltip = "The profile the terrain takes as it falls to the border.\n"
+                     "Steep leaves a cliff at the tile edge; smooth eases it\n"
+                     "out.";
       add_range(n.attrs, "height_range", "Final height range", 0.f, 1.f, -1.f, 2.f,
-                "Output");
-      add_bool(n.attrs, "remap", "Remap to range", true, "Output");
+                "Output")
+          .tooltip = "The low and high the finished terrain is rescaled into.";
+      add_bool(n.attrs, "remap", "Remap to range", true, "Output")
+          .tooltip = "Rescales the result into the range above. Off keeps the\n"
+                     "raw values, which matters when the numbers themselves mean\n"
+                     "something.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "heightmap");
@@ -86,10 +97,18 @@ REGISTER_NODE(
       n.add_in("points", DataType::Points);
       n.add_in("terrain", DataType::Heightmap, true);
       n.add_out("points", DataType::Points); // pass-through
-      add_filename(n.attrs, "path", "File", "points.csv");
-      add_choice(n.attrs, "format", "Format", {"CSV (x,y,z,value)", "PLY"}, 0);
-      add_float(n.attrs, "height_scale", "Height scale", 1.f, 0.01f, 100.f);
-      add_bool(n.attrs, "auto_export", "Export on every compute", false);
+      add_filename(n.attrs, "path", "File", "points.csv")
+          .tooltip = "Where the file is written.";
+      add_choice(n.attrs, "format", "Format", {"CSV (x,y,z,value)", "PLY"}, 0)
+          .tooltip = "CSV is readable anywhere; PLY carries the points as real\n"
+                     "geometry.";
+      add_float(n.attrs, "height_scale", "Height scale", 1.f, 0.01f, 100.f)
+          .tooltip = "How the stored heights are scaled on the way out, so the\n"
+                     "cloud lands at the right size in whatever reads it.";
+      add_bool(n.attrs, "auto_export", "Export on every compute", false)
+          .tooltip = "Writes the file every time the graph recomputes.\n"
+                     "Convenient while iterating, and a great deal of disk\n"
+                     "traffic if left on.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("points");
@@ -174,9 +193,16 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output"); // pass-through so chains continue
-      add_filename(n.attrs, "path", "File", "heightmap.png");
-      add_choice(n.attrs, "format", "Format", {"PNG 16-bit", "RAW float32"}, 0);
-      add_bool(n.attrs, "auto_export", "Export on every compute", false);
+      add_filename(n.attrs, "path", "File", "heightmap.png")
+          .tooltip = "Where the file is written.";
+      add_choice(n.attrs, "format", "Format", {"PNG 16-bit", "RAW float32"}, 0)
+          .tooltip = "PNG keeps 16 bits per sample, which is enough for terrain\n"
+                     "in most cases; RAW float32 keeps the full precision and is\n"
+                     "what another tool should read.";
+      add_bool(n.attrs, "auto_export", "Export on every compute", false)
+          .tooltip = "Writes the file every time the graph recomputes.\n"
+                     "Convenient while iterating, and a great deal of disk\n"
+                     "traffic if left on.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -203,11 +229,15 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    ExportTexture, "Export", "Write albedo/texture PNG",
+    ExportTexture, "Export", "Writes a texture out as a PNG, so a material built here can be used elsewhere",
     [](Node &n) {
       n.add_in("texture", DataType::Texture);
-      add_filename(n.attrs, "path", "File", "albedo.png");
-      add_bool(n.attrs, "auto_export", "Export on every compute", false);
+      add_filename(n.attrs, "path", "File", "albedo.png")
+          .tooltip = "Where the file is written.";
+      add_bool(n.attrs, "auto_export", "Export on every compute", false)
+          .tooltip = "Writes the file every time the graph recomputes.\n"
+                     "Convenient while iterating, and a great deal of disk\n"
+                     "traffic if left on.";
     },
     [](Node &n) {
       const TextureRGBA *in = n.in_tex("texture");
@@ -223,13 +253,22 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    ExportMesh, "Export", "Write OBJ mesh",
+    ExportMesh, "Export", "Writes the terrain as an OBJ mesh, for another application to open",
     [](Node &n) {
       n.add_in("input");
-      add_filename(n.attrs, "path", "File", "terrain.obj");
-      add_int(n.attrs, "max_verts_side", "Mesh resolution", 256, 32, 1024);
-      add_float(n.attrs, "height_scale", "Height scale", 0.25f, 0.01f, 2.f);
-      add_bool(n.attrs, "auto_export", "Export on every compute", false);
+      add_filename(n.attrs, "path", "File", "terrain.obj")
+          .tooltip = "Where the file is written.";
+      add_int(n.attrs, "max_verts_side", "Mesh resolution", 256, 32, 1024)
+          .tooltip = "How many vertices the exported mesh has along each side.\n"
+                     "This is the resolution of the exported geometry, not of\n"
+                     "the graph.";
+      add_float(n.attrs, "height_scale", "Height scale", 0.25f, 0.01f, 2.f)
+          .tooltip = "How the terrain's heights are scaled into the mesh, so it\n"
+                     "lands at the right proportions elsewhere.";
+      add_bool(n.attrs, "auto_export", "Export on every compute", false)
+          .tooltip = "Writes the file every time the graph recomputes.\n"
+                     "Convenient while iterating, and a great deal of disk\n"
+                     "traffic if left on.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

@@ -275,8 +275,12 @@ REGISTER_NODE(
       n.add_out("output");
       add_int(n.attrs, "steps", "Steps", 24, 1, 200, "Flow")
           .tooltip = "How many cells downstream each value is carried.";
-      add_float(n.attrs, "fade", "Fade per step", 0.02f, 0.f, 0.2f, "Flow");
-      add_bool(n.attrs, "fill_pits", "Route through pits", true, "Flow");
+      add_float(n.attrs, "fade", "Fade per step", 0.02f, 0.f, 0.2f, "Flow")
+          .tooltip = "How much the dragged value weakens at each step\n"
+                     "downstream.";
+      add_bool(n.attrs, "fill_pits", "Route through pits", true, "Flow")
+          .tooltip = "Routes flow through hollows instead of stopping in them,\n"
+                     "so a mask carries all the way to the map edge.";
     },
     [](Node &n) {
       // The mask rides the terrain's D8 receivers - sediment streaks, scree

@@ -120,7 +120,9 @@ REGISTER_NODE(
       add_int(n.attrs, "smooth", "Smoothing", 3, 0, 6, "Shape")
           .tooltip = "Chaikin corner-cutting passes: 0 keeps the polyline's\n"
                      "corners, a few make a flowing curve.";
-      add_bool(n.attrs, "closed", "Closed loop", false, "Shape");
+      add_bool(n.attrs, "closed", "Closed loop", false, "Shape")
+          .tooltip = "Joins the last point back to the first, so the path is a\n"
+                     "loop.";
       add_float(n.attrs, "width", "Width", 0.02f, 0.001f, 0.3f, "Profile")
           .tooltip = "Half the carve reaches this far from the line, as a\n"
                      "fraction of the tile.";
@@ -279,13 +281,18 @@ REGISTER_NODE(
       n.add_in("cost", DataType::Heightmap, true);
       n.add_out("path", DataType::Points);
       n.add_out("path_mask");
-      add_vec2(n.attrs, "start", "Start", 0.05f, 0.5f, 0.f, 1.f, "Route");
-      add_vec2(n.attrs, "end", "End", 0.95f, 0.5f, 0.f, 1.f, "Route");
+      add_vec2(n.attrs, "start", "Start", 0.05f, 0.5f, 0.f, 1.f, "Route")
+          .tooltip = "Where the route begins, as a fraction of the tile.";
+      add_vec2(n.attrs, "end", "End", 0.95f, 0.5f, 0.f, 1.f, "Route")
+          .tooltip = "Where it ends.";
       add_float(n.attrs, "slope_penalty", "Slope penalty", 40.f, 0.f, 400.f,
                 "Route")
           .tooltip = "How much climbing costs against walking flat. High\n"
                      "values contour around hills the way real roads do.";
-      add_int(n.attrs, "simplify", "Keep every Nth point", 4, 1, 32, "Route");
+      add_int(n.attrs, "simplify", "Keep every Nth point", 4, 1, 32, "Route")
+          .tooltip = "Keeps only every Nth point of the found route. The search\n"
+                     "returns a point per cell, which is far more than a road or\n"
+                     "a river needs.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -367,15 +374,20 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    PathSDF, "Path", "Distance to a path",
+    PathSDF, "Path", "How far every point lies from a path, as a field to mask or displace with",
     [](Node &n) {
       n.add_in("path", DataType::Points);
       n.add_out("distance");
       n.add_out("mask");
-      add_float(n.attrs, "reach", "Reach", 0.1f, 0.005f, 1.f, "Distance");
-      add_bool(n.attrs, "invert", "Invert", false, "Distance");
-      add_bool(n.attrs, "closed", "Closed loop", false, "Distance");
-      add_int(n.attrs, "smooth", "Smoothing", 0, 0, 6, "Distance");
+      add_float(n.attrs, "reach", "Reach", 0.1f, 0.005f, 1.f, "Distance")
+          .tooltip = "How far from the path its influence extends.";
+      add_bool(n.attrs, "invert", "Invert", false, "Distance")
+          .tooltip = "Measures the distance the other way, so the field is high\n"
+                     "on the path rather than away from it.";
+      add_bool(n.attrs, "closed", "Closed loop", false, "Distance")
+          .tooltip = "Treats the path as a loop.";
+      add_int(n.attrs, "smooth", "Smoothing", 0, 0, 6, "Distance")
+          .tooltip = "How much the distance field is smoothed.";
     },
     [](Node &n) {
       const PointCloud *in = n.in_points("path");

@@ -17,8 +17,11 @@ REGISTER_NODE(
                     {0.35f, 0.62f, 0.55f, 0.35f, 1},
                     {0.55f, 0.30f, 0.38f, 0.15f, 1},
                     {0.75f, 0.45f, 0.42f, 0.40f, 1},
-                    {1.0f, 0.95f, 0.95f, 0.98f, 1}});
-      add_bool(n.attrs, "hillshade", "Multiply hillshade", true);
+                    {1.0f, 0.95f, 0.95f, 0.98f, 1}})
+          .tooltip = "The colour ramp height is looked up in.";
+      add_bool(n.attrs, "hillshade", "Multiply hillshade", true)
+          .tooltip = "Multiplies the colour by a shaded relief, so the form\n"
+                     "reads even where the colours are flat.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -60,16 +63,31 @@ REGISTER_NODE(
       n.add_in("flow", DataType::Heightmap, true);
       n.add_out("texture", DataType::Texture);
       add_seed(n.attrs);
-      add_float(n.attrs, "snow_line", "Snow line", 0.75f, 0.f, 1.f, "Layers");
-      add_float(n.attrs, "grass_line", "Vegetation ceiling", 0.55f, 0.f, 1.f, "Layers");
-      add_float(n.attrs, "rock_slope", "Rock slope threshold", 0.45f, 0.05f, 1.f, "Layers");
-      add_float(n.attrs, "snow_slope", "Snow max slope", 0.55f, 0.05f, 1.f, "Layers");
-      add_float(n.attrs, "beach_level", "Sand level", 0.06f, 0.f, 0.4f, "Layers");
-      add_float(n.attrs, "breakup", "Noise breakup", 0.5f, 0.f, 1.f, "Detail");
-      add_float(n.attrs, "detail_scale", "Detail scale", 24.f, 2.f, 96.f, "Detail");
-      add_float(n.attrs, "wetness", "Flow darkening", 0.4f, 0.f, 1.f, "Detail");
+      add_float(n.attrs, "snow_line", "Snow line", 0.75f, 0.f, 1.f, "Layers")
+          .tooltip = "The height above which snow lies.";
+      add_float(n.attrs, "grass_line", "Vegetation ceiling", 0.55f, 0.f, 1.f, "Layers")
+          .tooltip = "The height above which vegetation stops.";
+      add_float(n.attrs, "rock_slope", "Rock slope threshold", 0.45f, 0.05f, 1.f, "Layers")
+          .tooltip = "How steep the ground must be before bare rock shows\n"
+                     "through the soil.";
+      add_float(n.attrs, "snow_slope", "Snow max slope", 0.55f, 0.05f, 1.f, "Layers")
+          .tooltip = "How steep the ground may be and still hold snow. Above it\n"
+                     "snow slides off, which is what leaves the black rock faces\n"
+                     "on a white mountain.";
+      add_float(n.attrs, "beach_level", "Sand level", 0.06f, 0.f, 0.4f, "Layers")
+          .tooltip = "The height below which sand appears.";
+      add_float(n.attrs, "breakup", "Noise breakup", 0.5f, 0.f, 1.f, "Detail")
+          .tooltip = "How much noise disturbs the boundaries between the\n"
+                     "surfaces, so they do not read as contour lines.";
+      add_float(n.attrs, "detail_scale", "Detail scale", 24.f, 2.f, 96.f, "Detail")
+          .tooltip = "How fine the surface detail is.";
+      add_float(n.attrs, "wetness", "Flow darkening", 0.4f, 0.f, 1.f, "Detail")
+          .tooltip = "How much the ground darkens where water collects and runs,\n"
+                     "which is one of the strongest cues that a terrain has\n"
+                     "weather.";
       // off by default: the 3D renderer lights and shadows the terrain itself
-      add_bool(n.attrs, "hillshade", "Multiply hillshade", false, "Detail");
+      add_bool(n.attrs, "hillshade", "Multiply hillshade", false, "Detail")
+          .tooltip = "Multiplies the colour by a shaded relief.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -195,7 +213,10 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("texture", DataType::Texture);
-      add_float(n.attrs, "strength", "Strength", 1.f, 0.05f, 8.f);
+      add_float(n.attrs, "strength", "Strength", 1.f, 0.05f, 8.f)
+          .tooltip = "How strongly the height differences tilt the normal. High\n"
+                     "values exaggerate the relief in the shading without moving\n"
+                     "any geometry.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

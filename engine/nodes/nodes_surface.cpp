@@ -252,10 +252,15 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_float(n.attrs, "scale", "Shear scale", 0.15f, 0.02f, 1.f);
-      add_float(n.attrs, "amount", "Shear amount", 0.05f, 0.f, 0.3f);
-      add_float(n.attrs, "folding", "Folding", 0.3f, 0.f, 1.f);
-      add_float(n.attrs, "direction", "Direction °", 0.f, -180.f, 180.f);
+      add_float(n.attrs, "scale", "Shear scale", 0.15f, 0.02f, 1.f)
+          .tooltip = "How large the shear bands are.";
+      add_float(n.attrs, "amount", "Shear amount", 0.05f, 0.f, 0.3f)
+          .tooltip = "How far the rock is displaced along the shear.";
+      add_float(n.attrs, "folding", "Folding", 0.3f, 0.f, 1.f)
+          .tooltip = "How much the sheared rock folds back on itself rather than\n"
+                     "simply sliding.";
+      add_float(n.attrs, "direction", "Direction °", 0.f, -180.f, 180.f)
+          .tooltip = "Which way the shearing acts.";
       add_bool(n.attrs, "self_modulated", "Self modulated", true)
           .tooltip = "Height drives shear strength — bands show on\n"
                      "slopes, flats stay intact.";

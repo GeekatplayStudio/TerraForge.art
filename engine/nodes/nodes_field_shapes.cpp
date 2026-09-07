@@ -88,8 +88,10 @@ REGISTER_NODE(
       add_choice(n.attrs, "mode", "Shape",
                  {"Sine wave", "Square wave", "Triangle wave", "Sawtooth",
                   "Gaussian bump", "Cone", "Band", "Step"},
-                 0);
-      add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -4.f, 4.f, "Placement");
+                 0)
+          .tooltip = "The analytic shape produced.";
+      add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -4.f, 4.f, "Placement")
+          .tooltip = "Where the shape is centred.";
       add_float(n.attrs, "direction", "Direction", 0.f, -180.f, 180.f,
                 "Placement")
           .tooltip = "Which way the waves run, the band lies, or the step\n"
@@ -98,9 +100,12 @@ REGISTER_NODE(
           .tooltip = "Wave repetitions per unit of ground. Waves only.";
       add_float(n.attrs, "width", "Width", 0.25f, 0.001f, 8.f, "Shape")
           .tooltip = "Radius of the bump or cone; thickness of the band.";
-      add_float(n.attrs, "phase", "Phase", 0.f, -2.f, 2.f, "Shape");
-      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Output");
-      add_float(n.attrs, "offset", "Offset", 0.f, -4.f, 4.f, "Output");
+      add_float(n.attrs, "phase", "Phase", 0.f, -2.f, 2.f, "Shape")
+          .tooltip = "Slides a wave along, as a fraction of one cycle.";
+      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Output")
+          .tooltip = "How far the result swings.";
+      add_float(n.attrs, "offset", "Offset", 0.f, -4.f, 4.f, "Output")
+          .tooltip = "Added to the result.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float p[3];

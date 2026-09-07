@@ -31,16 +31,33 @@ REGISTER_NODE(
       add_bool(n.attrs, "active", "Look through it", false, "Camera").tooltip =
           "Makes this the active camera: the perspective views and the\n"
           "render use it.";
-      add_float(n.attrs, "eye_x_m", "Eye X (m)", 2500.f, -100000.f, 100000.f, "Position");
-      add_float(n.attrs, "eye_y_m", "Eye height (m)", 2250.f, -10000.f, 100000.f, "Position");
-      add_float(n.attrs, "eye_z_m", "Eye Z (m)", 8500.f, -100000.f, 100000.f, "Position");
-      add_float(n.attrs, "target_x_m", "Target X (m)", 2500.f, -100000.f, 100000.f, "Aim");
-      add_float(n.attrs, "target_y_m", "Target height (m)", 500.f, -10000.f, 100000.f, "Aim");
-      add_float(n.attrs, "target_z_m", "Target Z (m)", 2500.f, -100000.f, 100000.f, "Aim");
-      add_float(n.attrs, "focal_mm", "Focal length (mm)", 35.f, 8.f, 800.f, "Lens", true);
-      add_float(n.attrs, "aperture", "Aperture f/", 8.f, 1.2f, 22.f, "Lens");
-      add_float(n.attrs, "shutter_inv", "Shutter 1/x s", 125.f, 0.5f, 8000.f, "Exposure", true);
-      add_float(n.attrs, "iso", "ISO", 100.f, 25.f, 25600.f, "Exposure", true);
+      add_float(n.attrs, "eye_x_m", "Eye X (m)", 2500.f, -100000.f, 100000.f, "Position")
+          .tooltip = "Where the camera stands, east-west, in metres.";
+      add_float(n.attrs, "eye_y_m", "Eye height (m)", 2250.f, -10000.f, 100000.f, "Position")
+          .tooltip = "How high the camera stands, in metres.";
+      add_float(n.attrs, "eye_z_m", "Eye Z (m)", 8500.f, -100000.f, 100000.f, "Position")
+          .tooltip = "Where the camera stands, north-south, in metres.";
+      add_float(n.attrs, "target_x_m", "Target X (m)", 2500.f, -100000.f, 100000.f, "Aim")
+          .tooltip = "What the camera looks at, east-west, in metres.";
+      add_float(n.attrs, "target_y_m", "Target height (m)", 500.f, -10000.f, 100000.f, "Aim")
+          .tooltip = "The height the camera looks at, in metres.";
+      add_float(n.attrs, "target_z_m", "Target Z (m)", 2500.f, -100000.f, 100000.f, "Aim")
+          .tooltip = "What the camera looks at, north-south, in metres.";
+      add_float(n.attrs, "focal_mm", "Focal length (mm)", 35.f, 8.f, 800.f, "Lens", true)
+          .tooltip = "The lens, in millimetres on this sensor. Short is wide and\n"
+                     "exaggerates depth; long flattens it and pulls the\n"
+                     "background forward. With the optical simulation on, this\n"
+                     "also sets how much the lens distorts.";
+      add_float(n.attrs, "aperture", "Aperture f/", 8.f, 1.2f, 22.f, "Lens")
+          .tooltip = "The f-number. It sets the depth of field and, with the\n"
+                     "shutter and ISO, the exposure - and it is what decides how\n"
+                     "much the corners fall off.";
+      add_float(n.attrs, "shutter_inv", "Shutter 1/x s", 125.f, 0.5f, 8000.f, "Exposure", true)
+          .tooltip = "The shutter speed, as 1/x seconds. Slower is brighter and\n"
+                     "smears more of the camera's own movement into the frame.";
+      add_float(n.attrs, "iso", "ISO", 100.f, 25.f, 25600.f, "Exposure", true)
+          .tooltip = "The sensor's sensitivity. Higher is brighter for the same\n"
+                     "aperture and shutter.";
       add_int(n.attrs, "film", "Film stock", 0, 0, 7, "Exposure").tooltip =
           "Index into the film stock list (see the Camera properties).";
     },
@@ -52,7 +69,9 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("path", DataType::Points);
       add_float(n.attrs, "height_m", "Height above ground (m)", 400.f, 0.f, 50000.f,
-                "Flight", true);
+                "Flight", true)
+          .tooltip = "How far above the ground the camera flies, in metres. The\n"
+                     "path gives the route; this gives the altitude.";
       add_bool(n.attrs, "enabled", "Ride the path", true, "Flight").tooltip =
           "When on, the sequence renderer moves the active camera along the\n"
           "connected path over the length of the animation.";

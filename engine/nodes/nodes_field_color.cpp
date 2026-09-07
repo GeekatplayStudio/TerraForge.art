@@ -41,10 +41,15 @@ REGISTER_NODE(
       n.add_field_in("s", FieldType::Number, true);
       n.add_field_in("v", FieldType::Number, true);
       n.add_field_in("a", FieldType::Number, true);
-      add_float(n.attrs, "h", "Hue (when unconnected)", 0.1f, 0.f, 1.f);
-      add_float(n.attrs, "s", "Saturation (when unconnected)", 0.4f, 0.f, 1.f);
-      add_float(n.attrs, "v", "Value (when unconnected)", 0.6f, 0.f, 1.f);
-      add_float(n.attrs, "a", "Alpha (when unconnected)", 1.f, 0.f, 1.f);
+      add_float(n.attrs, "h", "Hue (when unconnected)", 0.1f, 0.f, 1.f)
+          .tooltip = "The hue used when nothing is wired to it, 0..1 around the\n"
+                     "wheel.";
+      add_float(n.attrs, "s", "Saturation (when unconnected)", 0.4f, 0.f, 1.f)
+          .tooltip = "The saturation used when nothing is wired to it.";
+      add_float(n.attrs, "v", "Value (when unconnected)", 0.6f, 0.f, 1.f)
+          .tooltip = "The brightness used when nothing is wired to it.";
+      add_float(n.attrs, "a", "Alpha (when unconnected)", 1.f, 0.f, 1.f)
+          .tooltip = "The alpha used when nothing is wired to it.";
       n.add_field_out("out", FieldType::Color, [](const Node &self,
                                                   const FieldContext &ctx) {
         float hsv[3] = {self.in_number("h", ctx, self.attrs.get_f("h", 0.1f)),
@@ -65,12 +70,18 @@ REGISTER_NODE(
     "Colour correction: hue shift, saturation, contrast, brightness, gamma, invert",
     [](Node &n) {
       n.add_field_in("color", FieldType::Color, true);
-      add_float(n.attrs, "hue", "Hue shift °", 0.f, -180.f, 180.f);
-      add_float(n.attrs, "saturation", "Saturation", 1.f, 0.f, 3.f);
-      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.f, 3.f);
-      add_float(n.attrs, "brightness", "Brightness", 0.f, -1.f, 1.f);
-      add_float(n.attrs, "gamma", "Gamma", 1.f, 0.1f, 5.f);
-      add_bool(n.attrs, "invert", "Invert", false);
+      add_float(n.attrs, "hue", "Hue shift °", 0.f, -180.f, 180.f)
+          .tooltip = "Rotates every colour around the wheel, in degrees.";
+      add_float(n.attrs, "saturation", "Saturation", 1.f, 0.f, 3.f)
+          .tooltip = "How strong the colour is. 0 leaves greyscale.";
+      add_float(n.attrs, "contrast", "Contrast", 1.f, 0.f, 3.f)
+          .tooltip = "Pushes colours away from the middle, or toward it below 1.";
+      add_float(n.attrs, "brightness", "Brightness", 0.f, -1.f, 1.f)
+          .tooltip = "Added to every channel.";
+      add_float(n.attrs, "gamma", "Gamma", 1.f, 0.1f, 5.f)
+          .tooltip = "Bends the midtones without moving black or white.";
+      add_bool(n.attrs, "invert", "Invert", false)
+          .tooltip = "Turns every colour into its opposite.";
       n.add_field_out("out", FieldType::Color, [](const Node &self,
                                                   const FieldContext &ctx) {
         float c[4];

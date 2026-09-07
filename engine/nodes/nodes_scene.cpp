@@ -74,10 +74,12 @@ REGISTER_NODE(
     "A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene",
     [](Node &n) {
       add_choice(n.attrs, "kind", "Shape", {"Cube", "Sphere", "Plane", "Cylinder", "Cone"},
-                 1, "Object");
+                 1, "Object")
+          .tooltip = "Which primitive shape this is.";
       add_text(n.attrs, "object", "Scene object", "", "Object").tooltip =
           "Name in the Objects tree. Empty: the shape's name.";
-      add_color(n.attrs, "color", "Colour", 0.62f, 0.60f, 0.57f, 1.f, "Object");
+      add_color(n.attrs, "color", "Colour", 0.62f, 0.60f, 0.57f, 1.f, "Object")
+          .tooltip = "The object's colour, where no material is assigned to it.";
       add_transform(n, 400.f);
     },
     [](Node &) {})
@@ -86,25 +88,41 @@ REGISTER_NODE(
     Planet, "Scene",
     "A procedural planet: radius, relief, seas, snow, atmosphere and its surface layers",
     [](Node &n) {
-      add_text(n.attrs, "object", "Scene object", "Planet", "Planet");
-      add_float(n.attrs, "radius_m", "Radius (m)", 15000.f, 10.f, 1e8f, "Planet", true);
-      add_float(n.attrs, "relief", "Relief (fraction of radius)", 0.02f, 0.f, 0.3f, "Planet");
+      add_text(n.attrs, "object", "Scene object", "Planet", "Planet")
+          .tooltip = "Which scene object this node drives.";
+      add_float(n.attrs, "radius_m", "Radius (m)", 15000.f, 10.f, 1e8f, "Planet", true)
+          .tooltip = "The planet's radius, in metres. It decides how quickly the\n"
+                     "horizon curves away, which is the whole difference between\n"
+                     "a small moon and an earth.";
+      add_float(n.attrs, "relief", "Relief (fraction of radius)", 0.02f, 0.f, 0.3f, "Planet")
+          .tooltip = "How much height the surface has, as a fraction of the\n"
+                     "radius.";
       add_seed(n.attrs, "seed", "Seed", 1, "Planet");
       add_float(n.attrs, "sea_level", "Sea level", 0.35f, 0.f, 1.f, "Surface").tooltip =
           "Within the relief range; 0 = no ocean.";
       add_float(n.attrs, "snow_line", "Snow line", 0.75f, 0.f, 1.f, "Surface").tooltip =
           "Altitude where snow begins; 1 = none.";
-      add_color(n.attrs, "rock_low", "Lowland rock", 0.38f, 0.34f, 0.30f, 1.f, "Surface");
-      add_color(n.attrs, "rock_high", "Highland rock", 0.55f, 0.51f, 0.47f, 1.f, "Surface");
-      add_color(n.attrs, "water_color", "Ocean", 0.06f, 0.16f, 0.28f, 1.f, "Surface");
-      add_color(n.attrs, "atmo_color", "Atmosphere", 0.45f, 0.62f, 0.90f, 1.f, "Atmosphere");
+      add_color(n.attrs, "rock_low", "Lowland rock", 0.38f, 0.34f, 0.30f, 1.f, "Surface")
+          .tooltip = "The colour of the low ground.";
+      add_color(n.attrs, "rock_high", "Highland rock", 0.55f, 0.51f, 0.47f, 1.f, "Surface")
+          .tooltip = "The colour of the high ground.";
+      add_color(n.attrs, "water_color", "Ocean", 0.06f, 0.16f, 0.28f, 1.f, "Surface")
+          .tooltip = "The colour of the seas.";
+      add_color(n.attrs, "atmo_color", "Atmosphere", 0.45f, 0.62f, 0.90f, 1.f, "Atmosphere")
+          .tooltip = "The colour of the air, seen from outside.";
       add_float(n.attrs, "atmo_density", "Atmosphere density", 0.6f, 0.f, 2.f, "Atmosphere")
           .tooltip = "0 = airless rim.";
-      add_float(n.attrs, "spin", "Spin °", 0.f, -180.f, 180.f, "Atmosphere");
-      add_float(n.attrs, "x_m", "X (m)", 70000.f, -1e7f, 1e7f, "Position");
-      add_float(n.attrs, "y_m", "Height (m)", 17500.f, -1e7f, 1e7f, "Position");
-      add_float(n.attrs, "z_m", "Z (m)", 2500.f, -1e7f, 1e7f, "Position");
-      add_bool(n.attrs, "visible", "Visible", true, "Position");
+      add_float(n.attrs, "spin", "Spin °", 0.f, -180.f, 180.f, "Atmosphere")
+          .tooltip = "How far the planet is turned about its axis, which chooses\n"
+                     "which face is toward the camera.";
+      add_float(n.attrs, "x_m", "X (m)", 70000.f, -1e7f, 1e7f, "Position")
+          .tooltip = "Where the planet sits, east-west, in metres.";
+      add_float(n.attrs, "y_m", "Height (m)", 17500.f, -1e7f, 1e7f, "Position")
+          .tooltip = "How high the planet sits, in metres.";
+      add_float(n.attrs, "z_m", "Z (m)", 2500.f, -1e7f, 1e7f, "Position")
+          .tooltip = "Where the planet sits, north-south, in metres.";
+      add_bool(n.attrs, "visible", "Visible", true, "Position")
+          .tooltip = "Whether the planet is drawn.";
     },
     [](Node &) {})
 
@@ -112,22 +130,30 @@ REGISTER_NODE(
     InfiniteTerrain, "Scene",
     "An endless procedural terrain layer: on the ground plane or shaping a planet",
     [](Node &n) {
-      add_text(n.attrs, "object", "Scene object", "Infinite terrain", "Layer");
+      add_text(n.attrs, "object", "Scene object", "Infinite terrain", "Layer")
+          .tooltip = "Which scene object this node drives.";
       add_text(n.attrs, "planet", "Parent planet", "", "Layer").tooltip =
           "Name of the Planet object this layer shapes. Empty: extends the\n"
           "home ground plane to the horizon.";
       add_seed(n.attrs, "seed", "Seed", 1, "Layer");
       add_choice(n.attrs, "type", "Landscape",
                  {"Rolling hills", "Ridged mountains", "Billow dunes",
-                  "Realistic terrain"}, 1, "Layer");
-      add_float(n.attrs, "frequency", "Feature scale", 3.f, 0.1f, 64.f, "Layer", true);
-      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 4.f, "Layer");
+                  "Realistic terrain"}, 1, "Layer")
+          .tooltip = "The kind of ground that runs to the horizon past the tile.";
+      add_float(n.attrs, "frequency", "Feature scale", 3.f, 0.1f, 64.f, "Layer", true)
+          .tooltip = "How large the surround's features are.";
+      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 4.f, "Layer")
+          .tooltip = "How much relief the surround has. Matching it to the\n"
+                     "tile's own is what makes the join invisible.";
       add_float(n.attrs, "coverage", "Coverage", 1.f, 0.f, 1.f, "Layer").tooltip =
           "Fraction of the surface the layer occupies.";
-      add_float(n.attrs, "mask_scale", "Region size", 1.5f, 0.1f, 10.f, "Layer");
+      add_float(n.attrs, "mask_scale", "Region size", 1.5f, 0.1f, 10.f, "Layer")
+          .tooltip = "How large the patches are where the surround changes\n"
+                     "character.";
       add_float(n.attrs, "height_scale", "Height scale", 1.f, 0.f, 4.f, "Layer").tooltip =
           "Extra multiplier for ground-plane layers.";
-      add_bool(n.attrs, "visible", "Visible", true, "Layer");
+      add_bool(n.attrs, "visible", "Visible", true, "Layer")
+          .tooltip = "Whether the surround is drawn.";
     },
     [](Node &) {})
 

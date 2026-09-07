@@ -29,7 +29,7 @@ static void finish_mask(Node &n, Heightmap &m) {
 }
 
 REGISTER_NODE(
-    SelectAltitude, "Mask", "Select by height band",
+    SelectAltitude, "Mask", "Selects the ground that lies within a band of heights - the basis of a snow line or a shore",
     [](Node &n) {
       setup_selector(n);
       add_range(n.attrs, "band", "Altitude band", 0.5f, 1.f, 0.f, 1.f, "Selection")

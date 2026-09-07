@@ -47,7 +47,7 @@ static void setup_masked_filter(Node &n) {
 }
 
 REGISTER_NODE(
-    Smooth, "Filter", "Gaussian-like smoothing",
+    Smooth, "Filter", "Softens the surface: takes the noise off, and at a large radius the shape too",
     [](Node &n) {
       setup_masked_filter(n);
       add_float(n.attrs, "radius", "Radius", 0.01f, 0.f, 0.2f)
@@ -209,7 +209,7 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    Remap, "Filter", "Remap value range",
+    Remap, "Filter", "Rescales the whole map into a new range, keeping its shape exactly",
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
@@ -231,7 +231,7 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    GammaCorrection, "Filter", "Power-curve contrast",
+    GammaCorrection, "Filter", "Bends the heights toward the low or the high end without moving either",
     [](Node &n) {
       setup_masked_filter(n);
       add_float(n.attrs, "gamma", "Gamma", 1.f, 0.05f, 6.f, "", true)

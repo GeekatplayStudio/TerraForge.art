@@ -303,8 +303,11 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_float(n.attrs, "level", "Border level", 0.f, -1.f, 2.f, "Borders");
-      add_float(n.attrs, "feather", "Feather", 0.1f, 0.005f, 0.5f, "Borders");
+      add_float(n.attrs, "level", "Border level", 0.f, -1.f, 2.f, "Borders")
+          .tooltip = "The height the borders are pinned to.";
+      add_float(n.attrs, "feather", "Feather", 0.1f, 0.005f, 0.5f, "Borders")
+          .tooltip = "How far in from the border the pinning reaches, so the\n"
+                     "terrain eases to it rather than dropping at the edge.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -451,7 +454,10 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_float(n.attrs, "feather", "Feather", 1.f, 0.1f, 1.f, "Tiling");
+      add_float(n.attrs, "feather", "Feather", 1.f, 0.1f, 1.f, "Tiling")
+          .tooltip = "How much of the tile is blended into its opposite edge.\n"
+                     "The wider the blend the more seamless the wrap, and the\n"
+                     "more of the original is lost.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

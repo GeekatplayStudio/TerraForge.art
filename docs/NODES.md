@@ -149,17 +149,17 @@ The shot: frame range, frame rate, output size and folder for the sequence rende
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Start (s) | float, 0 to 100000, default 0 |  |
-| End (s) | float, 0 to 100000, default 10 |  |
-| Frames per second | float, 1 to 240, default 30 |  |
-| Width | int, 64 to 8192, default 1280 |  |
-| Height | int, 64 to 8192, default 720 |  |
-| Output folder | text |  |
-| Sweep the sun | toggle, default off |  |
-| Sun from: azimuth ° | float, 0 to 360, default 90 |  |
-| Sun from: altitude ° | float, -10 to 90, default 10 |  |
-| Sun to: azimuth ° | float, 0 to 360, default 270 |  |
-| Sun to: altitude ° | float, -10 to 90, default 10 |  |
+| Start (s) | float, 0 to 100000, default 0 | When the sequence begins, in seconds. |
+| End (s) | float, 0 to 100000, default 10 | When it ends. |
+| Frames per second | float, 1 to 240, default 30 | Frames rendered per second of the sequence. This decides how many frames the range above becomes. |
+| Width | int, 64 to 8192, default 1280 | The width of each rendered frame, in pixels. |
+| Height | int, 64 to 8192, default 720 | The height of each rendered frame, in pixels. |
+| Output folder | text | The folder the numbered frames are written into. |
+| Sweep the sun | toggle, default off | Moves the sun across the sequence, from the first pair of angles below to the second. The quickest way to a day- cycle without keyframing anything. |
+| Sun from: azimuth ° | float, 0 to 360, default 90 | Which way the sun lies at the start of the sequence. |
+| Sun from: altitude ° | float, -10 to 90, default 10 | How high the sun stands at the start. |
+| Sun to: azimuth ° | float, 0 to 360, default 270 | Which way the sun lies at the end. |
+| Sun to: altitude ° | float, -10 to 90, default 10 | How high the sun stands at the end. |
 
 ### Dynamics
 
@@ -190,11 +190,11 @@ A wave of time: sine, triangle, square or sawtooth, for anything that should pul
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Waveform | choice: Sine / Triangle / Square / Sawtooth |  |
-| Frequency (Hz) | float, 0.001 to 100, default 0.5 |  |
-| Phase | float, 0 to 1, default 0 |  |
-| Amplitude | float, 0 to 1000, default 1 |  |
-| Offset | float, -1000 to 1000, default 0 |  |
+| Waveform | choice: Sine / Triangle / Square / Sawtooth | The wave the value follows over time. |
+| Frequency (Hz) | float, 0.001 to 100, default 0.5 | How many cycles a second. |
+| Phase | float, 0 to 1, default 0 | Where in the cycle it starts, as a fraction of one cycle. Use it to run two oscillators out of step. |
+| Amplitude | float, 0 to 1000, default 1 | How far the value swings either side of the offset. |
+| Offset | float, -1000 to 1000, default 0 | The value the wave is centred on. |
 
 ### TimeRemap
 
@@ -207,9 +207,9 @@ Speeds, offsets, loops or ping-pongs time before it reaches a graph
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Speed | float, -100 to 100, default 1 |  |
-| Offset (s) | float, -10000 to 10000, default 0 |  |
-| Loop length (s, 0 = none) | float, 0 to 10000, default 0 |  |
+| Speed | float, -100 to 100, default 1 | How fast time runs for everything downstream. Negative runs it backwards. |
+| Offset (s) | float, -10000 to 10000, default 0 | Shifts time before it reaches the graph, so a downstream animation starts earlier or later without moving its keys. |
+| Loop length (s, 0 = none) | float, 0 to 10000, default 0 | The length of time after which it repeats. 0 never loops. |
 | Ping-pong | toggle, default off | With a loop length: run forward then backward instead of jumping. |
 
 ## Atmosphere
@@ -332,7 +332,7 @@ Fly a camera along a path for the rendered sequence
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Height above ground (m) | float, 0 to 50000, default 400 |  |
+| Height above ground (m) | float, 0 to 50000, default 400 | How far above the ground the camera flies, in metres. The path gives the route; this gives the altitude. |
 | Ride the path | toggle, default on | When on, the sequence renderer moves the active camera along the connected path over the length of the animation. |
 
 ### CameraSwitch
@@ -379,16 +379,16 @@ A camera in the scene: position, aim, lens, exposure triangle, film
 | :--- | :--- | :--- |
 | Scene object | text | Name of the scene camera this node drives. Created when missing; an existing camera of that name is adopted. |
 | Look through it | toggle, default off | Makes this the active camera: the perspective views and the render use it. |
-| Eye X (m) | float, -100000 to 100000, default 2500 |  |
-| Eye height (m) | float, -10000 to 100000, default 2250 |  |
-| Eye Z (m) | float, -100000 to 100000, default 8500 |  |
-| Target X (m) | float, -100000 to 100000, default 2500 |  |
-| Target height (m) | float, -10000 to 100000, default 500 |  |
-| Target Z (m) | float, -100000 to 100000, default 2500 |  |
-| Focal length (mm) | float, 8 to 800, default 35 |  |
-| Aperture f/ | float, 1.2 to 22, default 8 |  |
-| Shutter 1/x s | float, 0.5 to 8000, default 125 |  |
-| ISO | float, 25 to 25600, default 100 |  |
+| Eye X (m) | float, -100000 to 100000, default 2500 | Where the camera stands, east-west, in metres. |
+| Eye height (m) | float, -10000 to 100000, default 2250 | How high the camera stands, in metres. |
+| Eye Z (m) | float, -100000 to 100000, default 8500 | Where the camera stands, north-south, in metres. |
+| Target X (m) | float, -100000 to 100000, default 2500 | What the camera looks at, east-west, in metres. |
+| Target height (m) | float, -10000 to 100000, default 500 | The height the camera looks at, in metres. |
+| Target Z (m) | float, -100000 to 100000, default 2500 | What the camera looks at, north-south, in metres. |
+| Focal length (mm) | float, 8 to 800, default 35 | The lens, in millimetres on this sensor. Short is wide and exaggerates depth; long flattens it and pulls the background forward. With the optical simulation on, this also sets how much the lens distorts. |
+| Aperture f/ | float, 1.2 to 22, default 8 | The f-number. It sets the depth of field and, with the shutter and ISO, the exposure - and it is what decides how much the corners fall off. |
+| Shutter 1/x s | float, 0.5 to 8000, default 125 | The shutter speed, as 1/x seconds. Slower is brighter and smears more of the camera's own movement into the frame. |
+| ISO | float, 25 to 25600, default 100 | The sensor's sensitivity. Higher is brighter for the same aperture and shutter. |
 | Film stock | int, 0 to 7, default 0 | Index into the film stock list (see the Camera properties). |
 
 ## Cloud
@@ -841,13 +841,13 @@ Write 16-bit PNG / RAW heightmap
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| File | file path |  |
-| Format | choice: PNG 16-bit / RAW float32 |  |
-| Export on every compute | toggle, default off |  |
+| File | file path | Where the file is written. |
+| Format | choice: PNG 16-bit / RAW float32 | PNG keeps 16 bits per sample, which is enough for terrain in most cases; RAW float32 keeps the full precision and is what another tool should read. |
+| Export on every compute | toggle, default off | Writes the file every time the graph recomputes. Convenient while iterating, and a great deal of disk traffic if left on. |
 
 ### ExportMesh
 
-Write OBJ mesh
+Writes the terrain as an OBJ mesh, for another application to open
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -855,10 +855,10 @@ Write OBJ mesh
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| File | file path |  |
-| Mesh resolution | int, 32 to 1024, default 256 |  |
-| Height scale | float, 0.01 to 2, default 0.25 |  |
-| Export on every compute | toggle, default off |  |
+| File | file path | Where the file is written. |
+| Mesh resolution | int, 32 to 1024, default 256 | How many vertices the exported mesh has along each side. This is the resolution of the exported geometry, not of the graph. |
+| Height scale | float, 0.01 to 2, default 0.25 | How the terrain's heights are scaled into the mesh, so it lands at the right proportions elsewhere. |
+| Export on every compute | toggle, default off | Writes the file every time the graph recomputes. Convenient while iterating, and a great deal of disk traffic if left on. |
 
 ### ExportPoints
 
@@ -872,14 +872,14 @@ Write a point cloud or path to CSV / PLY
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| File | file path |  |
-| Format | choice: CSV (x,y,z,value) / PLY |  |
-| Height scale | float, 0.01 to 100, default 1 |  |
-| Export on every compute | toggle, default off |  |
+| File | file path | Where the file is written. |
+| Format | choice: CSV (x,y,z,value) / PLY | CSV is readable anywhere; PLY carries the points as real geometry. |
+| Height scale | float, 0.01 to 100, default 1 | How the stored heights are scaled on the way out, so the cloud lands at the right size in whatever reads it. |
+| Export on every compute | toggle, default off | Writes the file every time the graph recomputes. Convenient while iterating, and a great deal of disk traffic if left on. |
 
 ### ExportTexture
 
-Write albedo/texture PNG
+Writes a texture out as a PNG, so a material built here can be used elsewhere
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -887,8 +887,8 @@ Write albedo/texture PNG
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| File | file path |  |
-| Export on every compute | toggle, default off |  |
+| File | file path | Where the file is written. |
+| Export on every compute | toggle, default off | Writes the file every time the graph recomputes. Convenient while iterating, and a great deal of disk traffic if left on. |
 
 ### SurfaceDisplacement
 
@@ -931,12 +931,12 @@ Final terrain: combines height layers + material, zero edges
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Combine layers | choice: Add / Max (merge) / Min |  |
-| Layer strength | float, 0 to 2, default 1 |  |
+| Combine layers | choice: Add / Max (merge) / Min | How the extra height layers are folded into the main one. Max keeps both shapes where they overlap; add sums them and can double the relief. |
+| Layer strength | float, 0 to 2, default 1 | How strongly the extra layers count. |
 | Zero edges width | float, 0 to 0.5, default 0.12 | Fades terrain to zero at the borders — the final island/tile edge treatment. |
-| Edge curve | choice: Smooth / Linear / Steep (cliff) |  |
-| Final height range | range |  |
-| Remap to range | toggle, default on |  |
+| Edge curve | choice: Smooth / Linear / Steep (cliff) | The profile the terrain takes as it falls to the border. Steep leaves a cliff at the tile edge; smooth eases it out. |
+| Final height range | range | The low and high the finished terrain is rescaled into. |
+| Remap to range | toggle, default on | Rescales the result into the range above. Off keeps the raw values, which matters when the numbers themselves mean something. |
 
 ### TerrainSurface
 
@@ -967,7 +967,7 @@ Bakes a field into a heightmap so raster nodes (erosion, blur) can work on it
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Region centre | x/y pair |  |
+| Region centre | x/y pair | The middle of the region of the field that is baked, in field coordinates. |
 | Region size | float, 0.001 to 100, default 1 | How much of the field's space this buffer covers. Smaller values zoom in — the field has no resolution of its own, so this is what decides the detail you capture. |
 | Sample height | float, -10 to 10, default 0 | The Y plane the field is sampled on, for 3D fields. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
@@ -987,9 +987,9 @@ Reads a heightmap as a field, so sculpted or eroded terrain can drive a shader
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Region centre | x/y pair |  |
-| Region size | float, 0.001 to 100, default 1 |  |
-| Value scale | float, -8 to 8, default 1 |  |
+| Region centre | x/y pair | The middle of the region of the buffer that is read. |
+| Region size | float, 0.001 to 100, default 1 | How much of the buffer the region covers. |
+| Value scale | float, -8 to 8, default 1 | Multiplies the values read out of the buffer. |
 | Repeat outside the region | toggle, default off | Off: points outside the buffer clamp to its edge. On: the buffer tiles infinitely. |
 
 ## Field Color
@@ -1005,12 +1005,12 @@ Colour correction: hue shift, saturation, contrast, brightness, gamma, invert
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Hue shift ° | float, -180 to 180, default 0 |  |
-| Saturation | float, 0 to 3, default 1 |  |
-| Contrast | float, 0 to 3, default 1 |  |
-| Brightness | float, -1 to 1, default 0 |  |
-| Gamma | float, 0.1 to 5, default 1 |  |
-| Invert | toggle, default off |  |
+| Hue shift ° | float, -180 to 180, default 0 | Rotates every colour around the wheel, in degrees. |
+| Saturation | float, 0 to 3, default 1 | How strong the colour is. 0 leaves greyscale. |
+| Contrast | float, 0 to 3, default 1 | Pushes colours away from the middle, or toward it below 1. |
+| Brightness | float, -1 to 1, default 0 | Added to every channel. |
+| Gamma | float, 0.1 to 5, default 1 | Bends the midtones without moving black or white. |
+| Invert | toggle, default off | Turns every colour into its opposite. |
 
 ### FieldColorFromHSV
 
@@ -1026,10 +1026,10 @@ Builds a colour from hue, saturation, value and alpha numbers
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Hue (when unconnected) | float, 0 to 1, default 0.1 |  |
-| Saturation (when unconnected) | float, 0 to 1, default 0.4 |  |
-| Value (when unconnected) | float, 0 to 1, default 0.6 |  |
-| Alpha (when unconnected) | float, 0 to 1, default 1 |  |
+| Hue (when unconnected) | float, 0 to 1, default 0.1 | The hue used when nothing is wired to it, 0..1 around the wheel. |
+| Saturation (when unconnected) | float, 0 to 1, default 0.4 | The saturation used when nothing is wired to it. |
+| Value (when unconnected) | float, 0 to 1, default 0.6 | The brightness used when nothing is wired to it. |
+| Alpha (when unconnected) | float, 0 to 1, default 1 | The alpha used when nothing is wired to it. |
 
 ### FieldColorHSV
 
@@ -1055,8 +1055,8 @@ Blends two colours — mix, add, multiply, screen, overlay, darken, lighten
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Blend mode | choice: Mix / Add / Multiply / Screen / Overlay / Darken / Lighten |  |
-| Amount (when unconnected) | float, 0 to 1, default 0.5 |  |
+| Blend mode | choice: Mix / Add / Multiply / Screen / Overlay / Darken / Lighten | How the two colours are combined. |
+| Amount (when unconnected) | float, 0 to 1, default 0.5 | How much of the second colour is mixed in, when nothing is wired to the factor. |
 
 ### FieldGradient
 
@@ -1069,8 +1069,8 @@ Turns a number into a colour through a gradient
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Gradient | gradient |  |
-| Input range | range |  |
+| Gradient | gradient | The colour ramp the incoming number is looked up in. |
+| Input range | range | The span of input values that maps across the whole gradient. Anything outside takes the nearest end. |
 
 ## Field Convert
 
@@ -1088,10 +1088,10 @@ Builds a colour from red, green, blue and alpha numbers
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Red (when unconnected) | float, 0 to 1, default 0.5 |  |
-| Green (when unconnected) | float, 0 to 1, default 0.5 |  |
-| Blue (when unconnected) | float, 0 to 1, default 0.5 |  |
-| Alpha (when unconnected) | float, 0 to 1, default 1 |  |
+| Red (when unconnected) | float, 0 to 1, default 0.5 | The value used when nothing is wired to this input. |
+| Green (when unconnected) | float, 0 to 1, default 0.5 | The value used when nothing is wired to this input. |
+| Blue (when unconnected) | float, 0 to 1, default 0.5 | The value used when nothing is wired to this input. |
+| Alpha (when unconnected) | float, 0 to 1, default 1 | The value used when nothing is wired to this input. |
 
 ### FieldColorSplit
 
@@ -1118,8 +1118,8 @@ Builds texture coordinates from u and v numbers
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| U (when unconnected) | float, -64 to 64, default 0 |  |
-| V (when unconnected) | float, -64 to 64, default 0 |  |
+| U (when unconnected) | float, -64 to 64, default 0 | The value used when nothing is wired to this input. |
+| V (when unconnected) | float, -64 to 64, default 0 | The value used when nothing is wired to this input. |
 
 ### FieldTexCoordSplit
 
@@ -1142,7 +1142,7 @@ Any value as a colour: grey from a number, RGB from a vector, with an alpha
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Alpha (non-colour inputs) | float, 0 to 1, default 1 |  |
+| Alpha (non-colour inputs) | float, 0 to 1, default 1 | The alpha given to a value that has no colour of its own - a number or a vector. |
 | Vector is -1..1 (remap to 0..1) | toggle, default on | A direction or normal spans -1..1; on it maps that range onto 0..1 the way a normal map does. |
 
 ### FieldToNumber
@@ -1169,7 +1169,7 @@ Any value as texture coordinates: a vector projected on a plane, RG, or n,n
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Project a vector on | choice: XZ (ground) / XY (front) / ZY (side) |  |
+| Project a vector on | choice: XZ (ground) / XY (front) / ZY (side) | Which plane a vector is flattened onto to become texture coordinates. Ground is what you want for anything lying on the terrain; the other two are for walls and cliffs. |
 
 ### FieldToVector
 
@@ -1182,7 +1182,7 @@ Any value as a vector: a number broadcast, RGB of a colour, UV on a plane
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Texture coordinates lie on | choice: XZ (ground) / XY (front) / ZY (side) |  |
+| Texture coordinates lie on | choice: XZ (ground) / XY (front) / ZY (side) | Which plane the texture coordinates are treated as lying on when they are read back as a vector. |
 
 ### FieldVectorCombine
 
@@ -1197,9 +1197,9 @@ Builds a vector from x, y and z numbers
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| X (when unconnected) | float, -1000 to 1000, default 0 |  |
-| Y (when unconnected) | float, -1000 to 1000, default 0 |  |
-| Z (when unconnected) | float, -1000 to 1000, default 0 |  |
+| X (when unconnected) | float, -1000 to 1000, default 0 | The value used when nothing is wired to this input. |
+| Y (when unconnected) | float, -1000 to 1000, default 0 | The value used when nothing is wired to this input. |
+| Z (when unconnected) | float, -1000 to 1000, default 0 | The value used when nothing is wired to this input. |
 
 ### FieldVectorSplit
 
@@ -1228,8 +1228,8 @@ Recovers the surface normal after displacement, so later nodes see the real shap
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Sample distance | float, 1e-05 to 1, default 0.01 | How far apart the samples are taken. Too small and the normal is noise; too large and it smooths real detail away. Roughly one pixel of the scale you care about. |
-| Strength | float, 0 to 64, default 1 |  |
-| Flip | toggle, default off |  |
+| Strength | float, 0 to 64, default 1 | How strongly the recovered normal tilts. This node exists so that nodes after a displacement see the surface it actually made rather than the flat plane it started as - which is what makes a slope-keyed material follow the displaced rock. |
+| Flip | toggle, default off | Turns the recovered normal the other way up. |
 
 ### FieldDisplace
 
@@ -1246,15 +1246,15 @@ Turns a value into relief: displaces along the normal, up, or any direction
 | :--- | :--- | :--- |
 | Direction | choice: Along the surface normal / Straight up / Along the vector input / Along a fixed direction | Along the normal gives relief that follows the surface, which is what you want on a curved world. Straight up is predictable and stacks cleanly. |
 | Depth is in | choice: Real units / Relative to a size | Real units keep the displacement fixed when the scene is rescaled; relative keeps its proportion. |
-| Depth | float, -1000 to 1000, default 1 |  |
+| Depth | float, -1000 to 1000, default 1 | How far the value moves the surface. Negative presses in. |
 | Reference size | float, 0.001 to 1000, default 1 | The size 'relative' depth is a fraction of. |
 | Smoothing | float, 0 to 1, default 0 | Softens the displacement by sampling around each point. Costs four extra evaluations when above zero. |
-| Smoothing radius | float, 0.0001 to 1, default 0.01 |  |
+| Smoothing radius | float, 0.0001 to 1, default 0.01 | How far apart the surface is sampled when working out which way it faces. Too small reads noise as shape; too large flattens real detail. |
 | Quality boost | int, 0 to 6, default 0 | Extra octaves of detail for this displacement only, beyond the caller's budget. Use when relief needs to be finer than the geometry carrying it. |
 | Displace outwards only | toggle, default off | Discards negative displacement, so the surface can only be pushed out and never dented inward. |
-| Direction X | float, -1 to 1, default 0 |  |
-| Direction Y | float, -1 to 1, default 1 |  |
-| Direction Z | float, -1 to 1, default 0 |  |
+| Direction X | float, -1 to 1, default 0 | The X part of the direction the surface is pushed, when a fixed direction is chosen rather than the normal. |
+| Direction Y | float, -1 to 1, default 1 | The Y part of that direction. Straight up is the usual choice for terrain. |
+| Direction Z | float, -1 to 1, default 0 | The Z part of that direction. |
 
 ### FieldRedirect
 
@@ -1269,10 +1269,10 @@ Moves where another field is evaluated — warp, flow and distortion, on anythin
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Mode | choice: Offset the position / Replace the position | Offset moves the evaluation point by the vector. Replace evaluates at the vector itself, which is how you project one space onto another. |
-| Strength | float, -32 to 32, default 1 |  |
-| Scale X | float, -8 to 8, default 1 |  |
-| Scale Y | float, -8 to 8, default 1 |  |
-| Scale Z | float, -8 to 8, default 1 |  |
+| Strength | float, -32 to 32, default 1 | How far the sampling point is moved. This warps where another field is read rather than what it returns, which is what turns a regular pattern into a flowing one. |
+| Scale X | float, -8 to 8, default 1 | How much of the displacement applies along X. |
+| Scale Y | float, -8 to 8, default 1 | How much applies along Y. |
+| Scale Z | float, -8 to 8, default 1 | How much applies along Z. |
 
 ### FieldZone
 
@@ -1287,10 +1287,10 @@ Confines one field to a region, fading into another outside it
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape | choice: Sphere / Box |  |
-| Centre (X,Z) | x/y pair |  |
-| Centre Y | float, -1000 to 1000, default 0 |  |
-| Size | float, 0.001 to 1000, default 1 |  |
+| Shape | choice: Sphere / Box | The region the inner field is confined to. |
+| Centre (X,Z) | x/y pair | Where that region sits, across and along. |
+| Centre Y | float, -1000 to 1000, default 0 | The height the region is centred at. |
+| Size | float, 0.001 to 1000, default 1 | How large the region is. |
 | Fade | float, 0 to 1, default 0.25 | Width of the transition, as a fraction of the size. Zero gives a hard edge, which will show. |
 | Ignore height | toggle, default on | On: the region is a column, so altitude does not matter. Off: a true sphere or box in 3D. |
 
@@ -1314,7 +1314,7 @@ A fixed colour, to feed any colour input
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Colour | color |  |
+| Colour | color | The colour handed to whatever this feeds. |
 
 ### FieldConstant
 
@@ -1326,7 +1326,7 @@ A fixed number, to feed any field input
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Value | float, -1000 to 1000, default 0.5 |  |
+| Value | float, -1000 to 1000, default 0.5 | The number handed to whatever this feeds. |
 
 ### FieldNormal
 
@@ -1370,10 +1370,10 @@ Texture coordinates for this point — the input to any mapped texture
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Projection | choice: Top down (XZ) / Front (XY) / Side (ZY) |  |
-| Scale | x/y pair |  |
-| Offset | x/y pair |  |
-| Rotation ° | float, -180 to 180, default 0 |  |
+| Projection | choice: Top down (XZ) / Front (XY) / Side (ZY) | Which way the coordinates are projected. Top down suits ground; the other two suit walls and cliff faces, where a top-down projection smears. |
+| Scale | x/y pair | How many times the texture repeats across and along. |
+| Offset | x/y pair | Slides the coordinates, which moves the texture on the surface. |
+| Rotation ° | float, -180 to 180, default 0 | Turns the coordinates, which rotates the texture. |
 
 ### FieldTime
 
@@ -1398,16 +1398,16 @@ Where a material belongs: by altitude, steepness and which way the ground faces
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| By altitude | toggle, default on |  |
-| Altitude band | range |  |
+| By altitude | toggle, default on | Limits the material to a band of heights. |
+| Altitude band | range | The band of heights it belongs to. |
 | Altitude fade | float, 0 to 10, default 0.1 | How gradually the material gives out at the edges of the band. Zero gives a hard line, which will look drawn on. |
-| By steepness | toggle, default off |  |
+| By steepness | toggle, default off | Limits the material to a band of steepness. |
 | Slope band | range | 1 is flat ground, 0 is a vertical face. So rock wants a low band and grass a high one. |
-| Steepness fade | float, 0 to 1, default 0.1 |  |
-| By facing | toggle, default off |  |
+| Steepness fade | float, 0 to 1, default 0.1 | How gradually it gives out at the edges of the slope band. Zero draws a line across the hillside. |
+| By facing | toggle, default off | Limits the material to slopes facing a particular way. |
 | Facing band | range | Which compass direction the ground faces, as -1 to 1. Snow lingers on one side of a ridge and not the other. |
-| Facing fade | float, 0 to 1, default 0.2 |  |
-| Invert | toggle, default off |  |
+| Facing fade | float, 0 to 1, default 0.2 | How gradually it gives out as a slope turns away from the favoured direction. |
+| Invert | toggle, default off | Puts the material everywhere it would not have been. |
 
 ## Field Math
 
@@ -1422,9 +1422,9 @@ Shapes a value with a curve: gain, bias, step or smoothstep
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape | choice: Gain (gamma) / Smoothstep / Step / Bias / Invert |  |
-| Amount | float, 0.05 to 8, default 1 |  |
-| Edges | range |  |
+| Shape | choice: Gain (gamma) / Smoothstep / Step / Bias / Invert | The curve applied to the value. |
+| Amount | float, 0.05 to 8, default 1 | How strongly the curve bends. |
+| Edges | range | The two values the curve runs between, for the step and smoothstep shapes. |
 
 ### FieldMath
 
@@ -1438,9 +1438,9 @@ Combines two values: add, subtract, multiply, and the rest
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Operation | choice: Add / Subtract / Multiply / Divide / Minimum / Maximum / Power / Modulo / Absolute difference |  |
-| A (when unconnected) | float, -100 to 100, default 0 |  |
-| B (when unconnected) | float, -100 to 100, default 1 |  |
+| Operation | choice: Add / Subtract / Multiply / Divide / Minimum / Maximum / Power / Modulo / Absolute difference | The arithmetic applied to the two inputs. |
+| A (when unconnected) | float, -100 to 100, default 0 | The first value, when nothing is wired to it. |
+| B (when unconnected) | float, -100 to 100, default 1 | The second value, when nothing is wired to it. |
 
 ### FieldMix
 
@@ -1455,7 +1455,7 @@ Blends between two inputs by a factor
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Blend (when unconnected) | float, 0 to 1, default 0.5 |  |
+| Blend (when unconnected) | float, 0 to 1, default 0.5 | How far between the two inputs the result sits, when nothing is wired to the factor. |
 
 ### FieldRemap
 
@@ -1468,9 +1468,9 @@ Rescales a value from one range into another
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Input range | range |  |
-| Output range | range |  |
-| Clamp to the output range | toggle, default on |  |
+| Input range | range | The span of input values that is rescaled. |
+| Output range | range | The span they are rescaled into. Reversing it turns the value upside down. |
+| Clamp to the output range | toggle, default on | Holds the result inside the output range instead of letting it run past the ends. |
 
 ### FieldTrig
 
@@ -1483,9 +1483,9 @@ Trigonometry: sine, cosine, tangent and their inverses
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Function | choice: Sine / Cosine / Tangent / Arc sine / Arc cosine / Arc tangent / Hyperbolic sine / Hyperbolic cosine / Hyperbolic tangent |  |
+| Function | choice: Sine / Cosine / Tangent / Arc sine / Arc cosine / Arc tangent / Hyperbolic sine / Hyperbolic cosine / Hyperbolic tangent | The trigonometric function applied. |
 | Work in degrees | toggle, default off | Interpret the input (and produce the output of the inverse functions) in degrees rather than radians. |
-| Input scale | float, -32 to 32, default 1 |  |
+| Input scale | float, -32 to 32, default 1 | Multiplies the input before the function, which sets how many cycles it goes through across the terrain. |
 
 ### FieldVectorOp
 
@@ -1549,12 +1549,12 @@ A sward of grass - tufts, blades and bare ground - as a function, at any scale
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Type | choice: Rolling (fBm) / Ridged / Billow |  |
+| Type | choice: Rolling (fBm) / Ridged / Billow | The shape the octaves take - rolling ground, sharp ridges or rounded billows. |
 | Seed | seed |  |
 | Feature scale | float, 0.01 to 200, default 3 | How many features fit across a unit of space. Low values give continents, high values give gravel. |
 | Octaves | int, 1 to 12, default 6 | Levels of detail. Capped by the caller's level-of-detail budget, so distant points cost less automatically. |
-| Amplitude | float, 0 to 8, default 1 |  |
-| Offset | float, -4 to 4, default 0 |  |
+| Amplitude | float, 0 to 8, default 1 | How far the noise swings. |
+| Offset | float, -4 to 4, default 0 | Added to the result, which raises or lowers the whole field. |
 
 ### FieldShape
 
@@ -1567,14 +1567,14 @@ Analytic shapes - waves, bands, bumps, cones and steps, as a function
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape | choice: Sine wave / Square wave / Triangle wave / Sawtooth / Gaussian bump / Cone / Band / Step |  |
-| Center | x/y pair |  |
+| Shape | choice: Sine wave / Square wave / Triangle wave / Sawtooth / Gaussian bump / Cone / Band / Step | The analytic shape produced. |
+| Center | x/y pair | Where the shape is centred. |
 | Direction | float, -180 to 180, default 0 | Which way the waves run, the band lies, or the step faces, in degrees on the ground plane. |
 | Frequency | float, 0.01 to 200, default 4 | Wave repetitions per unit of ground. Waves only. |
 | Width | float, 0.001 to 8, default 0.25 | Radius of the bump or cone; thickness of the band. |
-| Phase | float, -2 to 2, default 0 |  |
-| Amplitude | float, 0 to 8, default 1 |  |
-| Offset | float, -4 to 4, default 0 |  |
+| Phase | float, -2 to 2, default 0 | Slides a wave along, as a fraction of one cycle. |
+| Amplitude | float, 0 to 8, default 1 | How far the result swings. |
+| Offset | float, -4 to 4, default 0 | Added to the result. |
 
 ### FieldStones
 
@@ -1626,8 +1626,8 @@ Cellular (Worley) noise - cracks, plates, scree and crater fields
 | Octaves | int, 1 to 6, default 1 | Stacks the cells at rising frequency and falling weight, the way fBm stacks noise: continents of plates with gravel in the cracks. 1 is the plain pattern. |
 | Cell shape | choice: Round (Euclidean) / Diamond (Manhattan) / Square (Chebyshev) | The distance the cells are measured with, which is what decides their silhouette. |
 | Pattern | choice: Distance to nearest (F1) / Distance to second (F2) / Distance to the seam (F2 - F1) / Flat cell value | F1 is zero at each cell's own point and rises outward: cell centres become pits and the seams between them become ridges. Crater fields, dimpled rock.  F2 is the same one cell further out - rounder, smoother swells.  F2 - F1 is zero exactly on the seam between two cells and highest at the centre: domes with sharp creases between them. Invert it and the seams become the cracks.  Flat cell value gives each cell one random height - plates, terraces, tectonic blocks. |
-| Amplitude | float, 0 to 8, default 1 |  |
-| Offset | float, -4 to 4, default 0 |  |
+| Amplitude | float, 0 to 8, default 1 | How far the cellular pattern swings. |
+| Offset | float, -4 to 4, default 0 | Added to the result. |
 | Invert | toggle, default off | Turns pits into domes, and walls into channels. |
 
 ## Filter
@@ -1804,7 +1804,7 @@ Fold values around midline — creates ridged detail
 
 ### GammaCorrection
 
-Power-curve contrast
+Bends the heights toward the low or the high end without moving either
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -1929,7 +1929,7 @@ Terragen-style multi-scale fractal displacement
 
 ### Remap
 
-Remap value range
+Rescales the whole map into a new range, keeping its shape exactly
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -1944,7 +1944,7 @@ Remap value range
 
 ### Smooth
 
-Gaussian-like smoothing
+Softens the surface: takes the noise off, and at a large radius the shape too
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -2162,17 +2162,17 @@ A point or spot light in the scene: position, colour, intensity, reach, cone
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Scene object | text | Name of the scene light this node drives. Created when missing; an existing light of that name is adopted. |
-| Enabled | toggle, default on |  |
-| Type | choice: Point / Spot |  |
-| Colour | color |  |
-| Intensity | float, 0 to 50, default 1 |  |
+| Enabled | toggle, default on | Turns the light off without removing it. |
+| Type | choice: Point / Spot | A point light throws in every direction; a spot throws in a cone. |
+| Colour | color | The light's colour. |
+| Intensity | float, 0 to 50, default 1 | How bright the light is. |
 | Reach (m) | float, 1 to 100000, default 1750 | Distance at which the light has faded to nothing. |
-| X (m) | float, -100000 to 100000, default 2500 |  |
-| Height (m) | float, -10000 to 100000, default 1500 |  |
-| Z (m) | float, -100000 to 100000, default 2500 |  |
-| Heading ° | float, -180 to 180, default 0 |  |
-| Pitch ° | float, -90 to 90, default -60 |  |
-| Cone angle ° | float, 1 to 179, default 40 |  |
+| X (m) | float, -100000 to 100000, default 2500 | Where the light stands, east-west, in metres. |
+| Height (m) | float, -10000 to 100000, default 1500 | How high the light stands, in metres. |
+| Z (m) | float, -100000 to 100000, default 2500 | Where the light stands, north-south, in metres. |
+| Heading ° | float, -180 to 180, default 0 | Which way a spot points, around the compass. |
+| Pitch ° | float, -90 to 90, default -60 | How far a spot is tilted down, in degrees. |
+| Cone angle ° | float, 1 to 179, default 40 | How wide a spot's cone is, in degrees. |
 | Cast shadows | toggle, default off | Recorded now, honoured by the offline engines; the viewport's point lights do not cast shadows yet (roadmap P3). |
 
 ### Skylight
@@ -2354,7 +2354,7 @@ Paint a mask in the viewport
 
 ### SelectAltitude
 
-Select by height band
+Selects the ground that lies within a band of heights - the basis of a snow line or a shore
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -3230,7 +3230,7 @@ Carves along a drawn path - riverbeds, road cuts, canyons; negative depth builds
 | :--- | :--- | :--- |
 | Points | text | The path, as x,z pairs in tile coordinates (0..1), separated by spaces. Edit here, or ask the AI to "draw a river from the northwest to the sea". |
 | Smoothing | int, 0 to 6, default 3 | Chaikin corner-cutting passes: 0 keeps the polyline's corners, a few make a flowing curve. |
-| Closed loop | toggle, default off |  |
+| Closed loop | toggle, default off | Joins the last point back to the first, so the path is a loop. |
 | Width | float, 0.001 to 0.3, default 0.02 | Half the carve reaches this far from the line, as a fraction of the tile. |
 | Depth | float, -0.5 to 0.5, default 0.08 | How deep the centre cuts below the surface. Negative raises instead: walls, levees, causeways. |
 | Profile | choice: Rounded (U) / Sharp (V) / Flat bed | The cross-section: U for rivers, V for gorges, a flat bed with shoulders for roads and canals. |
@@ -3255,10 +3255,10 @@ Route a path across the terrain
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Start | x/y pair |  |
-| End | x/y pair |  |
+| Start | x/y pair | Where the route begins, as a fraction of the tile. |
+| End | x/y pair | Where it ends. |
 | Slope penalty | float, 0 to 400, default 40 | How much climbing costs against walking flat. High values contour around hills the way real roads do. |
-| Keep every Nth point | int, 1 to 32, default 4 |  |
+| Keep every Nth point | int, 1 to 32, default 4 | Keeps only every Nth point of the found route. The search returns a point per cell, which is far more than a road or a river needs. |
 
 ### PathFractalize
 
@@ -3271,8 +3271,8 @@ Midpoint-displace a path into a wander
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Iterations | int, 1 to 8, default 4 |  |
-| Amplitude | float, 0 to 1, default 0.4 |  |
+| Iterations | int, 1 to 8, default 4 | How many times each segment is split and its midpoint pushed aside. Each pass doubles the detail, so a few turn a straight line into a natural wander. |
+| Amplitude | float, 0 to 1, default 0.4 | How far the midpoints are pushed. |
 | Seed | seed |  |
 
 ### PathResample
@@ -3286,12 +3286,12 @@ Even spacing along a path
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Spacing | float, 0.002 to 0.5, default 0.02 |  |
-| Smoothing | int, 0 to 6, default 0 |  |
+| Spacing | float, 0.002 to 0.5, default 0.02 | How far apart the resampled points are, as a fraction of the tile. |
+| Smoothing | int, 0 to 6, default 0 | How much the path is smoothed as it is resampled. |
 
 ### PathSDF
 
-Distance to a path
+How far every point lies from a path, as a field to mask or displace with
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -3301,10 +3301,10 @@ Distance to a path
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Reach | float, 0.005 to 1, default 0.1 |  |
-| Invert | toggle, default off |  |
-| Closed loop | toggle, default off |  |
-| Smoothing | int, 0 to 6, default 0 |  |
+| Reach | float, 0.005 to 1, default 0.1 | How far from the path its influence extends. |
+| Invert | toggle, default off | Measures the distance the other way, so the field is high on the path rather than away from it. |
+| Closed loop | toggle, default off | Treats the path as a loop. |
+| Smoothing | int, 0 to 6, default 0 | How much the distance field is smoothed. |
 
 ### PathSpline
 
@@ -3317,8 +3317,8 @@ A smooth curve through the points
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Samples per segment | int, 2 to 64, default 8 |  |
-| Tension | float, 0 to 1, default 0.5 |  |
+| Samples per segment | int, 2 to 64, default 8 | How many points are generated along each original segment. More gives a smoother curve and a heavier cloud. |
+| Tension | float, 0 to 1, default 0.5 | How tightly the curve hugs its control points. Low sweeps wide between them; high pulls it close and can overshoot. |
 
 ### PointsToPath
 
@@ -3376,11 +3376,11 @@ Attract to, repel from another cloud; keep instances from overlapping
 | Repulsion from layer below | float, -1 to 1, default 0 | Sudden. Positive: a void around each instance below (no grass under the canopy). Negative: only inside that void (small stones at the foot of the boulder). Use both: near the trees but not under them. |
 | Repulsion radius (m) | float, 0.1 to 2000, default 8 | How far this population is pushed back from the one below it, in metres - the bare ring around the base of a tree. |
 | Avoid overlapping instances | toggle, default on | No two instances closer than their footprints allow. |
-| Terrain size (m) | float, 1 to 1e+06, default 5000 |  |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width in metres, so the distances above mean real metres. The studio keeps this in step with the project. |
 
 ### PointsMerge
 
-Combine two point clouds
+Combines two point clouds into one, keeping the attributes of both
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -3394,7 +3394,7 @@ Combine two point clouds
 
 ### PointsRelax
 
-Even out point spacing
+Pushes points apart until they are evenly spaced, taking the clumps out of a random scatter
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -3506,7 +3506,7 @@ Species, size, rotation, lean and tint per instance
 | Lean out at low density | float, 0 to 1, default 0 | Lone instances lean into the slope, as plants reaching for light. |
 | Color variation | float, 0 to 1, default 0.3 | How much copies differ in brightness from one another. Identical tint across a whole population is the second clearest sign of instancing, after identical size. |
 | Time offset range (s) | float, 0 to 10, default 1 | Each instance's wind phase is shifted by up to this, so a field sways as a crowd, not a marching army. |
-| Terrain size (m) | float, 1 to 1e+06, default 5000 |  |
+| Terrain size (m) | float, 1 to 1e+06, default 5000 | The tile's width in metres, so the distances above mean real metres. The studio keeps this in step with the project. |
 
 ### ScatterArea
 
@@ -3521,7 +3521,7 @@ Scatter by density per hectare and the presence of the ground
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Invert presence | toggle, default off |  |
+| Invert presence | toggle, default off | Uses the presence mask the other way round: things are placed where it is dark. |
 | Density (per hectare) | float, 0.01 to 100000, default 20 | Instances per hectare (100 m x 100 m) at full presence. A rate, not a count: the same setting fills a 1 km tile and a 20 km one to the same look. |
 | Minimum spacing (m) | float, 0.05 to 1000, default 5 | The lattice the candidates stand on. Changing the density never moves an instance; changing this reseeds them all. |
 | Placement | choice: Jittered / Random / Regular | How the candidate positions are laid out before anything is rejected. A jittered lattice covers ground evenly; purely random leaves clumps and bald patches, which is sometimes what you want. |
@@ -3594,7 +3594,7 @@ Columnar basalt: hexagonal steps and cracks
 
 ### Constant
 
-Constant level
+One height everywhere - flat ground to build on with displacement, or to see a material against
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -4122,7 +4122,7 @@ Band-limited noise that stays crisp
 
 ### WhiteNoise
 
-Raw per-cell white noise
+Uncorrelated noise, one independent value per cell - grain and dither rather than landform
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -4284,16 +4284,16 @@ An endless procedural terrain layer: on the ground plane or shaping a planet
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Scene object | text |  |
+| Scene object | text | Which scene object this node drives. |
 | Parent planet | text | Name of the Planet object this layer shapes. Empty: extends the home ground plane to the horizon. |
 | Seed | seed |  |
-| Landscape | choice: Rolling hills / Ridged mountains / Billow dunes / Realistic terrain |  |
-| Feature scale | float, 0.1 to 64, default 3 |  |
-| Amplitude | float, 0 to 4, default 1 |  |
+| Landscape | choice: Rolling hills / Ridged mountains / Billow dunes / Realistic terrain | The kind of ground that runs to the horizon past the tile. |
+| Feature scale | float, 0.1 to 64, default 3 | How large the surround's features are. |
+| Amplitude | float, 0 to 4, default 1 | How much relief the surround has. Matching it to the tile's own is what makes the join invisible. |
 | Coverage | float, 0 to 1, default 1 | Fraction of the surface the layer occupies. |
-| Region size | float, 0.1 to 10, default 1.5 |  |
+| Region size | float, 0.1 to 10, default 1.5 | How large the patches are where the surround changes character. |
 | Height scale | float, 0 to 4, default 1 | Extra multiplier for ground-plane layers. |
-| Visible | toggle, default on |  |
+| Visible | toggle, default on | Whether the surround is drawn. |
 
 ### ObjectGroup
 
@@ -4310,22 +4310,22 @@ A procedural planet: radius, relief, seas, snow, atmosphere and its surface laye
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Scene object | text |  |
-| Radius (m) | float, 10 to 1e+08, default 15000 |  |
-| Relief (fraction of radius) | float, 0 to 0.3, default 0.02 |  |
+| Scene object | text | Which scene object this node drives. |
+| Radius (m) | float, 10 to 1e+08, default 15000 | The planet's radius, in metres. It decides how quickly the horizon curves away, which is the whole difference between a small moon and an earth. |
+| Relief (fraction of radius) | float, 0 to 0.3, default 0.02 | How much height the surface has, as a fraction of the radius. |
 | Seed | seed |  |
 | Sea level | float, 0 to 1, default 0.35 | Within the relief range; 0 = no ocean. |
 | Snow line | float, 0 to 1, default 0.75 | Altitude where snow begins; 1 = none. |
-| Lowland rock | color |  |
-| Highland rock | color |  |
-| Ocean | color |  |
-| Atmosphere | color |  |
+| Lowland rock | color | The colour of the low ground. |
+| Highland rock | color | The colour of the high ground. |
+| Ocean | color | The colour of the seas. |
+| Atmosphere | color | The colour of the air, seen from outside. |
 | Atmosphere density | float, 0 to 2, default 0.6 | 0 = airless rim. |
-| Spin ° | float, -180 to 180, default 0 |  |
-| X (m) | float, -1e+07 to 1e+07, default 70000 |  |
-| Height (m) | float, -1e+07 to 1e+07, default 17500 |  |
-| Z (m) | float, -1e+07 to 1e+07, default 2500 |  |
-| Visible | toggle, default on |  |
+| Spin ° | float, -180 to 180, default 0 | How far the planet is turned about its axis, which chooses which face is toward the camera. |
+| X (m) | float, -1e+07 to 1e+07, default 70000 | Where the planet sits, east-west, in metres. |
+| Height (m) | float, -1e+07 to 1e+07, default 17500 | How high the planet sits, in metres. |
+| Z (m) | float, -1e+07 to 1e+07, default 2500 | Where the planet sits, north-south, in metres. |
+| Visible | toggle, default on | Whether the planet is drawn. |
 
 ### Primitive
 
@@ -4333,9 +4333,9 @@ A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape | choice: Cube / Sphere / Plane / Cylinder / Cone |  |
+| Shape | choice: Cube / Sphere / Plane / Cylinder / Cone | Which primitive shape this is. |
 | Scene object | text | Name in the Objects tree. Empty: the shape's name. |
-| Colour | color |  |
+| Colour | color | The object's colour, where no material is assigned to it. |
 | X (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along east. |
 | Height (m) | float, -10000 to 100000, default 0 | How high the object stands, in metres. Objects placed on the terrain read the ground height for themselves; this offsets from it. |
 | Z (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along north. |
@@ -4398,8 +4398,8 @@ Map height to a color gradient
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Gradient | gradient |  |
-| Multiply hillshade | toggle, default on |  |
+| Gradient | gradient | The colour ramp height is looked up in. |
+| Multiply hillshade | toggle, default on | Multiplies the colour by a shaded relief, so the form reads even where the colours are flat. |
 
 ### NormalMap
 
@@ -4412,7 +4412,7 @@ Tangent-space normal map from height
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Strength | float, 0.05 to 8, default 1 |  |
+| Strength | float, 0.05 to 8, default 1 | How strongly the height differences tilt the normal. High values exaggerate the relief in the shading without moving any geometry. |
 
 ### TerrainTexture
 
@@ -4427,15 +4427,15 @@ Physically-inspired layered terrain albedo
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Snow line | float, 0 to 1, default 0.75 |  |
-| Vegetation ceiling | float, 0 to 1, default 0.55 |  |
-| Rock slope threshold | float, 0.05 to 1, default 0.45 |  |
-| Snow max slope | float, 0.05 to 1, default 0.55 |  |
-| Sand level | float, 0 to 0.4, default 0.06 |  |
-| Noise breakup | float, 0 to 1, default 0.5 |  |
-| Detail scale | float, 2 to 96, default 24 |  |
-| Flow darkening | float, 0 to 1, default 0.4 |  |
-| Multiply hillshade | toggle, default off |  |
+| Snow line | float, 0 to 1, default 0.75 | The height above which snow lies. |
+| Vegetation ceiling | float, 0 to 1, default 0.55 | The height above which vegetation stops. |
+| Rock slope threshold | float, 0.05 to 1, default 0.45 | How steep the ground must be before bare rock shows through the soil. |
+| Snow max slope | float, 0.05 to 1, default 0.55 | How steep the ground may be and still hold snow. Above it snow slides off, which is what leaves the black rock faces on a white mountain. |
+| Sand level | float, 0 to 0.4, default 0.06 | The height below which sand appears. |
+| Noise breakup | float, 0 to 1, default 0.5 | How much noise disturbs the boundaries between the surfaces, so they do not read as contour lines. |
+| Detail scale | float, 2 to 96, default 24 | How fine the surface detail is. |
+| Flow darkening | float, 0 to 1, default 0.4 | How much the ground darkens where water collects and runs, which is one of the strongest cues that a terrain has weather. |
+| Multiply hillshade | toggle, default off | Multiplies the colour by a shaded relief. |
 
 ## Transform
 
@@ -4453,8 +4453,8 @@ Drag a mask downstream along the flow
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Steps | int, 1 to 200, default 24 | How many cells downstream each value is carried. |
-| Fade per step | float, 0 to 0.2, default 0.02 |  |
-| Route through pits | toggle, default on |  |
+| Fade per step | float, 0 to 0.2, default 0.02 | How much the dragged value weakens at each step downstream. |
+| Route through pits | toggle, default on | Routes flow through hollows instead of stopping in them, so a mask carries all the way to the map edge. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### MakeTileable
@@ -4469,7 +4469,7 @@ Blend the tile so it wraps seamlessly
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Feather | float, 0.1 to 1, default 1 |  |
+| Feather | float, 0.1 to 1, default 1 | How much of the tile is blended into its opposite edge. The wider the blend the more seamless the wrap, and the more of the original is lost. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Quilt
@@ -4485,7 +4485,7 @@ Resynthesize the surface from its own patches
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Patch size | float, 0.03 to 0.4, default 0.12 |  |
+| Patch size | float, 0.03 to 0.4, default 0.12 | How large the patches taken from the source are, as a fraction of the tile. Large patches keep more of the original's structure; small ones mix more freely and repeat less. |
 | Overlap | float, 0.1 to 0.5, default 0.25 | As a fraction of the patch. Wider overlaps hide seams better and repeat more. |
 | Candidates | int, 4 to 128, default 24 | Patches auditioned per cell; the best-matching overlap wins. More candidates, better joins, slower quilt. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
@@ -4502,8 +4502,8 @@ Pin the tile's borders to a level
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Border level | float, -1 to 2, default 0 |  |
-| Feather | float, 0.005 to 0.5, default 0.1 |  |
+| Border level | float, -1 to 2, default 0 | The height the borders are pinned to. |
+| Feather | float, 0.005 to 0.5, default 0.1 | How far in from the border the pinning reaches, so the terrain eases to it rather than dropping at the edge. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Shear
@@ -4518,10 +4518,10 @@ Directional rock shearing / folding (Gaea-style)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shear scale | float, 0.02 to 1, default 0.15 |  |
-| Shear amount | float, 0 to 0.3, default 0.05 |  |
-| Folding | float, 0 to 1, default 0.3 |  |
-| Direction ° | float, -180 to 180, default 0 |  |
+| Shear scale | float, 0.02 to 1, default 0.15 | How large the shear bands are. |
+| Shear amount | float, 0 to 0.3, default 0.05 | How far the rock is displaced along the shear. |
+| Folding | float, 0 to 1, default 0.3 | How much the sheared rock folds back on itself rather than simply sliding. |
+| Direction ° | float, -180 to 180, default 0 | Which way the shearing acts. |
 | Self modulated | toggle, default on | Height drives shear strength — bands show on slopes, flats stay intact. |
 | Seed | seed |  |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |

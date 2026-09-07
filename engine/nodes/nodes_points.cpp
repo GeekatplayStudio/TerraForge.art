@@ -118,7 +118,7 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    PointsRelax, "Points", "Even out point spacing",
+    PointsRelax, "Points", "Pushes points apart until they are evenly spaced, taking the clumps out of a random scatter",
     [](Node &n) {
       n.add_in("points", DataType::Points);
       n.add_out("points", DataType::Points);
@@ -300,7 +300,7 @@ REGISTER_NODE(
     })
 
 REGISTER_NODE(
-    PointsMerge, "Points", "Combine two point clouds",
+    PointsMerge, "Points", "Combines two point clouds into one, keeping the attributes of both",
     [](Node &n) {
       n.add_in("points A", DataType::Points);
       n.add_in("points B", DataType::Points, true);

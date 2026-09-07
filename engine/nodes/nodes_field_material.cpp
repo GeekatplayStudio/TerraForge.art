@@ -46,30 +46,39 @@ REGISTER_NODE(
       n.add_field_in("slope", FieldType::Number, true);
       n.add_field_in("orientation", FieldType::Number, true);
 
-      add_bool(n.attrs, "use_altitude", "By altitude", true, "Altitude");
+      add_bool(n.attrs, "use_altitude", "By altitude", true, "Altitude")
+          .tooltip = "Limits the material to a band of heights.";
       add_range(n.attrs, "altitude", "Altitude band", 0.f, 1.f, -100.f, 100.f,
-                "Altitude");
+                "Altitude")
+          .tooltip = "The band of heights it belongs to.";
       add_float(n.attrs, "altitude_fuzz", "Altitude fade", 0.1f, 0.f, 10.f,
                 "Altitude")
           .tooltip = "How gradually the material gives out at the edges of the\n"
                      "band. Zero gives a hard line, which will look drawn on.";
 
-      add_bool(n.attrs, "use_slope", "By steepness", false, "Steepness");
+      add_bool(n.attrs, "use_slope", "By steepness", false, "Steepness")
+          .tooltip = "Limits the material to a band of steepness.";
       add_range(n.attrs, "slope", "Slope band", 0.f, 1.f, -1.f, 1.f, "Steepness")
           .tooltip = "1 is flat ground, 0 is a vertical face. So rock wants a\n"
                      "low band and grass a high one.";
       add_float(n.attrs, "slope_fuzz", "Steepness fade", 0.1f, 0.f, 1.f,
-                "Steepness");
+                "Steepness")
+          .tooltip = "How gradually it gives out at the edges of the slope band.\n"
+                     "Zero draws a line across the hillside.";
 
-      add_bool(n.attrs, "use_orientation", "By facing", false, "Facing");
+      add_bool(n.attrs, "use_orientation", "By facing", false, "Facing")
+          .tooltip = "Limits the material to slopes facing a particular way.";
       add_range(n.attrs, "orientation", "Facing band", -1.f, 1.f, -1.f, 1.f,
                 "Facing")
           .tooltip = "Which compass direction the ground faces, as -1 to 1.\n"
                      "Snow lingers on one side of a ridge and not the other.";
       add_float(n.attrs, "orientation_fuzz", "Facing fade", 0.2f, 0.f, 1.f,
-                "Facing");
+                "Facing")
+          .tooltip = "How gradually it gives out as a slope turns away from the\n"
+                     "favoured direction.";
 
-      add_bool(n.attrs, "invert", "Invert", false);
+      add_bool(n.attrs, "invert", "Invert", false)
+          .tooltip = "Puts the material everywhere it would not have been.";
 
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
@@ -112,8 +121,11 @@ REGISTER_NODE(
       add_choice(n.attrs, "mode", "Blend mode",
                  {"Mix", "Add", "Multiply", "Screen", "Overlay", "Darken",
                   "Lighten"},
-                 0);
-      add_float(n.attrs, "amount", "Amount (when unconnected)", 0.5f, 0.f, 1.f);
+                 0)
+          .tooltip = "How the two colours are combined.";
+      add_float(n.attrs, "amount", "Amount (when unconnected)", 0.5f, 0.f, 1.f)
+          .tooltip = "How much of the second colour is mixed in, when nothing is\n"
+                     "wired to the factor.";
       n.add_field_out("out", FieldType::Color, [](const Node &self,
                                                   const FieldContext &ctx) {
         float a[4], b[4];

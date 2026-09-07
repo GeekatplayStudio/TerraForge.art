@@ -37,18 +37,29 @@ REGISTER_NODE(
       add_text(n.attrs, "object", "Scene object", "Light", "Light").tooltip =
           "Name of the scene light this node drives. Created when missing;\n"
           "an existing light of that name is adopted.";
-      add_bool(n.attrs, "enabled", "Enabled", true, "Light");
-      add_choice(n.attrs, "type", "Type", {"Point", "Spot"}, 0, "Light");
-      add_color(n.attrs, "color", "Colour", 1.f, 0.9f, 0.75f, 1.f, "Light");
-      add_float(n.attrs, "intensity", "Intensity", 1.f, 0.f, 50.f, "Light");
+      add_bool(n.attrs, "enabled", "Enabled", true, "Light")
+          .tooltip = "Turns the light off without removing it.";
+      add_choice(n.attrs, "type", "Type", {"Point", "Spot"}, 0, "Light")
+          .tooltip = "A point light throws in every direction; a spot throws in\n"
+                     "a cone.";
+      add_color(n.attrs, "color", "Colour", 1.f, 0.9f, 0.75f, 1.f, "Light")
+          .tooltip = "The light's colour.";
+      add_float(n.attrs, "intensity", "Intensity", 1.f, 0.f, 50.f, "Light")
+          .tooltip = "How bright the light is.";
       add_float(n.attrs, "radius_m", "Reach (m)", 1750.f, 1.f, 100000.f, "Light", true)
           .tooltip = "Distance at which the light has faded to nothing.";
-      add_float(n.attrs, "x_m", "X (m)", 2500.f, -100000.f, 100000.f, "Position");
-      add_float(n.attrs, "y_m", "Height (m)", 1500.f, -10000.f, 100000.f, "Position");
-      add_float(n.attrs, "z_m", "Z (m)", 2500.f, -100000.f, 100000.f, "Position");
-      add_float(n.attrs, "heading", "Heading °", 0.f, -180.f, 180.f, "Spot");
-      add_float(n.attrs, "pitch", "Pitch °", -60.f, -90.f, 90.f, "Spot");
-      add_float(n.attrs, "cone", "Cone angle °", 40.f, 1.f, 179.f, "Spot");
+      add_float(n.attrs, "x_m", "X (m)", 2500.f, -100000.f, 100000.f, "Position")
+          .tooltip = "Where the light stands, east-west, in metres.";
+      add_float(n.attrs, "y_m", "Height (m)", 1500.f, -10000.f, 100000.f, "Position")
+          .tooltip = "How high the light stands, in metres.";
+      add_float(n.attrs, "z_m", "Z (m)", 2500.f, -100000.f, 100000.f, "Position")
+          .tooltip = "Where the light stands, north-south, in metres.";
+      add_float(n.attrs, "heading", "Heading °", 0.f, -180.f, 180.f, "Spot")
+          .tooltip = "Which way a spot points, around the compass.";
+      add_float(n.attrs, "pitch", "Pitch °", -60.f, -90.f, 90.f, "Spot")
+          .tooltip = "How far a spot is tilted down, in degrees.";
+      add_float(n.attrs, "cone", "Cone angle °", 40.f, 1.f, 179.f, "Spot")
+          .tooltip = "How wide a spot's cone is, in degrees.";
       add_bool(n.attrs, "shadows", "Cast shadows", false, "Shadow").tooltip =
           "Recorded now, honoured by the offline engines; the viewport's\n"
           "point lights do not cast shadows yet (roadmap P3).";

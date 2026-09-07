@@ -71,7 +71,8 @@ FIELD_INPUT_NODE(FieldTime, "Current time in seconds — the hook for animation"
 REGISTER_NODE(
     FieldConstant, "Field Input", "A fixed number, to feed any field input",
     [](Node &n) {
-      add_float(n.attrs, "value", "Value", 0.5f, -1000.f, 1000.f);
+      add_float(n.attrs, "value", "Value", 0.5f, -1000.f, 1000.f)
+          .tooltip = "The number handed to whatever this feeds.";
       n.add_field_out("out", FieldType::Number,
                       [](const Node &self, const FieldContext &) {
                         return FieldValue(self.attrs.get_f("value", 0.5f));
@@ -82,7 +83,8 @@ REGISTER_NODE(
 REGISTER_NODE(
     FieldColorConstant, "Field Input", "A fixed colour, to feed any colour input",
     [](Node &n) {
-      add_color(n.attrs, "color", "Colour", 0.6f, 0.55f, 0.5f);
+      add_color(n.attrs, "color", "Colour", 0.6f, 0.55f, 0.5f)
+          .tooltip = "The colour handed to whatever this feeds.";
       n.add_field_out("out", FieldType::Color,
                       [](const Node &self, const FieldContext &) {
                         const Attribute *a = self.attrs.find("color");
@@ -102,7 +104,9 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_field_in("position", FieldType::Vector, true);
       add_choice(n.attrs, "type", "Type",
-                 {"Rolling (fBm)", "Ridged", "Billow"}, 0);
+                 {"Rolling (fBm)", "Ridged", "Billow"}, 0)
+          .tooltip = "The shape the octaves take - rolling ground, sharp ridges\n"
+                     "or rounded billows.";
       add_seed(n.attrs, "seed", "Seed", 1, "Noise");
       add_float(n.attrs, "frequency", "Feature scale", 3.f, 0.01f, 200.f, "Noise")
           .tooltip = "How many features fit across a unit of space.\n"
@@ -110,8 +114,11 @@ REGISTER_NODE(
       add_int(n.attrs, "octaves", "Octaves", 6, 1, 12, "Noise")
           .tooltip = "Levels of detail. Capped by the caller's level-of-detail\n"
                      "budget, so distant points cost less automatically.";
-      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Noise");
-      add_float(n.attrs, "offset", "Offset", 0.f, -4.f, 4.f, "Noise");
+      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Noise")
+          .tooltip = "How far the noise swings.";
+      add_float(n.attrs, "offset", "Offset", 0.f, -4.f, 4.f, "Noise")
+          .tooltip = "Added to the result, which raises or lowers the whole\n"
+                     "field.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
                                                    const FieldContext &ctx) {
         float p[3];
@@ -180,8 +187,10 @@ REGISTER_NODE(
           "Invert it and the seams become the cracks.\n\n"
           "Flat cell value gives each cell one random height - plates,\n"
           "terraces, tectonic blocks.";
-      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Pattern");
-      add_float(n.attrs, "offset", "Offset", 0.f, -4.f, 4.f, "Pattern");
+      add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Pattern")
+          .tooltip = "How far the cellular pattern swings.";
+      add_float(n.attrs, "offset", "Offset", 0.f, -4.f, 4.f, "Pattern")
+          .tooltip = "Added to the result.";
       add_bool(n.attrs, "invert", "Invert", false, "Pattern")
           .tooltip = "Turns pits into domes, and walls into channels.";
       n.add_field_out("out", FieldType::Number, [](const Node &self,
@@ -234,8 +243,11 @@ REGISTER_NODE(
       add_gradient(n.attrs, "gradient", "Gradient",
                    {{0.f, 0.24f, 0.28f, 0.18f, 1.f},
                     {0.5f, 0.45f, 0.40f, 0.32f, 1.f},
-                    {1.f, 0.92f, 0.93f, 0.95f, 1.f}});
-      add_range(n.attrs, "range", "Input range", 0.f, 1.f, -4.f, 4.f);
+                    {1.f, 0.92f, 0.93f, 0.95f, 1.f}})
+          .tooltip = "The colour ramp the incoming number is looked up in.";
+      add_range(n.attrs, "range", "Input range", 0.f, 1.f, -4.f, 4.f)
+          .tooltip = "The span of input values that maps across the whole\n"
+                     "gradient. Anything outside takes the nearest end.";
       n.add_field_out("out", FieldType::Color, [](const Node &self,
                                                   const FieldContext &ctx) {
         float x = self.in_number("in", ctx, 0.5f);
@@ -275,7 +287,9 @@ REGISTER_NODE(
       n.add_field_in("field", FieldType::Number);
       n.add_out("output");
       add_vec2(n.attrs, "center", "Region centre", 0.5f, 0.5f, -100.f, 100.f,
-               "Region");
+               "Region")
+          .tooltip = "The middle of the region of the field that is baked, in\n"
+                     "field coordinates.";
       add_float(n.attrs, "size", "Region size", 1.f, 0.001f, 100.f, "Region")
           .tooltip = "How much of the field's space this buffer covers.\n"
                      "Smaller values zoom in — the field has no resolution of\n"
@@ -322,9 +336,12 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       add_vec2(n.attrs, "center", "Region centre", 0.5f, 0.5f, -100.f, 100.f,
-               "Region");
-      add_float(n.attrs, "size", "Region size", 1.f, 0.001f, 100.f, "Region");
-      add_float(n.attrs, "scale", "Value scale", 1.f, -8.f, 8.f);
+               "Region")
+          .tooltip = "The middle of the region of the buffer that is read.";
+      add_float(n.attrs, "size", "Region size", 1.f, 0.001f, 100.f, "Region")
+          .tooltip = "How much of the buffer the region covers.";
+      add_float(n.attrs, "scale", "Value scale", 1.f, -8.f, 8.f)
+          .tooltip = "Multiplies the values read out of the buffer.";
       add_bool(n.attrs, "tile", "Repeat outside the region", false)
           .tooltip = "Off: points outside the buffer clamp to its edge.\n"
                      "On: the buffer tiles infinitely.";

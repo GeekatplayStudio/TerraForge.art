@@ -333,7 +333,7 @@
         "type": "float",
         "group": "Range",
         "min": 0, "max": 100000, "default": 0,
-        "tooltip": ""
+        "tooltip": "When the sequence begins, in seconds."
       },
       {
         "key": "end",
@@ -341,7 +341,7 @@
         "type": "float",
         "group": "Range",
         "min": 0, "max": 100000, "default": 10,
-        "tooltip": ""
+        "tooltip": "When it ends."
       },
       {
         "key": "fps",
@@ -349,7 +349,7 @@
         "type": "float",
         "group": "Range",
         "min": 1, "max": 240, "default": 30,
-        "tooltip": ""
+        "tooltip": "Frames rendered per second of the sequence. This decides\nhow many frames the range above becomes."
       },
       {
         "key": "width",
@@ -357,7 +357,7 @@
         "type": "int",
         "group": "Output",
         "min": 64, "max": 8192, "default": 1280,
-        "tooltip": ""
+        "tooltip": "The width of each rendered frame, in pixels."
       },
       {
         "key": "height",
@@ -365,14 +365,14 @@
         "type": "int",
         "group": "Output",
         "min": 64, "max": 8192, "default": 720,
-        "tooltip": ""
+        "tooltip": "The height of each rendered frame, in pixels."
       },
       {
         "key": "dir",
         "label": "Output folder",
         "type": "text",
         "group": "Output",
-        "tooltip": ""
+        "tooltip": "The folder the numbered frames are written into."
       },
       {
         "key": "sun_sweep",
@@ -380,7 +380,7 @@
         "type": "bool",
         "group": "Day cycle",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Moves the sun across the sequence, from the first pair of\nangles below to the second. The quickest way to a day-\ncycle without keyframing anything."
       },
       {
         "key": "sun_from_az",
@@ -388,7 +388,7 @@
         "type": "float",
         "group": "Day cycle",
         "min": 0, "max": 360, "default": 90,
-        "tooltip": ""
+        "tooltip": "Which way the sun lies at the start of the sequence."
       },
       {
         "key": "sun_from_alt",
@@ -396,7 +396,7 @@
         "type": "float",
         "group": "Day cycle",
         "min": -10, "max": 90, "default": 10,
-        "tooltip": ""
+        "tooltip": "How high the sun stands at the start."
       },
       {
         "key": "sun_to_az",
@@ -404,7 +404,7 @@
         "type": "float",
         "group": "Day cycle",
         "min": 0, "max": 360, "default": 270,
-        "tooltip": ""
+        "tooltip": "Which way the sun lies at the end."
       },
       {
         "key": "sun_to_alt",
@@ -412,7 +412,7 @@
         "type": "float",
         "group": "Day cycle",
         "min": -10, "max": 90, "default": 10,
-        "tooltip": ""
+        "tooltip": "How high the sun stands at the end."
       }
       ]
     },
@@ -479,35 +479,35 @@
         "label": "Waveform",
         "type": "choice",
         "choices": ["Sine", "Triangle", "Square", "Sawtooth"],
-        "tooltip": ""
+        "tooltip": "The wave the value follows over time."
       },
       {
         "key": "frequency",
         "label": "Frequency (Hz)",
         "type": "float",
         "min": 0.001, "max": 100, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How many cycles a second."
       },
       {
         "key": "phase",
         "label": "Phase",
         "type": "float",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Where in the cycle it starts, as a fraction of one cycle.\nUse it to run two oscillators out of step."
       },
       {
         "key": "amplitude",
         "label": "Amplitude",
         "type": "float",
         "min": 0, "max": 1000, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far the value swings either side of the offset."
       },
       {
         "key": "offset",
         "label": "Offset",
         "type": "float",
         "min": -1000, "max": 1000, "default": 0,
-        "tooltip": ""
+        "tooltip": "The value the wave is centred on."
       }
       ]
     },
@@ -526,21 +526,21 @@
         "label": "Speed",
         "type": "float",
         "min": -100, "max": 100, "default": 1,
-        "tooltip": ""
+        "tooltip": "How fast time runs for everything downstream. Negative\nruns it backwards."
       },
       {
         "key": "offset",
         "label": "Offset (s)",
         "type": "float",
         "min": -10000, "max": 10000, "default": 0,
-        "tooltip": ""
+        "tooltip": "Shifts time before it reaches the graph, so a downstream\nanimation starts earlier or later without moving its keys."
       },
       {
         "key": "loop",
         "label": "Loop length (s, 0 = none)",
         "type": "float",
         "min": 0, "max": 10000, "default": 0,
-        "tooltip": ""
+        "tooltip": "The length of time after which it repeats. 0 never loops."
       },
       {
         "key": "pingpong",
@@ -1106,7 +1106,7 @@
         "type": "float",
         "group": "Flight",
         "min": 0, "max": 50000, "default": 400,
-        "tooltip": ""
+        "tooltip": "How far above the ground the camera flies, in metres. The\npath gives the route; this gives the altitude."
       },
       {
         "key": "enabled",
@@ -1243,7 +1243,7 @@
         "type": "float",
         "group": "Position",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the camera stands, east-west, in metres."
       },
       {
         "key": "eye_y_m",
@@ -1251,7 +1251,7 @@
         "type": "float",
         "group": "Position",
         "min": -10000, "max": 100000, "default": 2250,
-        "tooltip": ""
+        "tooltip": "How high the camera stands, in metres."
       },
       {
         "key": "eye_z_m",
@@ -1259,7 +1259,7 @@
         "type": "float",
         "group": "Position",
         "min": -100000, "max": 100000, "default": 8500,
-        "tooltip": ""
+        "tooltip": "Where the camera stands, north-south, in metres."
       },
       {
         "key": "target_x_m",
@@ -1267,7 +1267,7 @@
         "type": "float",
         "group": "Aim",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "What the camera looks at, east-west, in metres."
       },
       {
         "key": "target_y_m",
@@ -1275,7 +1275,7 @@
         "type": "float",
         "group": "Aim",
         "min": -10000, "max": 100000, "default": 500,
-        "tooltip": ""
+        "tooltip": "The height the camera looks at, in metres."
       },
       {
         "key": "target_z_m",
@@ -1283,7 +1283,7 @@
         "type": "float",
         "group": "Aim",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "What the camera looks at, north-south, in metres."
       },
       {
         "key": "focal_mm",
@@ -1291,7 +1291,7 @@
         "type": "float",
         "group": "Lens",
         "min": 8, "max": 800, "default": 35,
-        "tooltip": ""
+        "tooltip": "The lens, in millimetres on this sensor. Short is wide and\nexaggerates depth; long flattens it and pulls the\nbackground forward. With the optical simulation on, this\nalso sets how much the lens distorts."
       },
       {
         "key": "aperture",
@@ -1299,7 +1299,7 @@
         "type": "float",
         "group": "Lens",
         "min": 1.2, "max": 22, "default": 8,
-        "tooltip": ""
+        "tooltip": "The f-number. It sets the depth of field and, with the\nshutter and ISO, the exposure - and it is what decides how\nmuch the corners fall off."
       },
       {
         "key": "shutter_inv",
@@ -1307,7 +1307,7 @@
         "type": "float",
         "group": "Exposure",
         "min": 0.5, "max": 8000, "default": 125,
-        "tooltip": ""
+        "tooltip": "The shutter speed, as 1/x seconds. Slower is brighter and\nsmears more of the camera's own movement into the frame."
       },
       {
         "key": "iso",
@@ -1315,7 +1315,7 @@
         "type": "float",
         "group": "Exposure",
         "min": 25, "max": 25600, "default": 100,
-        "tooltip": ""
+        "tooltip": "The sensor's sensitivity. Higher is brighter for the same\naperture and shutter."
       },
       {
         "key": "film",
@@ -2544,21 +2544,21 @@
         "key": "path",
         "label": "File",
         "type": "filename",
-        "tooltip": ""
+        "tooltip": "Where the file is written."
       },
       {
         "key": "format",
         "label": "Format",
         "type": "choice",
         "choices": ["PNG 16-bit", "RAW float32"],
-        "tooltip": ""
+        "tooltip": "PNG keeps 16 bits per sample, which is enough for terrain\nin most cases; RAW float32 keeps the full precision and is\nwhat another tool should read."
       },
       {
         "key": "auto_export",
         "label": "Export on every compute",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes the file every time the graph recomputes.\nConvenient while iterating, and a great deal of disk\ntraffic if left on."
       }
       ]
     },
@@ -2566,7 +2566,7 @@
       "type": "ExportMesh",
       "display_name": "Export mesh",
       "category": "Export",
-      "description": "Write OBJ mesh",
+      "description": "Writes the terrain as an OBJ mesh, for another application to open",
       "ports": [
         {"name": "input", "dir": "in", "type": "heightmap", "optional": false}
       ],
@@ -2575,28 +2575,28 @@
         "key": "path",
         "label": "File",
         "type": "filename",
-        "tooltip": ""
+        "tooltip": "Where the file is written."
       },
       {
         "key": "max_verts_side",
         "label": "Mesh resolution",
         "type": "int",
         "min": 32, "max": 1024, "default": 256,
-        "tooltip": ""
+        "tooltip": "How many vertices the exported mesh has along each side.\nThis is the resolution of the exported geometry, not of\nthe graph."
       },
       {
         "key": "height_scale",
         "label": "Height scale",
         "type": "float",
         "min": 0.01, "max": 2, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How the terrain's heights are scaled into the mesh, so it\nlands at the right proportions elsewhere."
       },
       {
         "key": "auto_export",
         "label": "Export on every compute",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes the file every time the graph recomputes.\nConvenient while iterating, and a great deal of disk\ntraffic if left on."
       }
       ]
     },
@@ -2615,28 +2615,28 @@
         "key": "path",
         "label": "File",
         "type": "filename",
-        "tooltip": ""
+        "tooltip": "Where the file is written."
       },
       {
         "key": "format",
         "label": "Format",
         "type": "choice",
         "choices": ["CSV (x,y,z,value)", "PLY"],
-        "tooltip": ""
+        "tooltip": "CSV is readable anywhere; PLY carries the points as real\ngeometry."
       },
       {
         "key": "height_scale",
         "label": "Height scale",
         "type": "float",
         "min": 0.01, "max": 100, "default": 1,
-        "tooltip": ""
+        "tooltip": "How the stored heights are scaled on the way out, so the\ncloud lands at the right size in whatever reads it."
       },
       {
         "key": "auto_export",
         "label": "Export on every compute",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes the file every time the graph recomputes.\nConvenient while iterating, and a great deal of disk\ntraffic if left on."
       }
       ]
     },
@@ -2644,7 +2644,7 @@
       "type": "ExportTexture",
       "display_name": "Export texture",
       "category": "Export",
-      "description": "Write albedo/texture PNG",
+      "description": "Writes a texture out as a PNG, so a material built here can be used elsewhere",
       "ports": [
         {"name": "texture", "dir": "in", "type": "texture", "optional": false}
       ],
@@ -2653,14 +2653,14 @@
         "key": "path",
         "label": "File",
         "type": "filename",
-        "tooltip": ""
+        "tooltip": "Where the file is written."
       },
       {
         "key": "auto_export",
         "label": "Export on every compute",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Writes the file every time the graph recomputes.\nConvenient while iterating, and a great deal of disk\ntraffic if left on."
       }
       ]
     },
@@ -2734,7 +2734,7 @@
         "type": "choice",
         "group": "Combine",
         "choices": ["Add", "Max (merge)", "Min"],
-        "tooltip": ""
+        "tooltip": "How the extra height layers are folded into the main one.\nMax keeps both shapes where they overlap; add sums them\nand can double the relief."
       },
       {
         "key": "layer_strength",
@@ -2742,7 +2742,7 @@
         "type": "float",
         "group": "Combine",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strongly the extra layers count."
       },
       {
         "key": "zero_edges",
@@ -2758,14 +2758,14 @@
         "type": "choice",
         "group": "Edges",
         "choices": ["Smooth", "Linear", "Steep (cliff)"],
-        "tooltip": ""
+        "tooltip": "The profile the terrain takes as it falls to the border.\nSteep leaves a cliff at the tile edge; smooth eases it\nout."
       },
       {
         "key": "height_range",
         "label": "Final height range",
         "type": "range",
         "group": "Output",
-        "tooltip": ""
+        "tooltip": "The low and high the finished terrain is rescaled into."
       },
       {
         "key": "remap",
@@ -2773,7 +2773,7 @@
         "type": "bool",
         "group": "Output",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Rescales the result into the range above. Off keeps the\nraw values, which matters when the numbers themselves mean\nsomething."
       }
       ]
     },
@@ -2826,7 +2826,7 @@
         "label": "Region centre",
         "type": "vec2",
         "group": "Region",
-        "tooltip": ""
+        "tooltip": "The middle of the region of the field that is baked, in\nfield coordinates."
       },
       {
         "key": "size",
@@ -2900,7 +2900,7 @@
         "label": "Region centre",
         "type": "vec2",
         "group": "Region",
-        "tooltip": ""
+        "tooltip": "The middle of the region of the buffer that is read."
       },
       {
         "key": "size",
@@ -2908,14 +2908,14 @@
         "type": "float",
         "group": "Region",
         "min": 0.001, "max": 100, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the buffer the region covers."
       },
       {
         "key": "scale",
         "label": "Value scale",
         "type": "float",
         "min": -8, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "Multiplies the values read out of the buffer."
       },
       {
         "key": "tile",
@@ -2941,42 +2941,42 @@
         "label": "Hue shift °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Rotates every colour around the wheel, in degrees."
       },
       {
         "key": "saturation",
         "label": "Saturation",
         "type": "float",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strong the colour is. 0 leaves greyscale."
       },
       {
         "key": "contrast",
         "label": "Contrast",
         "type": "float",
         "min": 0, "max": 3, "default": 1,
-        "tooltip": ""
+        "tooltip": "Pushes colours away from the middle, or toward it below 1."
       },
       {
         "key": "brightness",
         "label": "Brightness",
         "type": "float",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Added to every channel."
       },
       {
         "key": "gamma",
         "label": "Gamma",
         "type": "float",
         "min": 0.1, "max": 5, "default": 1,
-        "tooltip": ""
+        "tooltip": "Bends the midtones without moving black or white."
       },
       {
         "key": "invert",
         "label": "Invert",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Turns every colour into its opposite."
       }
       ]
     },
@@ -2998,28 +2998,28 @@
         "label": "Hue (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "The hue used when nothing is wired to it, 0..1 around the\nwheel."
       },
       {
         "key": "s",
         "label": "Saturation (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "The saturation used when nothing is wired to it."
       },
       {
         "key": "v",
         "label": "Value (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "The brightness used when nothing is wired to it."
       },
       {
         "key": "a",
         "label": "Alpha (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The alpha used when nothing is wired to it."
       }
       ]
     },
@@ -3054,14 +3054,14 @@
         "label": "Blend mode",
         "type": "choice",
         "choices": ["Mix", "Add", "Multiply", "Screen", "Overlay", "Darken", "Lighten"],
-        "tooltip": ""
+        "tooltip": "How the two colours are combined."
       },
       {
         "key": "amount",
         "label": "Amount (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much of the second colour is mixed in, when nothing is\nwired to the factor."
       }
       ]
     },
@@ -3079,13 +3079,13 @@
         "key": "gradient",
         "label": "Gradient",
         "type": "gradient",
-        "tooltip": ""
+        "tooltip": "The colour ramp the incoming number is looked up in."
       },
       {
         "key": "range",
         "label": "Input range",
         "type": "range",
-        "tooltip": ""
+        "tooltip": "The span of input values that maps across the whole\ngradient. Anything outside takes the nearest end."
       }
       ]
     },
@@ -3107,28 +3107,28 @@
         "label": "Red (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       },
       {
         "key": "g",
         "label": "Green (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       },
       {
         "key": "b",
         "label": "Blue (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       },
       {
         "key": "a",
         "label": "Alpha (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       }
       ]
     },
@@ -3164,14 +3164,14 @@
         "label": "U (when unconnected)",
         "type": "float",
         "min": -64, "max": 64, "default": 0,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       },
       {
         "key": "v",
         "label": "V (when unconnected)",
         "type": "float",
         "min": -64, "max": 64, "default": 0,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       }
       ]
     },
@@ -3203,7 +3203,7 @@
         "label": "Alpha (non-colour inputs)",
         "type": "float",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The alpha given to a value that has no colour of its own -\na number or a vector."
       },
       {
         "key": "signed_vector",
@@ -3248,7 +3248,7 @@
         "label": "Project a vector on",
         "type": "choice",
         "choices": ["XZ (ground)", "XY (front)", "ZY (side)"],
-        "tooltip": ""
+        "tooltip": "Which plane a vector is flattened onto to become texture\ncoordinates. Ground is what you want for anything lying on\nthe terrain; the other two are for walls and cliffs."
       }
       ]
     },
@@ -3267,7 +3267,7 @@
         "label": "Texture coordinates lie on",
         "type": "choice",
         "choices": ["XZ (ground)", "XY (front)", "ZY (side)"],
-        "tooltip": ""
+        "tooltip": "Which plane the texture coordinates are treated as lying\non when they are read back as a vector."
       }
       ]
     },
@@ -3288,21 +3288,21 @@
         "label": "X (when unconnected)",
         "type": "float",
         "min": -1000, "max": 1000, "default": 0,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       },
       {
         "key": "y",
         "label": "Y (when unconnected)",
         "type": "float",
         "min": -1000, "max": 1000, "default": 0,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       },
       {
         "key": "z",
         "label": "Z (when unconnected)",
         "type": "float",
         "min": -1000, "max": 1000, "default": 0,
-        "tooltip": ""
+        "tooltip": "The value used when nothing is wired to this input."
       }
       ]
     },
@@ -3344,14 +3344,14 @@
         "label": "Strength",
         "type": "float",
         "min": 0, "max": 64, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strongly the recovered normal tilts. This node exists\nso that nodes after a displacement see the surface it\nactually made rather than the flat plane it started as -\nwhich is what makes a slope-keyed material follow the\ndisplaced rock."
       },
       {
         "key": "flip",
         "label": "Flip",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Turns the recovered normal the other way up."
       }
       ]
     },
@@ -3386,7 +3386,7 @@
         "label": "Depth",
         "type": "float",
         "min": -1000, "max": 1000, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far the value moves the surface. Negative presses in."
       },
       {
         "key": "relative_size",
@@ -3409,7 +3409,7 @@
         "type": "float",
         "group": "Quality",
         "min": 0.0001, "max": 1, "default": 0.01,
-        "tooltip": ""
+        "tooltip": "How far apart the surface is sampled when working out\nwhich way it faces. Too small reads noise as shape; too\nlarge flattens real detail."
       },
       {
         "key": "quality",
@@ -3432,7 +3432,7 @@
         "type": "float",
         "group": "Fixed direction",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The X part of the direction the surface is pushed, when a\nfixed direction is chosen rather than the normal."
       },
       {
         "key": "dir_y",
@@ -3440,7 +3440,7 @@
         "type": "float",
         "group": "Fixed direction",
         "min": -1, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "The Y part of that direction. Straight up is the usual\nchoice for terrain."
       },
       {
         "key": "dir_z",
@@ -3448,7 +3448,7 @@
         "type": "float",
         "group": "Fixed direction",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The Z part of that direction."
       }
       ]
     },
@@ -3475,7 +3475,7 @@
         "label": "Strength",
         "type": "float",
         "min": -32, "max": 32, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far the sampling point is moved. This warps where\nanother field is read rather than what it returns, which\nis what turns a regular pattern into a flowing one."
       },
       {
         "key": "scale_x",
@@ -3483,7 +3483,7 @@
         "type": "float",
         "group": "Per axis",
         "min": -8, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the displacement applies along X."
       },
       {
         "key": "scale_y",
@@ -3491,7 +3491,7 @@
         "type": "float",
         "group": "Per axis",
         "min": -8, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much applies along Y."
       },
       {
         "key": "scale_z",
@@ -3499,7 +3499,7 @@
         "type": "float",
         "group": "Per axis",
         "min": -8, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much applies along Z."
       }
       ]
     },
@@ -3520,14 +3520,14 @@
         "label": "Shape",
         "type": "choice",
         "choices": ["Sphere", "Box"],
-        "tooltip": ""
+        "tooltip": "The region the inner field is confined to."
       },
       {
         "key": "center",
         "label": "Centre (X,Z)",
         "type": "vec2",
         "group": "Region",
-        "tooltip": ""
+        "tooltip": "Where that region sits, across and along."
       },
       {
         "key": "center_y",
@@ -3535,7 +3535,7 @@
         "type": "float",
         "group": "Region",
         "min": -1000, "max": 1000, "default": 0,
-        "tooltip": ""
+        "tooltip": "The height the region is centred at."
       },
       {
         "key": "size",
@@ -3543,7 +3543,7 @@
         "type": "float",
         "group": "Region",
         "min": 0.001, "max": 1000, "default": 1,
-        "tooltip": ""
+        "tooltip": "How large the region is."
       },
       {
         "key": "fade",
@@ -3586,7 +3586,7 @@
         "key": "color",
         "label": "Colour",
         "type": "color",
-        "tooltip": ""
+        "tooltip": "The colour handed to whatever this feeds."
       }
       ]
     },
@@ -3604,7 +3604,7 @@
         "label": "Value",
         "type": "float",
         "min": -1000, "max": 1000, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The number handed to whatever this feeds."
       }
       ]
     },
@@ -3666,26 +3666,26 @@
         "label": "Projection",
         "type": "choice",
         "choices": ["Top down (XZ)", "Front (XY)", "Side (ZY)"],
-        "tooltip": ""
+        "tooltip": "Which way the coordinates are projected. Top down suits\nground; the other two suit walls and cliff faces, where a\ntop-down projection smears."
       },
       {
         "key": "scale",
         "label": "Scale",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "How many times the texture repeats across and along."
       },
       {
         "key": "offset",
         "label": "Offset",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "Slides the coordinates, which moves the texture on the\nsurface."
       },
       {
         "key": "angle",
         "label": "Rotation °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Turns the coordinates, which rotates the texture."
       }
       ]
     },
@@ -3718,14 +3718,14 @@
         "type": "bool",
         "group": "Altitude",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Limits the material to a band of heights."
       },
       {
         "key": "altitude",
         "label": "Altitude band",
         "type": "range",
         "group": "Altitude",
-        "tooltip": ""
+        "tooltip": "The band of heights it belongs to."
       },
       {
         "key": "altitude_fuzz",
@@ -3741,7 +3741,7 @@
         "type": "bool",
         "group": "Steepness",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the material to a band of steepness."
       },
       {
         "key": "slope",
@@ -3756,7 +3756,7 @@
         "type": "float",
         "group": "Steepness",
         "min": 0, "max": 1, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "How gradually it gives out at the edges of the slope band.\nZero draws a line across the hillside."
       },
       {
         "key": "use_orientation",
@@ -3764,7 +3764,7 @@
         "type": "bool",
         "group": "Facing",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Limits the material to slopes facing a particular way."
       },
       {
         "key": "orientation",
@@ -3779,14 +3779,14 @@
         "type": "float",
         "group": "Facing",
         "min": 0, "max": 1, "default": 0.2,
-        "tooltip": ""
+        "tooltip": "How gradually it gives out as a slope turns away from the\nfavoured direction."
       },
       {
         "key": "invert",
         "label": "Invert",
         "type": "bool",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Puts the material everywhere it would not have been."
       }
       ]
     },
@@ -3805,20 +3805,20 @@
         "label": "Shape",
         "type": "choice",
         "choices": ["Gain (gamma)", "Smoothstep", "Step", "Bias", "Invert"],
-        "tooltip": ""
+        "tooltip": "The curve applied to the value."
       },
       {
         "key": "amount",
         "label": "Amount",
         "type": "float",
         "min": 0.05, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strongly the curve bends."
       },
       {
         "key": "edges",
         "label": "Edges",
         "type": "range",
-        "tooltip": ""
+        "tooltip": "The two values the curve runs between, for the step and\nsmoothstep shapes."
       }
       ]
     },
@@ -3838,7 +3838,7 @@
         "label": "Operation",
         "type": "choice",
         "choices": ["Add", "Subtract", "Multiply", "Divide", "Minimum", "Maximum", "Power", "Modulo", "Absolute difference"],
-        "tooltip": ""
+        "tooltip": "The arithmetic applied to the two inputs."
       },
       {
         "key": "a_default",
@@ -3846,7 +3846,7 @@
         "type": "float",
         "group": "Defaults",
         "min": -100, "max": 100, "default": 0,
-        "tooltip": ""
+        "tooltip": "The first value, when nothing is wired to it."
       },
       {
         "key": "b_default",
@@ -3854,7 +3854,7 @@
         "type": "float",
         "group": "Defaults",
         "min": -100, "max": 100, "default": 1,
-        "tooltip": ""
+        "tooltip": "The second value, when nothing is wired to it."
       }
       ]
     },
@@ -3875,7 +3875,7 @@
         "label": "Blend (when unconnected)",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How far between the two inputs the result sits, when\nnothing is wired to the factor."
       }
       ]
     },
@@ -3893,20 +3893,20 @@
         "key": "from",
         "label": "Input range",
         "type": "range",
-        "tooltip": ""
+        "tooltip": "The span of input values that is rescaled."
       },
       {
         "key": "to",
         "label": "Output range",
         "type": "range",
-        "tooltip": ""
+        "tooltip": "The span they are rescaled into. Reversing it turns the\nvalue upside down."
       },
       {
         "key": "clamp",
         "label": "Clamp to the output range",
         "type": "bool",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Holds the result inside the output range instead of\nletting it run past the ends."
       }
       ]
     },
@@ -3925,7 +3925,7 @@
         "label": "Function",
         "type": "choice",
         "choices": ["Sine", "Cosine", "Tangent", "Arc sine", "Arc cosine", "Arc tangent", "Hyperbolic sine", "Hyperbolic cosine", "Hyperbolic tangent"],
-        "tooltip": ""
+        "tooltip": "The trigonometric function applied."
       },
       {
         "key": "degrees",
@@ -3939,7 +3939,7 @@
         "label": "Input scale",
         "type": "float",
         "min": -32, "max": 32, "default": 1,
-        "tooltip": ""
+        "tooltip": "Multiplies the input before the function, which sets how\nmany cycles it goes through across the terrain."
       }
       ]
     },
@@ -4152,7 +4152,7 @@
         "label": "Type",
         "type": "choice",
         "choices": ["Rolling (fBm)", "Ridged", "Billow"],
-        "tooltip": ""
+        "tooltip": "The shape the octaves take - rolling ground, sharp ridges\nor rounded billows."
       },
       {
         "key": "seed",
@@ -4183,7 +4183,7 @@
         "type": "float",
         "group": "Noise",
         "min": 0, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far the noise swings."
       },
       {
         "key": "offset",
@@ -4191,7 +4191,7 @@
         "type": "float",
         "group": "Noise",
         "min": -4, "max": 4, "default": 0,
-        "tooltip": ""
+        "tooltip": "Added to the result, which raises or lowers the whole\nfield."
       }
       ]
     },
@@ -4210,14 +4210,14 @@
         "label": "Shape",
         "type": "choice",
         "choices": ["Sine wave", "Square wave", "Triangle wave", "Sawtooth", "Gaussian bump", "Cone", "Band", "Step"],
-        "tooltip": ""
+        "tooltip": "The analytic shape produced."
       },
       {
         "key": "center",
         "label": "Center",
         "type": "vec2",
         "group": "Placement",
-        "tooltip": ""
+        "tooltip": "Where the shape is centred."
       },
       {
         "key": "direction",
@@ -4249,7 +4249,7 @@
         "type": "float",
         "group": "Shape",
         "min": -2, "max": 2, "default": 0,
-        "tooltip": ""
+        "tooltip": "Slides a wave along, as a fraction of one cycle."
       },
       {
         "key": "amplitude",
@@ -4257,7 +4257,7 @@
         "type": "float",
         "group": "Output",
         "min": 0, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far the result swings."
       },
       {
         "key": "offset",
@@ -4265,7 +4265,7 @@
         "type": "float",
         "group": "Output",
         "min": -4, "max": 4, "default": 0,
-        "tooltip": ""
+        "tooltip": "Added to the result."
       }
       ]
     },
@@ -4497,7 +4497,7 @@
         "type": "float",
         "group": "Pattern",
         "min": 0, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How far the cellular pattern swings."
       },
       {
         "key": "offset",
@@ -4505,7 +4505,7 @@
         "type": "float",
         "group": "Pattern",
         "min": -4, "max": 4, "default": 0,
-        "tooltip": ""
+        "tooltip": "Added to the result."
       },
       {
         "key": "invert",
@@ -4950,7 +4950,7 @@
       "type": "GammaCorrection",
       "display_name": "Gamma correction",
       "category": "Filter",
-      "description": "Power-curve contrast",
+      "description": "Bends the heights toward the low or the high end without moving either",
       "ports": [
         {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
         {"name": "mask", "dir": "in", "type": "heightmap", "optional": true},
@@ -5298,7 +5298,7 @@
       "type": "Remap",
       "display_name": "Remap",
       "category": "Filter",
-      "description": "Remap value range",
+      "description": "Rescales the whole map into a new range, keeping its shape exactly",
       "ports": [
         {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
         {"name": "output", "dir": "out", "type": "heightmap", "optional": false},
@@ -5325,7 +5325,7 @@
       "type": "Smooth",
       "display_name": "Smooth",
       "category": "Filter",
-      "description": "Gaussian-like smoothing",
+      "description": "Softens the surface: takes the noise off, and at a large radius the shape too",
       "ports": [
         {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
         {"name": "mask", "dir": "in", "type": "heightmap", "optional": true},
@@ -5993,7 +5993,7 @@
         "type": "bool",
         "group": "Light",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Turns the light off without removing it."
       },
       {
         "key": "type",
@@ -6001,14 +6001,14 @@
         "type": "choice",
         "group": "Light",
         "choices": ["Point", "Spot"],
-        "tooltip": ""
+        "tooltip": "A point light throws in every direction; a spot throws in\na cone."
       },
       {
         "key": "color",
         "label": "Colour",
         "type": "color",
         "group": "Light",
-        "tooltip": ""
+        "tooltip": "The light's colour."
       },
       {
         "key": "intensity",
@@ -6016,7 +6016,7 @@
         "type": "float",
         "group": "Light",
         "min": 0, "max": 50, "default": 1,
-        "tooltip": ""
+        "tooltip": "How bright the light is."
       },
       {
         "key": "radius_m",
@@ -6032,7 +6032,7 @@
         "type": "float",
         "group": "Position",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the light stands, east-west, in metres."
       },
       {
         "key": "y_m",
@@ -6040,7 +6040,7 @@
         "type": "float",
         "group": "Position",
         "min": -10000, "max": 100000, "default": 1500,
-        "tooltip": ""
+        "tooltip": "How high the light stands, in metres."
       },
       {
         "key": "z_m",
@@ -6048,7 +6048,7 @@
         "type": "float",
         "group": "Position",
         "min": -100000, "max": 100000, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the light stands, north-south, in metres."
       },
       {
         "key": "heading",
@@ -6056,7 +6056,7 @@
         "type": "float",
         "group": "Spot",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Which way a spot points, around the compass."
       },
       {
         "key": "pitch",
@@ -6064,7 +6064,7 @@
         "type": "float",
         "group": "Spot",
         "min": -90, "max": 90, "default": -60,
-        "tooltip": ""
+        "tooltip": "How far a spot is tilted down, in degrees."
       },
       {
         "key": "cone",
@@ -6072,7 +6072,7 @@
         "type": "float",
         "group": "Spot",
         "min": 1, "max": 179, "default": 40,
-        "tooltip": ""
+        "tooltip": "How wide a spot's cone is, in degrees."
       },
       {
         "key": "shadows",
@@ -6482,7 +6482,7 @@
       "type": "SelectAltitude",
       "display_name": "Select altitude",
       "category": "Mask",
-      "description": "Select by height band",
+      "description": "Selects the ground that lies within a band of heights - the basis of a snow line or a shore",
       "ports": [
         {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
         {"name": "mask", "dir": "out", "type": "heightmap", "optional": false}
@@ -9429,7 +9429,7 @@
         "type": "bool",
         "group": "Shape",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Joins the last point back to the first, so the path is a\nloop."
       },
       {
         "key": "width",
@@ -9529,14 +9529,14 @@
         "label": "Start",
         "type": "vec2",
         "group": "Route",
-        "tooltip": ""
+        "tooltip": "Where the route begins, as a fraction of the tile."
       },
       {
         "key": "end",
         "label": "End",
         "type": "vec2",
         "group": "Route",
-        "tooltip": ""
+        "tooltip": "Where it ends."
       },
       {
         "key": "slope_penalty",
@@ -9552,7 +9552,7 @@
         "type": "int",
         "group": "Route",
         "min": 1, "max": 32, "default": 4,
-        "tooltip": ""
+        "tooltip": "Keeps only every Nth point of the found route. The search\nreturns a point per cell, which is far more than a road or\na river needs."
       }
       ]
     },
@@ -9572,7 +9572,7 @@
         "type": "int",
         "group": "Fractal",
         "min": 1, "max": 8, "default": 4,
-        "tooltip": ""
+        "tooltip": "How many times each segment is split and its midpoint\npushed aside. Each pass doubles the detail, so a few turn\na straight line into a natural wander."
       },
       {
         "key": "amplitude",
@@ -9580,7 +9580,7 @@
         "type": "float",
         "group": "Fractal",
         "min": 0, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "How far the midpoints are pushed."
       },
       {
         "key": "seed",
@@ -9607,7 +9607,7 @@
         "type": "float",
         "group": "Path",
         "min": 0.002, "max": 0.5, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How far apart the resampled points are, as a fraction of\nthe tile."
       },
       {
         "key": "smooth",
@@ -9615,7 +9615,7 @@
         "type": "int",
         "group": "Path",
         "min": 0, "max": 6, "default": 0,
-        "tooltip": ""
+        "tooltip": "How much the path is smoothed as it is resampled."
       }
       ]
     },
@@ -9623,7 +9623,7 @@
       "type": "PathSDF",
       "display_name": "Distance from a path",
       "category": "Path",
-      "description": "Distance to a path",
+      "description": "How far every point lies from a path, as a field to mask or displace with",
       "ports": [
         {"name": "path", "dir": "in", "type": "points", "optional": false},
         {"name": "distance", "dir": "out", "type": "heightmap", "optional": false},
@@ -9636,7 +9636,7 @@
         "type": "float",
         "group": "Distance",
         "min": 0.005, "max": 1, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "How far from the path its influence extends."
       },
       {
         "key": "invert",
@@ -9644,7 +9644,7 @@
         "type": "bool",
         "group": "Distance",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Measures the distance the other way, so the field is high\non the path rather than away from it."
       },
       {
         "key": "closed",
@@ -9652,7 +9652,7 @@
         "type": "bool",
         "group": "Distance",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Treats the path as a loop."
       },
       {
         "key": "smooth",
@@ -9660,7 +9660,7 @@
         "type": "int",
         "group": "Distance",
         "min": 0, "max": 6, "default": 0,
-        "tooltip": ""
+        "tooltip": "How much the distance field is smoothed."
       }
       ]
     },
@@ -9680,7 +9680,7 @@
         "type": "int",
         "group": "Spline",
         "min": 2, "max": 64, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many points are generated along each original segment.\nMore gives a smoother curve and a heavier cloud."
       },
       {
         "key": "tension",
@@ -9688,7 +9688,7 @@
         "type": "float",
         "group": "Spline",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How tightly the curve hugs its control points. Low sweeps\nwide between them; high pulls it close and can overshoot."
       }
       ]
     },
@@ -9813,7 +9813,7 @@
         "type": "float",
         "group": "Interaction",
         "min": 1, "max": 1e+06, "default": 5000,
-        "tooltip": ""
+        "tooltip": "The tile's width in metres, so the distances above mean\nreal metres. The studio keeps this in step with the\nproject."
       }
       ]
     },
@@ -9821,7 +9821,7 @@
       "type": "PointsMerge",
       "display_name": "Points merge",
       "category": "Points",
-      "description": "Combine two point clouds",
+      "description": "Combines two point clouds into one, keeping the attributes of both",
       "ports": [
         {"name": "points A", "dir": "in", "type": "points", "optional": false},
         {"name": "points B", "dir": "in", "type": "points", "optional": true},
@@ -9842,7 +9842,7 @@
       "type": "PointsRelax",
       "display_name": "Points relax",
       "category": "Points",
-      "description": "Even out point spacing",
+      "description": "Pushes points apart until they are evenly spaced, taking the clumps out of a random scatter",
       "ports": [
         {"name": "points", "dir": "in", "type": "points", "optional": false},
         {"name": "points", "dir": "out", "type": "points", "optional": false}
@@ -10243,7 +10243,7 @@
         "type": "float",
         "group": "Scaling",
         "min": 1, "max": 1e+06, "default": 5000,
-        "tooltip": ""
+        "tooltip": "The tile's width in metres, so the distances above mean\nreal metres. The studio keeps this in step with the\nproject."
       }
       ]
     },
@@ -10265,7 +10265,7 @@
         "type": "bool",
         "group": "Density",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Uses the presence mask the other way round: things are\nplaced where it is dark."
       },
       {
         "key": "density",
@@ -10634,7 +10634,7 @@
       "type": "Constant",
       "display_name": "Constant",
       "category": "Primitive",
-      "description": "Constant level",
+      "description": "One height everywhere - flat ground to build on with displacement, or to see a material against",
       "ports": [
         {"name": "output", "dir": "out", "type": "heightmap", "optional": false}
       ],
@@ -13028,7 +13028,7 @@
       "type": "WhiteNoise",
       "display_name": "White noise",
       "category": "Primitive",
-      "description": "Raw per-cell white noise",
+      "description": "Uncorrelated noise, one independent value per cell - grain and dither rather than landform",
       "ports": [
         {"name": "output", "dir": "out", "type": "heightmap", "optional": false}
       ],
@@ -13653,7 +13653,7 @@
         "label": "Scene object",
         "type": "text",
         "group": "Layer",
-        "tooltip": ""
+        "tooltip": "Which scene object this node drives."
       },
       {
         "key": "planet",
@@ -13675,7 +13675,7 @@
         "type": "choice",
         "group": "Layer",
         "choices": ["Rolling hills", "Ridged mountains", "Billow dunes", "Realistic terrain"],
-        "tooltip": ""
+        "tooltip": "The kind of ground that runs to the horizon past the tile."
       },
       {
         "key": "frequency",
@@ -13683,7 +13683,7 @@
         "type": "float",
         "group": "Layer",
         "min": 0.1, "max": 64, "default": 3,
-        "tooltip": ""
+        "tooltip": "How large the surround's features are."
       },
       {
         "key": "amplitude",
@@ -13691,7 +13691,7 @@
         "type": "float",
         "group": "Layer",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much relief the surround has. Matching it to the\ntile's own is what makes the join invisible."
       },
       {
         "key": "coverage",
@@ -13707,7 +13707,7 @@
         "type": "float",
         "group": "Layer",
         "min": 0.1, "max": 10, "default": 1.5,
-        "tooltip": ""
+        "tooltip": "How large the patches are where the surround changes\ncharacter."
       },
       {
         "key": "height_scale",
@@ -13723,7 +13723,7 @@
         "type": "bool",
         "group": "Layer",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Whether the surround is drawn."
       }
       ]
     },
@@ -13764,7 +13764,7 @@
         "label": "Scene object",
         "type": "text",
         "group": "Planet",
-        "tooltip": ""
+        "tooltip": "Which scene object this node drives."
       },
       {
         "key": "radius_m",
@@ -13772,7 +13772,7 @@
         "type": "float",
         "group": "Planet",
         "min": 10, "max": 1e+08, "default": 15000,
-        "tooltip": ""
+        "tooltip": "The planet's radius, in metres. It decides how quickly the\nhorizon curves away, which is the whole difference between\na small moon and an earth."
       },
       {
         "key": "relief",
@@ -13780,7 +13780,7 @@
         "type": "float",
         "group": "Planet",
         "min": 0, "max": 0.3, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How much height the surface has, as a fraction of the\nradius."
       },
       {
         "key": "seed",
@@ -13810,28 +13810,28 @@
         "label": "Lowland rock",
         "type": "color",
         "group": "Surface",
-        "tooltip": ""
+        "tooltip": "The colour of the low ground."
       },
       {
         "key": "rock_high",
         "label": "Highland rock",
         "type": "color",
         "group": "Surface",
-        "tooltip": ""
+        "tooltip": "The colour of the high ground."
       },
       {
         "key": "water_color",
         "label": "Ocean",
         "type": "color",
         "group": "Surface",
-        "tooltip": ""
+        "tooltip": "The colour of the seas."
       },
       {
         "key": "atmo_color",
         "label": "Atmosphere",
         "type": "color",
         "group": "Atmosphere",
-        "tooltip": ""
+        "tooltip": "The colour of the air, seen from outside."
       },
       {
         "key": "atmo_density",
@@ -13847,7 +13847,7 @@
         "type": "float",
         "group": "Atmosphere",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "How far the planet is turned about its axis, which chooses\nwhich face is toward the camera."
       },
       {
         "key": "x_m",
@@ -13855,7 +13855,7 @@
         "type": "float",
         "group": "Position",
         "min": -1e+07, "max": 1e+07, "default": 70000,
-        "tooltip": ""
+        "tooltip": "Where the planet sits, east-west, in metres."
       },
       {
         "key": "y_m",
@@ -13863,7 +13863,7 @@
         "type": "float",
         "group": "Position",
         "min": -1e+07, "max": 1e+07, "default": 17500,
-        "tooltip": ""
+        "tooltip": "How high the planet sits, in metres."
       },
       {
         "key": "z_m",
@@ -13871,7 +13871,7 @@
         "type": "float",
         "group": "Position",
         "min": -1e+07, "max": 1e+07, "default": 2500,
-        "tooltip": ""
+        "tooltip": "Where the planet sits, north-south, in metres."
       },
       {
         "key": "visible",
@@ -13879,7 +13879,7 @@
         "type": "bool",
         "group": "Position",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Whether the planet is drawn."
       }
       ]
     },
@@ -13897,7 +13897,7 @@
         "type": "choice",
         "group": "Object",
         "choices": ["Cube", "Sphere", "Plane", "Cylinder", "Cone"],
-        "tooltip": ""
+        "tooltip": "Which primitive shape this is."
       },
       {
         "key": "object",
@@ -13911,7 +13911,7 @@
         "label": "Colour",
         "type": "color",
         "group": "Object",
-        "tooltip": ""
+        "tooltip": "The object's colour, where no material is assigned to it."
       },
       {
         "key": "x_m",
@@ -14148,14 +14148,14 @@
         "key": "gradient",
         "label": "Gradient",
         "type": "gradient",
-        "tooltip": ""
+        "tooltip": "The colour ramp height is looked up in."
       },
       {
         "key": "hillshade",
         "label": "Multiply hillshade",
         "type": "bool",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Multiplies the colour by a shaded relief, so the form\nreads even where the colours are flat."
       }
       ]
     },
@@ -14174,7 +14174,7 @@
         "label": "Strength",
         "type": "float",
         "min": 0.05, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How strongly the height differences tilt the normal. High\nvalues exaggerate the relief in the shading without moving\nany geometry."
       }
       ]
     },
@@ -14201,7 +14201,7 @@
         "type": "float",
         "group": "Layers",
         "min": 0, "max": 1, "default": 0.75,
-        "tooltip": ""
+        "tooltip": "The height above which snow lies."
       },
       {
         "key": "grass_line",
@@ -14209,7 +14209,7 @@
         "type": "float",
         "group": "Layers",
         "min": 0, "max": 1, "default": 0.55,
-        "tooltip": ""
+        "tooltip": "The height above which vegetation stops."
       },
       {
         "key": "rock_slope",
@@ -14217,7 +14217,7 @@
         "type": "float",
         "group": "Layers",
         "min": 0.05, "max": 1, "default": 0.45,
-        "tooltip": ""
+        "tooltip": "How steep the ground must be before bare rock shows\nthrough the soil."
       },
       {
         "key": "snow_slope",
@@ -14225,7 +14225,7 @@
         "type": "float",
         "group": "Layers",
         "min": 0.05, "max": 1, "default": 0.55,
-        "tooltip": ""
+        "tooltip": "How steep the ground may be and still hold snow. Above it\nsnow slides off, which is what leaves the black rock faces\non a white mountain."
       },
       {
         "key": "beach_level",
@@ -14233,7 +14233,7 @@
         "type": "float",
         "group": "Layers",
         "min": 0, "max": 0.4, "default": 0.06,
-        "tooltip": ""
+        "tooltip": "The height below which sand appears."
       },
       {
         "key": "breakup",
@@ -14241,7 +14241,7 @@
         "type": "float",
         "group": "Detail",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much noise disturbs the boundaries between the\nsurfaces, so they do not read as contour lines."
       },
       {
         "key": "detail_scale",
@@ -14249,7 +14249,7 @@
         "type": "float",
         "group": "Detail",
         "min": 2, "max": 96, "default": 24,
-        "tooltip": ""
+        "tooltip": "How fine the surface detail is."
       },
       {
         "key": "wetness",
@@ -14257,7 +14257,7 @@
         "type": "float",
         "group": "Detail",
         "min": 0, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "How much the ground darkens where water collects and runs,\nwhich is one of the strongest cues that a terrain has\nweather."
       },
       {
         "key": "hillshade",
@@ -14265,7 +14265,7 @@
         "type": "bool",
         "group": "Detail",
         "default": false,
-        "tooltip": ""
+        "tooltip": "Multiplies the colour by a shaded relief."
       }
       ]
     },
@@ -14295,7 +14295,7 @@
         "type": "float",
         "group": "Flow",
         "min": 0, "max": 0.2, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How much the dragged value weakens at each step\ndownstream."
       },
       {
         "key": "fill_pits",
@@ -14303,7 +14303,7 @@
         "type": "bool",
         "group": "Flow",
         "default": true,
-        "tooltip": ""
+        "tooltip": "Routes flow through hollows instead of stopping in them,\nso a mask carries all the way to the map edge."
       },
       {
         "key": "blend_invert",
@@ -14332,7 +14332,7 @@
         "type": "float",
         "group": "Tiling",
         "min": 0.1, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much of the tile is blended into its opposite edge.\nThe wider the blend the more seamless the wrap, and the\nmore of the original is lost."
       },
       {
         "key": "blend_invert",
@@ -14367,7 +14367,7 @@
         "type": "float",
         "group": "Quilt",
         "min": 0.03, "max": 0.4, "default": 0.12,
-        "tooltip": ""
+        "tooltip": "How large the patches taken from the source are, as a\nfraction of the tile. Large patches keep more of the\noriginal's structure; small ones mix more freely and\nrepeat less."
       },
       {
         "key": "overlap",
@@ -14412,7 +14412,7 @@
         "type": "float",
         "group": "Borders",
         "min": -1, "max": 2, "default": 0,
-        "tooltip": ""
+        "tooltip": "The height the borders are pinned to."
       },
       {
         "key": "feather",
@@ -14420,7 +14420,7 @@
         "type": "float",
         "group": "Borders",
         "min": 0.005, "max": 0.5, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "How far in from the border the pinning reaches, so the\nterrain eases to it rather than dropping at the edge."
       },
       {
         "key": "blend_invert",
@@ -14448,28 +14448,28 @@
         "label": "Shear scale",
         "type": "float",
         "min": 0.02, "max": 1, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "How large the shear bands are."
       },
       {
         "key": "amount",
         "label": "Shear amount",
         "type": "float",
         "min": 0, "max": 0.3, "default": 0.05,
-        "tooltip": ""
+        "tooltip": "How far the rock is displaced along the shear."
       },
       {
         "key": "folding",
         "label": "Folding",
         "type": "float",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How much the sheared rock folds back on itself rather than\nsimply sliding."
       },
       {
         "key": "direction",
         "label": "Direction °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Which way the shearing acts."
       },
       {
         "key": "self_modulated",
