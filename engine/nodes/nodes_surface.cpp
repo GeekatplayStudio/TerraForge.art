@@ -319,14 +319,22 @@ REGISTER_NODE(
       n.add_out("output");
       n.add_out("cracks");
       add_seed(n.attrs);
-      add_float(n.attrs, "scale", "Column scale", 12.f, 2.f, 64.f, "Basalt");
+      add_float(n.attrs, "scale", "Column scale", 12.f, 2.f, 64.f, "Basalt")
+          .tooltip = "How many columns fit across the tile. Real columnar\n"
+                     "basalt is tens of centimetres across, so on a large\n"
+                     "terrain this wants to be high.";
       add_int(n.attrs, "steps", "Height steps", 6, 2, 24, "Basalt")
           .tooltip = "Each column's flat top snaps to one of this many\n"
                      "levels, the way cooling lava fractures in tiers.";
       add_float(n.attrs, "crack_width", "Crack width", 0.06f, 0.01f, 0.4f,
-                "Basalt");
+                "Basalt")
+          .tooltip = "How wide the joint between neighbouring columns is,\n"
+                     "as a fraction of a column. Also drives the second\n"
+                     "output, which is the crack pattern alone.";
       add_float(n.attrs, "crack_depth", "Crack depth", 0.25f, 0.f, 1.f,
-                "Basalt");
+                "Basalt")
+          .tooltip = "How far the joints cut down between the columns. 0\n"
+                     "leaves the tops without separating them.";
       setup_post(n);
     },
     [](Node &n) {

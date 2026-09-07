@@ -3582,10 +3582,10 @@ Columnar basalt: hexagonal steps and cracks
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Column scale | float, 2 to 64, default 12 |  |
+| Column scale | float, 2 to 64, default 12 | How many columns fit across the tile. Real columnar basalt is tens of centimetres across, so on a large terrain this wants to be high. |
 | Height steps | int, 2 to 24, default 6 | Each column's flat top snaps to one of this many levels, the way cooling lava fractures in tiers. |
-| Crack width | float, 0.01 to 0.4, default 0.06 |  |
-| Crack depth | float, 0 to 1, default 0.25 |  |
+| Crack width | float, 0.01 to 0.4, default 0.06 | How wide the joint between neighbouring columns is, as a fraction of a column. Also drives the second output, which is the crack pattern alone. |
+| Crack depth | float, 0 to 1, default 0.25 | How far the joints cut down between the columns. 0 leaves the tops without separating them. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -3602,7 +3602,7 @@ Constant level
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Value | float, -1 to 2, default 0.5 |  |
+| Value | float, -1 to 2, default 0.5 | The height every point gets. A flat map is the starting point for building terrain out of displacement alone, and the quickest way to see what a material or a field node is doing with nothing underneath it. |
 
 ### Crater
 
@@ -3616,15 +3616,15 @@ Impact craters: bowl, rim lip, ejecta blanket (single or field)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Profile | choice: Single crater / Crater field |  |
-| Scale | float, 0.02 to 1, default 0.3 |  |
-| Depth | float, 0.05 to 1, default 0.4 |  |
+| Profile | choice: Single crater / Crater field | One crater placed where you say, or a scattered field of them at varying sizes - a cratered plain rather than an impact site. |
+| Scale | float, 0.02 to 1, default 0.3 | How wide the crater is, as a fraction of the tile. In field mode this is the largest; the rest vary below it. |
+| Depth | float, 0.05 to 1, default 0.4 | How far the floor sits below the surrounding ground. |
 | Rim lip | float, 0 to 1, default 0.5 | Sharpness/height of the raised rim wall. |
-| Ejecta extent | float, 0.1 to 2, default 0.6 |  |
+| Ejecta extent | float, 0.1 to 2, default 0.6 | How far the thrown-out debris blanket reaches past the rim, as a multiple of the radius. It is the apron of raised ground that makes an impact read as an impact rather than a hole. |
 | Floor level | float, 0 to 1, default 0.15 | Clamps the bowl bottom — flat crater floors. |
-| Rim irregularity | float, 0 to 1, default 0.3 |  |
-| Position | x/y pair |  |
-| Field count | int, 2 to 64, default 12 |  |
+| Rim irregularity | float, 0 to 1, default 0.3 | How far the rim departs from a circle. 0 is a drawing-compass ring, which no impact leaves. |
+| Position | x/y pair | Where the single crater sits, as a fraction of the tile. Ignored in field mode. |
+| Field count | int, 2 to 64, default 12 | How many craters the field scatters. Field mode only. |
 | Seed | seed |  |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -3645,9 +3645,9 @@ Branching dendrites by particle aggregation
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Particles | int, 100 to 8000, default 1500 |  |
+| Particles | int, 100 to 8000, default 1500 | How many particles are released to wander until they touch the growing cluster. More builds a larger, denser dendrite and costs proportionally more. |
 | Stickiness | float, 0.1 to 1, default 1 | 1 sticks on first contact - wispy branches. Lower values let particles slide deeper before settling, thickening the arms. |
-| Smoothing | float, 0 to 0.05, default 0.008 |  |
+| Smoothing | float, 0 to 0.05, default 0.008 | Blurs the aggregate, turning a one-texel-wide skeleton into something with width that can be used as terrain. 0 leaves the bare structure. |
 
 ### Dunes
 
@@ -3660,12 +3660,12 @@ Sand dunes: asymmetric slip faces, crest chaos, ripples
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Wind direction ° | float, -180 to 180, default 30 |  |
-| Dune wavelength | float, 0.02 to 0.5, default 0.12 |  |
+| Wind direction ° | float, -180 to 180, default 30 | Which way the wind blows. Dunes run across it, and their steep slip face is on the downwind side - which is what tells a viewer which way the wind was going. |
+| Dune wavelength | float, 0.02 to 0.5, default 0.12 | The distance from one crest to the next, as a fraction of the tile. |
 | Asymmetry | float, 0.5 to 0.95, default 0.75 | Windward slope is long and gentle; the slip face is short and steep (real dunes ~0.8). |
-| Crest chaos | float, 0 to 1, default 0.5 |  |
+| Crest chaos | float, 0 to 1, default 0.5 | How much the crests wander and break up along their length. 0 gives parallel corduroy; high gives the broken crescents of a real dune field. |
 | Ripples | float, 0 to 1, default 0.25 | Secondary small-scale ripple field on top. |
-| Ripple scale | float, 2 to 20, default 6 |  |
+| Ripple scale | float, 2 to 20, default 6 | How many small wind ripples ride across each dune. These are the centimetre-scale corrugations on the sand, not the dunes themselves. |
 | Seed | seed |  |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -3689,13 +3689,13 @@ Terragen-style fake stones: boulders/rocks as displacement
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Stone scale | float, 0.004 to 0.25, default 0.03 | Stone size as a fraction of terrain width; smaller = more, denser stones. |
-| Stone density | float, 0.02 to 1, default 0.5 |  |
-| Stone tallness | float, 0.05 to 2, default 0.6 |  |
+| Stone density | float, 0.02 to 1, default 0.5 | The share of lattice cells that hold a stone. This node writes into the heightmap, so its smallest possible stone is a couple of texels - about 14 m on a 5 km tile. For stones you can stand next to, use Stone field, which is a function and has no resolution. |
+| Stone tallness | float, 0.05 to 2, default 0.6 | A stone's height as a fraction of its radius. Every stone here gets the same one, which is this node's most visible tell. |
 | Pancake effect | float, 0 to 1, default 0.3 | Squashes stones flat into slabs while keeping their footprint — 0 round boulders, 1 flat plates. |
 | Seed | seed |  |
 | Vary density | float, 0 to 1, default 0.6 | Large-scale patchiness: clusters of stones with clear ground between. |
-| Density variation scale | float, 1 to 16, default 4 |  |
-| Size variation | float, 0 to 1, default 0.5 |  |
+| Density variation scale | float, 1 to 16, default 4 | How large the patches of more and fewer stones are. Low gives a couple of broad drifts across the map; high breaks it into many small clusters. |
+| Size variation | float, 0 to 1, default 0.5 | How much stones differ in size from one another. 0 makes every stone identical, which nothing in nature is. |
 | Grow on slopes | range | Stones appear only where terrain slope is inside this band (rockfall collects on gentler ground). |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
@@ -3709,11 +3709,11 @@ Non-noise fractals: diamond-square, fault lines
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Type | choice: Diamond-square / Fault formation |  |
+| Type | choice: Diamond-square / Fault formation | Two classic terrain algorithms that are not noise. Diamond-square subdivides a grid, halving the randomness each time; Fault formation drops straight faults across the map and raises one side of each, which builds up into blocky, tectonic ground. |
 | Seed | seed |  |
-| Roughness | float, 0.3 to 1.6, default 0.9 |  |
-| Fault count | int, 10 to 2000, default 200 |  |
-| Fault softness | float, 0 to 0.2, default 0.02 |  |
+| Roughness | float, 0.3 to 1.6, default 0.9 | Diamond-square only: how much randomness survives each subdivision. Below 1 the detail dies away and the result is smooth hills; above 1 it grows and the surface turns jagged. |
+| Fault count | int, 10 to 2000, default 200 | Fault formation only: how many faults are laid down. Few gives a handful of broad steps; many averages into smooth rolling ground. |
+| Fault softness | float, 0 to 0.2, default 0.02 | How gradually each fault's step is spread across the map. 0 gives hard cliffs at every fault line. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -3731,11 +3731,11 @@ Oriented sparse-kernel noise (streaked rock)
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Octaves | int, 1 to 6, default 3 |  |
-| Kernel frequency | float, 0.5 to 16, default 3 |  |
-| Orientation ° | float, -180 to 180, default 30 |  |
+| Octaves | int, 1 to 6, default 3 | How many sizes of kernel are layered. Gabor noise is expensive per octave, so this stops at 6 where the other noises go to 16. |
+| Kernel frequency | float, 0.5 to 16, default 3 | How many waves are packed inside each kernel. This is the pitch of the grain, as against Scale below, which is how large a patch of it is. |
+| Orientation ° | float, -180 to 180, default 30 | Which way the grain runs, when Anisotropy is high enough for it to have a direction at all. |
 | Anisotropy | float, 0 to 1, default 0.85 | 1 locks every kernel to the orientation - streaks. 0 draws orientations at random - isotropic grain. |
-| Scale | float, 1 to 32, default 6 |  |
+| Scale | float, 1 to 32, default 6 | How many kernel cells fit across the tile - the size of the pattern, as against Kernel frequency, which is the pitch of the grain inside it. |
 | Flavor | choice: Gabor (amplitude) / Phasor sawtooth / Phasor sine / Phasor square | Phasor keeps only the phase of the kernel field, so the wave profile stays crisp everywhere - sawtooth reads as bedding planes, square as strata steps. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -3755,10 +3755,10 @@ Layered rock strata from an input heightmap
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Layers | int, 2 to 32, default 8 |  |
-| Layer hardness | float, 1 to 8, default 2.5 |  |
+| Layers | int, 2 to 32, default 8 | How many beds the height range is cut into. Few gives the broad benches of a canyon wall; many gives fine bedding. |
+| Layer hardness | float, 1 to 8, default 2.5 | How sharply each bed stands out from the next. Low leaves the original slope showing through; high makes every bed a flat tread with a riser between. |
 | Seed | seed |  |
-| Thickness variation | float, 0 to 1, default 0.5 |  |
+| Thickness variation | float, 0 to 1, default 0.5 | How much the beds differ in thickness. 0 gives evenly spaced layers, which no real rock has. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -3788,7 +3788,7 @@ Grass as displacement: a field of tufts in clumps, on ground flat enough to hold
 | Raggedness | float, 0 to 1, default 0.5 | How uneven the tops of the tufts are. |
 | Seed | seed |  |
 | Grows on slopes | range | Grass takes only ground whose slope is inside this band (0 flat .. 1 vertical). |
-| Slope fade | float, 0 to 0.5, default 0.1 |  |
+| Slope fade | float, 0 to 0.5, default 0.1 | How gradually the grass gives out at the edge of the slope band. Zero gives a hard line across the hillside, which reads as drawn on. |
 
 ### HeightmapFile
 
@@ -3800,7 +3800,7 @@ Import a heightfield: 8/16-bit PNG, JPG, TGA, or SRTM .hgt real-world DEM
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Heightfield image | file path |  |
+| Heightfield image | file path | An 8- or 16-bit PNG, a JPG or TGA, or an SRTM .hgt tile of real-world elevation. 16-bit carries far more height detail than 8-bit, which visibly terraces on a smooth slope. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -3817,11 +3817,11 @@ Geological set pieces: island, mountain, caldera, rift, mesa
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Type | choice: Island / Mountain / Caldera / Rift valley / Mesa |  |
-| Center | x/y pair |  |
-| Radius | float, 0.05 to 1, default 0.35 |  |
-| Relief | float, 0 to 1, default 0.5 |  |
-| Direction ° | float, -180 to 180, default 0 |  |
+| Type | choice: Island / Mountain / Caldera / Rift valley / Mesa | A whole landform in one node, for when you want a particular thing in a particular place rather than whatever the noise happens to give. The rim is wobbled by noise, so none of them reads as a compass drawing. |
+| Center | x/y pair | Where it sits, as a fraction of the tile. Outside 0..1 pushes it off the edge, so you get a coast or a flank rather than the whole thing. |
+| Radius | float, 0.05 to 1, default 0.35 | How far it reaches, as a fraction of the tile. |
+| Relief | float, 0 to 1, default 0.5 | How broken the form is. 0 is a clean geometric shape; higher adds ridged detail to the flanks and wobbles the outline further. |
+| Direction ° | float, -180 to 180, default 0 | Which way the form points. The rift valley and the mesa use it; the round ones ignore it. |
 | Seed | seed |  |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -3841,10 +3841,10 @@ Cellular noise seeded by line segments
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Line count | int, 4 to 400, default 40 |  |
-| Segment length | float, 0.02 to 0.6, default 0.18 |  |
-| Reach | float, 0.01 to 0.5, default 0.08 |  |
-| Direction ° | float, -180 to 180, default 0 |  |
+| Line count | int, 4 to 400, default 40 | How many line segments seed the pattern. Cellular noise grown from lines rather than points gives elongated, fractured shapes - bedding planes and shattered rock rather than blobs. |
+| Segment length | float, 0.02 to 0.6, default 0.18 | How long each seed segment is, as a fraction of the tile. Longer segments give longer, straighter features. |
+| Reach | float, 0.01 to 0.5, default 0.08 | How far the influence of a segment extends from it, which sets how wide the resulting bands are. |
+| Direction ° | float, -180 to 180, default 0 | The direction segments align to, before the jitter below scatters them. |
 | Direction jitter | float, 0 to 1, default 1 | 0 aligns every segment to the direction - bedding planes. 1 scatters them freely - shattered rock. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -3863,14 +3863,14 @@ Coherent noise: fBm, ridged, billow, swiss, value, cellular
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Type | choice: Perlin fBm / Ridged / Billow / Swiss (eroded ridges) / Value fBm / Worley F1 / Worley F2 / Worley edges / Worley F1*F2 / IQ (damped slopes) / Jordan (crumpled) / Pingpong (banded) / Voronoise (cell blend) |  |
+| Type | choice: Perlin fBm / Ridged / Billow / Swiss (eroded ridges) / Value fBm / Worley F1 / Worley F2 / Worley edges / Worley F1*F2 / IQ (damped slopes) / Jordan (crumpled) / Pingpong (banded) / Voronoise (cell blend) | Which noise the octaves are built from. Perlin fBm is rolling ground; Ridged gives sharp crests and is the usual starting point for mountains; Billow the rounded lumps of weathered rock; Swiss adds an erosion-like warp to the ridges. The Worley family is cellular - F1 for blobs, edges for a crack network. |
 | Seed | seed |  |
-| Octaves | int, 1 to 16, default 9 |  |
-| Lacunarity | float, 1.2 to 4, default 2 |  |
-| Gain | float, 0.05 to 0.95, default 0.5 |  |
-| Ridge weight | float, 0 to 1, default 0.7 |  |
-| Swiss warp | float, 0 to 0.6, default 0.15 |  |
-| Cell jitter | float, 0 to 1, default 1 |  |
+| Octaves | int, 1 to 16, default 9 | How many times the pattern is added at a smaller size. Each adds finer detail and costs about as much again; once an octave is finer than a texel it buys nothing. |
+| Lacunarity | float, 1.2 to 4, default 2 | How much smaller each octave is than the last. 2 halves it, which is the usual choice; higher leaves a gap between the scales and reads as two separate patterns rather than one surface. |
+| Gain | float, 0.05 to 0.95, default 0.5 | How much of its predecessor's strength each octave keeps. Low is smooth and dominated by the largest forms; high is uniformly rough at every scale. |
+| Ridge weight | float, 0 to 1, default 0.7 | Ridged and Swiss only: how strongly a high octave is suppressed where the one below it was already high. This is what keeps detail in the valleys and off the crests, the way real erosion does. |
+| Swiss warp | float, 0 to 0.6, default 0.15 | Swiss only: how far each octave is pushed sideways by the slope of the one below, which bends the ridges into something that looks worn rather than generated. |
+| Cell jitter | float, 0 to 1, default 1 | Worley only: how far each cell's point strays from the middle of its square. 0 is a visible grid; 1 is scattered. |
 | Wavenumber | x/y pair | How many times the pattern repeats across the tile, across and down. Higher is smaller features; the two differing stretches the pattern one way. |
 | Offset | x/y pair | Slides the pattern under the terrain. Use it to move a feature off a spot rather than reaching for a new seed, which would change everything at once. |
 | Rotation ° | float, -180 to 180, default 0 | Turns the pattern. Anything with a grain - strata, dunes, waves - reads very differently across the slope than along it. |
@@ -3899,9 +3899,9 @@ Vue-class fractal: base noise over harmonics with stretch, combination modes, va
 | Filter steepness | float, 0.2 to 4, default 1 | Contrast of the base noise itself. |
 | Seed | seed |  |
 | Wavelength | float, 0.005 to 4, default 0.25 | Size of the largest feature, as a fraction of the tile. |
-| Stretch X / Y | x/y pair |  |
+| Stretch X / Y | x/y pair | Pulls the pattern out along one axis. Unequal values give the grain that ridges running one way, or wind- blown ground, actually has. |
 | Stretch damping | float, 0 to 1, default 0.5 | Less stretch on the finer harmonics, so the whole pattern does not read as smeared. |
-| Iterations | int, 1 to 16, default 8 |  |
+| Iterations | int, 1 to 16, default 8 | How many times the pattern is added to itself at a smaller size. Each one adds finer detail and costs about as much again; past the point where an octave is smaller than a texel it adds cost and nothing else. |
 | Scale ratio | float, 0.1 to 0.9, default 0.5 | Wavelength ratio between iterations. 0.5 is classic; above favours the large forms, below the fine detail. |
 | Amplitude ratio | float, 0.05 to 0.95, default 0.5 | Amplitude ratio between iterations. |
 | Roughness | float, 0 to 2, default 1 | Scales the amplitude ratio: more roughness, more detail. |
@@ -3911,17 +3911,17 @@ Vue-class fractal: base noise over harmonics with stretch, combination modes, va
 | Influence | float, 0 to 1, default 0 | 0 behaves exactly like a simple fractal. |
 | Local influence | float, 0 to 1, default 0 | 0: keyed on the first iteration's altitude. 1: on the last iteration's, giving local patches of smoothness. |
 | Variation strength | float, 0 to 1, default 0 | Grainy fractal: how much the grain varies over the map. |
-| Variation roughness | float, 0.05 to 2, default 0.5 |  |
-| Smooth area altitude | float, -1 to 1, default 0 |  |
+| Variation roughness | float, 0.05 to 2, default 0.5 | How rough the rough areas get, once Influence has decided where they are. Does nothing while Influence is zero. |
+| Smooth area altitude | float, -1 to 1, default 0 | The height the smooth areas settle to. Below the Smooth level this lifts them, above it lowers them - which is how a flat valley floor sits lower than the broken ground around it. |
 | Distortion | float, 0 to 1, default 0 | Smears the pattern around, as if pushed by a random flow. |
-| Distortion scale | float, 0.1 to 8, default 1 |  |
+| Distortion scale | float, 0.1 to 8, default 1 | How large the smearing flow is. Low values push the whole pattern about in broad sweeps; high values ripple its edges without moving the big forms. |
 | Distortion map strength | float, 0 to 1, default 0 | The 'distortion map' input, when wired, warps the coordinates by this much. |
 | Filter | choice: None / Terraces / Soft clip / S-curve / Plateau / Valleys | A profile applied to the altitudes (Vue's filter curve). |
-| Terrace steps | float, 2 to 40, default 6 |  |
+| Terrace steps | float, 2 to 40, default 6 | How many levels the Terraces filter snaps altitudes to. Only the Terraces profile uses it. |
 | Creep-in | float, 0 to 1, default 0 | How much of the unfiltered signal is mixed back. |
 | Filter range | range | The part of the full range the filter acts on. |
-| Amplitude | float, 0 to 4, default 1 |  |
-| Offset | float, -1 to 1, default 0 |  |
+| Amplitude | float, 0 to 4, default 1 | Scales the whole result. Use it to make one fractal a quieter contribution when several are added together. |
+| Offset | float, -1 to 1, default 0 | Raises or lowers the whole result. Applied after the amplitude, before the output block below. |
 | Rough areas: ref. feature size | float, 0 to 1, default 0 | Harmonics finer than this (fraction of the tile) count as roughness. 0 counts them all. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -3942,24 +3942,24 @@ Vue's Rocky Mountains fractal: irregular ridge networks added per iteration, as 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Wavelength | float, 0.01 to 4, default 0.35 |  |
-| Iterations | int, 1 to 16, default 8 |  |
-| Scale ratio | float, 0.1 to 0.9, default 0.5 |  |
-| Roughness | float, 0 to 2, default 1 |  |
-| Gain | float, 0.2 to 10, default 1 |  |
-| Distortion | float, 0 to 1, default 0 |  |
+| Wavelength | float, 0.01 to 4, default 0.35 | The size of the largest feature, as a fraction of the tile. 1 is one landform filling the map; 0.1 is ten across it. |
+| Iterations | int, 1 to 16, default 8 | How many times the pattern is added at a smaller size. Each adds finer detail and costs about as much again; once an octave is finer than a texel it buys nothing. |
+| Scale ratio | float, 0.1 to 0.9, default 0.5 | How much smaller each iteration is than the last. 0.5 halves it, which is the classic choice; higher leaves a gap between the scales and reads as two patterns rather than one surface. |
+| Roughness | float, 0 to 2, default 1 | How much strength each iteration keeps. Low is smooth and dominated by the big forms; high is broken at every scale. |
+| Gain | float, 0.2 to 10, default 1 | Contrast of the result: pushes the highs up and the lows down about the middle. |
+| Distortion | float, 0 to 1, default 0 | Smears the pattern around as if pushed by a slow flow, which breaks up the lattice the noise sits on. |
 | Separate mountains | toggle, default on | On: independent mountain blocks side by side. Off: basins separated by irregular ridges. |
 | Scale factor | float, 0.3 to 0.9, default 0.55 | How much smaller each new iteration's features are. |
 | Flat level (per iteration) | float, 0 to 1, default 0.3 | Balance of smooth areas against ridged ones per iteration. |
 | Ground level | float, -1 to 1, default 0 | Sinks the fractal into the ground. |
 | Subdivision quality | int, 0 to 2, default 1 | Higher hides the approximation's discontinuities, at a cost. |
 | Stretch factor | float, 0 to 1, default 0.5 | Each iteration is stretched along its own direction, the way real ridge networks run. |
-| Optional rocks | choice: None / Correlated / Everywhere |  |
+| Optional rocks | choice: None / Correlated / Everywhere | Adds broken rock on top of the range. Correlated puts it along the ridges, where erosion actually strips a mountain back to stone; Everywhere ignores the form and covers the lot. |
 | Rock correlation | int, 0 to 8, default 2 | Rocks follow the ridges seen at this iteration. |
-| Rock roughness | float, 0 to 2, default 1 |  |
-| Rock height | float, 0 to 1, default 0.3 |  |
+| Rock roughness | float, 0 to 2, default 1 | How broken the added rock is, independently of the range underneath it. |
+| Rock height | float, 0 to 1, default 0.3 | How far the rock stands proud of the slope it sits on. |
 | Eroded | toggle, default off | The Eroded Rocky Mountains variant: gullied flanks. |
-| Rough areas: ref. feature size | float, 0 to 1, default 0 |  |
+| Rough areas: ref. feature size | float, 0 to 1, default 0 | Iterations finer than this, as a fraction of the tile, count as roughness in the second output. 0 counts them all. That output is what drives a material toward the broken ground. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -3976,12 +3976,12 @@ Geometric base shapes: slope, bump, crater, cone, ridge line
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Type | choice: Slope plane / Bump / Crater / Cone / Ridge line / Border falloff / Wave sine / Wave square / Wave triangle / Step / Band / Paraboloid |  |
-| Center | x/y pair |  |
-| Radius | float, 0.01 to 1.5, default 0.35 |  |
-| Hardness | float, 0.2 to 8, default 1 |  |
-| Direction ° | float, -180 to 180, default 0 |  |
-| Frequency | float, 0.25 to 64, default 4 |  |
+| Type | choice: Slope plane / Bump / Crater / Cone / Ridge line / Border falloff / Wave sine / Wave square / Wave triangle / Step / Band / Paraboloid | The base form. These are building blocks rather than terrain: a slope plane to tilt a map, a bump or cone to raise one hill, a border falloff to turn any terrain into an island, a wave to drive strata or dunes. |
+| Center | x/y pair | Where the shape sits, as a fraction of the tile. Outside 0..1 pushes it off the edge, which is how you get a slope running out of frame rather than a hill in the middle. |
+| Radius | float, 0.01 to 1.5, default 0.35 | How far the shape reaches from its centre, as a fraction of the tile. For Border falloff this is the width of the fade instead. |
+| Hardness | float, 0.2 to 8, default 1 | The profile from the middle out. Below 1 gives a broad dome that falls away late; above 1 a narrow peak with skirts. |
+| Direction ° | float, -180 to 180, default 0 | Which way the shape faces. Used by the slope plane, the ridge line and the waves; the round shapes ignore it. |
+| Frequency | float, 0.25 to 64, default 4 | Waves only: how many repeats across the tile. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -4001,13 +4001,13 @@ Terrain modeling: stamp a heightfield shape onto the terrain
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape image (if no input) | file path |  |
-| Position | x/y pair |  |
-| Size | float, 0.02 to 2, default 0.5 |  |
-| Rotation ° | float, -180 to 180, default 0 |  |
-| Height | float, -2 to 2, default 0.5 |  |
-| Blend | choice: Add / Max (merge) / Min (carve) / Replace by mask |  |
-| Edge falloff | float, 0 to 0.5, default 0.15 |  |
+| Shape image (if no input) | file path | The shape to stamp, when nothing is wired to the shape input. The input wins if both are given. |
+| Position | x/y pair | Where the stamp lands, as a fraction of the tile. |
+| Size | float, 0.02 to 2, default 0.5 | How much of the tile the stamp covers. |
+| Rotation ° | float, -180 to 180, default 0 | Turns the stamp before it is applied. |
+| Height | float, -2 to 2, default 0.5 | How far the stamp raises the ground. Negative presses it in instead, which is how the same shape carves a pit or raises a hill. |
+| Blend | choice: Add / Max (merge) / Min (carve) / Replace by mask | How the stamp meets what is already there. Add sums them, so stamps pile up. Max merges - the stamp shows only where it is higher, which is what you want for laying a hill onto terrain. Min carves. Replace overwrites wherever the stamp is present. |
+| Edge falloff | float, 0 to 0.5, default 0.15 | How far in from the stamp's border it fades out, so it blends into the terrain rather than ending at a visible square edge. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### TerrainFractal
@@ -4029,9 +4029,9 @@ Vue's Terrain Fractal: the fractal with a landscape type (plain, ridges, billows
 | Filter steepness | float, 0.2 to 4, default 1 | Contrast of the base noise itself. |
 | Seed | seed |  |
 | Wavelength | float, 0.005 to 4, default 0.25 | Size of the largest feature, as a fraction of the tile. |
-| Stretch X / Y | x/y pair |  |
+| Stretch X / Y | x/y pair | Pulls the pattern out along one axis. Unequal values give the grain that ridges running one way, or wind- blown ground, actually has. |
 | Stretch damping | float, 0 to 1, default 0.5 | Less stretch on the finer harmonics, so the whole pattern does not read as smeared. |
-| Iterations | int, 1 to 16, default 8 |  |
+| Iterations | int, 1 to 16, default 8 | How many times the pattern is added to itself at a smaller size. Each one adds finer detail and costs about as much again; past the point where an octave is smaller than a texel it adds cost and nothing else. |
 | Scale ratio | float, 0.1 to 0.9, default 0.5 | Wavelength ratio between iterations. 0.5 is classic; above favours the large forms, below the fine detail. |
 | Amplitude ratio | float, 0.05 to 0.95, default 0.5 | Amplitude ratio between iterations. |
 | Roughness | float, 0 to 2, default 1 | Scales the amplitude ratio: more roughness, more detail. |
@@ -4041,21 +4041,21 @@ Vue's Terrain Fractal: the fractal with a landscape type (plain, ridges, billows
 | Influence | float, 0 to 1, default 0 | 0 behaves exactly like a simple fractal. |
 | Local influence | float, 0 to 1, default 0 | 0: keyed on the first iteration's altitude. 1: on the last iteration's, giving local patches of smoothness. |
 | Variation strength | float, 0 to 1, default 0 | Grainy fractal: how much the grain varies over the map. |
-| Variation roughness | float, 0.05 to 2, default 0.5 |  |
-| Smooth area altitude | float, -1 to 1, default 0 |  |
-| Noise / landscape type | choice: Plain noise / Ridges / Billows / Ridge mix / Billow-ridge mix |  |
+| Variation roughness | float, 0.05 to 2, default 0.5 | How rough the rough areas get, once Influence has decided where they are. Does nothing while Influence is zero. |
+| Smooth area altitude | float, -1 to 1, default 0 | The height the smooth areas settle to. Below the Smooth level this lifts them, above it lowers them - which is how a flat valley floor sits lower than the broken ground around it. |
+| Noise / landscape type | choice: Plain noise / Ridges / Billows / Ridge mix / Billow-ridge mix | The shape the harmonics take. Plain noise is rolling ground; Ridges gives the sharp crests of a young range; Billows the rounded lumps of a weathered one. The mixes blend two, weighted by Blend below. |
 | Blend | float, 0 to 1, default 0.5 | Mixed types only: weight of the second shape. |
 | Ridge smoothness | float, 0 to 1, default 0.2 | Rounding of the ridges / billows; not for plain noise. |
 | Bump surge | float, -1 to 1, default 0 | Bumpy areas rise above (+) or sink below (-) the average. |
 | Distortion | float, 0 to 1, default 0 | Smears the pattern around, as if pushed by a random flow. |
-| Distortion scale | float, 0.1 to 8, default 1 |  |
+| Distortion scale | float, 0.1 to 8, default 1 | How large the smearing flow is. Low values push the whole pattern about in broad sweeps; high values ripple its edges without moving the big forms. |
 | Distortion map strength | float, 0 to 1, default 0 | The 'distortion map' input, when wired, warps the coordinates by this much. |
 | Filter | choice: None / Terraces / Soft clip / S-curve / Plateau / Valleys | A profile applied to the altitudes (Vue's filter curve). |
-| Terrace steps | float, 2 to 40, default 6 |  |
+| Terrace steps | float, 2 to 40, default 6 | How many levels the Terraces filter snaps altitudes to. Only the Terraces profile uses it. |
 | Creep-in | float, 0 to 1, default 0 | How much of the unfiltered signal is mixed back. |
 | Filter range | range | The part of the full range the filter acts on. |
-| Amplitude | float, 0 to 4, default 1 |  |
-| Offset | float, -1 to 1, default 0 |  |
+| Amplitude | float, 0 to 4, default 1 | Scales the whole result. Use it to make one fractal a quieter contribution when several are added together. |
+| Offset | float, -1 to 1, default 0 | Raises or lowers the whole result. Applied after the amplitude, before the output block below. |
 | Rough areas: ref. feature size | float, 0 to 1, default 0 | Harmonics finer than this (fraction of the tile) count as roughness. 0 counts them all. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
@@ -4076,24 +4076,24 @@ Vue's Terrain Fractal 2: rocks emerging from sedimentary soil, with regions of r
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Wavelength | float, 0.01 to 4, default 0.35 |  |
-| Iterations | int, 1 to 16, default 8 |  |
-| Scale ratio | float, 0.1 to 0.9, default 0.5 |  |
-| Roughness | float, 0 to 2, default 1 |  |
-| Gain | float, 0.2 to 10, default 1 |  |
-| Distortion | float, 0 to 1, default 0 |  |
+| Wavelength | float, 0.01 to 4, default 0.35 | The size of the largest feature, as a fraction of the tile. 1 is one landform filling the map; 0.1 is ten across it. |
+| Iterations | int, 1 to 16, default 8 | How many times the pattern is added at a smaller size. Each adds finer detail and costs about as much again; once an octave is finer than a texel it buys nothing. |
+| Scale ratio | float, 0.1 to 0.9, default 0.5 | How much smaller each iteration is than the last. 0.5 halves it, which is the classic choice; higher leaves a gap between the scales and reads as two patterns rather than one surface. |
+| Roughness | float, 0 to 2, default 1 | How much strength each iteration keeps. Low is smooth and dominated by the big forms; high is broken at every scale. |
+| Gain | float, 0.2 to 10, default 1 | Contrast of the result: pushes the highs up and the lows down about the middle. |
+| Distortion | float, 0 to 1, default 0 | Smears the pattern around as if pushed by a slow flow, which breaks up the lattice the noise sits on. |
 | Turbulence | float, 0 to 1, default 0.3 | Overall distortion of the terrain by its first harmonics. |
 | Turbulence damping | float, 0 to 1, default 0.5 | How much the first octaves' turbulence carries into the finer ones. |
 | Large scale smoothness | float, 0 to 1, default 0.5 | Softness of the transition from low to high rock density regions. |
 | Large scale contrast | float, 0 to 3, default 1 | Range over which the rock population can vary. |
 | Buoyancy | float, -1 to 1, default 0.2 | +: low average altitude with rocks rising above it. -: features dig below a high average. 0: around zero. |
 | Bump surge | float, 0 to 2, default 0.5 | How much the rocks spring out of the ground. |
-| Rock abundance | float, 0 to 1, default 0.5 |  |
+| Rock abundance | float, 0 to 1, default 0.5 | How much bare rock emerges through the soil. This node models ground as rock under sediment, and this is the balance between them. |
 | Soil thickness | float, 0 to 1, default 0.4 | Thin: more rocks show and smooth areas keep some roughness. Thick: rocks buried, smooth areas smooth. |
 | Rock dispersion | float, 0 to 1, default 0.3 | Scattered over the landscape rather than gathered. |
-| Processing strength | float, 0 to 1, default 0 |  |
-| Layer spacing | float, 0.01 to 0.5, default 0.08 |  |
-| Offset | float, -0.5 to 0.5, default 0 |  |
+| Processing strength | float, 0 to 1, default 0 | How strongly bedding shows in the surface. 0 turns the strata off entirely; the beds follow the relief rather than lying flat, so they bend over the landforms the way tilted sediment does. |
+| Layer spacing | float, 0.01 to 0.5, default 0.08 | How far apart the beds are, as a fraction of the height range. Small gives fine banding; large gives the broad benches of a canyon wall. |
+| Offset | float, -0.5 to 0.5, default 0 | Slides the whole stack of beds up or down, which moves where a bed boundary falls on a given slope. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
@@ -4111,9 +4111,9 @@ Band-limited noise that stays crisp
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Seed | seed |  |
-| Octaves | int, 1 to 12, default 6 |  |
-| Scale | float, 1 to 64, default 8 |  |
-| Gain | float, 0.1 to 0.95, default 0.55 |  |
+| Octaves | int, 1 to 12, default 6 | How many bands are summed. Wavelet noise is band-limited - each octave occupies a clean slice of frequency - so it stays crisp when magnified rather than turning to mush. |
+| Scale | float, 1 to 64, default 8 | How many cells of the coarsest band fit across the tile. Higher is a finer pattern. |
+| Gain | float, 0.1 to 0.95, default 0.55 | How much strength each band keeps from the one before. Low leaves the coarse bands dominant; high gives equal detail at every scale. |
 | Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
 | Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
 | Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |

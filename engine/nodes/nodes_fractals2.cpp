@@ -24,12 +24,29 @@ void setup_base(Node &n) {
   n.add_out("output");
   n.add_out("rough_areas");
   add_seed(n.attrs, "seed", "Seed", 0, "Base");
-  add_float(n.attrs, "wavelength", "Wavelength", 0.35f, 0.01f, 4.f, "Base");
-  add_int(n.attrs, "octaves", "Iterations", 8, 1, 16, "Base");
-  add_float(n.attrs, "scale_ratio", "Scale ratio", 0.5f, 0.1f, 0.9f, "Base");
-  add_float(n.attrs, "roughness", "Roughness", 1.f, 0.f, 2.f, "Base");
-  add_float(n.attrs, "gain", "Gain", 1.f, 0.2f, 10.f, "Base");
-  add_float(n.attrs, "distortion", "Distortion", 0.f, 0.f, 1.f, "Base");
+  add_float(n.attrs, "wavelength", "Wavelength", 0.35f, 0.01f, 4.f, "Base")
+      .tooltip = "The size of the largest feature, as a fraction of the\n"
+                 "tile. 1 is one landform filling the map; 0.1 is ten\n"
+                 "across it.";
+  add_int(n.attrs, "octaves", "Iterations", 8, 1, 16, "Base")
+      .tooltip = "How many times the pattern is added at a smaller size.\n"
+                 "Each adds finer detail and costs about as much again;\n"
+                 "once an octave is finer than a texel it buys nothing.";
+  add_float(n.attrs, "scale_ratio", "Scale ratio", 0.5f, 0.1f, 0.9f, "Base")
+      .tooltip = "How much smaller each iteration is than the last. 0.5\n"
+                 "halves it, which is the classic choice; higher leaves a\n"
+                 "gap between the scales and reads as two patterns rather\n"
+                 "than one surface.";
+  add_float(n.attrs, "roughness", "Roughness", 1.f, 0.f, 2.f, "Base")
+      .tooltip = "How much strength each iteration keeps. Low is smooth\n"
+                 "and dominated by the big forms; high is broken at every\n"
+                 "scale.";
+  add_float(n.attrs, "gain", "Gain", 1.f, 0.2f, 10.f, "Base")
+      .tooltip = "Contrast of the result: pushes the highs up and the\n"
+                 "lows down about the middle.";
+  add_float(n.attrs, "distortion", "Distortion", 0.f, 0.f, 1.f, "Base")
+      .tooltip = "Smears the pattern around as if pushed by a slow flow,\n"
+                 "which breaks up the lattice the noise sits on.";
 }
 
 fractal::Params read_base(const Node &n) {
@@ -83,7 +100,10 @@ REGISTER_NODE(
       add_float(n.attrs, "bump_surge", "Bump surge", 0.5f, 0.f, 2.f, "Ground aspect")
           .tooltip = "How much the rocks spring out of the ground.";
       add_float(n.attrs, "rock_abundance", "Rock abundance", 0.5f, 0.f, 1.f,
-                "Ground aspect");
+                "Ground aspect")
+          .tooltip = "How much bare rock emerges through the soil. This\n"
+                     "node models ground as rock under sediment, and this\n"
+                     "is the balance between them.";
       add_float(n.attrs, "soil_thickness", "Soil thickness", 0.4f, 0.f, 1.f,
                 "Ground aspect")
           .tooltip = "Thin: more rocks show and smooth areas keep some\n"
@@ -92,11 +112,20 @@ REGISTER_NODE(
                 "Ground aspect")
           .tooltip = "Scattered over the landscape rather than gathered.";
       add_float(n.attrs, "strata_strength", "Processing strength", 0.f, 0.f, 1.f,
-                "Strata processing");
+                "Strata processing")
+          .tooltip = "How strongly bedding shows in the surface. 0 turns\n"
+                     "the strata off entirely; the beds follow the relief\n"
+                     "rather than lying flat, so they bend over the\n"
+                     "landforms the way tilted sediment does.";
       add_float(n.attrs, "strata_spacing", "Layer spacing", 0.08f, 0.01f, 0.5f,
-                "Strata processing");
+                "Strata processing")
+          .tooltip = "How far apart the beds are, as a fraction of the\n"
+                     "height range. Small gives fine banding; large gives\n"
+                     "the broad benches of a canyon wall.";
       add_float(n.attrs, "strata_offset", "Offset", 0.f, -0.5f, 0.5f,
-                "Strata processing");
+                "Strata processing")
+          .tooltip = "Slides the whole stack of beds up or down, which\n"
+                     "moves where a bed boundary falls on a given slope.";
       setup_post(n);
     },
     [](Node &n) {
@@ -197,15 +226,27 @@ REGISTER_NODE(
           .tooltip = "Each iteration is stretched along its own direction,\n"
                      "the way real ridge networks run.";
       add_choice(n.attrs, "rocks", "Optional rocks", {"None", "Correlated", "Everywhere"},
-                 0, "Rocks");
+                 0, "Rocks")
+          .tooltip = "Adds broken rock on top of the range. Correlated\n"
+                     "puts it along the ridges, where erosion actually\n"
+                     "strips a mountain back to stone; Everywhere ignores\n"
+                     "the form and covers the lot.";
       add_int(n.attrs, "rock_iteration", "Rock correlation", 2, 0, 8, "Rocks")
           .tooltip = "Rocks follow the ridges seen at this iteration.";
-      add_float(n.attrs, "rock_roughness", "Rock roughness", 1.f, 0.f, 2.f, "Rocks");
-      add_float(n.attrs, "rock_height", "Rock height", 0.3f, 0.f, 1.f, "Rocks");
+      add_float(n.attrs, "rock_roughness", "Rock roughness", 1.f, 0.f, 2.f, "Rocks")
+          .tooltip = "How broken the added rock is, independently of the\n"
+                     "range underneath it.";
+      add_float(n.attrs, "rock_height", "Rock height", 0.3f, 0.f, 1.f, "Rocks")
+          .tooltip = "How far the rock stands proud of the slope it sits\n"
+                     "on.";
       add_bool(n.attrs, "eroded", "Eroded", false, "Rocks")
           .tooltip = "The Eroded Rocky Mountains variant: gullied flanks.";
       add_float(n.attrs, "rough_ref", "Rough areas: ref. feature size", 0.f, 0.f, 1.f,
-                "Output");
+                "Output")
+          .tooltip = "Iterations finer than this, as a fraction of the\n"
+                     "tile, count as roughness in the second output. 0\n"
+                     "counts them all. That output is what drives a\n"
+                     "material toward the broken ground.";
       setup_post(n);
     },
     [](Node &n) {

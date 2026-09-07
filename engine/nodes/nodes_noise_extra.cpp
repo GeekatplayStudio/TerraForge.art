@@ -70,9 +70,18 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_out("output");
       add_seed(n.attrs);
-      add_int(n.attrs, "octaves", "Octaves", 6, 1, 12, "Wavelet");
-      add_float(n.attrs, "scale", "Scale", 8.f, 1.f, 64.f, "Wavelet");
-      add_float(n.attrs, "gain", "Gain", 0.55f, 0.1f, 0.95f, "Wavelet");
+      add_int(n.attrs, "octaves", "Octaves", 6, 1, 12, "Wavelet")
+          .tooltip = "How many bands are summed. Wavelet noise is\n"
+                     "band-limited - each octave occupies a clean slice of\n"
+                     "frequency - so it stays crisp when magnified rather\n"
+                     "than turning to mush.";
+      add_float(n.attrs, "scale", "Scale", 8.f, 1.f, 64.f, "Wavelet")
+          .tooltip = "How many cells of the coarsest band fit across the\n"
+                     "tile. Higher is a finer pattern.";
+      add_float(n.attrs, "gain", "Gain", 0.55f, 0.1f, 0.95f, "Wavelet")
+          .tooltip = "How much strength each band keeps from the one\n"
+                     "before. Low leaves the coarse bands dominant; high\n"
+                     "gives equal detail at every scale.";
       setup_post(n);
     },
     [](Node &n) {
@@ -107,11 +116,22 @@ REGISTER_NODE(
       n.add_out("output");
       n.add_out("cracks");
       add_seed(n.attrs);
-      add_int(n.attrs, "lines", "Line count", 40, 4, 400, "Lines");
+      add_int(n.attrs, "lines", "Line count", 40, 4, 400, "Lines")
+          .tooltip = "How many line segments seed the pattern. Cellular\n"
+                     "noise grown from lines rather than points gives\n"
+                     "elongated, fractured shapes - bedding planes and\n"
+                     "shattered rock rather than blobs.";
       add_float(n.attrs, "length", "Segment length", 0.18f, 0.02f, 0.6f,
-                "Lines");
-      add_float(n.attrs, "reach", "Reach", 0.08f, 0.01f, 0.5f, "Lines");
-      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f, "Lines");
+                "Lines")
+          .tooltip = "How long each seed segment is, as a fraction of the\n"
+                     "tile. Longer segments give longer, straighter\n"
+                     "features.";
+      add_float(n.attrs, "reach", "Reach", 0.08f, 0.01f, 0.5f, "Lines")
+          .tooltip = "How far the influence of a segment extends from it,\n"
+                     "which sets how wide the resulting bands are.";
+      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f, "Lines")
+          .tooltip = "The direction segments align to, before the jitter\n"
+                     "below scatters them.";
       add_float(n.attrs, "angle_jitter", "Direction jitter", 1.f, 0.f, 1.f,
                 "Lines")
           .tooltip = "0 aligns every segment to the direction - bedding\n"

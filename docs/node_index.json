@@ -10563,7 +10563,7 @@
         "type": "float",
         "group": "Basalt",
         "min": 2, "max": 64, "default": 12,
-        "tooltip": ""
+        "tooltip": "How many columns fit across the tile. Real columnar\nbasalt is tens of centimetres across, so on a large\nterrain this wants to be high."
       },
       {
         "key": "steps",
@@ -10579,7 +10579,7 @@
         "type": "float",
         "group": "Basalt",
         "min": 0.01, "max": 0.4, "default": 0.06,
-        "tooltip": ""
+        "tooltip": "How wide the joint between neighbouring columns is,\nas a fraction of a column. Also drives the second\noutput, which is the crack pattern alone."
       },
       {
         "key": "crack_depth",
@@ -10587,7 +10587,7 @@
         "type": "float",
         "group": "Basalt",
         "min": 0, "max": 1, "default": 0.25,
-        "tooltip": ""
+        "tooltip": "How far the joints cut down between the columns. 0\nleaves the tops without separating them."
       },
       {
         "key": "post_remap",
@@ -10644,7 +10644,7 @@
         "label": "Value",
         "type": "float",
         "min": -1, "max": 2, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The height every point gets. A flat map is the\nstarting point for building terrain out of\ndisplacement alone, and the quickest way to see\nwhat a material or a field node is doing with\nnothing underneath it."
       }
       ]
     },
@@ -10665,7 +10665,7 @@
         "type": "choice",
         "group": "Craters",
         "choices": ["Single crater", "Crater field"],
-        "tooltip": ""
+        "tooltip": "One crater placed where you say, or a scattered\nfield of them at varying sizes - a cratered plain\nrather than an impact site."
       },
       {
         "key": "scale",
@@ -10673,7 +10673,7 @@
         "type": "float",
         "group": "Craters",
         "min": 0.02, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How wide the crater is, as a fraction of the tile.\nIn field mode this is the largest; the rest vary\nbelow it."
       },
       {
         "key": "depth",
@@ -10681,7 +10681,7 @@
         "type": "float",
         "group": "Craters",
         "min": 0.05, "max": 1, "default": 0.4,
-        "tooltip": ""
+        "tooltip": "How far the floor sits below the surrounding\nground."
       },
       {
         "key": "lip",
@@ -10697,7 +10697,7 @@
         "type": "float",
         "group": "Craters",
         "min": 0.1, "max": 2, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "How far the thrown-out debris blanket reaches past\nthe rim, as a multiple of the radius. It is the\napron of raised ground that makes an impact read as\nan impact rather than a hole."
       },
       {
         "key": "floor",
@@ -10713,14 +10713,14 @@
         "type": "float",
         "group": "Craters",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How far the rim departs from a circle. 0 is a\ndrawing-compass ring, which no impact leaves."
       },
       {
         "key": "center",
         "label": "Position",
         "type": "vec2",
         "group": "Craters",
-        "tooltip": ""
+        "tooltip": "Where the single crater sits, as a fraction of the\ntile. Ignored in field mode."
       },
       {
         "key": "count",
@@ -10728,7 +10728,7 @@
         "type": "int",
         "group": "Field",
         "min": 2, "max": 64, "default": 12,
-        "tooltip": ""
+        "tooltip": "How many craters the field scatters. Field mode\nonly."
       },
       {
         "key": "seed",
@@ -10808,7 +10808,7 @@
         "type": "int",
         "group": "Growth",
         "min": 100, "max": 8000, "default": 1500,
-        "tooltip": ""
+        "tooltip": "How many particles are released to wander until they\ntouch the growing cluster. More builds a larger,\ndenser dendrite and costs proportionally more."
       },
       {
         "key": "stickiness",
@@ -10824,7 +10824,7 @@
         "type": "float",
         "group": "Growth",
         "min": 0, "max": 0.05, "default": 0.008,
-        "tooltip": ""
+        "tooltip": "Blurs the aggregate, turning a one-texel-wide\nskeleton into something with width that can be\nused as terrain. 0 leaves the bare structure."
       }
       ]
     },
@@ -10844,7 +10844,7 @@
         "type": "float",
         "group": "Dunes",
         "min": -180, "max": 180, "default": 30,
-        "tooltip": ""
+        "tooltip": "Which way the wind blows. Dunes run across it, and\ntheir steep slip face is on the downwind side -\nwhich is what tells a viewer which way the wind was\ngoing."
       },
       {
         "key": "wavelength",
@@ -10852,7 +10852,7 @@
         "type": "float",
         "group": "Dunes",
         "min": 0.02, "max": 0.5, "default": 0.12,
-        "tooltip": ""
+        "tooltip": "The distance from one crest to the next, as a\nfraction of the tile."
       },
       {
         "key": "asymmetry",
@@ -10868,7 +10868,7 @@
         "type": "float",
         "group": "Dunes",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much the crests wander and break up along their\nlength. 0 gives parallel corduroy; high gives the\nbroken crescents of a real dune field."
       },
       {
         "key": "ripples",
@@ -10884,7 +10884,7 @@
         "type": "float",
         "group": "Detail",
         "min": 2, "max": 20, "default": 6,
-        "tooltip": ""
+        "tooltip": "How many small wind ripples ride across each dune.\nThese are the centimetre-scale corrugations on the\nsand, not the dunes themselves."
       },
       {
         "key": "seed",
@@ -10961,7 +10961,7 @@
         "type": "float",
         "group": "Stones",
         "min": 0.02, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "The share of lattice cells that hold a stone. This\nnode writes into the heightmap, so its smallest\npossible stone is a couple of texels - about 14 m on\na 5 km tile. For stones you can stand next to, use\nStone field, which is a function and has no\nresolution."
       },
       {
         "key": "tallness",
@@ -10969,7 +10969,7 @@
         "type": "float",
         "group": "Stones",
         "min": 0.05, "max": 2, "default": 0.6,
-        "tooltip": ""
+        "tooltip": "A stone's height as a fraction of its radius. Every\nstone here gets the same one, which is this node's\nmost visible tell."
       },
       {
         "key": "pancake",
@@ -11000,7 +11000,7 @@
         "type": "float",
         "group": "Variation",
         "min": 1, "max": 16, "default": 4,
-        "tooltip": ""
+        "tooltip": "How large the patches of more and fewer stones are.\nLow gives a couple of broad drifts across the map;\nhigh breaks it into many small clusters."
       },
       {
         "key": "size_jitter",
@@ -11008,7 +11008,7 @@
         "type": "float",
         "group": "Variation",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much stones differ in size from one another. 0\nmakes every stone identical, which nothing in nature\nis."
       },
       {
         "key": "slope_band",
@@ -11041,7 +11041,7 @@
         "label": "Type",
         "type": "choice",
         "choices": ["Diamond-square", "Fault formation"],
-        "tooltip": ""
+        "tooltip": "Two classic terrain algorithms that are not noise.\nDiamond-square subdivides a grid, halving the\nrandomness each time; Fault formation drops\nstraight faults across the map and raises one side\nof each, which builds up into blocky, tectonic\nground."
       },
       {
         "key": "seed",
@@ -11054,21 +11054,21 @@
         "label": "Roughness",
         "type": "float",
         "min": 0.3, "max": 1.6, "default": 0.9,
-        "tooltip": ""
+        "tooltip": "Diamond-square only: how much randomness survives\neach subdivision. Below 1 the detail dies away and\nthe result is smooth hills; above 1 it grows and\nthe surface turns jagged."
       },
       {
         "key": "faults",
         "label": "Fault count",
         "type": "int",
         "min": 10, "max": 2000, "default": 200,
-        "tooltip": ""
+        "tooltip": "Fault formation only: how many faults are laid\ndown. Few gives a handful of broad steps; many\naverages into smooth rolling ground."
       },
       {
         "key": "fault_softness",
         "label": "Fault softness",
         "type": "float",
         "min": 0, "max": 0.2, "default": 0.02,
-        "tooltip": ""
+        "tooltip": "How gradually each fault's step is spread across\nthe map. 0 gives hard cliffs at every fault line."
       },
       {
         "key": "post_remap",
@@ -11132,7 +11132,7 @@
         "type": "int",
         "group": "Gabor",
         "min": 1, "max": 6, "default": 3,
-        "tooltip": ""
+        "tooltip": "How many sizes of kernel are layered. Gabor noise is\nexpensive per octave, so this stops at 6 where the\nother noises go to 16."
       },
       {
         "key": "frequency",
@@ -11140,7 +11140,7 @@
         "type": "float",
         "group": "Gabor",
         "min": 0.5, "max": 16, "default": 3,
-        "tooltip": ""
+        "tooltip": "How many waves are packed inside each kernel. This\nis the pitch of the grain, as against Scale below,\nwhich is how large a patch of it is."
       },
       {
         "key": "orientation",
@@ -11148,7 +11148,7 @@
         "type": "float",
         "group": "Gabor",
         "min": -180, "max": 180, "default": 30,
-        "tooltip": ""
+        "tooltip": "Which way the grain runs, when Anisotropy is high\nenough for it to have a direction at all."
       },
       {
         "key": "anisotropy",
@@ -11164,7 +11164,7 @@
         "type": "float",
         "group": "Gabor",
         "min": 1, "max": 32, "default": 6,
-        "tooltip": ""
+        "tooltip": "How many kernel cells fit across the tile - the size\nof the pattern, as against Kernel frequency, which\nis the pitch of the grain inside it."
       },
       {
         "key": "flavor",
@@ -11231,14 +11231,14 @@
         "label": "Layers",
         "type": "int",
         "min": 2, "max": 32, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many beds the height range is cut into. Few\ngives the broad benches of a canyon wall; many\ngives fine bedding."
       },
       {
         "key": "hardness",
         "label": "Layer hardness",
         "type": "float",
         "min": 1, "max": 8, "default": 2.5,
-        "tooltip": ""
+        "tooltip": "How sharply each bed stands out from the next. Low\nleaves the original slope showing through; high\nmakes every bed a flat tread with a riser between."
       },
       {
         "key": "seed",
@@ -11251,7 +11251,7 @@
         "label": "Thickness variation",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much the beds differ in thickness. 0 gives\nevenly spaced layers, which no real rock has."
       },
       {
         "key": "post_remap",
@@ -11383,7 +11383,7 @@
         "type": "float",
         "group": "Placement",
         "min": 0, "max": 0.5, "default": 0.1,
-        "tooltip": ""
+        "tooltip": "How gradually the grass gives out at the edge of the\nslope band. Zero gives a hard line across the\nhillside, which reads as drawn on."
       }
       ]
     },
@@ -11400,7 +11400,7 @@
         "key": "path",
         "label": "Heightfield image",
         "type": "filename",
-        "tooltip": ""
+        "tooltip": "An 8- or 16-bit PNG, a JPG or TGA, or an SRTM .hgt\ntile of real-world elevation. 16-bit carries far\nmore height detail than 8-bit, which visibly\nterraces on a smooth slope."
       },
       {
         "key": "post_remap",
@@ -11457,34 +11457,34 @@
         "label": "Type",
         "type": "choice",
         "choices": ["Island", "Mountain", "Caldera", "Rift valley", "Mesa"],
-        "tooltip": ""
+        "tooltip": "A whole landform in one node, for when you want a\nparticular thing in a particular place rather than\nwhatever the noise happens to give. The rim is\nwobbled by noise, so none of them reads as a\ncompass drawing."
       },
       {
         "key": "center",
         "label": "Center",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "Where it sits, as a fraction of the tile. Outside\n0..1 pushes it off the edge, so you get a coast or a\nflank rather than the whole thing."
       },
       {
         "key": "radius",
         "label": "Radius",
         "type": "float",
         "min": 0.05, "max": 1, "default": 0.35,
-        "tooltip": ""
+        "tooltip": "How far it reaches, as a fraction of the tile."
       },
       {
         "key": "relief",
         "label": "Relief",
         "type": "float",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How broken the form is. 0 is a clean geometric\nshape; higher adds ridged detail to the flanks and\nwobbles the outline further."
       },
       {
         "key": "angle",
         "label": "Direction °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Which way the form points. The rift valley and the\nmesa use it; the round ones ignore it."
       },
       {
         "key": "seed",
@@ -11555,7 +11555,7 @@
         "type": "int",
         "group": "Lines",
         "min": 4, "max": 400, "default": 40,
-        "tooltip": ""
+        "tooltip": "How many line segments seed the pattern. Cellular\nnoise grown from lines rather than points gives\nelongated, fractured shapes - bedding planes and\nshattered rock rather than blobs."
       },
       {
         "key": "length",
@@ -11563,7 +11563,7 @@
         "type": "float",
         "group": "Lines",
         "min": 0.02, "max": 0.6, "default": 0.18,
-        "tooltip": ""
+        "tooltip": "How long each seed segment is, as a fraction of the\ntile. Longer segments give longer, straighter\nfeatures."
       },
       {
         "key": "reach",
@@ -11571,7 +11571,7 @@
         "type": "float",
         "group": "Lines",
         "min": 0.01, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How far the influence of a segment extends from it,\nwhich sets how wide the resulting bands are."
       },
       {
         "key": "angle",
@@ -11579,7 +11579,7 @@
         "type": "float",
         "group": "Lines",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "The direction segments align to, before the jitter\nbelow scatters them."
       },
       {
         "key": "angle_jitter",
@@ -11646,7 +11646,7 @@
         "type": "choice",
         "group": "Noise",
         "choices": ["Perlin fBm", "Ridged", "Billow", "Swiss (eroded ridges)", "Value fBm", "Worley F1", "Worley F2", "Worley edges", "Worley F1*F2", "IQ (damped slopes)", "Jordan (crumpled)", "Pingpong (banded)", "Voronoise (cell blend)"],
-        "tooltip": ""
+        "tooltip": "Which noise the octaves are built from. Perlin fBm\nis rolling ground; Ridged gives sharp crests and is\nthe usual starting point for mountains; Billow the\nrounded lumps of weathered rock; Swiss adds an\nerosion-like warp to the ridges. The Worley family\nis cellular - F1 for blobs, edges for a crack\nnetwork."
       },
       {
         "key": "seed",
@@ -11661,7 +11661,7 @@
         "type": "int",
         "group": "Noise",
         "min": 1, "max": 16, "default": 9,
-        "tooltip": ""
+        "tooltip": "How many times the pattern is added at a smaller\nsize. Each adds finer detail and costs about as\nmuch again; once an octave is finer than a texel it\nbuys nothing."
       },
       {
         "key": "lacunarity",
@@ -11669,7 +11669,7 @@
         "type": "float",
         "group": "Noise",
         "min": 1.2, "max": 4, "default": 2,
-        "tooltip": ""
+        "tooltip": "How much smaller each octave is than the last. 2\nhalves it, which is the usual choice; higher leaves\na gap between the scales and reads as two separate\npatterns rather than one surface."
       },
       {
         "key": "gain",
@@ -11677,7 +11677,7 @@
         "type": "float",
         "group": "Noise",
         "min": 0.05, "max": 0.95, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much of its predecessor's strength each octave\nkeeps. Low is smooth and dominated by the largest\nforms; high is uniformly rough at every scale."
       },
       {
         "key": "ridge_weight",
@@ -11685,7 +11685,7 @@
         "type": "float",
         "group": "Noise",
         "min": 0, "max": 1, "default": 0.7,
-        "tooltip": ""
+        "tooltip": "Ridged and Swiss only: how strongly a high octave is\nsuppressed where the one below it was already high.\nThis is what keeps detail in the valleys and off the\ncrests, the way real erosion does."
       },
       {
         "key": "warp",
@@ -11693,7 +11693,7 @@
         "type": "float",
         "group": "Noise",
         "min": 0, "max": 0.6, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "Swiss only: how far each octave is pushed sideways\nby the slope of the one below, which bends the\nridges into something that looks worn rather than\ngenerated."
       },
       {
         "key": "jitter",
@@ -11701,7 +11701,7 @@
         "type": "float",
         "group": "Noise",
         "min": 0, "max": 1, "default": 1,
-        "tooltip": ""
+        "tooltip": "Worley only: how far each cell's point strays from\nthe middle of its square. 0 is a visible grid; 1 is\nscattered."
       },
       {
         "key": "kw",
@@ -11830,7 +11830,7 @@
         "label": "Stretch X / Y",
         "type": "vec2",
         "group": "Scale",
-        "tooltip": ""
+        "tooltip": "Pulls the pattern out along one axis. Unequal values\ngive the grain that ridges running one way, or wind-\nblown ground, actually has."
       },
       {
         "key": "stretch_damping",
@@ -11846,7 +11846,7 @@
         "type": "int",
         "group": "Fractal",
         "min": 1, "max": 16, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the pattern is added to itself at a\nsmaller size. Each one adds finer detail and costs\nabout as much again; past the point where an octave\nis smaller than a texel it adds cost and nothing\nelse."
       },
       {
         "key": "scale_ratio",
@@ -11926,7 +11926,7 @@
         "type": "float",
         "group": "Variation",
         "min": 0.05, "max": 2, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How rough the rough areas get, once Influence has\ndecided where they are. Does nothing while Influence\nis zero."
       },
       {
         "key": "smooth_altitude",
@@ -11934,7 +11934,7 @@
         "type": "float",
         "group": "Variation",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The height the smooth areas settle to. Below the\nSmooth level this lifts them, above it lowers them -\nwhich is how a flat valley floor sits lower than the\nbroken ground around it."
       },
       {
         "key": "distortion",
@@ -11950,7 +11950,7 @@
         "type": "float",
         "group": "Distortion",
         "min": 0.1, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How large the smearing flow is. Low values push the\nwhole pattern about in broad sweeps; high values\nripple its edges without moving the big forms."
       },
       {
         "key": "distortion_map",
@@ -11974,7 +11974,7 @@
         "type": "float",
         "group": "Filter",
         "min": 2, "max": 40, "default": 6,
-        "tooltip": ""
+        "tooltip": "How many levels the Terraces filter snaps altitudes\nto. Only the Terraces profile uses it."
       },
       {
         "key": "creep_in",
@@ -11997,7 +11997,7 @@
         "type": "float",
         "group": "Output",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "Scales the whole result. Use it to make one fractal a\nquieter contribution when several are added together."
       },
       {
         "key": "offset",
@@ -12005,7 +12005,7 @@
         "type": "float",
         "group": "Output",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Raises or lowers the whole result. Applied after the\namplitude, before the output block below."
       },
       {
         "key": "rough_ref",
@@ -12080,7 +12080,7 @@
         "type": "float",
         "group": "Base",
         "min": 0.01, "max": 4, "default": 0.35,
-        "tooltip": ""
+        "tooltip": "The size of the largest feature, as a fraction of the\ntile. 1 is one landform filling the map; 0.1 is ten\nacross it."
       },
       {
         "key": "octaves",
@@ -12088,7 +12088,7 @@
         "type": "int",
         "group": "Base",
         "min": 1, "max": 16, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the pattern is added at a smaller size.\nEach adds finer detail and costs about as much again;\nonce an octave is finer than a texel it buys nothing."
       },
       {
         "key": "scale_ratio",
@@ -12096,7 +12096,7 @@
         "type": "float",
         "group": "Base",
         "min": 0.1, "max": 0.9, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much smaller each iteration is than the last. 0.5\nhalves it, which is the classic choice; higher leaves a\ngap between the scales and reads as two patterns rather\nthan one surface."
       },
       {
         "key": "roughness",
@@ -12104,7 +12104,7 @@
         "type": "float",
         "group": "Base",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much strength each iteration keeps. Low is smooth\nand dominated by the big forms; high is broken at every\nscale."
       },
       {
         "key": "gain",
@@ -12112,7 +12112,7 @@
         "type": "float",
         "group": "Base",
         "min": 0.2, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "Contrast of the result: pushes the highs up and the\nlows down about the middle."
       },
       {
         "key": "distortion",
@@ -12120,7 +12120,7 @@
         "type": "float",
         "group": "Base",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Smears the pattern around as if pushed by a slow flow,\nwhich breaks up the lattice the noise sits on."
       },
       {
         "key": "separate",
@@ -12176,7 +12176,7 @@
         "type": "choice",
         "group": "Rocks",
         "choices": ["None", "Correlated", "Everywhere"],
-        "tooltip": ""
+        "tooltip": "Adds broken rock on top of the range. Correlated\nputs it along the ridges, where erosion actually\nstrips a mountain back to stone; Everywhere ignores\nthe form and covers the lot."
       },
       {
         "key": "rock_iteration",
@@ -12192,7 +12192,7 @@
         "type": "float",
         "group": "Rocks",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "How broken the added rock is, independently of the\nrange underneath it."
       },
       {
         "key": "rock_height",
@@ -12200,7 +12200,7 @@
         "type": "float",
         "group": "Rocks",
         "min": 0, "max": 1, "default": 0.3,
-        "tooltip": ""
+        "tooltip": "How far the rock stands proud of the slope it sits\non."
       },
       {
         "key": "eroded",
@@ -12216,7 +12216,7 @@
         "type": "float",
         "group": "Output",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Iterations finer than this, as a fraction of the\ntile, count as roughness in the second output. 0\ncounts them all. That output is what drives a\nmaterial toward the broken ground."
       },
       {
         "key": "post_remap",
@@ -12273,41 +12273,41 @@
         "label": "Type",
         "type": "choice",
         "choices": ["Slope plane", "Bump", "Crater", "Cone", "Ridge line", "Border falloff", "Wave sine", "Wave square", "Wave triangle", "Step", "Band", "Paraboloid"],
-        "tooltip": ""
+        "tooltip": "The base form. These are building blocks rather\nthan terrain: a slope plane to tilt a map, a bump\nor cone to raise one hill, a border falloff to turn\nany terrain into an island, a wave to drive strata\nor dunes."
       },
       {
         "key": "center",
         "label": "Center",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "Where the shape sits, as a fraction of the tile.\nOutside 0..1 pushes it off the edge, which is how\nyou get a slope running out of frame rather than a\nhill in the middle."
       },
       {
         "key": "radius",
         "label": "Radius",
         "type": "float",
         "min": 0.01, "max": 1.5, "default": 0.35,
-        "tooltip": ""
+        "tooltip": "How far the shape reaches from its centre, as a\nfraction of the tile. For Border falloff this is\nthe width of the fade instead."
       },
       {
         "key": "hardness",
         "label": "Hardness",
         "type": "float",
         "min": 0.2, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "The profile from the middle out. Below 1 gives a\nbroad dome that falls away late; above 1 a narrow\npeak with skirts."
       },
       {
         "key": "angle",
         "label": "Direction °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Which way the shape faces. Used by the slope plane,\nthe ridge line and the waves; the round shapes\nignore it."
       },
       {
         "key": "frequency",
         "label": "Frequency",
         "type": "float",
         "min": 0.25, "max": 64, "default": 4,
-        "tooltip": ""
+        "tooltip": "Waves only: how many repeats across the tile."
       },
       {
         "key": "post_remap",
@@ -12366,48 +12366,48 @@
         "key": "path",
         "label": "Shape image (if no input)",
         "type": "filename",
-        "tooltip": ""
+        "tooltip": "The shape to stamp, when nothing is wired to the\nshape input. The input wins if both are given."
       },
       {
         "key": "position",
         "label": "Position",
         "type": "vec2",
-        "tooltip": ""
+        "tooltip": "Where the stamp lands, as a fraction of the tile."
       },
       {
         "key": "size",
         "label": "Size",
         "type": "float",
         "min": 0.02, "max": 2, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much of the tile the stamp covers."
       },
       {
         "key": "rotation",
         "label": "Rotation °",
         "type": "float",
         "min": -180, "max": 180, "default": 0,
-        "tooltip": ""
+        "tooltip": "Turns the stamp before it is applied."
       },
       {
         "key": "height",
         "label": "Height",
         "type": "float",
         "min": -2, "max": 2, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How far the stamp raises the ground. Negative\npresses it in instead, which is how the same shape\ncarves a pit or raises a hill."
       },
       {
         "key": "blend",
         "label": "Blend",
         "type": "choice",
         "choices": ["Add", "Max (merge)", "Min (carve)", "Replace by mask"],
-        "tooltip": ""
+        "tooltip": "How the stamp meets what is already there. Add sums\nthem, so stamps pile up. Max merges - the stamp\nshows only where it is higher, which is what you\nwant for laying a hill onto terrain. Min carves.\nReplace overwrites wherever the stamp is present."
       },
       {
         "key": "falloff",
         "label": "Edge falloff",
         "type": "float",
         "min": 0, "max": 0.5, "default": 0.15,
-        "tooltip": ""
+        "tooltip": "How far in from the stamp's border it fades out, so\nit blends into the terrain rather than ending at a\nvisible square edge."
       },
       {
         "key": "blend_invert",
@@ -12483,7 +12483,7 @@
         "label": "Stretch X / Y",
         "type": "vec2",
         "group": "Scale",
-        "tooltip": ""
+        "tooltip": "Pulls the pattern out along one axis. Unequal values\ngive the grain that ridges running one way, or wind-\nblown ground, actually has."
       },
       {
         "key": "stretch_damping",
@@ -12499,7 +12499,7 @@
         "type": "int",
         "group": "Fractal",
         "min": 1, "max": 16, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the pattern is added to itself at a\nsmaller size. Each one adds finer detail and costs\nabout as much again; past the point where an octave\nis smaller than a texel it adds cost and nothing\nelse."
       },
       {
         "key": "scale_ratio",
@@ -12579,7 +12579,7 @@
         "type": "float",
         "group": "Variation",
         "min": 0.05, "max": 2, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How rough the rough areas get, once Influence has\ndecided where they are. Does nothing while Influence\nis zero."
       },
       {
         "key": "smooth_altitude",
@@ -12587,7 +12587,7 @@
         "type": "float",
         "group": "Variation",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "The height the smooth areas settle to. Below the\nSmooth level this lifts them, above it lowers them -\nwhich is how a flat valley floor sits lower than the\nbroken ground around it."
       },
       {
         "key": "landscape",
@@ -12595,7 +12595,7 @@
         "type": "choice",
         "group": "Landscape",
         "choices": ["Plain noise", "Ridges", "Billows", "Ridge mix", "Billow-ridge mix"],
-        "tooltip": ""
+        "tooltip": "The shape the harmonics take. Plain noise is rolling\nground; Ridges gives the sharp crests of a young\nrange; Billows the rounded lumps of a weathered one.\nThe mixes blend two, weighted by Blend below."
       },
       {
         "key": "blend",
@@ -12635,7 +12635,7 @@
         "type": "float",
         "group": "Distortion",
         "min": 0.1, "max": 8, "default": 1,
-        "tooltip": ""
+        "tooltip": "How large the smearing flow is. Low values push the\nwhole pattern about in broad sweeps; high values\nripple its edges without moving the big forms."
       },
       {
         "key": "distortion_map",
@@ -12659,7 +12659,7 @@
         "type": "float",
         "group": "Filter",
         "min": 2, "max": 40, "default": 6,
-        "tooltip": ""
+        "tooltip": "How many levels the Terraces filter snaps altitudes\nto. Only the Terraces profile uses it."
       },
       {
         "key": "creep_in",
@@ -12682,7 +12682,7 @@
         "type": "float",
         "group": "Output",
         "min": 0, "max": 4, "default": 1,
-        "tooltip": ""
+        "tooltip": "Scales the whole result. Use it to make one fractal a\nquieter contribution when several are added together."
       },
       {
         "key": "offset",
@@ -12690,7 +12690,7 @@
         "type": "float",
         "group": "Output",
         "min": -1, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Raises or lowers the whole result. Applied after the\namplitude, before the output block below."
       },
       {
         "key": "rough_ref",
@@ -12765,7 +12765,7 @@
         "type": "float",
         "group": "Base",
         "min": 0.01, "max": 4, "default": 0.35,
-        "tooltip": ""
+        "tooltip": "The size of the largest feature, as a fraction of the\ntile. 1 is one landform filling the map; 0.1 is ten\nacross it."
       },
       {
         "key": "octaves",
@@ -12773,7 +12773,7 @@
         "type": "int",
         "group": "Base",
         "min": 1, "max": 16, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many times the pattern is added at a smaller size.\nEach adds finer detail and costs about as much again;\nonce an octave is finer than a texel it buys nothing."
       },
       {
         "key": "scale_ratio",
@@ -12781,7 +12781,7 @@
         "type": "float",
         "group": "Base",
         "min": 0.1, "max": 0.9, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much smaller each iteration is than the last. 0.5\nhalves it, which is the classic choice; higher leaves a\ngap between the scales and reads as two patterns rather\nthan one surface."
       },
       {
         "key": "roughness",
@@ -12789,7 +12789,7 @@
         "type": "float",
         "group": "Base",
         "min": 0, "max": 2, "default": 1,
-        "tooltip": ""
+        "tooltip": "How much strength each iteration keeps. Low is smooth\nand dominated by the big forms; high is broken at every\nscale."
       },
       {
         "key": "gain",
@@ -12797,7 +12797,7 @@
         "type": "float",
         "group": "Base",
         "min": 0.2, "max": 10, "default": 1,
-        "tooltip": ""
+        "tooltip": "Contrast of the result: pushes the highs up and the\nlows down about the middle."
       },
       {
         "key": "distortion",
@@ -12805,7 +12805,7 @@
         "type": "float",
         "group": "Base",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "Smears the pattern around as if pushed by a slow flow,\nwhich breaks up the lattice the noise sits on."
       },
       {
         "key": "turbulence",
@@ -12861,7 +12861,7 @@
         "type": "float",
         "group": "Ground aspect",
         "min": 0, "max": 1, "default": 0.5,
-        "tooltip": ""
+        "tooltip": "How much bare rock emerges through the soil. This\nnode models ground as rock under sediment, and this\nis the balance between them."
       },
       {
         "key": "soil_thickness",
@@ -12885,7 +12885,7 @@
         "type": "float",
         "group": "Strata processing",
         "min": 0, "max": 1, "default": 0,
-        "tooltip": ""
+        "tooltip": "How strongly bedding shows in the surface. 0 turns\nthe strata off entirely; the beds follow the relief\nrather than lying flat, so they bend over the\nlandforms the way tilted sediment does."
       },
       {
         "key": "strata_spacing",
@@ -12893,7 +12893,7 @@
         "type": "float",
         "group": "Strata processing",
         "min": 0.01, "max": 0.5, "default": 0.08,
-        "tooltip": ""
+        "tooltip": "How far apart the beds are, as a fraction of the\nheight range. Small gives fine banding; large gives\nthe broad benches of a canyon wall."
       },
       {
         "key": "strata_offset",
@@ -12901,7 +12901,7 @@
         "type": "float",
         "group": "Strata processing",
         "min": -0.5, "max": 0.5, "default": 0,
-        "tooltip": ""
+        "tooltip": "Slides the whole stack of beds up or down, which\nmoves where a bed boundary falls on a given slope."
       },
       {
         "key": "post_remap",
@@ -12965,7 +12965,7 @@
         "type": "int",
         "group": "Wavelet",
         "min": 1, "max": 12, "default": 6,
-        "tooltip": ""
+        "tooltip": "How many bands are summed. Wavelet noise is\nband-limited - each octave occupies a clean slice of\nfrequency - so it stays crisp when magnified rather\nthan turning to mush."
       },
       {
         "key": "scale",
@@ -12973,7 +12973,7 @@
         "type": "float",
         "group": "Wavelet",
         "min": 1, "max": 64, "default": 8,
-        "tooltip": ""
+        "tooltip": "How many cells of the coarsest band fit across the\ntile. Higher is a finer pattern."
       },
       {
         "key": "gain",
@@ -12981,7 +12981,7 @@
         "type": "float",
         "group": "Wavelet",
         "min": 0.1, "max": 0.95, "default": 0.55,
-        "tooltip": ""
+        "tooltip": "How much strength each band keeps from the one\nbefore. Low leaves the coarse bands dominant; high\ngives equal detail at every scale."
       },
       {
         "key": "post_remap",

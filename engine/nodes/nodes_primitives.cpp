@@ -20,14 +20,43 @@ REGISTER_NODE(
                   "Value fBm", "Worley F1", "Worley F2", "Worley edges",
                   "Worley F1*F2", "IQ (damped slopes)", "Jordan (crumpled)",
                   "Pingpong (banded)", "Voronoise (cell blend)"},
-                 1, "Noise");
+                 1, "Noise")
+          .tooltip = "Which noise the octaves are built from. Perlin fBm\n"
+                     "is rolling ground; Ridged gives sharp crests and is\n"
+                     "the usual starting point for mountains; Billow the\n"
+                     "rounded lumps of weathered rock; Swiss adds an\n"
+                     "erosion-like warp to the ridges. The Worley family\n"
+                     "is cellular - F1 for blobs, edges for a crack\n"
+                     "network.";
       add_seed(n.attrs, "seed", "Seed", 0, "Noise");
-      add_int(n.attrs, "octaves", "Octaves", 9, 1, 16, "Noise");
-      add_float(n.attrs, "lacunarity", "Lacunarity", 2.f, 1.2f, 4.f, "Noise");
-      add_float(n.attrs, "gain", "Gain", 0.5f, 0.05f, 0.95f, "Noise");
-      add_float(n.attrs, "ridge_weight", "Ridge weight", 0.7f, 0.f, 1.f, "Noise");
-      add_float(n.attrs, "warp", "Swiss warp", 0.15f, 0.f, 0.6f, "Noise");
-      add_float(n.attrs, "jitter", "Cell jitter", 1.f, 0.f, 1.f, "Noise");
+      add_int(n.attrs, "octaves", "Octaves", 9, 1, 16, "Noise")
+          .tooltip = "How many times the pattern is added at a smaller\n"
+                     "size. Each adds finer detail and costs about as\n"
+                     "much again; once an octave is finer than a texel it\n"
+                     "buys nothing.";
+      add_float(n.attrs, "lacunarity", "Lacunarity", 2.f, 1.2f, 4.f, "Noise")
+          .tooltip = "How much smaller each octave is than the last. 2\n"
+                     "halves it, which is the usual choice; higher leaves\n"
+                     "a gap between the scales and reads as two separate\n"
+                     "patterns rather than one surface.";
+      add_float(n.attrs, "gain", "Gain", 0.5f, 0.05f, 0.95f, "Noise")
+          .tooltip = "How much of its predecessor's strength each octave\n"
+                     "keeps. Low is smooth and dominated by the largest\n"
+                     "forms; high is uniformly rough at every scale.";
+      add_float(n.attrs, "ridge_weight", "Ridge weight", 0.7f, 0.f, 1.f, "Noise")
+          .tooltip = "Ridged and Swiss only: how strongly a high octave is\n"
+                     "suppressed where the one below it was already high.\n"
+                     "This is what keeps detail in the valleys and off the\n"
+                     "crests, the way real erosion does.";
+      add_float(n.attrs, "warp", "Swiss warp", 0.15f, 0.f, 0.6f, "Noise")
+          .tooltip = "Swiss only: how far each octave is pushed sideways\n"
+                     "by the slope of the one below, which bends the\n"
+                     "ridges into something that looks worn rather than\n"
+                     "generated.";
+      add_float(n.attrs, "jitter", "Cell jitter", 1.f, 0.f, 1.f, "Noise")
+          .tooltip = "Worley only: how far each cell's point strays from\n"
+                     "the middle of its square. 0 is a visible grid; 1 is\n"
+                     "scattered.";
       setup_coords(n);
       setup_post(n);
     },
@@ -128,11 +157,26 @@ REGISTER_NODE(
     Fractal, "Primitive", "Non-noise fractals: diamond-square, fault lines",
     [](Node &n) {
       n.add_out("output");
-      add_choice(n.attrs, "type", "Type", {"Diamond-square", "Fault formation"}, 0);
+      add_choice(n.attrs, "type", "Type", {"Diamond-square", "Fault formation"}, 0)
+          .tooltip = "Two classic terrain algorithms that are not noise.\n"
+                     "Diamond-square subdivides a grid, halving the\n"
+                     "randomness each time; Fault formation drops\n"
+                     "straight faults across the map and raises one side\n"
+                     "of each, which builds up into blocky, tectonic\n"
+                     "ground.";
       add_seed(n.attrs);
-      add_float(n.attrs, "roughness", "Roughness", 0.9f, 0.3f, 1.6f);
-      add_int(n.attrs, "faults", "Fault count", 200, 10, 2000);
-      add_float(n.attrs, "fault_softness", "Fault softness", 0.02f, 0.f, 0.2f);
+      add_float(n.attrs, "roughness", "Roughness", 0.9f, 0.3f, 1.6f)
+          .tooltip = "Diamond-square only: how much randomness survives\n"
+                     "each subdivision. Below 1 the detail dies away and\n"
+                     "the result is smooth hills; above 1 it grows and\n"
+                     "the surface turns jagged.";
+      add_int(n.attrs, "faults", "Fault count", 200, 10, 2000)
+          .tooltip = "Fault formation only: how many faults are laid\n"
+                     "down. Few gives a handful of broad steps; many\n"
+                     "averages into smooth rolling ground.";
+      add_float(n.attrs, "fault_softness", "Fault softness", 0.02f, 0.f, 0.2f)
+          .tooltip = "How gradually each fault's step is spread across\n"
+                     "the map. 0 gives hard cliffs at every fault line.";
       setup_post(n);
     },
     [](Node &n) {
@@ -184,12 +228,31 @@ REGISTER_NODE(
                  {"Slope plane", "Bump", "Crater", "Cone", "Ridge line",
                   "Border falloff", "Wave sine", "Wave square", "Wave triangle",
                   "Step", "Band", "Paraboloid"},
-                 1);
-      add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -0.5f, 1.5f);
-      add_float(n.attrs, "radius", "Radius", 0.35f, 0.01f, 1.5f);
-      add_float(n.attrs, "hardness", "Hardness", 1.f, 0.2f, 8.f);
-      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f);
-      add_float(n.attrs, "frequency", "Frequency", 4.f, 0.25f, 64.f);
+                 1)
+          .tooltip = "The base form. These are building blocks rather\n"
+                     "than terrain: a slope plane to tilt a map, a bump\n"
+                     "or cone to raise one hill, a border falloff to turn\n"
+                     "any terrain into an island, a wave to drive strata\n"
+                     "or dunes.";
+      add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -0.5f, 1.5f)
+          .tooltip = "Where the shape sits, as a fraction of the tile.\n"
+                     "Outside 0..1 pushes it off the edge, which is how\n"
+                     "you get a slope running out of frame rather than a\n"
+                     "hill in the middle.";
+      add_float(n.attrs, "radius", "Radius", 0.35f, 0.01f, 1.5f)
+          .tooltip = "How far the shape reaches from its centre, as a\n"
+                     "fraction of the tile. For Border falloff this is\n"
+                     "the width of the fade instead.";
+      add_float(n.attrs, "hardness", "Hardness", 1.f, 0.2f, 8.f)
+          .tooltip = "The profile from the middle out. Below 1 gives a\n"
+                     "broad dome that falls away late; above 1 a narrow\n"
+                     "peak with skirts.";
+      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f)
+          .tooltip = "Which way the shape faces. Used by the slope plane,\n"
+                     "the ridge line and the waves; the round shapes\n"
+                     "ignore it.";
+      add_float(n.attrs, "frequency", "Frequency", 4.f, 0.25f, 64.f)
+          .tooltip = "Waves only: how many repeats across the tile.";
       setup_post(n);
     },
     [](Node &n) {
@@ -266,15 +329,26 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_out("output");
       add_seed(n.attrs);
-      add_int(n.attrs, "octaves", "Octaves", 3, 1, 6, "Gabor");
+      add_int(n.attrs, "octaves", "Octaves", 3, 1, 6, "Gabor")
+          .tooltip = "How many sizes of kernel are layered. Gabor noise is\n"
+                     "expensive per octave, so this stops at 6 where the\n"
+                     "other noises go to 16.";
       add_float(n.attrs, "frequency", "Kernel frequency", 3.f, 0.5f, 16.f,
-                "Gabor");
+                "Gabor")
+          .tooltip = "How many waves are packed inside each kernel. This\n"
+                     "is the pitch of the grain, as against Scale below,\n"
+                     "which is how large a patch of it is.";
       add_float(n.attrs, "orientation", "Orientation °", 30.f, -180.f, 180.f,
-                "Gabor");
+                "Gabor")
+          .tooltip = "Which way the grain runs, when Anisotropy is high\n"
+                     "enough for it to have a direction at all.";
       add_float(n.attrs, "anisotropy", "Anisotropy", 0.85f, 0.f, 1.f, "Gabor")
           .tooltip = "1 locks every kernel to the orientation - streaks.\n"
                      "0 draws orientations at random - isotropic grain.";
-      add_float(n.attrs, "cell_scale", "Scale", 6.f, 1.f, 32.f, "Gabor");
+      add_float(n.attrs, "cell_scale", "Scale", 6.f, 1.f, 32.f, "Gabor")
+          .tooltip = "How many kernel cells fit across the tile - the size\n"
+                     "of the pattern, as against Kernel frequency, which\n"
+                     "is the pitch of the grain inside it.";
       add_choice(n.attrs, "flavor", "Flavor",
                  {"Gabor (amplitude)", "Phasor sawtooth", "Phasor sine",
                   "Phasor square"},
@@ -345,13 +419,19 @@ REGISTER_NODE(
       n.add_out("output");
       n.add_out("mask");
       add_seed(n.attrs);
-      add_int(n.attrs, "particles", "Particles", 1500, 100, 8000, "Growth");
+      add_int(n.attrs, "particles", "Particles", 1500, 100, 8000, "Growth")
+          .tooltip = "How many particles are released to wander until they\n"
+                     "touch the growing cluster. More builds a larger,\n"
+                     "denser dendrite and costs proportionally more.";
       add_float(n.attrs, "stickiness", "Stickiness", 1.f, 0.1f, 1.f, "Growth")
           .tooltip = "1 sticks on first contact - wispy branches. Lower\n"
                      "values let particles slide deeper before settling,\n"
                      "thickening the arms.";
       add_float(n.attrs, "smooth_radius", "Smoothing", 0.008f, 0.f, 0.05f,
-                "Growth");
+                "Growth")
+          .tooltip = "Blurs the aggregate, turning a one-texel-wide\n"
+                     "skeleton into something with width that can be\n"
+                     "used as terrain. 0 leaves the bare structure.";
     },
     [](Node &n) {
       Heightmap &out = n.out_hmap("output");
@@ -442,7 +522,12 @@ REGISTER_NODE(
     Constant, "Primitive", "Constant level",
     [](Node &n) {
       n.add_out("output");
-      add_float(n.attrs, "value", "Value", 0.5f, -1.f, 2.f);
+      add_float(n.attrs, "value", "Value", 0.5f, -1.f, 2.f)
+          .tooltip = "The height every point gets. A flat map is the\n"
+                     "starting point for building terrain out of\n"
+                     "displacement alone, and the quickest way to see\n"
+                     "what a material or a field node is doing with\n"
+                     "nothing underneath it.";
     },
     [](Node &n) {
       Heightmap &out = n.out_hmap("output");
@@ -454,10 +539,18 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("input");
       n.add_out("output");
-      add_int(n.attrs, "layers", "Layers", 8, 2, 32);
-      add_float(n.attrs, "hardness", "Layer hardness", 2.5f, 1.f, 8.f);
+      add_int(n.attrs, "layers", "Layers", 8, 2, 32)
+          .tooltip = "How many beds the height range is cut into. Few\n"
+                     "gives the broad benches of a canyon wall; many\n"
+                     "gives fine bedding.";
+      add_float(n.attrs, "hardness", "Layer hardness", 2.5f, 1.f, 8.f)
+          .tooltip = "How sharply each bed stands out from the next. Low\n"
+                     "leaves the original slope showing through; high\n"
+                     "makes every bed a flat tread with a riser between.";
       add_seed(n.attrs);
-      add_float(n.attrs, "variation", "Thickness variation", 0.5f, 0.f, 1.f);
+      add_float(n.attrs, "variation", "Thickness variation", 0.5f, 0.f, 1.f)
+          .tooltip = "How much the beds differ in thickness. 0 gives\n"
+                     "evenly spaced layers, which no real rock has.";
       setup_post(n);
     },
     [](Node &n) {

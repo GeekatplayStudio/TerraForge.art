@@ -37,11 +37,19 @@ void setup_fractal_common(Node &n, bool terrain) {
   add_seed(n.attrs, "seed", "Seed", 0, "Noise");
   add_float(n.attrs, "wavelength", "Wavelength", 0.25f, 0.005f, 4.f, "Scale")
       .tooltip = "Size of the largest feature, as a fraction of the tile.";
-  add_vec2(n.attrs, "stretch", "Stretch X / Y", 1.f, 1.f, 0.1f, 10.f, "Scale");
+  add_vec2(n.attrs, "stretch", "Stretch X / Y", 1.f, 1.f, 0.1f, 10.f, "Scale")
+      .tooltip = "Pulls the pattern out along one axis. Unequal values\n"
+                 "give the grain that ridges running one way, or wind-\n"
+                 "blown ground, actually has.";
   add_float(n.attrs, "stretch_damping", "Stretch damping", 0.5f, 0.f, 1.f, "Scale")
       .tooltip = "Less stretch on the finer harmonics, so the whole pattern\n"
                  "does not read as smeared.";
-  add_int(n.attrs, "octaves", "Iterations", 8, 1, 16, "Fractal");
+  add_int(n.attrs, "octaves", "Iterations", 8, 1, 16, "Fractal")
+      .tooltip = "How many times the pattern is added to itself at a\n"
+                 "smaller size. Each one adds finer detail and costs\n"
+                 "about as much again; past the point where an octave\n"
+                 "is smaller than a texel it adds cost and nothing\n"
+                 "else.";
   add_float(n.attrs, "scale_ratio", "Scale ratio", 0.5f, 0.1f, 0.9f, "Fractal")
       .tooltip = "Wavelength ratio between iterations. 0.5 is classic;\n"
                  "above favours the large forms, below the fine detail.";
@@ -68,14 +76,25 @@ void setup_fractal_common(Node &n, bool terrain) {
             "Variation")
       .tooltip = "Grainy fractal: how much the grain varies over the map.";
   add_float(n.attrs, "variation_roughness", "Variation roughness", 0.5f, 0.05f, 2.f,
-            "Variation");
+            "Variation")
+      .tooltip = "How rough the rough areas get, once Influence has\n"
+                 "decided where they are. Does nothing while Influence\n"
+                 "is zero.";
   add_float(n.attrs, "smooth_altitude", "Smooth area altitude", 0.f, -1.f, 1.f,
-            "Variation");
+            "Variation")
+      .tooltip = "The height the smooth areas settle to. Below the\n"
+                 "Smooth level this lifts them, above it lowers them -\n"
+                 "which is how a flat valley floor sits lower than the\n"
+                 "broken ground around it.";
   if (terrain) {
     add_choice(n.attrs, "landscape", "Noise / landscape type",
                {"Plain noise", "Ridges", "Billows", "Ridge mix",
                 "Billow-ridge mix"},
-               1, "Landscape");
+               1, "Landscape")
+        .tooltip = "The shape the harmonics take. Plain noise is rolling\n"
+                   "ground; Ridges gives the sharp crests of a young\n"
+                   "range; Billows the rounded lumps of a weathered one.\n"
+                   "The mixes blend two, weighted by Blend below.";
     add_float(n.attrs, "blend", "Blend", 0.5f, 0.f, 1.f, "Landscape")
         .tooltip = "Mixed types only: weight of the second shape.";
     add_float(n.attrs, "ridge_smooth", "Ridge smoothness", 0.2f, 0.f, 1.f,
@@ -87,7 +106,10 @@ void setup_fractal_common(Node &n, bool terrain) {
   add_float(n.attrs, "distortion", "Distortion", 0.f, 0.f, 1.f, "Distortion")
       .tooltip = "Smears the pattern around, as if pushed by a random flow.";
   add_float(n.attrs, "distortion_scale", "Distortion scale", 1.f, 0.1f, 8.f,
-            "Distortion");
+            "Distortion")
+      .tooltip = "How large the smearing flow is. Low values push the\n"
+                 "whole pattern about in broad sweeps; high values\n"
+                 "ripple its edges without moving the big forms.";
   add_float(n.attrs, "distortion_map", "Distortion map strength", 0.f, 0.f, 1.f,
             "Distortion")
       .tooltip = "The 'distortion map' input, when wired, warps the\n"
@@ -96,13 +118,19 @@ void setup_fractal_common(Node &n, bool terrain) {
              {"None", "Terraces", "Soft clip", "S-curve", "Plateau", "Valleys"},
              0, "Filter")
       .tooltip = "A profile applied to the altitudes (Vue's filter curve).";
-  add_float(n.attrs, "profile_steps", "Terrace steps", 6.f, 2.f, 40.f, "Filter");
+  add_float(n.attrs, "profile_steps", "Terrace steps", 6.f, 2.f, 40.f, "Filter")
+      .tooltip = "How many levels the Terraces filter snaps altitudes\n"
+                 "to. Only the Terraces profile uses it.";
   add_float(n.attrs, "creep_in", "Creep-in", 0.f, 0.f, 1.f, "Filter")
       .tooltip = "How much of the unfiltered signal is mixed back.";
   add_range(n.attrs, "filter_range", "Filter range", 0.f, 1.f, 0.f, 1.f, "Filter")
       .tooltip = "The part of the full range the filter acts on.";
-  add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 4.f, "Output");
-  add_float(n.attrs, "offset", "Offset", 0.f, -1.f, 1.f, "Output");
+  add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 4.f, "Output")
+      .tooltip = "Scales the whole result. Use it to make one fractal a\n"
+                 "quieter contribution when several are added together.";
+  add_float(n.attrs, "offset", "Offset", 0.f, -1.f, 1.f, "Output")
+      .tooltip = "Raises or lowers the whole result. Applied after the\n"
+                 "amplitude, before the output block below.";
   add_float(n.attrs, "rough_ref", "Rough areas: ref. feature size", 0.f, 0.f, 1.f,
             "Output")
       .tooltip = "Harmonics finer than this (fraction of the tile) count\n"

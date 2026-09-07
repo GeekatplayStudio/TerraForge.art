@@ -17,11 +17,25 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_out("output");
       add_choice(n.attrs, "type", "Type",
-                 {"Island", "Mountain", "Caldera", "Rift valley", "Mesa"}, 0);
-      add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -0.5f, 1.5f);
-      add_float(n.attrs, "radius", "Radius", 0.35f, 0.05f, 1.f);
-      add_float(n.attrs, "relief", "Relief", 0.5f, 0.f, 1.f);
-      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f);
+                 {"Island", "Mountain", "Caldera", "Rift valley", "Mesa"}, 0)
+          .tooltip = "A whole landform in one node, for when you want a\n"
+                     "particular thing in a particular place rather than\n"
+                     "whatever the noise happens to give. The rim is\n"
+                     "wobbled by noise, so none of them reads as a\n"
+                     "compass drawing.";
+      add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -0.5f, 1.5f)
+          .tooltip = "Where it sits, as a fraction of the tile. Outside\n"
+                     "0..1 pushes it off the edge, so you get a coast or a\n"
+                     "flank rather than the whole thing.";
+      add_float(n.attrs, "radius", "Radius", 0.35f, 0.05f, 1.f)
+          .tooltip = "How far it reaches, as a fraction of the tile.";
+      add_float(n.attrs, "relief", "Relief", 0.5f, 0.f, 1.f)
+          .tooltip = "How broken the form is. 0 is a clean geometric\n"
+                     "shape; higher adds ridged detail to the flanks and\n"
+                     "wobbles the outline further.";
+      add_float(n.attrs, "angle", "Direction °", 0.f, -180.f, 180.f)
+          .tooltip = "Which way the form points. The rift valley and the\n"
+                     "mesa use it; the round ones ignore it.";
       add_seed(n.attrs);
       setup_post(n);
     },
@@ -96,8 +110,17 @@ REGISTER_NODE(
                 "Stones")
           .tooltip = "Stone size as a fraction of terrain width;\n"
                      "smaller = more, denser stones.";
-      add_float(n.attrs, "density", "Stone density", 0.5f, 0.02f, 1.f, "Stones");
-      add_float(n.attrs, "tallness", "Stone tallness", 0.6f, 0.05f, 2.f, "Stones");
+      add_float(n.attrs, "density", "Stone density", 0.5f, 0.02f, 1.f, "Stones")
+          .tooltip = "The share of lattice cells that hold a stone. This\n"
+                     "node writes into the heightmap, so its smallest\n"
+                     "possible stone is a couple of texels - about 14 m on\n"
+                     "a 5 km tile. For stones you can stand next to, use\n"
+                     "Stone field, which is a function and has no\n"
+                     "resolution.";
+      add_float(n.attrs, "tallness", "Stone tallness", 0.6f, 0.05f, 2.f, "Stones")
+          .tooltip = "A stone's height as a fraction of its radius. Every\n"
+                     "stone here gets the same one, which is this node's\n"
+                     "most visible tell.";
       add_float(n.attrs, "pancake", "Pancake effect", 0.3f, 0.f, 1.f, "Stones")
           .tooltip = "Squashes stones flat into slabs while keeping their\n"
                      "footprint — 0 round boulders, 1 flat plates.";
@@ -107,9 +130,15 @@ REGISTER_NODE(
           .tooltip = "Large-scale patchiness: clusters of stones with\n"
                      "clear ground between.";
       add_float(n.attrs, "vary_scale", "Density variation scale", 4.f, 1.f, 16.f,
-                "Variation");
+                "Variation")
+          .tooltip = "How large the patches of more and fewer stones are.\n"
+                     "Low gives a couple of broad drifts across the map;\n"
+                     "high breaks it into many small clusters.";
       add_float(n.attrs, "size_jitter", "Size variation", 0.5f, 0.f, 1.f,
-                "Variation");
+                "Variation")
+          .tooltip = "How much stones differ in size from one another. 0\n"
+                     "makes every stone identical, which nothing in nature\n"
+                     "is.";
       add_range(n.attrs, "slope_band", "Grow on slopes", 0.f, 0.6f, 0.f, 1.f,
                 "Placement")
           .tooltip = "Stones appear only where terrain slope is inside\n"
@@ -205,17 +234,35 @@ REGISTER_NODE(
       n.add_in("input", DataType::Heightmap, true);
       n.add_out("output");
       add_choice(n.attrs, "profile", "Profile", {"Single crater", "Crater field"}, 0,
-                 "Craters");
-      add_float(n.attrs, "scale", "Scale", 0.3f, 0.02f, 1.f, "Craters");
-      add_float(n.attrs, "depth", "Depth", 0.4f, 0.05f, 1.f, "Craters");
+                 "Craters")
+          .tooltip = "One crater placed where you say, or a scattered\n"
+                     "field of them at varying sizes - a cratered plain\n"
+                     "rather than an impact site.";
+      add_float(n.attrs, "scale", "Scale", 0.3f, 0.02f, 1.f, "Craters")
+          .tooltip = "How wide the crater is, as a fraction of the tile.\n"
+                     "In field mode this is the largest; the rest vary\n"
+                     "below it.";
+      add_float(n.attrs, "depth", "Depth", 0.4f, 0.05f, 1.f, "Craters")
+          .tooltip = "How far the floor sits below the surrounding\n"
+                     "ground.";
       add_float(n.attrs, "lip", "Rim lip", 0.5f, 0.f, 1.f, "Craters")
           .tooltip = "Sharpness/height of the raised rim wall.";
-      add_float(n.attrs, "outer_scale", "Ejecta extent", 0.6f, 0.1f, 2.f, "Craters");
+      add_float(n.attrs, "outer_scale", "Ejecta extent", 0.6f, 0.1f, 2.f, "Craters")
+          .tooltip = "How far the thrown-out debris blanket reaches past\n"
+                     "the rim, as a multiple of the radius. It is the\n"
+                     "apron of raised ground that makes an impact read as\n"
+                     "an impact rather than a hole.";
       add_float(n.attrs, "floor", "Floor level", 0.15f, 0.f, 1.f, "Craters")
           .tooltip = "Clamps the bowl bottom — flat crater floors.";
-      add_float(n.attrs, "irregular", "Rim irregularity", 0.3f, 0.f, 1.f, "Craters");
-      add_vec2(n.attrs, "center", "Position", 0.5f, 0.5f, -0.2f, 1.2f, "Craters");
-      add_int(n.attrs, "count", "Field count", 12, 2, 64, "Field");
+      add_float(n.attrs, "irregular", "Rim irregularity", 0.3f, 0.f, 1.f, "Craters")
+          .tooltip = "How far the rim departs from a circle. 0 is a\n"
+                     "drawing-compass ring, which no impact leaves.";
+      add_vec2(n.attrs, "center", "Position", 0.5f, 0.5f, -0.2f, 1.2f, "Craters")
+          .tooltip = "Where the single crater sits, as a fraction of the\n"
+                     "tile. Ignored in field mode.";
+      add_int(n.attrs, "count", "Field count", 12, 2, 64, "Field")
+          .tooltip = "How many craters the field scatters. Field mode\n"
+                     "only.";
       add_seed(n.attrs, "seed", "Seed", 0, "Field");
       setup_post(n);
     },
@@ -301,15 +348,27 @@ REGISTER_NODE(
     [](Node &n) {
       n.add_in("envelope", DataType::Heightmap, true);
       n.add_out("output");
-      add_float(n.attrs, "wind_dir", "Wind direction °", 30.f, -180.f, 180.f, "Dunes");
-      add_float(n.attrs, "wavelength", "Dune wavelength", 0.12f, 0.02f, 0.5f, "Dunes");
+      add_float(n.attrs, "wind_dir", "Wind direction °", 30.f, -180.f, 180.f, "Dunes")
+          .tooltip = "Which way the wind blows. Dunes run across it, and\n"
+                     "their steep slip face is on the downwind side -\n"
+                     "which is what tells a viewer which way the wind was\n"
+                     "going.";
+      add_float(n.attrs, "wavelength", "Dune wavelength", 0.12f, 0.02f, 0.5f, "Dunes")
+          .tooltip = "The distance from one crest to the next, as a\n"
+                     "fraction of the tile.";
       add_float(n.attrs, "asymmetry", "Asymmetry", 0.75f, 0.5f, 0.95f, "Dunes")
           .tooltip = "Windward slope is long and gentle; the slip face is\n"
                      "short and steep (real dunes ~0.8).";
-      add_float(n.attrs, "chaos", "Crest chaos", 0.5f, 0.f, 1.f, "Dunes");
+      add_float(n.attrs, "chaos", "Crest chaos", 0.5f, 0.f, 1.f, "Dunes")
+          .tooltip = "How much the crests wander and break up along their\n"
+                     "length. 0 gives parallel corduroy; high gives the\n"
+                     "broken crescents of a real dune field.";
       add_float(n.attrs, "ripples", "Ripples", 0.25f, 0.f, 1.f, "Detail")
           .tooltip = "Secondary small-scale ripple field on top.";
-      add_float(n.attrs, "ripple_scale", "Ripple scale", 6.f, 2.f, 20.f, "Detail");
+      add_float(n.attrs, "ripple_scale", "Ripple scale", 6.f, 2.f, 20.f, "Detail")
+          .tooltip = "How many small wind ripples ride across each dune.\n"
+                     "These are the centimetre-scale corrugations on the\n"
+                     "sand, not the dunes themselves.";
       add_seed(n.attrs);
       setup_post(n);
     },

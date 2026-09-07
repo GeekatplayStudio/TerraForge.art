@@ -47,7 +47,10 @@ REGISTER_NODE(
       add_range(n.attrs, "slope_band", "Grows on slopes", 0.f, 0.35f, 0.f, 1.f, "Placement")
           .tooltip = "Grass takes only ground whose slope is inside this band\n"
                      "(0 flat .. 1 vertical).";
-      add_float(n.attrs, "slope_fuzz", "Slope fade", 0.1f, 0.f, 0.5f, "Placement");
+      add_float(n.attrs, "slope_fuzz", "Slope fade", 0.1f, 0.f, 0.5f, "Placement")
+          .tooltip = "How gradually the grass gives out at the edge of the\n"
+                     "slope band. Zero gives a hard line across the\n"
+                     "hillside, which reads as drawn on.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");

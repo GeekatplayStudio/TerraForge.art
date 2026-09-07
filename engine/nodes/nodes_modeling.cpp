@@ -198,7 +198,11 @@ REGISTER_NODE(
     "Import a heightfield: 8/16-bit PNG, JPG, TGA, or SRTM .hgt real-world DEM",
     [](Node &n) {
       n.add_out("output");
-      add_filename(n.attrs, "path", "Heightfield image", "");
+      add_filename(n.attrs, "path", "Heightfield image", "")
+          .tooltip = "An 8- or 16-bit PNG, a JPG or TGA, or an SRTM .hgt\n"
+                     "tile of real-world elevation. 16-bit carries far\n"
+                     "more height detail than 8-bit, which visibly\n"
+                     "terraces on a smooth slope.";
       setup_post(n);
     },
     [](Node &n) {
@@ -222,14 +226,30 @@ REGISTER_NODE(
       n.add_in("input");
       n.add_in("shape", DataType::Heightmap, true);
       n.add_out("output");
-      add_filename(n.attrs, "path", "Shape image (if no input)", "");
-      add_vec2(n.attrs, "position", "Position", 0.5f, 0.5f, -0.5f, 1.5f);
-      add_float(n.attrs, "size", "Size", 0.5f, 0.02f, 2.f);
-      add_float(n.attrs, "rotation", "Rotation °", 0.f, -180.f, 180.f);
-      add_float(n.attrs, "height", "Height", 0.5f, -2.f, 2.f);
+      add_filename(n.attrs, "path", "Shape image (if no input)", "")
+          .tooltip = "The shape to stamp, when nothing is wired to the\n"
+                     "shape input. The input wins if both are given.";
+      add_vec2(n.attrs, "position", "Position", 0.5f, 0.5f, -0.5f, 1.5f)
+          .tooltip = "Where the stamp lands, as a fraction of the tile.";
+      add_float(n.attrs, "size", "Size", 0.5f, 0.02f, 2.f)
+          .tooltip = "How much of the tile the stamp covers.";
+      add_float(n.attrs, "rotation", "Rotation °", 0.f, -180.f, 180.f)
+          .tooltip = "Turns the stamp before it is applied.";
+      add_float(n.attrs, "height", "Height", 0.5f, -2.f, 2.f)
+          .tooltip = "How far the stamp raises the ground. Negative\n"
+                     "presses it in instead, which is how the same shape\n"
+                     "carves a pit or raises a hill.";
       add_choice(n.attrs, "blend", "Blend",
-                 {"Add", "Max (merge)", "Min (carve)", "Replace by mask"}, 1);
-      add_float(n.attrs, "falloff", "Edge falloff", 0.15f, 0.f, 0.5f);
+                 {"Add", "Max (merge)", "Min (carve)", "Replace by mask"}, 1)
+          .tooltip = "How the stamp meets what is already there. Add sums\n"
+                     "them, so stamps pile up. Max merges - the stamp\n"
+                     "shows only where it is higher, which is what you\n"
+                     "want for laying a hill onto terrain. Min carves.\n"
+                     "Replace overwrites wherever the stamp is present.";
+      add_float(n.attrs, "falloff", "Edge falloff", 0.15f, 0.f, 0.5f)
+          .tooltip = "How far in from the stamp's border it fades out, so\n"
+                     "it blends into the terrain rather than ending at a\n"
+                     "visible square edge.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
