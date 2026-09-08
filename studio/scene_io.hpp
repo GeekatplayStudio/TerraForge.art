@@ -23,12 +23,25 @@
 #include <json.hpp>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace studio {
 struct SceneObject;
 struct SceneState;
 
 using GraphIdMap = std::map<uint64_t, uint64_t>; // file node id -> live id
+
+struct RenderSettings;
+// Every render/world setting that is saved with the project, by name - one
+// table, both directions (scene_io.cpp). Also what set_setting and
+// list_settings reach over the API, so a setting that round-trips is a
+// setting a script can set, by the same name.
+struct EnvField {
+  const char *key;
+  char kind; // 'f' float, 'i' int, 'b' bool, 'u' node id, 'c' float[3], 's' string
+  void *p;
+};
+std::vector<EnvField> env_fields(RenderSettings &rs);
 
 // The whole scene: objects (all of them, in order), layers, selection, the
 // active and last-used camera.

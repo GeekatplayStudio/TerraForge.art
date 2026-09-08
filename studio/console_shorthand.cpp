@@ -75,7 +75,7 @@ const char *const COMMON_OPS[] = {
     "set_clouds",    "set_render",    "render",         "bake",
     "save_project",  "open_project",  "set_frame",      "play",
     "paint_save",    "paint_load",    "paint_clear",    "probe_height",
-    "perf_report",
+    "perf_report",   "list_settings", "set_setting",
     "undo",          "redo",          nullptr};
 
 } // namespace

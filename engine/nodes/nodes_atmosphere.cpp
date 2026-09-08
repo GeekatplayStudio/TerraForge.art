@@ -58,6 +58,8 @@ REGISTER_NODE(
 REGISTER_NODE(
     AtmosphereSettings, "Atmosphere", "Sky colors, density, haze/fog and light absorption",
     [](Node &n) {
+      // where the stack of CloudLayer nodes plugs in
+      n.add_in("clouds", DataType::Heightmap, true);
       n.add_out("atmosphere");
       add_float(n.attrs, "density", "Atmosphere density", 1.f, 0.05f, 3.f, "Sky")
           .tooltip = "How thick the air is. It reddens the sun near the horizon\n"
@@ -116,6 +118,11 @@ REGISTER_NODE(
 REGISTER_NODE(
     CloudLayer, "Atmosphere", "Volumetric cloud layer: type, coverage, altitude, wind",
     [](Node &n) {
+      // Layers chain: a CloudLayer takes the layers below it and adds its own,
+      // so any number stack toward the AtmosphereSettings' clouds input. Every
+      // CloudLayer in the graph is drawn whether or not it is wired - the wire
+      // is the order they are shown in, not a switch.
+      n.add_in("clouds", DataType::Heightmap, true);
       n.add_out("clouds");
       add_bool(n.attrs, "enabled", "Enabled", true, "Layer")
           .tooltip = "Turns the cloud layer off without losing its settings.";

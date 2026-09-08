@@ -157,6 +157,24 @@ changed rather than to the mode that is hiding it.
    frame. Put the control in the view header, where ordinary widget behaviour
    applies, and let the overlay only say what is going on.
 
+## Everything the UI can change, scripting can change - enforced
+
+`tests/test_settings_coverage.py` reads the source and fails when it stops
+being true: every plain field of `RenderSettings` must be in the saved-
+settings table (`env_fields`, scene_io.cpp), which is what `set_setting` /
+`list_settings` reach, so a new setting is scriptable by being saved; every
+`App::show_*` flag must have a `show_panel` name; the count of node
+attributes without a tooltip may only go down (the tooltip is what the
+natural-language search indexes and what the assistant is told a property
+means). `tests/test_api_coverage.py` holds the op ↔ MCP tool side. Add a
+setting: put it in `env_fields`. Add a panel: put it in `show_panel`. Add
+an attribute: give it a tooltip.
+
+Cloud layers are nodes: every `CloudLayer` in the graph after the first is
+its own layer (`rs.cloud_layers`, collected in scene_nodes.cpp, eight at
+most in the sky pass); they chain through their `clouds` port into
+`AtmosphereSettings` for order, but are drawn whether wired or not.
+
 ## The performance watcher
 
 `studio/perf_watch.cpp` counts events the subsystems report (`perf_count`:

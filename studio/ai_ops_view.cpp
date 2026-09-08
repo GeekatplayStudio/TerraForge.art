@@ -13,6 +13,7 @@
 #include "ai_assist.hpp"
 #include "app.hpp"
 #include "perf_watch.hpp"
+#include "scene_io.hpp"
 #include "prefs.hpp"
 #include "graph_lease.hpp"
 #include "paint_canvas.hpp"
@@ -203,6 +204,58 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     paint_canvas_invalidate();
     a.status = "painted layer cleared";
     return 1;
+  }
+
+  // Every saved render/world setting, by the name it is saved under - the
+  // one table scene_io.cpp round-trips. A setting that survives a save is a
+  // setting a script can read and set, without a bespoke op for each.
+  if (op == "list_settings") {
+    RenderSettings &rs = render_settings();
+    json out = json::object();
+    for (const EnvField &f : env_fields(rs)) {
+      switch (f.kind) {
+        case 'f': out[f.key] = *(float *)f.p; break;
+        case 'i': out[f.key] = *(int *)f.p; break;
+        case 'b': out[f.key] = *(bool *)f.p; break;
+        case 'u': out[f.key] = *(unsigned long long *)f.p; break;
+        case 'c': { float *c = (float *)f.p; out[f.key] = {c[0], c[1], c[2]}; break; }
+        case 's': out[f.key] = *(std::string *)f.p; break;
+      }
+    }
+    a.api_reply = out.dump();
+    a.status = std::to_string(out.size()) + " settings in reply";
+    return 1;
+  }
+  if (op == "set_setting") {
+    RenderSettings &rs = render_settings();
+    const std::string key = act.value("key", std::string());
+    if (key.empty() || !act.contains("value")) {
+      err = "set_setting needs 'key' (a name from list_settings) and 'value'";
+      return 0;
+    }
+    const json &v = act["value"];
+    for (const EnvField &f : env_fields(rs)) {
+      if (key != f.key) continue;
+      bool ok = true;
+      switch (f.kind) {
+        case 'f': if (v.is_number()) *(float *)f.p = v.get<float>(); else ok = false; break;
+        case 'i': if (v.is_number()) *(int *)f.p = v.get<int>(); else ok = false; break;
+        case 'b': if (v.is_boolean()) *(bool *)f.p = v.get<bool>();
+                  else if (v.is_number()) *(bool *)f.p = v.get<double>() != 0.0; else ok = false; break;
+        case 'u': if (v.is_number()) *(unsigned long long *)f.p = v.get<unsigned long long>(); else ok = false; break;
+        case 'c': if (v.is_array() && v.size() >= 3) { float *c = (float *)f.p; for (int k = 0; k < 3; ++k) c[k] = v[k].get<float>(); } else ok = false; break;
+        case 's': if (v.is_string()) *(std::string *)f.p = v.get<std::string>(); else ok = false; break;
+      }
+      if (!ok) {
+        err = "set_setting: '" + key + "' cannot take " + v.dump();
+        return 0;
+      }
+      a.uploaded_serial = 0;
+      a.status = key + " = " + v.dump();
+      return 1;
+    }
+    err = "set_setting: no setting called '" + key + "' (list_settings names them)";
+    return 0;
   }
 
   if (op == "perf_report") {

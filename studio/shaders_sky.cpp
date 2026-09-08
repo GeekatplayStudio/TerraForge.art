@@ -207,17 +207,42 @@ vec4 march_layer(vec3 ro, vec3 rd, vec3 bg, int type, float alt, float thick, fl
   }
   return vec4(bg * transmittance + scatter, transmittance);
 }
-// Both layers, far one first so the near one composes over it. From below
-// both, the higher layer is the far one; from above both, the lower.
+// Every layer, far one first so each nearer one composes over the last.
+// The list is the main layer, the second layer, and every extra CloudLayer
+// node; "far" is by height difference from the eye, so from below them all
+// the highest goes first and from above them all the lowest does.
+uniform int u_clx_n;
+uniform int u_clx_type[8];
+uniform float u_clx_cov[8], u_clx_den[8], u_clx_alt[8], u_clx_thick[8];
 vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
   if (u_clouds == 0) return vec4(bg, 1.0);
-  if (u_cl2 == 0) return march_layer(ro, rd, bg, u_cl_type, u_cl_alt, u_cl_thick, u_cl_cov, u_cl_den);
-  bool one_far = abs(u_cl_alt - ro.y) > abs(u_cl2_alt - ro.y);
-  vec4 c = one_far ? march_layer(ro, rd, bg, u_cl_type, u_cl_alt, u_cl_thick, u_cl_cov, u_cl_den)
-                   : march_layer(ro, rd, bg, u_cl2_type, u_cl2_alt, u_cl2_thick, u_cl2_cov, u_cl2_den);
-  vec4 n = one_far ? march_layer(ro, rd, c.rgb, u_cl2_type, u_cl2_alt, u_cl2_thick, u_cl2_cov, u_cl2_den)
-                   : march_layer(ro, rd, c.rgb, u_cl_type, u_cl_alt, u_cl_thick, u_cl_cov, u_cl_den);
-  return vec4(n.rgb, c.a * n.a);
+  int   ty[10];
+  float al[10], th[10], cv[10], dn[10];
+  int n = 0;
+  ty[n] = u_cl_type; al[n] = u_cl_alt; th[n] = u_cl_thick; cv[n] = u_cl_cov; dn[n] = u_cl_den; ++n;
+  if (u_cl2 == 1) { ty[n] = u_cl2_type; al[n] = u_cl2_alt; th[n] = u_cl2_thick; cv[n] = u_cl2_cov; dn[n] = u_cl2_den; ++n; }
+  for (int i = 0; i < 8; ++i) {
+    if (i >= u_clx_n) break;
+    ty[n] = u_clx_type[i]; al[n] = u_clx_alt[i]; th[n] = u_clx_thick[i]; cv[n] = u_clx_cov[i]; dn[n] = u_clx_den[i]; ++n;
+  }
+  vec4 c = vec4(bg, 1.0);
+  bool done[10];
+  for (int i = 0; i < 10; ++i) done[i] = false;
+  for (int pass = 0; pass < 10; ++pass) {
+    if (pass >= n) break;
+    // the farthest layer not yet drawn
+    int best = -1; float bestd = -1.0;
+    for (int i = 0; i < 10; ++i) {
+      if (i >= n || done[i]) continue;
+      float d = abs(al[i] + th[i] * 0.5 - ro.y);
+      if (d > bestd) { bestd = d; best = i; }
+    }
+    if (best < 0) break;
+    done[best] = true;
+    vec4 l = march_layer(ro, rd, c.rgb, ty[best], al[best], th[best], cv[best], dn[best]);
+    c = vec4(l.rgb, c.a * l.a);
+  }
+  return c;
 }
 void main(){
   vec3 dir;

@@ -151,6 +151,23 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     uni1(prog_sky, "u_cl2_den", RS.cloud2_density);
     uni1(prog_sky, "u_cl2_alt", RS.cloud2_altitude);
     uni1(prog_sky, "u_cl2_thick", RS.cloud2_thickness);
+    {
+      // the extra layers from CloudLayer nodes, as arrays
+      const int n = std::min((int)RS.cloud_layers.size(), RenderSettings::MAX_CLOUD_LAYERS);
+      int types[RenderSettings::MAX_CLOUD_LAYERS] = {};
+      float cov[RenderSettings::MAX_CLOUD_LAYERS] = {}, den[RenderSettings::MAX_CLOUD_LAYERS] = {},
+            alt[RenderSettings::MAX_CLOUD_LAYERS] = {}, thick[RenderSettings::MAX_CLOUD_LAYERS] = {};
+      for (int i = 0; i < n; ++i) {
+        const auto &L = RS.cloud_layers[(size_t)i];
+        types[i] = L.type; cov[i] = L.coverage; den[i] = L.density; alt[i] = L.altitude; thick[i] = L.thickness;
+      }
+      unii(prog_sky, "u_clx_n", n);
+      glUniform1iv(uniform_location(prog_sky, "u_clx_type"), RenderSettings::MAX_CLOUD_LAYERS, types);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_cov"), RenderSettings::MAX_CLOUD_LAYERS, cov);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_den"), RenderSettings::MAX_CLOUD_LAYERS, den);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_alt"), RenderSettings::MAX_CLOUD_LAYERS, alt);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_thick"), RenderSettings::MAX_CLOUD_LAYERS, thick);
+    }
     float wr = RS.cloud_wind_dir * 0.017453293f;
     float wind[2] = {std::cos(wr) * RS.cloud_wind_speed,
                      std::sin(wr) * RS.cloud_wind_speed};

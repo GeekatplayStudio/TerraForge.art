@@ -19,9 +19,28 @@ bool scene_nodes_present(App &a, const char *type) {
 
 void apply_scene_nodes(App &a) {
   RenderSettings &rs = render_settings();
+  // CloudLayer nodes: the first drives the main cloud settings as it always
+  // did; every one after it is a further layer of its own, so a sky is built
+  // by adding nodes - low stratus, cumulus, a cirrus veil - with no limit but
+  // the eight the sky pass marches.
+  rs.cloud_layers.clear();
+  bool first_cloud = true;
   for (auto &np : a.graph.nodes) {
     gpx::Node &n = *np;
     const gpx::AttrSet &at = n.attrs;
+    if (n.type == "CloudLayer" && !first_cloud) {
+      if (!at.get_b("enabled", true)) continue;
+      if ((int)rs.cloud_layers.size() >= RenderSettings::MAX_CLOUD_LAYERS) continue;
+      RenderSettings::CloudLayerSettings L;
+      L.type = at.get_choice("type");
+      L.coverage = at.get_f("coverage", 0.5f);
+      L.density = at.get_f("density", 1.f);
+      L.altitude = at.get_f("altitude", 1.4f);
+      L.thickness = at.get_f("thickness", 0.8f);
+      rs.cloud_layers.push_back(L);
+      continue;
+    }
+    if (n.type == "CloudLayer") first_cloud = false;
     if (n.type == "SunLight") {
       rs.sun_mode = at.get_choice("mode");
       rs.sun_azimuth = at.get_f("azimuth", rs.sun_azimuth);

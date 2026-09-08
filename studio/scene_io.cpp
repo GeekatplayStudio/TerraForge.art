@@ -8,19 +8,11 @@ using json = nlohmann::json;
 
 namespace studio {
 
-namespace {
-
 // ------------------------------------------------------------ field table
 // One table, both directions. A field listed here round-trips; a field not
 // listed here visibly resets on load, which is how an omission gets noticed.
 // ViewConfig (per-view camera/shading toggles) is deliberately absent: those
 // are how you happened to be looking, not what the project is.
-struct EnvField {
-  const char *key;
-  char kind; // 'f' float, 'i' int, 'b' bool, 'u' node id, 'c' float[3], 's' string
-  void *p;
-};
-
 std::vector<EnvField> env_fields(RenderSettings &rs) {
   return {
       // sun
@@ -170,6 +162,8 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"post_vignette", 'f', &rs.post_vignette},
   };
 }
+
+namespace {
 
 uint64_t remap_id(uint64_t file_id, const GraphIdMap &idmap) {
   if (!file_id) return 0;

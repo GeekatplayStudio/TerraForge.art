@@ -155,6 +155,15 @@ struct RenderSettings {
   // when a cirrus veil sits far above the cumulus. Same march, drawn back to
   // front from the camera. The natural generalisation is a list; two is the
   // start of it (docs/VOLUMETRICS.md).
+  // Further layers, from every CloudLayer node in the graph beyond the first
+  // (the first drives the fields above, as it always did). Collected each
+  // frame by scene_nodes.cpp; the sky pass marches them all, far to near.
+  struct CloudLayerSettings {
+    int type = 1;
+    float coverage = 0.5f, density = 1.f, altitude = 1.4f, thickness = 0.8f;
+  };
+  static constexpr int MAX_CLOUD_LAYERS = 8;
+  std::vector<CloudLayerSettings> cloud_layers;
   bool cloud2_on = false;
   int cloud2_type = 0;          // stratus by default: a thin high sheet
   float cloud2_coverage = 0.35f;

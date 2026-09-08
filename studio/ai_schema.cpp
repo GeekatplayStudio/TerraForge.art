@@ -44,6 +44,7 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - set_fog also takes "falloff", "absorb":[r,g,b], "sun_scatter", "albedo" (scattering albedo 0..1), "anisotropy" (HG g, -0.95..0.95), "heterogeneity" (0..1, noise-broken fog) and "steps" (1..64 ray-march samples; 1 = closed form). The fog is a participating medium: Beer-Lambert extinction, single scattering, self-shadowed when marched.
 - {"op":"set_clouds","enabled":true,"type":"stratus"|"cumulus"|"cumulonimbus",
    "coverage":0.6,"density":1.2,"altitude":1.4,"thickness":0.8,"wind_speed":0.03}
+- Any number of cloud layers: add_node "CloudLayer" per layer (type, coverage, density, altitude, thickness, enabled...), chained clouds -> clouds into AtmosphereSettings. The first CloudLayer drives the main cloud settings; each further one is its own layer.
 - set_clouds also takes a second layer: "layer2":true, "layer2_type", "layer2_coverage", "layer2_density", "layer2_altitude" (0.2..4), "layer2_thickness"
 - {"op":"set_viewport","shading":"ids","id_mode":0|1}  (ID colours: one flat colour per object (0) or per material (1)); set_viewport also takes "terrain_shape":0|1|2 (square, round, rectangle) and "terrain_aspect" (the rectangle's depth over width)
 - {"op":"set_water","enabled":true,"level":0.1,"deep":[r,g,b],"shallow":[r,g,b],
@@ -53,6 +54,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
       s += R"(- {"op":"set_render","engine":"mitsuba"|"cycles"|"luxcore"|"viewport",
    "width":1920,"height":1080,"samples":256,"output":"shot.png"}
 - {"op":"render"}   (starts the render immediately)
+- {"op":"list_settings"}  (every saved render/world setting by name with its value, in "reply")
+- {"op":"set_setting","key":"cloud_coverage","value":0.7}  (any of those settings by its name; colours as [r,g,b])
 - {"op":"perf_report"}   (the performance watcher: frame phases, event rates, memory and findings about work done for nothing, in "reply"; also logs/perf_watch.json every 10 s)
 - {"op":"render_passes","path":"shot.png","width":1920,"height":1080,
    "format":0|1|2,"passes":["depth","normal","albedo","object_id","direct",

@@ -79,6 +79,19 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
         "description": "Reset the Height Paint layer to mid grey (no effect).",
         "params": {},
     },
+    "studio_list_settings": {
+        "description": "Every saved render/world setting by name with its "
+                       "current value (sun, sky, fog, clouds, water, terrain "
+                       "size and shape, LOD, render editor...), in the state's "
+                       "reply.",
+        "params": {},
+    },
+    "studio_set_setting": {
+        "description": "Set one render/world setting by the name "
+                       "list_settings reports: a number, a bool, a [r,g,b] "
+                       "colour or a string as the setting takes.",
+        "params": {"key": "str", "value": "any"},
+    },
     "studio_perf_report": {
         "description": "The performance watcher's report: frame phases, event "
                        "rates (evaluations, uploads, view draws, lock misses), "
@@ -226,6 +239,8 @@ ASSET_SIMPLE = {
     "studio_paint_load": "paint_load",
     "studio_paint_clear": "paint_clear",
     "studio_perf_report": "perf_report",
+    "studio_list_settings": "list_settings",
+    "studio_set_setting": "set_setting",
     "studio_ai_generate_texture": "ai_generate_texture",
     "studio_ai_generate_skydome": "ai_generate_skydome",
     "studio_ai_generate_image": "ai_generate_image",

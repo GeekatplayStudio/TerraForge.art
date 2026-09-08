@@ -120,6 +120,23 @@ void pass_sky(const FrameCtx &F) {
     uni1(prog_sky, "u_cl2_den", RS.cloud2_density);
     uni1(prog_sky, "u_cl2_alt", RS.cloud2_altitude);
     uni1(prog_sky, "u_cl2_thick", RS.cloud2_thickness);
+    {
+      // the extra layers from CloudLayer nodes, as arrays
+      const int n = std::min((int)RS.cloud_layers.size(), RenderSettings::MAX_CLOUD_LAYERS);
+      int types[RenderSettings::MAX_CLOUD_LAYERS] = {};
+      float cov[RenderSettings::MAX_CLOUD_LAYERS] = {}, den[RenderSettings::MAX_CLOUD_LAYERS] = {},
+            alt[RenderSettings::MAX_CLOUD_LAYERS] = {}, thick[RenderSettings::MAX_CLOUD_LAYERS] = {};
+      for (int i = 0; i < n; ++i) {
+        const auto &L = RS.cloud_layers[(size_t)i];
+        types[i] = L.type; cov[i] = L.coverage; den[i] = L.density; alt[i] = L.altitude; thick[i] = L.thickness;
+      }
+      unii(prog_sky, "u_clx_n", n);
+      glUniform1iv(uniform_location(prog_sky, "u_clx_type"), RenderSettings::MAX_CLOUD_LAYERS, types);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_cov"), RenderSettings::MAX_CLOUD_LAYERS, cov);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_den"), RenderSettings::MAX_CLOUD_LAYERS, den);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_alt"), RenderSettings::MAX_CLOUD_LAYERS, alt);
+      glUniform1fv(uniform_location(prog_sky, "u_clx_thick"), RenderSettings::MAX_CLOUD_LAYERS, thick);
+    }
     glUniform2fv(uniform_location(prog_sky, "u_cl_wind"), 1, wind);
     uni3(prog_sky, "u_cl_color", RS.cloud_color);
     glActiveTexture(GL_TEXTURE3);

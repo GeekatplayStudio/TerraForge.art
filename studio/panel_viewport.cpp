@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — viewport windows. Each view is its own dockable,
 // resizable, floatable window with a Blender-style header toolbar.
 #include "app.hpp"
+#include "console.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -108,6 +109,39 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
   ImGui::SameLine();
   if (ImGui::Button("Split down", ImVec2(96, 0)))
     view_split(a, a.view_focus, true);
+  // A new viewport that looks through a camera: added a camera, want to see
+  // what it sees beside the working view. The split above then that view's
+  // scene camera set - the same field the Preview panel drives.
+  {
+    SceneState &scn = scene();
+    std::vector<int> cams;
+    for (int i = 0; i < (int)scn.objects.size(); ++i)
+      if (scn.objects[i].type == SceneObject::Camera) cams.push_back(i);
+    ImGui::SetNextItemWidth(W);
+    if (ImGui::BeginCombo("##newcamview", "New viewport through camera...")) {
+      for (int i : cams)
+        if (ImGui::Selectable(scn.objects[(size_t)i].name.c_str())) {
+          const int before = a.view_focus;
+          view_split(a, slot, false);
+          if (a.view_focus != before && a.view_focus >= 0 &&
+              a.view_focus < RenderSettings::MAX_VIEWS) {
+            rs.views[a.view_focus].camera = 0;
+            rs.views[a.view_focus].scene_camera = i;
+            a.status = std::string("new viewport through ") + scn.objects[(size_t)i].name;
+          }
+        }
+      if (cams.empty()) ImGui::TextDisabled("no cameras in the scene");
+      ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Opens another viewport beside this one, locked to that\n"
+                        "camera's eye. Right-click any viewport for this menu.");
+    if (vc.scene_camera >= 0 && vc.scene_camera < (int)scn.objects.size()) {
+      ImGui::TextDisabled("This view looks through %s.", scn.objects[(size_t)vc.scene_camera].name.c_str());
+      ImGui::SameLine();
+      if (ImGui::SmallButton("Free orbit")) vc.scene_camera = -2;
+    }
+  }
   ImGui::TextDisabled("Each view is a normal window: drag its tab to\n"
                       "move, split, float or re-dock it. The\n"
                       "arrangement is remembered; View > Layouts\n"
@@ -172,21 +206,19 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
   // left every later edit apparently having no effect. That is what "the
   // erosion effect is not reflected in the viewport" looks like from outside.
   if (a.view_node) {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.33f, 0.13f, 1.f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.70f, 0.44f, 0.18f, 1.f));
-    if (ImGui::SmallButton("Unpin")) {
+    // The pin, as the palette's lock icon lit in the accent: the same glyph
+    // the Material Studio uses for "held to one thing", so it reads at once.
+    if (IconButton(Icon::Lock, "##unpin",
+                   "Pinned to one node - click to follow the Terrain Output again\n\n"
+                   "Anything you change downstream of the pinned node does not\n"
+                   "appear in this view while it is pinned. Double-clicking a\n"
+                   "node in the graph pins it; double-clicking it again also\n"
+                   "releases it.",
+                   true, ImGui::GetFrameHeight())) {
       a.view_node = 0;
       a.uploaded_serial = 0; // redraw from the output now
       a.status = "viewport follows the Terrain Output again";
     }
-    ImGui::PopStyleColor(2);
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip(
-          "This view is pinned to one node, so anything you change\n"
-          "downstream of it does not appear here. Releases it, and the\n"
-          "views follow the Terrain Output again.\n\n"
-          "Double-clicking a node in the graph is what pins it, and\n"
-          "double-clicking the same node again also releases it.");
     ImGui::SameLine();
   }
   const float used = ImGui::GetCursorPosX();
@@ -445,6 +477,25 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
                ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f);
     bool pan = ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
                ImGui::IsMouseDown(ImGuiMouseButton_Right);
+    // One line per drag, at trace level, saying what this view saw: which
+    // button, how far, and whether anything else had claimed the mouse. "I
+    // cannot pan" is a report about input that never reached here or was
+    // routed elsewhere, and the console is the only place that can say
+    // which - synthetic input cannot reach this item to test it.
+    {
+      static bool was_dragging = false;
+      const bool dragging = (rot || pan) && (io.MouseDelta.x != 0.f || io.MouseDelta.y != 0.f);
+      if (dragging && !was_dragging) {
+        char line[200];
+        std::snprintf(line, sizeof line,
+                      "view %d drag: %s, camera %s, scene camera %d, gizmo owns %d, sculpt %d",
+                      slot + 1, pan ? (ImGui::IsMouseDown(ImGuiMouseButton_Right) ? "pan (right)" : "pan (middle)") : "orbit (left)",
+                      vc.camera == 0 ? "perspective" : "ortho", scene_active_camera(),
+                      (int)xform_owns, (int)sculpting);
+        log_trace("viewport", line);
+      }
+      was_dragging = dragging;
+    }
     // Ctrl+drag dollies (moves the camera along its view axis)
     bool dolly = io.KeyCtrl && ImGui::IsMouseDown(ImGuiMouseButton_Left);
     float wheel = sculpting ? 0.f : io.MouseWheel;
