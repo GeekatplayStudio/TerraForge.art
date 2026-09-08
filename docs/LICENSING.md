@@ -190,6 +190,31 @@ is idempotent and readable.
 
 ---
 
+## 6b. Volumetrics (2026-09-08)
+
+Asked for: true volumetric materials (absorption, scattering, a cap on the
+iterations) for fog, smoke and clouds, and "see what open source volumetric
+libraries work for us". Checked and decided:
+
+- **Written ourselves.** The fog, the clouds and volumetric materials are one
+  radiative-transfer model in our own GLSL: Beer-Lambert extinction, single
+  scattering with a Henyey-Greenstein phase, a short march toward the sun for
+  self-shadowing, the clouds' capped multiple-scattering octaves, and an
+  early exit once 99% of the light is extinguished. No dependency, nothing
+  to license, and it runs in the viewport.
+- **Mitsuba 3** (BSD-3-Clause, already in use for offline renders) renders a
+  volumetric material as a homogeneous medium behind a null surface with its
+  volumetric path tracer (`orchestrator/render_mitsuba.py`). Same terms as
+  the viewport, so the two agree.
+- **OpenVDB / NanoVDB** (Apache-2.0 since OpenVDB 10; MPL-2.0 before) is
+  acceptable under §2 and is the right route if we ever import simulated
+  volumes (.vdb from Houdini, Blender, EmberGen). Not adopted now: nothing
+  here produces or reads VDB yet, and a dependency without a use is a cost
+  without a benefit. Recorded so the question is not re-researched.
+- The GitHub cloud-renderer demos that come up in searches (Nubis-style
+  raymarchers) are examples, not libraries, mostly unlicensed or GPL; none
+  is taken. Ours does what they do.
+
 ## 7. How to check a new dependency
 
 1. Read the licence **file in the repository**, not the README, not a badge,

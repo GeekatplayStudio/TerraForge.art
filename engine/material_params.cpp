@@ -219,6 +219,33 @@ void material_params_declare(AttrSet &a) {
       .tooltip = "Turns off edge smoothing for this material. Only wanted\n"
                  "where a hard pixel boundary is the point, such as an index\n"
                  "or ID pass.";
+  // Volume
+  f(a, "vol_density", "Density", 0.f, 0.f, 8.f, "Volume")
+      .tooltip = "Above zero the material is a medium, not a surface: light is\n"
+                 "extinguished through it by exp(-density x distance)\n"
+                 "(Beer-Lambert), and what it stops it scatters or absorbs.\n"
+                 "Smoke, cloud, dust, murky water. Zero is an ordinary surface.";
+  add_color(a, "vol_absorb", "Absorption colour", 0.9f, 0.9f, 0.9f, 1.f, "Volume")
+      .tooltip = "What survives per channel of the light the medium absorbs.\n"
+                 "Darker is a sootier medium; a tint colours what shines\n"
+                 "through it.";
+  f(a, "vol_albedo", "Scattering albedo", 0.85f, 0.f, 1.f, "Volume")
+      .tooltip = "Of the light the medium stops, how much scatters on rather\n"
+                 "than being absorbed. Cloud and steam are near 1, smoke\n"
+                 "around 0.5, soot near 0.";
+  f(a, "vol_anisotropy", "Anisotropy", 0.3f, -0.9f, 0.95f, "Volume")
+      .tooltip = "The Henyey-Greenstein phase: 0 scatters evenly, toward 1\n"
+                 "light carries on forward (the bright rim of a backlit\n"
+                 "cloud), negative scatters back.";
+  f(a, "vol_heterogeneity", "Heterogeneity", 0.5f, 0.f, 1.f, "Volume")
+      .tooltip = "Breaks the density up with noise, so the volume has wisps\n"
+                 "and holes rather than being a uniform block.";
+  add_int(a, "vol_steps", "Ray steps", 32, 4, 128, "Volume")
+      .tooltip = "How many samples the view ray takes through the volume, each\n"
+                 "with a short march toward the sun. The march stops early\n"
+                 "once 99% of the light is extinguished, so this is a ceiling\n"
+                 "on the work, not a cost always paid. More is smoother and\n"
+                 "slower.";
   // Transform
   // Appended, never reordered: a Choice serialises as its index, so moving
   // one of these would silently change the mapping of every saved project.
@@ -340,6 +367,12 @@ MaterialParams material_params_from(const AttrSet &a) {
   p.ignore_atmosphere = bb("ignore_atmosphere", false);
   p.only_shadows = bb("only_shadows", false);
   p.disable_aa = bb("disable_aa", false);
+  p.vol_density = f("vol_density", 0.f, 0.f, 8.f);
+  col3(a, "vol_absorb", p.vol_absorb);
+  p.vol_albedo = f("vol_albedo", 0.85f, 0.f, 1.f);
+  p.vol_anisotropy = f("vol_anisotropy", 0.3f, -0.9f, 0.95f);
+  p.vol_heterogeneity = f("vol_heterogeneity", 0.5f, 0.f, 1.f);
+  p.vol_steps = std::clamp(a.get_i("vol_steps", 32), 4, 128);
   p.mapping = std::clamp(a.get_choice("mapping"), 0, 7);
   p.map_scale = f("map_scale", 1.f, 0.05f, 20.f);
   a.get_vec2("origin", p.origin[0], p.origin[1]);

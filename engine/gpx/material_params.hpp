@@ -84,6 +84,17 @@ struct MaterialParams {
   bool ignore_atmosphere = false;
   bool only_shadows = false;
   bool disable_aa = false;
+  // Volume: the material as a participating medium rather than a surface.
+  // density is the extinction coefficient in the object's own units (0 = a
+  // surface, as before); of what is extinguished, `vol_albedo` scatters on
+  // and the rest is absorbed, tinted by vol_absorb per channel; the phase
+  // is Henyey-Greenstein with vol_anisotropy; vol_steps caps the march.
+  float vol_density = 0.f;
+  float vol_absorb[3] = {0.9f, 0.9f, 0.9f};
+  float vol_albedo = 0.85f;
+  float vol_anisotropy = 0.3f;
+  float vol_heterogeneity = 0.5f;
+  int vol_steps = 32;
   // Global transformation of the maps
   // Where the maps are read from, before scale/origin/rotation:
   //   0 Automatic  1 Flat  2 Faces  3 Cylindrical  4 Spherical

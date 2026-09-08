@@ -96,6 +96,29 @@ def main() -> int:
         )  # column-major in, row-major ctor
         bsdf = {"type": "diffuse",
                 "reflectance": {"type": "rgb", "value": m["color"]}}
+        # A volumetric material: the mesh bounds a homogeneous medium behind a
+        # surface that does nothing (null), and the volumetric path tracer
+        # integrates through it - absorption, scattering and the HG phase are
+        # the same terms the viewport marches, so the two agree.
+        vol = m.get("volume")
+        if vol:
+            d = float(vol["density"])
+            albedo = float(vol.get("albedo", 0.85))
+            absorb = vol.get("absorb", [0.9, 0.9, 0.9])
+            scene_dict["integrator"] = {"type": "volpath", "max_depth": 16}
+            bsdf = {"type": "null"}
+            medium = {
+                "type": "homogeneous",
+                "sigma_t": {"type": "rgb", "value": [d, d, d]},
+                "albedo": {"type": "rgb",
+                           "value": [albedo * float(c) for c in absorb]},
+                "phase": {"type": "hg", "g": float(vol.get("anisotropy", 0.3))},
+            }
+            scene_dict[f"mesh{i}"] = {
+                "type": "obj", "filename": m["obj"], "to_world": base,
+                "bsdf": bsdf, "interior": medium,
+            }
+            continue
         insts = m.get("instances")
         if not insts:
             scene_dict[f"mesh{i}"] = {

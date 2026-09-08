@@ -157,6 +157,26 @@ changed rather than to the mode that is hiding it.
    frame. Put the control in the view header, where ordinary widget behaviour
    applies, and let the overlay only say what is going on.
 
+## Participating media
+
+1. **Fog, clouds and volumetric materials are one model**: Beer-Lambert
+   extinction, single scattering through a Henyey-Greenstein phase, a short
+   march toward the sun for self-shadowing, and (clouds) capped
+   multiple-scattering octaves. `fog_terms` in `shaders_terrain.cpp` is the
+   fog; the `u_v_*` block in `renderer_matparams.cpp` and the march at the
+   top of `FS_MESH` are a material with `vol_density > 0`. Mitsuba gets the
+   same terms as a homogeneous medium (`orchestrator/render_mitsuba.py`).
+2. **Every march has a ceiling and an early exit.** Steps are a parameter,
+   and the loop stops once transmittance falls below 1%: the cost is bounded
+   by the setting, not by the scene. Never add a march without both.
+3. **A volume is drawn after every surface, blended, without writing depth**
+   (`renderer_meshes.cpp`, pass 1, back to front). Its alpha is what survives
+   of what is behind it; drawn as a surface it would occlude the world with a
+   box.
+4. **A material with density 0 is a surface, exactly as before.** Old projects
+   have no `vol_*` keys and must not change; the defaults make sure of it, and
+   `test_material_editor.cpp` pins them.
+
 ## Workspaces and materials
 
 1. **Every workspace owns its arrangement.** `workspace_layout_switch`

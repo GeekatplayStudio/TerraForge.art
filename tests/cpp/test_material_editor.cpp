@@ -325,7 +325,36 @@ static void test_mapping_modes() {
   check(gpx::material_params_from(m->attrs).mapping >= 0, "clamped below");
 }
 
+// The material as a medium. Density zero is a surface, exactly as before;
+// above zero the renderers march it. The defaults and the clamps are what
+// keep an old project a surface and a typed value inside what the march can
+// take.
+static void test_volume_params() {
+  std::printf("volume params...\n");
+  gpx::Graph g;
+  gpx::Node *m = g.add_node("MaterialOutput");
+  gpx::MaterialParams p = gpx::material_params_from(m->attrs);
+  check(p.vol_density == 0.f, "a new material is a surface (density 0)");
+  check(p.vol_steps >= 4 && p.vol_steps <= 128, "default steps in range");
+  for (const char *k : {"vol_density", "vol_absorb", "vol_albedo", "vol_anisotropy",
+                        "vol_heterogeneity", "vol_steps"}) {
+    char msg[64];
+    std::snprintf(msg, sizeof msg, "MaterialOutput has %s", k);
+    const gpx::Attribute *a = m->attrs.find(k);
+    check(a != nullptr, msg);
+    if (a) check(a->group == "Volume", "it is in the Volume group");
+  }
+  if (gpx::Attribute *a = m->attrs.find("vol_density")) a->f = 2.5f;
+  if (gpx::Attribute *a = m->attrs.find("vol_steps")) a->i = 999;
+  if (gpx::Attribute *a = m->attrs.find("vol_anisotropy")) a->f = 5.f;
+  p = gpx::material_params_from(m->attrs);
+  check(std::fabs(p.vol_density - 2.5f) < 1e-6f, "density reaches MaterialParams");
+  check(p.vol_steps == 128, "steps clamped to the march's ceiling");
+  check(p.vol_anisotropy <= 0.95f, "anisotropy clamped below 1 (HG diverges at 1)");
+}
+
 int main() {
+  test_volume_params();
   test_mapping_modes();
   test_tab_groups();
   test_natural_grain();

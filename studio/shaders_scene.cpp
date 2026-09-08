@@ -236,6 +236,11 @@ in vec3 v_world;
 in vec2 v_uv;
 in vec3 v_local;
 out vec4 frag;
+// the object's own frame and bounds, for the volumetric march
+uniform mat4 u_model;
+uniform vec3 u_bmin, u_bmax;
+// the eye and the sun in the object's own space, computed on the CPU
+uniform vec3 u_cam_obj, u_sun_obj;
 uniform sampler2D u_albedo_tex; // the part's picture, when u_has_tex
 uniform int u_has_tex;
 uniform vec3 u_color, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
@@ -283,6 +288,59 @@ void main(){
   // emissive) is the terrain's own PBR pipeline, shared through
   // MATERIAL_*_PLACEHOLDER so one material means the same thing everywhere.
   vec3 N = normalize(v_nrm);
+  if (u_v_density > 0.0) {
+    // The mesh as a medium. The ray enters the object's bounding box at this
+    // fragment and is marched to where it leaves, in the box's own 0..1
+    // space: at each sample the extinction is Beer-Lambert in the density
+    // (broken up by noise), the light in-scattered is the sun through a
+    // Henyey-Greenstein phase, shadowed by a short march toward it, plus the
+    // sky, times the scattering albedo; what is absorbed is tinted. The march
+    // stops once 99% of the light is gone. Output is what the medium adds
+    // and, in alpha, how much of what is behind it survives.
+    vec3 bsz = max(u_bmax - u_bmin, vec3(1e-6));
+    vec3 cam_l = (u_cam_obj - u_bmin) / bsz;
+    vec3 dir_l = normalize(v_local - cam_l);
+    vec3 sun_l = normalize(u_sun_obj / bsz); // a direction into box space divides by the box
+    // exit of the box along dir_l from this point
+    // per-axis reciprocal that never divides by zero: a direction with no
+    // travel along an axis never leaves through that axis's faces
+    vec3 sd = sign(dir_l);
+    sd = mix(vec3(1.0), sd, abs(sd));
+    vec3 inv = sd / max(abs(dir_l), vec3(1e-6));
+    vec3 tfar = max((vec3(0.0) - v_local) * inv, (vec3(1.0) - v_local) * inv);
+    float t_exit = max(min(min(tfar.x, tfar.y), tfar.z), 0.0);
+    int steps = clamp(u_v_steps, 4, 128);
+    float dt = t_exit / float(steps);
+    // density is per box unit: an object of density d is 1-exp(-d) opaque
+    // through its own width, whatever its size in the world. That is what a
+    // material parameter should mean - the same smoke on a small cube and a
+    // large one - and the offline export converts it to per world unit.
+    float T = 1.0;
+    vec3 S = vec3(0.0);
+    float phase = fog_hg(dot(normalize(v_world - u_cam), normalize(u_sun)), u_v_g) * 12.566;
+    vec3 sun_c = u_sun_color * u_sun_intensity;
+    vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
+    for (int i = 0; i < steps; ++i) {
+      vec3 p = v_local + dir_l * ((float(i) + 0.5) * dt);
+      float dens = u_v_density * mix(1.0, fog_noise3(p * 6.0) * 1.7, u_v_hetero);
+      float ext = dens * dt;
+      float od_sun = 0.0;
+      for (int j = 0; j < 4; ++j) {
+        vec3 q = p + sun_l * ((float(j) + 0.5) * 0.12);
+        if (any(lessThan(q, vec3(0.0))) || any(greaterThan(q, vec3(1.0)))) break;
+        od_sun += u_v_density * mix(1.0, fog_noise3(q * 6.0) * 1.7, u_v_hetero) * 0.12;
+      }
+      vec3 Li = u_v_albedo * (sky + sun_c * phase * exp(-od_sun));
+      float absorbed = 1.0 - exp(-ext);
+      S += T * Li * absorbed;
+      T *= 1.0 - absorbed;
+      if (T < 0.01) { T = 0.0; break; }
+    }
+    vec3 col = aces(S * u_exposure);
+    col = pow(col, vec3(1.0 / 2.2));
+    frag = vec4(col, clamp(1.0 - T, 0.0, 1.0));
+    return;
+  }
   vec3 base = u_color * v_tint;
   if (u_has_tex == 1) {
     // The material's mapping mode and its scale/offset/rotation, which the

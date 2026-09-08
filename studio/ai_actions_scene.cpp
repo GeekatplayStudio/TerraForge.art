@@ -175,6 +175,25 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         read_vec3(act, "position", o.pos);
         if (act.contains("scale")) o.scale = act["scale"].get<float>();
         read_vec3(act, "color", o.color);
+        // The Primitive node drives the object: whatever is written to the
+        // object is overwritten from the node's own metres every frame. So
+        // the position and size go into the node, or the script's values
+        // are silently replaced by the defaults and the cube ends up buried
+        // in the mountain at 0.08 - which is exactly what happened.
+        if (gpx::Node *pn = a.graph.find_node(nc.node)) {
+          const float size_m = render_settings().terrain_size_m;
+          auto put = [&](const char *key, float v) {
+            if (gpx::Attribute *at = pn->attrs.find(key)) at->f = v;
+          };
+          put("x_m", o.pos[0] * size_m);
+          put("y_m", o.pos[1] * size_m);
+          put("z_m", o.pos[2] * size_m);
+          put("size_m", o.scale * size_m);
+          if (gpx::Attribute *c = pn->attrs.find("color"))
+            for (int k = 0; k < 3; ++k) c->col[k] = o.color[k];
+          a.graph.mark_dirty(pn->id);
+          a.request_eval();
+        }
         a.scene_selection_serial++;
         ++applied;
       }

@@ -141,7 +141,16 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       }
       if (act.contains("density")) rs.fog_density = act["density"].get<float>();
       if (act.contains("level")) rs.fog_level = act["level"].get<float>();
+      if (act.contains("falloff")) rs.fog_falloff = act["falloff"].get<float>();
       read_vec3(act, "color", rs.fog_color);
+      read_vec3(act, "absorb", rs.absorption_color);
+      // the medium's own terms: how much it scatters rather than absorbs,
+      // which way, how broken up it is, and the ceiling on the march
+      if (act.contains("sun_scatter")) rs.fog_sun_scatter = std::clamp(act["sun_scatter"].get<float>(), 0.f, 1.f);
+      if (act.contains("albedo")) rs.fog_albedo = std::clamp(act["albedo"].get<float>(), 0.f, 1.f);
+      if (act.contains("anisotropy")) rs.fog_anisotropy = std::clamp(act["anisotropy"].get<float>(), -0.95f, 0.95f);
+      if (act.contains("heterogeneity")) rs.fog_heterogeneity = std::clamp(act["heterogeneity"].get<float>(), 0.f, 1.f);
+      if (act.contains("steps")) rs.fog_steps = std::clamp(act["steps"].get<int>(), 1, 64);
       ++applied;
     } else if (op == "set_clouds") {
       if (act.contains("enabled")) rs.clouds_on = act["enabled"].get<bool>();

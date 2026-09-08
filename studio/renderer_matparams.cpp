@@ -22,6 +22,11 @@ uniform int u_m_color_reflected, u_m_phong, u_m_ignore_light, u_m_ignore_atmo;
 uniform float u_m_alpha, u_m_map_scale, u_m_rotation, u_m_cycling;
 uniform vec2 u_m_origin;
 uniform int u_m_mapping;
+// the material as a medium (u_v_density > 0): extinction, absorption tint,
+// scattering albedo, HG anisotropy, noise break-up and the march ceiling
+uniform float u_v_density, u_v_albedo, u_v_g, u_v_hetero;
+uniform vec3 u_v_absorb;
+uniform int u_v_steps;
 uniform int u_m_turb_on, u_m_turb_complexity;
 uniform float u_m_turb_amp, u_m_turb_scale, u_m_turb_harm;
 uniform vec3 u_m_blend_color, u_m_cc_tint;
@@ -199,6 +204,12 @@ void renderer_material_uniforms(unsigned prog, const gpx::MaterialParams &m) {
   unii(prog, "u_m_ignore_atmo", m.ignore_atmosphere ? 1 : 0);
   uni1(prog, "u_m_alpha", m.alpha * (1.f - m.transparency));
   unii(prog, "u_m_mapping", m.mapping);
+  uni1(prog, "u_v_density", m.vol_density);
+  uni3(prog, "u_v_absorb", m.vol_absorb);
+  uni1(prog, "u_v_albedo", m.vol_albedo);
+  uni1(prog, "u_v_g", m.vol_anisotropy);
+  uni1(prog, "u_v_hetero", m.vol_heterogeneity);
+  unii(prog, "u_v_steps", m.vol_steps);
   uni1(prog, "u_m_map_scale", 1.f / std::max(m.map_scale, 1e-3f));
   uni1(prog, "u_m_rotation", m.rotation);
   uni1(prog, "u_m_cycling", m.cycling);

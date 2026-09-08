@@ -29,6 +29,7 @@ struct Preset {
   float displacement; // > 0 wires a Noise into the displacement input
   int fractal;        // 1: FractalColor with the gradient below instead of a flat colour
   float g0[3], g1[3]; // the fractal's two colours, dark to light
+  float volume = 0.f; // > 0: a medium, not a surface (vol_density)
 };
 
 // name, group, blurb | colour | rough metal spec refl | transp ior transl lum | disp | fractal g0 g1
@@ -57,8 +58,12 @@ const Preset PRESETS[] = {
      {0.80f, 0.90f, 0.95f}, 0.04f, 0.f, 0.70f, 0.60f, 0.90f, 1.33f, 0.f, 0.f, 0.f, 0, {}, {}},
     {{"Ice", "Glass & liquid", "Ice: translucent rather than clear, cold-blue, with a hard shine."},
      {0.85f, 0.93f, 0.98f}, 0.10f, 0.f, 0.70f, 0.55f, 0.45f, 1.31f, 0.60f, 0.f, 0.f, 0, {}, {}},
-    {{"Smoke", "Glass & liquid", "A dim grey that is mostly not there - for a volume or a veil."},
-     {0.55f, 0.55f, 0.57f}, 1.00f, 0.f, 0.05f, 0.f, 0.85f, 1.00f, 0.90f, 0.f, 0.f, 0, {}, {}},
+    {{"Smoke", "Volume", "A true volume: light is extinguished and scattered through the object, not at its surface."},
+     {0.55f, 0.55f, 0.57f}, 1.00f, 0.f, 0.05f, 0.f, 0.f, 1.00f, 0.f, 0.f, 0.f, 0, {}, {}, 2.5f},
+    {{"Cloud", "Volume", "A bright, dense medium that scatters nearly everything - a cloud you can put a box around."},
+     {0.95f, 0.95f, 0.97f}, 1.00f, 0.f, 0.05f, 0.f, 0.f, 1.00f, 0.f, 0.f, 0.f, 0, {}, {}, 6.0f},
+    {{"Dust", "Volume", "Thin, warm and forward-scattering: the haze in a shaft of light."},
+     {0.80f, 0.72f, 0.58f}, 1.00f, 0.f, 0.05f, 0.f, 0.f, 1.00f, 0.f, 0.f, 0.f, 0, {}, {}, 0.8f},
     {{"Glow", "Glass & liquid", "A surface that lights itself - warm white, no reflection."},
      {1.00f, 0.92f, 0.78f}, 0.90f, 0.f, 0.10f, 0.f, 0.f, 1.5f, 0.f, 2.0f, 0.f, 0, {}, {}},
 
@@ -155,6 +160,13 @@ uint64_t material_preset_create(App &a, const std::string &name, std::string &er
   set_f(mat, "ior", p->ior);
   set_f(mat, "translucency", p->translucency);
   set_f(mat, "luminous", p->luminous);
+  if (p->volume > 0.f) {
+    set_f(mat, "vol_density", p->volume);
+    set_f(mat, "vol_albedo", p->info.name[0] == 'C' ? 0.98f : (p->info.name[0] == 'D' ? 0.7f : 0.55f));
+    set_f(mat, "vol_anisotropy", p->info.name[0] == 'D' ? 0.7f : 0.3f);
+    if (gpx::Attribute *ab = mat->attrs.find("vol_absorb"))
+      for (int k = 0; k < 3; ++k) ab->col[k] = p->rgb[k];
+  }
   if (p->transparency > 0.5f) {
     // glass and water mirror at a low angle; a matte surface does not
     set_f(mat, "reflect_with_angle", 0.4f);

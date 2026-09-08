@@ -7,6 +7,8 @@
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/heightmap.hpp"
+#include "gpx/material_params.hpp"
+#include "gpx/node_graph.hpp"
 #include <json.hpp>
 #include <filesystem>
 #include <fstream>
@@ -158,7 +160,11 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
               {"color", {rs.fog_color[0], rs.fog_color[1], rs.fog_color[2]}},
               {"absorb", {rs.absorption_color[0], rs.absorption_color[1],
                           rs.absorption_color[2]}},
-              {"scatter", rs.fog_sun_scatter}};
+              {"scatter", rs.fog_sun_scatter},
+              {"albedo", rs.fog_albedo},
+              {"anisotropy", rs.fog_anisotropy},
+              {"heterogeneity", rs.fog_heterogeneity},
+              {"steps", rs.fog_steps}};
   j["water"] = {{"enabled", rs.show_water},
                 {"level", rs.water_level * rs.height_scale},
                 {"roughness", std::max(rs.mat_roughness * 0.05f, 0.01f)},
@@ -190,6 +196,27 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
       json jm;
       jm["obj"] = mp.string();
       jm["color"] = {o.color[0], o.color[1], o.color[2]};
+      // A volumetric material makes the mesh a medium rather than a surface:
+      // the engines get its extinction, absorption colour, scattering albedo
+      // and phase, and draw it as one (Mitsuba: a homogeneous medium inside a
+      // null surface, with the volumetric path tracer).
+      if (o.material_node) {
+        if (gpx::Node *mn = a.graph.find_node(o.material_node)) {
+          const gpx::MaterialParams mp2 = gpx::material_params_from(mn->attrs);
+          // density is per box unit in the material (see FS_MESH); the
+          // engines want it per world unit, so divide by the object's width
+          const float ext = std::max({(o.bmax[0] - o.bmin[0]) * o.scale * o.scl[0],
+                                      (o.bmax[1] - o.bmin[1]) * o.scale * o.scl[1],
+                                      (o.bmax[2] - o.bmin[2]) * o.scale * o.scl[2], 1e-6f});
+          if (mp2.vol_density > 0.f)
+            jm["volume"] = {{"density", mp2.vol_density / ext},
+                            {"density_per_box", mp2.vol_density},
+                            {"absorb", {mp2.vol_absorb[0], mp2.vol_absorb[1], mp2.vol_absorb[2]}},
+                            {"albedo", mp2.vol_albedo},
+                            {"anisotropy", mp2.vol_anisotropy},
+                            {"steps", mp2.vol_steps}};
+        }
+      }
       jm["model"] = json::array();
       for (int k = 0; k < 16; ++k) jm["model"].push_back(model[k]);
       // decomposed placement too, for engines that would rather compose

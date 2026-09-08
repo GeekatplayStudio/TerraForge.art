@@ -60,6 +60,15 @@ struct RenderSettings {
   float fog_color[3] = {0.55f, 0.63f, 0.75f};
   float absorption_color[3] = {0.9f, 0.95f, 1.f}; // light absorbed through fog
   float fog_sun_scatter = 0.5f;     // forward scattering toward sun
+  // The radiative-transfer terms. Extinction is split into scattering (albedo
+  // of it) and absorption (the colour above); the phase is Henyey-Greenstein
+  // with this anisotropy. steps > 1 marches the ray through fog whose density
+  // is broken up by noise (heterogeneity), stopping once 99% of the light is
+  // extinguished - the cap on how far the iterations go.
+  float fog_albedo = 0.85f;
+  float fog_anisotropy = 0.55f;
+  float fog_heterogeneity = 0.f;
+  int fog_steps = 1;
 
   // water
   bool show_water = true;

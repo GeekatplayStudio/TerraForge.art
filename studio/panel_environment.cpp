@@ -50,7 +50,32 @@ static void section_fog(RenderSettings &rs) {
     ImGui::SliderFloat("Vertical falloff", &rs.fog_falloff, 0.5f, 24.f);
     ImGui::ColorEdit3("Fog color", rs.fog_color);
     ImGui::ColorEdit3("Light absorption", rs.absorption_color);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("What survives per channel through the fog, raised to the\n"
+                        "optical depth: a bluish absorber makes distant things\n"
+                        "go warm, the way real haze does.");
     ImGui::SliderFloat("Sun scattering", &rs.fog_sun_scatter, 0.f, 1.f);
+    ImGui::SliderFloat("Scattering albedo", &rs.fog_albedo, 0.f, 1.f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Of the light the fog stops, how much it scatters on\n"
+                        "rather than absorbs. Water droplets are near 1;\n"
+                        "smoke and pollution much lower.");
+    ImGui::SliderFloat("Anisotropy", &rs.fog_anisotropy, -0.9f, 0.95f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The Henyey-Greenstein phase: 0 scatters evenly, toward 1\n"
+                        "the light carries on forward, which is the glow around\n"
+                        "the sun seen through mist.");
+    ImGui::SliderFloat("Heterogeneity", &rs.fog_heterogeneity, 0.f, 1.f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Breaks the fog into drifts with noise. Needs ray steps\n"
+                        "above 1 to be seen; at 0 the closed form is used and\n"
+                        "the fog costs nothing.");
+    ImGui::SliderInt("Ray steps", &rs.fog_steps, 1, 64);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How many samples the view ray takes through broken fog,\n"
+                        "each with a short march toward the sun for shadowing.\n"
+                        "The march stops early once 99%% of the light is gone,\n"
+                        "so this is a ceiling, not a cost you always pay.");
   }
 }
 

@@ -48,6 +48,10 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"fog_color", 'c', rs.fog_color},
       {"absorption_color", 'c', rs.absorption_color},
       {"fog_sun_scatter", 'f', &rs.fog_sun_scatter},
+      {"fog_albedo", 'f', &rs.fog_albedo},
+      {"fog_anisotropy", 'f', &rs.fog_anisotropy},
+      {"fog_heterogeneity", 'f', &rs.fog_heterogeneity},
+      {"fog_steps", 'i', &rs.fog_steps},
       // water
       {"show_water", 'b', &rs.show_water},
       {"water_level", 'f', &rs.water_level},

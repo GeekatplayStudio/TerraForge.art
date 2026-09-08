@@ -370,29 +370,100 @@ const char *const FOG_FN = R"GLSL(
 uniform int u_fog_type;
 uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
 uniform vec3 u_fog_color, u_absorb;
+uniform float u_fog_albedo, u_fog_g, u_fog_hetero;
+uniform int u_fog_steps;
 uniform int u_aov, u_object_id;
-// f: fraction of the pixel that is fog; fogc: the colour of that fog
+// Fog as a participating medium, not a colour blend.
+//
+// Light along the view ray is extinguished by exp(-optical depth) (Beer-
+// Lambert), where the extinction coefficient falls off exponentially with
+// height above the fog level. What reaches the eye from the fog itself is
+// in-scattered light: the sun, through a Henyey-Greenstein phase function
+// with anisotropy u_fog_g, and the sky, both times the medium's single-
+// scattering albedo. With a uniform-in-height medium the integral has a
+// closed form, which is the default and costs nothing. With heterogeneity
+// the density is broken up by noise and the ray is marched - u_fog_steps
+// samples, each with a short march toward the sun for self-shadowing - and
+// the march stops early once 99% of the light is extinguished, which is the
+// cap on how far the iterations go.
+float fog_hg(float c, float g){
+  float g2 = g * g;
+  return (1.0 - g2) / (4.0 * 3.14159265 * pow(max(1.0 + g2 - 2.0 * g * c, 1e-4), 1.5));
+}
+float fog_hash3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float fog_noise3(vec3 p){
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float n000 = fog_hash3(i), n100 = fog_hash3(i + vec3(1,0,0));
+  float n010 = fog_hash3(i + vec3(0,1,0)), n110 = fog_hash3(i + vec3(1,1,0));
+  float n001 = fog_hash3(i + vec3(0,0,1)), n101 = fog_hash3(i + vec3(1,0,1));
+  float n011 = fog_hash3(i + vec3(0,1,1)), n111 = fog_hash3(i + vec3(1,1,1));
+  return mix(mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+             mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y), f.z);
+}
+// f: 1 - transmittance along the ray; fogc: the in-scattered radiance, per
+// unit of f, so that col*T + fogc*f is the radiative transfer result.
 void fog_terms(vec3 world, vec3 cam, float dist, float hscale, vec3 sun, vec3 sun_col,
                out float f, out vec3 fogc){
   f = 0.0; fogc = vec3(0.0);
   if (u_fog_type == 0 || u_fog_density <= 0.0) return;
   float level = u_fog_level * hscale * 4.0;
   float falloff = u_fog_falloff / max(hscale, 1e-3);
-  float fy0 = cam.y - level, fy1 = world.y - level;
-  float dY = fy1 - fy0;
-  float a = exp(-falloff * max(fy0, 0.0));
-  float b = exp(-falloff * max(fy1, 0.0));
-  float od = (abs(falloff*dY) < 1e-3) ? dist * a
-                                      : abs(dist * (a - b) / (falloff * dY));
   float dens = u_fog_density * (u_fog_type == 1 ? 0.35 : (u_fog_type == 2 ? 1.0 : 1.8));
-  f = clamp(1.0 - exp(-od * dens), 0.0, 1.0);
-  float sunward = pow(max(dot(normalize(world - cam), sun), 0.0), 6.0);
-  fogc = u_fog_color * mix(vec3(1.0), sun_col * 1.6, sunward * u_fog_scatter);
+  vec3 dir = (world - cam) / max(dist, 1e-5);
+  // lit air darkens with the day, or night would end at the horizon line
+  float fog_day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
+  // the phase is renormalised by 4pi, as the clouds do, so isotropic reads 1
+  float phase = fog_hg(dot(dir, sun), u_fog_g) * 12.566;
+  vec3 sun_in = sun_col * fog_day * phase * u_fog_scatter;
+  vec3 sky_in = u_fog_color * fog_day;
+  if (u_fog_steps <= 1 || u_fog_hetero <= 0.0) {
+    // closed form: optical depth through an exponential height profile
+    float fy0 = cam.y - level, fy1 = world.y - level;
+    float dY = fy1 - fy0;
+    float a = exp(-falloff * max(fy0, 0.0));
+    float b = exp(-falloff * max(fy1, 0.0));
+    float od = ((abs(falloff * dY) < 1e-3) ? dist * a
+                                           : abs(dist * (a - b) / (falloff * dY))) * dens;
+    f = clamp(1.0 - exp(-od), 0.0, 1.0);
+    fogc = u_fog_albedo * (sky_in + sun_in);
+  } else {
+    int steps = clamp(u_fog_steps, 2, 64);
+    float dt = dist / float(steps);
+    float T = 1.0;
+    vec3 S = vec3(0.0);
+    float nscale = 9.0 / max(hscale, 1e-3);
+    float ls = (0.35 / falloff) / 3.0; // the sun march covers a third of the profile
+    for (int i = 0; i < steps; ++i){
+      vec3 p = cam + dir * ((float(i) + 0.5) * dt);
+      float sig = dens * exp(-falloff * max(p.y - level, 0.0))
+                * mix(1.0, fog_noise3(p * nscale) * 1.6, u_fog_hetero);
+      float ext = sig * dt;
+      // self-shadowing: optical depth toward the sun from this point
+      float od_sun = 0.0;
+      for (int j = 0; j < 3; ++j){
+        vec3 q = p + sun * ((float(j) + 0.5) * ls);
+        od_sun += dens * exp(-falloff * max(q.y - level, 0.0))
+                * mix(1.0, fog_noise3(q * nscale) * 1.6, u_fog_hetero) * ls;
+      }
+      vec3 Li = u_fog_albedo * (sky_in + sun_in * exp(-od_sun));
+      float absorbed = 1.0 - exp(-ext);
+      S += T * Li * absorbed;
+      T *= 1.0 - absorbed;
+      if (T < 0.01) { T = 0.0; break; } // dissipated: nothing more to add
+    }
+    f = clamp(1.0 - T, 0.0, 1.0);
+    fogc = S / max(f, 1e-4);
+  }
   if (u_fog_type == 3) fogc *= vec3(0.85, 0.75, 0.6);
 }
+// What survives of the surface: transmittance, tinted by a wavelength-
+// dependent absorber (u_absorb per channel, raised to the optical depth), plus
+// what the fog scattered toward the eye.
 vec3 apply_fog_terms(vec3 col, float f, vec3 fogc){
-  col *= mix(vec3(1.0), u_absorb, f);
-  return mix(col, fogc, f);
+  float od = -log(max(1.0 - f, 1e-4));
+  vec3 T = (1.0 - f) * pow(max(u_absorb, vec3(1e-3)), vec3(od));
+  return col * T + fogc * f;
 }
 vec4 aov_out(int aov, float depth, vec3 N, vec3 albedo, vec3 world, float object_id,
              vec3 direct, float shadow, vec3 ambient, vec3 specular,

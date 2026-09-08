@@ -143,6 +143,10 @@ void upload_fog_uniforms(GLuint prog, const RenderSettings &RS, bool atmosphere)
   uni3(prog, "u_fog_color", RS.fog_color);
   uni3(prog, "u_absorb", RS.absorption_color);
   uni1(prog, "u_fog_scatter", RS.fog_sun_scatter);
+  uni1(prog, "u_fog_albedo", RS.fog_albedo);
+  uni1(prog, "u_fog_g", RS.fog_anisotropy);
+  uni1(prog, "u_fog_hetero", RS.fog_heterogeneity);
+  unii(prog, "u_fog_steps", RS.fog_steps);
 }
 
 } // namespace studio
