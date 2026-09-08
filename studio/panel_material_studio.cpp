@@ -7,7 +7,7 @@
 // which is why the node editor sits directly below this window.
 #include "app.hpp"
 #include "graph_lease.hpp"
-#include "console.hpp"
+#include "icons.hpp"
 #include "gpx/serialization.hpp"
 #include "material_channel_ops.hpp"
 #include "material_library.hpp"
@@ -91,6 +91,36 @@ void header(App &a, MaterialStudioState &st, gpx::Node *&mat) {
     ImGui::EndCombo();
   }
   ImGui::SameLine();
+  // Follow the Objects tree, or hold this material while clicking elsewhere.
+  // A locked studio has to say what it is holding, or it just looks broken.
+  {
+    const float bw = ImGui::GetFrameHeight();
+    const std::string who = st.showing.empty() ? std::string("no object") : st.showing;
+    const std::string tip =
+        st.locked ? "Locked to " + who +
+                        ".\nThe studio stays on this material while you select "
+                        "other objects.\nClick to follow the selection again."
+                  : "Following the Objects tree" +
+                        (st.showing.empty() ? std::string()
+                                            : " - showing " + who) +
+                        ".\nClick to lock the studio to this material.";
+    if (IconButton(st.locked ? Icon::Lock : Icon::Unlock, "##matlock", tip.c_str(),
+                   st.locked, bw))
+      st.locked = !st.locked;
+    ImGui::SameLine();
+    // Whose material this is, always - the label is how you know the studio is
+    // pointed where you think it is.
+    if (!st.showing.empty()) {
+      ImGui::AlignTextToFramePadding();
+      if (st.locked)
+        ImGui::TextColored(ImVec4(0.85f, 0.55f, 0.20f, 1.f), "%s", who.c_str());
+      else
+        ImGui::TextDisabled("%s", who.c_str());
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", tip.c_str());
+      ImGui::SameLine();
+    }
+  }
   if (ImGui::Button("New")) {
     undo_push_locked(a, "new material");
     float x = 900, y = 120;
@@ -292,6 +322,10 @@ void draw_panel_material_studio(App &a) {
     ImGui::End();
     return;
   }
+  // Selecting an object in the Objects tree opens its material here, unless
+  // the studio is locked. Before find_node, so the header draws the material
+  // that was just chosen rather than the previous one.
+  material_studio_follow_selection(a);
   gpx::Node *mat = a.graph.find_node(st.material);
   if (mat && mat->type != "MaterialOutput") mat = nullptr;
   if (!mat) {

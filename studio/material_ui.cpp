@@ -3,6 +3,8 @@
 #include "app.hpp"
 #include "gpx/serialization.hpp"
 #include "material_stack_ops.hpp"
+#include "render_settings.hpp"
+#include "scene.hpp"
 #include "undo.hpp"
 #include <algorithm>
 #include <cstring>
@@ -244,6 +246,44 @@ bool material_studio_open(App &a, uint64_t mat_id) {
   st.saved_fingerprint = material_fingerprint(a.graph, mat_id);
   a.selected_node = mat_id;
   return true;
+}
+
+std::string material_studio_follow_selection(App &a) {
+  MaterialStudioState &st = material_studio();
+  const SceneState &sc = scene();
+  auto name_of = [&](uint64_t mat_id) -> std::string {
+    if (!mat_id) return {};
+    for (const SceneObject &o : sc.objects)
+      if (o.material_node == mat_id) return o.name;
+    // Terrain material recorded in the render settings by an older project.
+    if (render_settings().terrain_material_node == mat_id)
+      for (const SceneObject &o : sc.objects)
+        if (o.type == SceneObject::Terrain) return o.name;
+    return {};
+  };
+
+  // Locked, or nothing has moved: only refresh the label, in case the object
+  // was renamed or its material reassigned from somewhere else.
+  if (st.locked || a.scene_selection_serial == st.seen_selection) {
+    st.showing = name_of(st.material);
+    return st.showing;
+  }
+  st.seen_selection = a.scene_selection_serial;
+
+  if (sc.selected < 0 || sc.selected >= (int)sc.objects.size()) return st.showing;
+  const SceneObject &o = sc.objects[(size_t)sc.selected];
+  uint64_t mat = o.material_node;
+  if (!mat && o.type == SceneObject::Terrain)
+    mat = render_settings().terrain_material_node;
+  // An object with no material leaves the studio where it was. Emptying it
+  // would mean clicking a light or a camera wiped the material somebody was
+  // working on, which is not what selecting a light is asking for.
+  if (!mat || mat == st.material) {
+    st.showing = name_of(st.material);
+    return st.showing;
+  }
+  if (material_studio_open(a, mat)) st.showing = o.name;
+  return st.showing;
 }
 
 } // namespace studio

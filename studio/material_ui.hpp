@@ -100,6 +100,21 @@ struct MaterialStudioState {
   int background_kind = 0;
   bool local_light = false;
   bool show_zoom = false;
+  // ------------------------------------------------- following the selection
+  // Picking an object in the Objects tree opens that object's material here,
+  // which is what "show me what I just clicked" means and is how every other
+  // editor in the application behaves.
+  //
+  // Locked, it stays where it is - so a material can be worked on while
+  // clicking around the scene, which is the whole reason the lock exists.
+  // A locked studio has to say what it is holding, or the next person to look
+  // at it cannot tell why it is ignoring them; `showing` is that label, and it
+  // is filled in whether locked or not so the header always names the object
+  // whose material is on screen.
+  bool locked = false;
+  std::string showing;         // the object the open material belongs to
+  uint64_t seen_selection = 0; // last App::scene_selection_serial acted on
+
   // Vue's Store: snapshots of the material for later retrieval (p693)
   struct Snapshot {
     std::string json;
@@ -109,6 +124,12 @@ struct MaterialStudioState {
   std::vector<Snapshot> snapshots;
 };
 MaterialStudioState &material_studio();
+
+// Open whatever the Objects tree has selected, unless the studio is locked.
+// Call once a frame with the graph held; returns the object being shown, "" if
+// none. Idempotent: it acts only when the selection has actually moved, so
+// clicking about in the studio does not keep reopening the same material.
+std::string material_studio_follow_selection(App &a);
 // Open a material in the studio. If the current one is modified, asks first
 // and opens the new one after the answer; returns false while waiting.
 bool material_studio_open(App &a, uint64_t mat_id);
