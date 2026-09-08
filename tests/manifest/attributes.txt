@@ -769,6 +769,8 @@ MaterialOutput.turb_complexity|int
 MaterialOutput.turb_harmonics|float
 MaterialOutput.turb_scale|float
 MaterialOutput.turbulence|bool
+MaterialSource.object|text
+MaterialSource.source_node|text
 MaterialStack.alt_influence|float
 MaterialStack.blend_depth|float
 MaterialStack.blend_method|choice

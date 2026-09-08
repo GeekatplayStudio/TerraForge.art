@@ -154,6 +154,9 @@ struct App {
 
 App &app();
 void app_service_upload(App &a);
+// Once a frame: turn every MaterialSource node's object name into the id of
+// the material that object is wearing (studio/scene_nodes_material.cpp).
+void app_service_material_sources(App &a);
 // Capture on the UI thread while holding graph_mtx; the resulting document
 // owns its data and may be written by a background worker.
 std::string project_snapshot(App &a);

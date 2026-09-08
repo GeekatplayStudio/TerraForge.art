@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 248 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 249 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -26,7 +26,7 @@ Every node in Geekatplay TerraForge — 248 across 32 categories. Generated from
 | [Light](#light) | 6 |
 | [Logic](#logic) | 6 |
 | [Mask](#mask) | 15 |
-| [Material](#material) | 26 |
+| [Material](#material) | 27 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 12 |
@@ -585,7 +585,7 @@ Mould the ground to the objects standing on it - flat under each, blended around
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Footprints | text | Written by the studio from the objects placed on the terrain (Properties > Ground). One per line: base sink margin blend, then the base's convex hull. |
-| Blend width | float, 0 to 6, default 1.5 | How far around an object the ground responds, as a multiple of the footprint's radius - for objects that do not set their own blend distance. |
+| Blend width | float, 0 to 64, default 1.5 | How far around an object the ground responds, as a multiple of the footprint's radius - for objects that do not set their own blend distance. |
 | Smoothness | float, 0 to 1, default 0.5 | The shape of the blend: 0 is a firm shoulder, 1 a long soft tail. |
 | Keep relief | float, 0 to 1, default 0.35 | How much of the terrain's own small relief survives inside the blend, so the mould still looks like the same ground. |
 | Flatten under | float, 0 to 1, default 1 | How flat the ground is made inside the footprint itself. |
@@ -3006,6 +3006,26 @@ The material: base color, normal, roughness, metallic, height and AO channels
 | Scale | float, 0.25 to 64, default 4 | How fine the disturbance is, in repeats across the surface. |
 | Harmonics | float, 0.1 to 0.9, default 0.5 | How scale and amplitude shrink with each repetition of the noise. |
 | Cycling | float, 0 to 1, default 0 | A large, slow perturbation that keeps a material from repeating. |
+
+### MaterialSource
+
+Brings another object's material into this graph, channel by channel, so it can be reused and altered instead of rebuilt
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| base color | out | texture |
+| normal | out | texture |
+| roughness | out | texture |
+| metallic | out | texture |
+| height | out | texture |
+| ambient occlusion | out | texture |
+| alpha | out | texture |
+| displacement | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| From object | text | The scene object whose material to bring in - the terrain, a rock, anything that has one. Its channels come out of this node as they are, so the mapping and tiling it was built with come with them.  Leave it empty and the node passes nothing, which is what an unconnected input looks like anywhere else. |
+| Material node | text | The material node the name above resolved to. The studio fills this in; it is here so it can be saved and so a script can set it directly. |
 
 ### MaterialStack
 

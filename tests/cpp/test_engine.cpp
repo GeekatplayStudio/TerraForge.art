@@ -21,6 +21,8 @@
 #include <stdexcept>
 
 static void test_parallel_pool();
+// tests/cpp/test_material_source.cpp — returns its own failure count.
+int test_material_source_suite();
 
 static int g_failures = 0;
 // Overloaded rather than a bare printf: passing a std::string to "%s" is
@@ -5287,6 +5289,10 @@ int main() {
   test_material_layer_slope_reads_real_degrees();
   test_fractal_color();
   test_vue_fractals();
+  // tests/cpp/test_material_source.cpp — its own file because this one is
+  // long past the size anybody can read, and its subject is order rather
+  // than arithmetic.
+  g_failures += test_material_source_suite();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;

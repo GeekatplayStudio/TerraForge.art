@@ -127,6 +127,7 @@ MaskPaint|Mask
 MaskToTexture|Material
 MaterialLayer|Material
 MaterialOutput|Material
+MaterialSource|Material
 MaterialStack|Material
 MathGradient|Operator
 Math|Operator

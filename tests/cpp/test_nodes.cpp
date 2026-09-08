@@ -169,6 +169,24 @@ static gpx::Node *build(gpx::Graph &g, const std::string &type,
     }
     fy += 130;
   }
+  // MaterialSource takes its input through an attribute rather than a port:
+  // it names a scene object, which the studio turns into the id of that
+  // object's material node. Building it a material to import is what the
+  // studio would have done, and is the difference between the battery
+  // measuring the node and merely exempting it from being measured.
+  if (type == "MaterialSource") {
+    gpx::Node *src = g.add_node("Noise", 0, (float)fy);
+    gpx::Node *cv = g.add_node("MaskToTexture", 180, (float)fy);
+    gpx::Node *mat = g.add_node("MaterialOutput", 280, (float)fy);
+    if (src && cv && mat) {
+      g.add_link(src->id, "output", cv->id, "input");
+      g.add_link(cv->id, "texture", mat->id, "base color");
+      g.add_link(src->id, "output", mat->id, "displacement");
+      if (gpx::Attribute *a = n->attrs.find("source_node"))
+        a->s = std::to_string(mat->id);
+      feeders.push_back(src);
+    }
+  }
   return n;
 }
 
@@ -465,6 +483,15 @@ static void check_serialization(const std::string &type) {
   g.resolution = 16;
   gpx::Node *n = g.add_node(type);
   if (!n) return;
+  // Something for a node reference to point at - and it must land on an id
+  // that loading will not reproduce, or the check passes on a coincidence.
+  // Ids are handed out in sequence and a load starts counting again from one,
+  // so burning three and discarding them leaves this node numbered 5 here and
+  // 2 when it comes back. A reference that is not remapped then points
+  // somewhere else, which is exactly the failure worth catching.
+  for (int i = 0; i < 3; ++i)
+    if (gpx::Node *junk = g.add_node("Noise")) g.remove_node(junk->id);
+  gpx::Node *other = g.add_node("MaterialOutput");
   // perturb every attribute so defaults cannot mask a serialization gap
   for (gpx::Attribute &a : n->attrs.items) {
     switch (a.type) {
@@ -484,10 +511,30 @@ static void check_serialization(const std::string &type) {
         a.col[0] = 0.11f; a.col[1] = 0.22f; a.col[2] = 0.33f;
         break;
       case gpx::AttrType::Filename:
-      case gpx::AttrType::Text: a.s = "round/trip test"; break;
+      case gpx::AttrType::Text:
+        // An attribute holding another node's id cannot be perturbed to a
+        // string: loading renumbers the graph and remaps it, so anything that
+        // is not a live id comes back empty. Point it at a real node instead,
+        // which is the case worth checking anyway.
+        if (a.node_ref) {
+          if (other) a.s = std::to_string(other->id);
+        } else {
+          a.s = "round/trip test";
+        }
+        break;
       default: break;
     }
   }
+  // Where a node sits in the graph's list, which load preserves. Comparing
+  // positions rather than ids is how a reference is checked across a
+  // renumbering: the id is expected to change, what it points at is not.
+  auto index_of = [](const gpx::Graph &gr, const std::string &id_text) {
+    if (id_text.empty()) return (size_t)-1;
+    const uint64_t id = std::strtoull(id_text.c_str(), nullptr, 10);
+    for (size_t i = 0; i < gr.nodes.size(); ++i)
+      if (gr.nodes[i]->id == id) return i;
+    return (size_t)-1;
+  };
   std::string json = gpx::graph_to_json(g);
   gpx::Graph g2;
   std::string err;
@@ -518,10 +565,18 @@ static void check_serialization(const std::string &type) {
         same = std::fabs(a.col[0] - b->col[0]) < 1e-6f;
         break;
       case gpx::AttrType::Filename:
-      case gpx::AttrType::Text: same = a.s == b->s; break;
+      case gpx::AttrType::Text:
+        // A reference must still name the same node, not the same number.
+        same = a.node_ref ? index_of(g, a.s) == index_of(g2, b->s) &&
+                                index_of(g, a.s) != (size_t)-1
+                          : a.s == b->s;
+        break;
       default: break;
     }
-    if (!same) fail("attribute '" + a.key + "' changed value in serialization");
+    if (!same)
+      fail("attribute '" + a.key +
+           (a.node_ref ? "' does not point at the same node after a round trip"
+                       : "' changed value in serialization"));
   }
 }
 

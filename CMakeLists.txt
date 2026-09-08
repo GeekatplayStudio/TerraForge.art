@@ -193,6 +193,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_surface_forms.cpp
     engine/nodes/nodes_atmosphere.cpp
     engine/nodes/nodes_material_graph.cpp
+    engine/nodes/nodes_material_source.cpp
     engine/nodes/nodes_hydro.cpp
     engine/nodes/nodes_logic.cpp
     external/miniz/miniz.c
@@ -464,6 +465,9 @@ set(STUDIO_SOURCES
     studio/render_settings.cpp
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
+    studio/material_source.cpp
+    studio/panel_properties_widgets.cpp
+    studio/scene_nodes_material.cpp
     studio/scene_nodes_objects.cpp
     studio/material_library.cpp
     studio/node_library.cpp
@@ -585,7 +589,9 @@ target_link_libraries(nodeterrain_cli PRIVATE geekatplay_nodeterrain)
 add_executable(nodeterrain_tests tests/cpp/test_main.cpp)
 target_link_libraries(nodeterrain_tests PRIVATE geekatplay_nodeterrain)
 
-add_executable(engine_tests tests/cpp/test_engine.cpp)
+add_executable(engine_tests
+    tests/cpp/test_engine.cpp
+    tests/cpp/test_material_source.cpp)
 target_link_libraries(engine_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
@@ -597,6 +603,8 @@ add_executable(undo_tests
     tests/cpp/test_scene_tree.cpp
     tests/cpp/test_anim_scene.cpp
     tests/cpp/test_imprint.cpp
+    tests/cpp/test_material_source_scene.cpp
+    studio/material_source.cpp
     tests/cpp/test_material_stack_ops.cpp
     tests/cpp/test_material_channel_ops.cpp
     studio/material_stack_ops.cpp

@@ -224,6 +224,13 @@ json scene_to_json() {
     object_visibility_to_json(jo, o); // scene_io_object.cpp
     object_transform_to_json(jo, o);
     if (o.driver_node) jo["driver_node"] = o.driver_node;
+    // Any object may wear a material, not only a mesh. This used to be
+    // written inside the Mesh branch below, so assigning a material to the
+    // terrain - which is what the Materials panel's Assign button does by
+    // default - survived until the project was saved and then quietly did
+    // not. Written for every type now, and only when there is one, so a
+    // scene of objects that have no material is not padded with zeroes.
+    if (o.material_node) jo["material_node"] = o.material_node;
     if (o.type == SceneObject::Light) {
       jo["light_intensity"] = o.light_intensity;
       jo["light_radius"] = o.light_radius;
@@ -338,6 +345,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     o.expanded = jo.value("expanded", true);
     object_transform_from_json(jo, o); // scene_io_object.cpp
     o.driver_node = remap_id(jo.value("driver_node", 0ull), idmap);
+    o.material_node = remap_id(jo.value("material_node", 0ull), idmap);
 
     if (o.type == SceneObject::Light) {
       o.light_intensity = jo.value("light_intensity", 1.f);
@@ -347,7 +355,6 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     }
     if (o.type == SceneObject::Mesh) {
       o.path = jo.value("path", std::string());
-      o.material_node = remap_id(jo.value("material_node", 0ull), idmap);
       o.scatter_node = remap_id(jo.value("scatter_node", 0ull), idmap);
       o.scatter_scale = jo.value("scatter_scale", 1.f);
       o.scatter_jitter = jo.value("scatter_jitter", 0.4f);

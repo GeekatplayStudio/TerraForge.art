@@ -161,6 +161,11 @@ Node *Graph::upstream_node(const Node &n, const std::string &in_port) const {
 }
 
 void Graph::mark_dirty(uint64_t node_id) {
+  // Over edges(), not links: a node that reads another without a link still
+  // has to be recomputed when that other one changes. Editing the terrain's
+  // material must reach everything that imported it, or the importer keeps
+  // handing out the material as it was two evaluations ago.
+  const auto e = edges();
   std::set<uint64_t> visited;
   std::queue<uint64_t> q;
   q.push(node_id);
@@ -169,8 +174,8 @@ void Graph::mark_dirty(uint64_t node_id) {
     q.pop();
     if (!visited.insert(id).second) continue;
     if (Node *n = find_node(id)) n->dirty = true;
-    for (const Link &l : links)
-      if (l.from_node == id) q.push(l.to_node);
+    for (const auto &l : e)
+      if (l.first == id) q.push(l.second);
   }
 }
 
@@ -178,10 +183,32 @@ void Graph::mark_all_dirty() {
   for (auto &n : nodes) n->dirty = true;
 }
 
+// Every edge the order must respect: the links, plus the nodes a NodeDef
+// declares its node reads without one (NodeDef::depends). An edge to a node
+// that is not in this graph is dropped rather than counted, or an importer
+// left pointing at something deleted would deadlock the sort and the whole
+// graph would stop evaluating.
+std::vector<std::pair<uint64_t, uint64_t>> Graph::edges() const {
+  std::vector<std::pair<uint64_t, uint64_t>> e;
+  e.reserve(links.size());
+  for (const Link &l : links) e.emplace_back(l.from_node, l.to_node);
+  std::vector<uint64_t> extra;
+  for (const auto &n : nodes) {
+    const NodeDef *d = NodeRegistry::instance().find(n->type);
+    if (!d || !d->depends) continue;
+    extra.clear();
+    d->depends(*n, extra);
+    for (uint64_t from : extra)
+      if (from && from != n->id && find_node(from)) e.emplace_back(from, n->id);
+  }
+  return e;
+}
+
 std::vector<Node *> Graph::topo_order() const {
+  const auto e = edges();
   std::map<uint64_t, int> indeg;
   for (auto &n : nodes) indeg[n->id] = 0;
-  for (const Link &l : links) indeg[l.to_node]++;
+  for (const auto &l : e) indeg[l.second]++;
   std::queue<Node *> q;
   for (auto &n : nodes)
     if (indeg[n->id] == 0) q.push(n.get());
@@ -190,9 +217,9 @@ std::vector<Node *> Graph::topo_order() const {
     Node *n = q.front();
     q.pop();
     order.push_back(n);
-    for (const Link &l : links)
-      if (l.from_node == n->id && --indeg[l.to_node] == 0)
-        q.push(find_node(l.to_node));
+    for (const auto &l : e)
+      if (l.first == n->id && --indeg[l.second] == 0)
+        q.push(find_node(l.second));
   }
   if (order.size() != nodes.size()) return {}; // cycle
   return order;

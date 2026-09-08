@@ -1473,6 +1473,38 @@
       "description": "The near plane is floored at 5e-7 tile units so znear*2^24 stays past the horizon: below a camera distance of 1.6 m the old znear = cam_d*0.002 made distant terrain quantise to depth exactly 1.0, fail GL_LESS against the clear and never draw, leaving the sky and its 54% horizon haze - the white view when zooming in. The fragment fractal normal is also differenced over a camera-scaled step instead of a frozen 3.4 m, so octaves finer than a texel stop being averaged flat",
       "test_file": "test_render.cpp",
       "test_symbol": "test_frustum_extraction"
+    },
+    {
+      "id": "material.import",
+      "area": "engine",
+      "phase": "41",
+      "description": "MaterialSource brings another object's material into the graph as its eight channels, read from the source's resolved inputs so bypasses and conversions come with them; the source is declared as a dependency (NodeDef::depends) so it is evaluated first and a change reaches the import in the same pass, marking the source dirty marks the import, a dangling reference cannot stall the sort, and a circular import is caught as a cycle",
+      "test_file": "test_material_source.cpp",
+      "test_symbol": "test_a_change_arrives_in_the_same_pass"
+    },
+    {
+      "id": "material.import_resolve",
+      "area": "studio",
+      "phase": "41",
+      "description": "A MaterialSource names a scene object and the studio resolves it once a frame to that object's material node - the object's own, or for the terrain alone the render settings' terrain material; idempotent, an empty scene changes nothing so a load cannot clear it, and an object that has gone clears the import rather than serving the wrong material",
+      "test_file": "test_material_source_scene.cpp",
+      "test_symbol": "test_resolving_writes_the_id_and_dirties_the_node"
+    },
+    {
+      "id": "io.node_reference_remap",
+      "area": "engine",
+      "phase": "41",
+      "description": "Attribute::node_ref marks a text attribute that holds another node's id; graph_from_json renumbers it with the links, so a reference survives a save and reload pointing at the same node rather than at whichever node inherited its number, and a reference to a node no longer in the file comes back unbound",
+      "test_file": "test_material_source.cpp",
+      "test_symbol": "test_the_reference_survives_a_save_and_load"
+    },
+    {
+      "id": "io.object_material_saved",
+      "area": "studio",
+      "phase": "41",
+      "description": "Every object's material binding is written to the project, not only a mesh's: assigning a material to the terrain used to survive the session and be gone on reload, because material_node was serialized inside the Mesh branch",
+      "test_file": "test_material_source_scene.cpp",
+      "test_symbol": "test_a_material_assignment_survives_a_save"
     }
   ]
 }

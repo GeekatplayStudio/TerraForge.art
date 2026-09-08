@@ -259,6 +259,7 @@ void run_main() {
     app_service_upload(a);
     anim_service(a); // clock, keyed properties, camera pose tracks
     app_service_imprint(a); // grounded objects: bases on the surface, footprints to the node
+    app_service_material_sources(a); // "the terrain's material" -> that node's id
     app_service_points_overlay(a);
     perf_mark("services");
 

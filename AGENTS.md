@@ -429,6 +429,25 @@ belongs to; do not fake a field node with a 1×1 buffer.
 10. **Nodes may have several field outputs, and they are different values.**
     Emission is keyed by node *and* port, and by the evaluation point, since a
     redirect asks for the same subtree somewhere else.
+11. **`NodeDef` is built by aggregate initialisation in `REGISTER_NODE`.** A new
+    field goes at the **end** or every registration in the project breaks at
+    once. `depends` is currently last.
+12. **A node that reads another without a link must declare it** through
+    `NodeDef::depends`. `Graph::edges()` is the links *plus* those, and
+    `topo_order` and `mark_dirty` both walk it — so the source is evaluated
+    first and a change to it reaches the reader in the same pass. This is not a
+    way around links: links stay the only way data flows, and named routing was
+    refused precisely so a graph shows its own data flow. It is for a node that
+    reaches outside the graph and comes back holding another node. An edge to a
+    node not in the graph is dropped rather than counted, or a stale reference
+    stalls the sort and the whole project stops evaluating.
+13. **An attribute holding another node's id must set `Attribute::node_ref`.**
+    Loading renumbers every node, so a bare id would land on whichever node
+    inherited that number — a perfectly valid node, which is why nothing
+    downstream could ever report it. `graph_from_json` remaps flagged
+    attributes with the links; one pointing at a node no longer in the file
+    goes empty. `node_tests` checks the reference still names the same node
+    across a round trip, on a graph whose ids the load cannot reproduce.
 
 ## Field type conversions
 

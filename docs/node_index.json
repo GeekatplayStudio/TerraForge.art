@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "generated_by": "tools/gen_node_index.cpp",
-  "node_count": 248,
+  "node_count": 249,
   "category_count": 32,
   "nodes": [
     {
@@ -1790,7 +1790,7 @@
         "label": "Blend width",
         "type": "float",
         "group": "Imprint",
-        "min": 0, "max": 6, "default": 1.5,
+        "min": 0, "max": 64, "default": 1.5,
         "tooltip": "How far around an object the ground responds, as a\nmultiple of the footprint's radius - for objects that\ndo not set their own blend distance."
       },
       {
@@ -8900,6 +8900,38 @@
         "group": "Transform",
         "min": 0, "max": 1, "default": 0,
         "tooltip": "A large, slow perturbation that keeps a material from repeating."
+      }
+      ]
+    },
+    {
+      "type": "MaterialSource",
+      "display_name": "Material source",
+      "category": "Material",
+      "description": "Brings another object's material into this graph, channel by channel, so it can be reused and altered instead of rebuilt",
+      "ports": [
+        {"name": "base color", "dir": "out", "type": "texture", "optional": false},
+        {"name": "normal", "dir": "out", "type": "texture", "optional": false},
+        {"name": "roughness", "dir": "out", "type": "texture", "optional": false},
+        {"name": "metallic", "dir": "out", "type": "texture", "optional": false},
+        {"name": "height", "dir": "out", "type": "texture", "optional": false},
+        {"name": "ambient occlusion", "dir": "out", "type": "texture", "optional": false},
+        {"name": "alpha", "dir": "out", "type": "texture", "optional": false},
+        {"name": "displacement", "dir": "out", "type": "heightmap", "optional": false}
+      ],
+      "attrs": [
+      {
+        "key": "object",
+        "label": "From object",
+        "type": "text",
+        "group": "Source",
+        "tooltip": "The scene object whose material to bring in - the terrain, a rock,\nanything that has one. Its channels come out of this node as they\nare, so the mapping and tiling it was built with come with them.\n\nLeave it empty and the node passes nothing, which is what an\nunconnected input looks like anywhere else."
+      },
+      {
+        "key": "source_node",
+        "label": "Material node",
+        "type": "text",
+        "group": "Source",
+        "tooltip": "The material node the name above resolved to. The studio fills\nthis in; it is here so it can be saved and so a script can set it\ndirectly."
       }
       ]
     },

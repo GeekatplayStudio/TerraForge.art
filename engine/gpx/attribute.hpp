@@ -46,6 +46,17 @@ struct Attribute {
   std::vector<std::string> labels; // Choice
   std::string s;                   // Filename / Text / Choice value
   bool log_scale = false;
+  // Text only: this holds the name of a scene object, so the studio offers
+  // the scene's objects instead of a field to spell one into. A hint about
+  // presentation, the way log_scale is - the engine still has no idea what a
+  // scene is, and the value is a string either way.
+  bool object_ref = false;
+  // Text only: this holds the id of another node in the same graph, decimal.
+  // Loading a project renumbers every node, so a reference written as a bare
+  // id would land on whatever node inherited that number - which is not an
+  // error the reader could ever notice, because the wrong node is a perfectly
+  // valid one. Flagged here, graph_from_json remaps it with the links.
+  bool node_ref = false;
   // Field: a buffer the user paints into rather than types. Kept as plain
   // floats in memory and quantized + compressed on the way to disk.
   std::vector<float> field;

@@ -1,5 +1,6 @@
 ﻿#include "gpx/serialization.hpp"
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -226,6 +227,19 @@ bool graph_from_json(Graph &g, const std::string &text, std::string &err,
       for (auto &a : n->attrs.items)
         if (jn["attrs"].contains(a.key)) attr_from_json(a, jn["attrs"][a.key]);
   }
+  // Attributes that name another node by id, renumbered with everything else.
+  // Done after the whole pass, because a reference may point forwards and the
+  // map is only complete once every node has been made.
+  for (auto &n : g.nodes)
+    for (Attribute &a : n->attrs.items) {
+      if (!a.node_ref || a.s.empty()) continue;
+      const uint64_t file_id = std::strtoull(a.s.c_str(), nullptr, 10);
+      auto it = idmap.find(file_id);
+      // A reference to a node that is no longer in the file goes empty rather
+      // than stale: unbound reads as "nothing chosen", which is recoverable,
+      // where a wrong id reads as a choice nobody made.
+      a.s = it == idmap.end() ? std::string() : std::to_string(it->second);
+    }
   for (const auto &jl : j.value("links", json::array())) {
     auto f = idmap.find(jl["from"].get<uint64_t>());
     auto t = idmap.find(jl["to"].get<uint64_t>());

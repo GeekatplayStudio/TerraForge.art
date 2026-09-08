@@ -144,6 +144,22 @@ struct NodeDef {
   std::string type, category, description;
   std::function<void(Node &)> setup;
   std::function<void(Node &)> compute;
+  // Nodes this one reads without a link to it.
+  //
+  // Links are the only way data moves between nodes, and that stays true -
+  // named routing was considered and refused precisely so a graph shows its
+  // own data flow. This is not that. It is for a node that reaches outside
+  // the graph and comes back holding another node: importing the material of
+  // a scene object names the object, and which node that turns out to be is
+  // the scene's answer, not the graph's.
+  //
+  // Whatever the answer is, evaluation order has to respect it, or the
+  // importer reads last frame's buffers. Declaring the ids here puts the
+  // edge into the topological sort, where a cycle is caught the same way any
+  // other cycle is. Appended last, because NodeDef is built by aggregate
+  // initialisation in REGISTER_NODE and every registration would break if it
+  // were inserted anywhere else.
+  std::function<void(const Node &, std::vector<uint64_t> &)> depends;
 };
 
 // What a node is called on screen, as against what it is called in a file.
@@ -208,6 +224,9 @@ public:
   // sample every animated attribute at Graph::time (called by evaluate)
   void apply_animation();
   std::vector<Node *> topo_order() const;
+  // Every dependency edge, as (from, to): the links plus whatever the nodes
+  // declare through NodeDef::depends. What topo_order actually sorts.
+  std::vector<std::pair<uint64_t, uint64_t>> edges() const;
   // returns false if a cycle or error occurred; computes only dirty nodes
   bool evaluate();
   // evaluate the whole graph at an explicit resolution (bake), restores after
