@@ -331,6 +331,20 @@ buffers move on. `place_gradient`/`place_mode` are render settings (saved,
 the join must be mixed into `placement_key()` or the tile is not re-placed
 until the next evaluation. tests/cpp/test_planet_place.cpp pins the three.
 
+## The join between the tile and the surround
+
+The planet surround (studio/planet_shaders.cpp VS_INF/FS_INF) is the tile's
+continuation, and everything that would read as a seam is matched there
+rather than hidden: its octave count is capped at the tile's baked
+resolution (`u_tile_octf` = log2 of the heightmap size) within the 0.35-tile
+blend ring and rises beyond it; its normal is mixed from the tile's own
+heightmap over the same ring; the tile's fractal micro-relief (FRACTAL_FN,
+`u_frac_amount/u_frac_scale`) is added in both stages with the same
+function in the same tile units; the albedo is borrowed through the tile's
+inverse transform; and water is WATER_FN_GLSL in both the water pass and
+the surround, uploaded by `upload_water_uniforms`. Change the tile's look
+and the surround must change with it, or the border comes back.
+
 ## The terrain is an object with a transform
 
 studio/terrain_xform.cpp: the Terrain SceneObject's pos (an offset; pos[1]

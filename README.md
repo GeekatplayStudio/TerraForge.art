@@ -537,7 +537,11 @@ wanted his students to have.
   tile and 0 the planet - a Shape node's mask with a wandering rim makes an
   island, a slope mask keeps only the flats. A mask connected to a Shape
   node beside a named shape now carves that shape instead of being
-  ignored.
+  ignored. At the join the surround matches the tile's grain: its relief
+  runs at the tile's heightmap resolution there and resolves further only
+  away from it, its normal comes from the tile's heightmap at the border,
+  the tile's fractal micro-relief runs straight across, and the water is
+  one shader on both sides, so a lake crossing the border is one lake.
 - **Node graph engine** with dirty-tracking evaluation, multithreaded solvers,
   per-node previews and timings, and any resolution from 64 to 8192.
 - **Erosion that models the physics:** particle-droplet hydraulic erosion, a
