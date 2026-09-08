@@ -15,6 +15,25 @@ ErosionLayers node that hands back where the rock, scree, soil, grass and snow
 belong — each one a photoscanned surface, placed by the erosion rather than by
 hand. Rendered in the viewport, in real time.*
 
+## Status
+
+*8 September 2026.* Working and shipped on `main`: the node engine (252 node
+types, 1,530 attributes, all under the regression lock), the studio with its
+eight workspaces, materials as graphs with a base-material and gradient
+library, volumetric fog and volumetric materials, cloud layers as nodes,
+planets, ecosystems, animation, and offline rendering through Mitsuba,
+Cycles and LuxCore. Everything the interface can change is reachable from
+the Python API, the MCP tools and the assistant, and two audit tests keep
+that true. Twenty-five test suites pass.
+
+Open at the moment: one report of panning not working in the main viewport
+that we cannot reproduce (the viewport now logs every drag at trace level so
+the console line will tell); planet-wrapped atmosphere shells are designed in
+[docs/VOLUMETRICS.md](docs/VOLUMETRICS.md) but not built; 21 component nodes
+are still `[Planned]` placeholders; and the performance watcher has found
+frames in the Materials workspace that work while nothing changes, not yet
+chased.
+
 ## Gallery
 
 Every image on this page comes out of the application's own viewport, from a
@@ -144,6 +163,13 @@ wanted his students to have.
   connectors show what they carry (range, size, point count, a field's value).
 
 ### The studio
+- **A menu for every workflow.** File and Edit, then Terrain, Objects,
+  Materials, Atmosphere, Animation, Render, View, AI and Help, in the order
+  the work runs. Every command the tool rows and panels offer is in a menu
+  too, so nothing depends on finding the right button. **View > Console**
+  is a terminal: type `add_node type=Noise octaves=9` or paste the JSON an
+  action document uses, with completion on the op names and `help` for the
+  schema.
 - **Cinema 4D's arrangement.** A left tool column holds the *modes* of the
   chosen workflow — the three transform tools head every workspace, then
   sculpt brushes, deformers, Autokey — and the row above the viewports holds
@@ -193,6 +219,20 @@ wanted his students to have.
   sense) with the viewport gizmo. The padlock beside each object in the
   Objects tree locks it in place: no gizmo, no dragging, transform fields
   read-only. `set_locked` does the same from the API.
+- **A viewport pinned to one node** shows that node's result instead of
+  the terrain output — useful while tuning an erosion, and the reason
+  "erosion is not reflected" reports happen. The header shows an unpin
+  button and the overlay a badge while a pin is on. **New viewport through
+  camera** (view options) opens another view looking through any scene
+  camera; **Free orbit** lets it go.
+- **ID colours** as a fourth shading mode: one flat bright colour per
+  object, or per material, so masks and distributions read at a glance.
+- **The performance watcher** (View > Performance watcher, on by default in
+  developer builds) counts what each frame did — lease misses, evaluations,
+  uploads, redraws — and every ten seconds writes `logs/perf_watch.json`
+  with findings in words: frames that did work while nothing changed,
+  GPU-bound frames, evaluations no one asked for. `perf_report` returns the
+  same to a script, which is how the assistant reads it.
 - **Frame pacing:** Edit ▸ Preferences sets the viewport rate, the idle rate
   the whole application drops to when nothing is happening (it wakes on the
   first input), and the Preview panel's own rate and render scale — so six
@@ -357,6 +397,31 @@ wanted his students to have.
 - **The browser**: *Project* materials and the *Library*, thumbnails with a
   hover card showing what each is made of; double-click opens, right-click
   assigns or saves. Removing from the library moves to a trash folder.
+- **Base materials, made rather than loaded.** The Library opens with
+  twenty-two starting points in six groups — *Basic* (colour, mirror, wax,
+  slime, glow), *Metal* (metal, copper, gold, iron), *Glass & liquid*
+  (glass, water, ice), *Volume* (smoke, cloud, dust), *Ground* (ground,
+  sand, rock, snow, swamp) and *Relief* (displacement rock and ground) —
+  each a rendered preview sphere, each a small graph dropped into the
+  project ready to be changed. One search box narrows base and saved
+  materials alike by name, group or description. `preset_material` does it
+  from a script and can assign the result in the same call.
+- **Natural gradients.** Fourteen colour ramps — alpine, temperate hills,
+  desert, red rock, volcanic, tundra, wetland, ocean depth, autumn,
+  snowfield, sandstone strata, granite, sunset sky, greyscale — one click
+  in any gradient attribute.
+- **Mapping modes** on every picture channel, Vue's three: *Parametric*
+  (the object's own UVs, as authored), *Standard* (a solid texture in the
+  object's space, so it moves with the object), *Fill* (a solid texture in
+  world space, so the object moves through it) — beside the planar, box,
+  cylindrical and spherical projections.
+- **Materials that are volumes.** A material with a volume density is
+  marched through the object it sits on: Beer–Lambert absorption, a
+  Henyey–Greenstein phase, a short sun march per step, an early exit at 1%
+  transmittance. Smoke you can see through, a cloud in a box, dust that
+  glows on the sun side — in the viewport and, through Mitsuba's `volpath`
+  medium, in the render. [docs/VOLUMETRICS.md](docs/VOLUMETRICS.md) has the
+  measurements and the cost rules.
 - **The asset manager** is the browser's third tab. Every watched folder —
   the material library and your layouts by default, any folder of meshes or
   textures you add — is indexed, and found by typing what a thing *is*: name,
@@ -684,9 +749,21 @@ wanted his students to have.
 ### Environment and rendering
 - **Volumetric clouds** raymarched with Perlin-Worley noise, cloud types
   (stratus / cumulus / cumulonimbus), coverage, wind and self-shadowing.
+- **As many cloud layers as you add nodes.** Every `CloudLayer` node in the
+  graph is a layer of its own — low stratus, cumulus, a cirrus veil — chained
+  through the `clouds` port into `AtmosphereSettings`; the sky pass marches
+  up to eight, far to near, skipping clear air in longer strides.
+- **Fog as a medium**, not a fade: the same radiative transfer as the volume
+  materials, with albedo, anisotropy, heterogeneity and a step count you
+  choose, so a valley fog catches the sun where it should.
 - **Sky and light:** configurable atmosphere, height fog with absorption and
   sun scattering, and a sun that can be positioned manually or from a real
   latitude, longitude, date and time.
+- **The terrain's outline and size:** square, round or a rectangle of any
+  aspect, from the Environment panel or `set_viewport`, and the tile's
+  size in metres (`terrain_size_m`, a setting like any other);
+  `TileRotate` tiles a terrain with a random turn per segment so the
+  repetition does not show.
 - **Water:** depth-graded color, waves, and shoreline and crest foam.
 - **Viewport:** 1-6 dockable view windows (perspective / top / front / right),
   shading modes, shadow mapping, scale bar, metric or imperial units.
@@ -737,6 +814,15 @@ specification and manual.
 Describe a landscape in plain language — or drop in a photograph — and a local
 [Ollama](https://ollama.com) model builds the node graph, parameters,
 materials and lighting for you. Everything runs on your machine.
+
+**Everything the interface can change, a script can change** — and it is
+checked, not promised. `list_settings` names every saved render and world
+setting with its value; `set_setting` changes any of them. Two audit tests
+fail the build when a setting, a panel or a node attribute drifts out of
+reach: every field of the render settings must be in the saved-settings
+table (which is what the ops read), every panel must have a `show_panel`
+name, every op must have an MCP tool, and the count of node attributes
+without a tooltip may only go down.
 
 ---
 
@@ -853,7 +939,7 @@ before a commit:
 | `node_tests` | **Universal node contract** — one data-driven battery over every node type: metadata, ports, determinism, bypass, serialization, extremes, and that every field node has a GLSL emitter. Adding a node automatically tests it. |
 | `regression_tests` | **Regression lock** — a node may never be removed or change category, an attribute may never be removed or be retyped, every committed project must still evaluate to the same hash, and every entry in the feature manifest must still name a test that exists. |
 | `render_tests` | Renderer maths that needs no GL context: patch culling, blue-noise/LOD scatter, planet placement |
-| `pytest` | Render backends and AI helpers |
+| `pytest` | Render backends, AI helpers, and the two coverage audits: every setting scriptable (`test_settings_coverage.py`), every op an MCP tool (`test_api_coverage.py`) |
 
 The contract and regression suites are the reason features do not quietly
 disappear: 20,000+ contract assertions and 4,400+ regression checks over
@@ -866,8 +952,9 @@ only that a diff exists).
 `ctest --test-dir build` runs the complete battery — the seven above
 plus per-area suites (ecosystem, shapes/lake, scene tree/undo of the studio
 UI, i18n, layout, mesh pipeline, material editor, config, icons, AI
-services, assets) and a performance guard — 18 suites in all, which is
-what CI runs.
+services, assets, node names and search, points previews, terrain cracks,
+horizon, animation, CSG) and a performance guard — 25 suites in all, which
+is what CI runs.
 
 ---
 

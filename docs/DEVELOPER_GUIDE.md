@@ -231,7 +231,11 @@ one step per document, so an agent's whole batch reverts as one edit.
    document to the inbox, capture with the `capture` op (the viewport) or
    `save_node_preview` (one node's card, which is usually the faster answer
    to "did that node do what I meant"), look at it. Screenshots go in the PR.
-7. Add the op to the AI schema and MCP. Update the README section.
+7. Add the op to the AI schema and MCP — `tests/test_api_coverage.py`
+   fails if an op has no MCP tool, and `tests/test_settings_coverage.py`
+   fails if a render setting is not in the saved-settings table (which is
+   what `set_setting` and `list_settings` reach) or a panel has no
+   `show_panel` name. Update the README section.
 8. Commit with a message that says what changed and why — the history is
    documentation. Push to `main`.
 
@@ -249,6 +253,7 @@ afterwards, where they cannot regress.
 | `build/param_audit` | Does moving each slider change anything? It builds every node with real upstream nodes, moves one parameter, and looks. When nothing moves it retries under each mode switch, toggle and zeroed amount on the node before reporting, because most of what looks dead is merely switched off. |
 | `python scripts/mutate.py` | Would the tests notice if the code were wrong? It breaks the source on purpose, one plausible mistake at a time, and reports the mutants that survive. |
 | `python docs_private/mark_refs.py` | Does the reference ledger still match the registry? It reported ten gaps we had filled months earlier. |
+| The performance watcher (`studio/perf_watch.cpp`) | Did the last ten seconds do work for nothing? Counts lease misses, evaluations, uploads and redraws per frame, and writes findings in words to `logs/perf_watch.json` — "56 of 149 idle frames did over 4 ms of work". `perf_report` returns the same to a script. |
 
 `param_audit` earns its place by having found what a green suite cannot: three
 selectors carrying an "Edge softness" control that was declared, tooltipped,

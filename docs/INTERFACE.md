@@ -10,9 +10,13 @@ window) are linked from here.
 
 Three rows sit above the workspace:
 
-1. **The menu bar** — File, Edit, Terrain, View, AI, Help — with the global
-   tool palette on the same row: Undo / Redo · Recompute · Sculpt · Move,
-   Rotate, Scale, Twist, Bend, Skew, Taper · Gizmos on/off · Console.
+1. **The menu bar** — File, Edit, then one menu per workflow in the order
+   the work runs: Terrain, Objects, Materials, Atmosphere, Animation,
+   Render — then View, AI, Help. Every command on a tool row or in a panel
+   is also in its workflow's menu. **View > Console** opens the terminal
+   (shorthand `op key=value ...` or JSON; `help` prints the schema) and
+   **View > Performance watcher** toggles the frame analyser that writes
+   `logs/perf_watch.json`.
 2. **The workspace tabs** — Terrain, Materials, Atmosphere, Render, All
    domains, Objects, Lighting, Cameras, Animation. Each workspace remembers
    its own arrangement of windows (`layouts/workspace-<name>.json`).
@@ -116,9 +120,22 @@ Unfold all.
 
 Each viewport has, at the right of its title: the projection group
 (perspective, top, front, right), the shading group (wireframe, shaded,
-textured), the overlay group (sky, water, grid, outlines) and the gear for
-that view's settings. When the viewport is too narrow the groups collapse to
-two combos, then to the gear alone.
+textured, ID colours), the overlay group (sky, water, grid, outlines) and
+the gear for that view's settings. When the viewport is too narrow the
+groups collapse to two combos, then to the gear alone.
+
+**ID colours** paints every object (or every material — the gear chooses)
+in one flat bright colour, for reading masks and distributions.
+
+**A pinned view.** Pinning a node to a view (the node's context menu, or
+`view_node` from a script) makes the view show that node's result instead of the terrain output. A
+padlock button appears in the header and a badge in the overlay while the
+pin is on; click the padlock to return to the terrain. A view that seems
+not to follow your edits is usually pinned.
+
+**New viewport through camera** in the gear's menu opens another view
+looking through any scene camera; **Free orbit** releases it. The tab's own
+context menu belongs to the docking system, so these live in the gear.
 
 ## Languages
 
