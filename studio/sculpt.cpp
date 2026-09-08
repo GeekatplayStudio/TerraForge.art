@@ -81,6 +81,18 @@ static inline float brush_w(float d_norm, float falloff) {
 }
 
 bool sculpt_apply(App &a, float tx, float tz, float dt) {
+  return sculpt_apply_segment(a, tx, tz, tx, tz, dt);
+}
+
+// One frame of brushing along the segment (u0,v0)-(u1,v1).
+//
+// The whole segment under one lock, with one dirty mark and one evaluation
+// request at the end. Stamping point by point through sculpt_apply instead
+// costs a lock acquisition, a downstream dirty walk and a worker wake-up per
+// dab - which is most of the work of painting, done a dozen times a frame for
+// nothing, and it is what made a fast stroke stutter.
+bool sculpt_apply_segment(App &a, float u0, float v0, float u1, float v1,
+                          float dt) {
   SculptState &S = sculpt_state();
   std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock()) return false; // busy frame: skip, the stroke continues
@@ -126,23 +138,36 @@ bool sculpt_apply(App &a, float tx, float tz, float dt) {
   };
 
   if ((S.tool == SculptTool::Flatten) && !S.have_target) {
-    S.flatten_target = surface01(tx, tz);
+    S.flatten_target = surface01(u0, v0);
     S.have_target = true;
   }
 
   int fw = fa->fw, fh = fa->fh;
-  int cx = (int)(tx * (fw - 1)), cy = (int)(tz * (fh - 1));
   int r = std::max(1, (int)(S.radius * fw));
-  float amount = S.flow * std::min(dt, 0.05f) * 4.f;
   bool inv = S.invert;
   float lo = fa->fmin, hi = fa->fmax;
 
-  int x0 = std::max(0, cx - r), x1 = std::min(fw - 1, cx + r);
-  int y0 = std::max(0, cy - r), y1 = std::min(fh - 1, cy + r);
+  // Stamp along the way, not just where the pointer ended up: the brush lands
+  // once per frame, so a hand moving at any speed would otherwise leave a row
+  // of separate dabs with gaps between them. A third of the brush's width is
+  // close enough that they overlap into a line, and the frame's flow is split
+  // between them so drawing fast does not also draw harder.
+  const float du = u1 - u0, dv = v1 - v0;
+  const float dist = std::sqrt(du * du + dv * dv);
+  const float step = std::max(S.radius / 3.f, 1.f / (float)fw);
+  const int stamps = std::clamp((int)(dist / step) + 1, 1, 96);
+  float amount = S.flow * std::min(dt, 0.05f) * 4.f / (float)stamps;
 
   // Smooth needs the neighborhood before this frame's writes
   std::vector<float> before;
   if (S.tool == SculptTool::Smooth) before = fa->field;
+
+  for (int s = 0; s < stamps; ++s) {
+  const float tt = stamps == 1 ? 1.f : (float)(s + 1) / (float)stamps;
+  const float tx = u0 + du * tt, tz = v0 + dv * tt;
+  int cx = (int)(tx * (fw - 1)), cy = (int)(tz * (fh - 1));
+  int x0 = std::max(0, cx - r), x1 = std::min(fw - 1, cx + r);
+  int y0 = std::max(0, cy - r), y1 = std::min(fh - 1, cy + r);
 
   for (int y = y0; y <= y1; ++y)
     for (int x = x0; x <= x1; ++x) {
@@ -200,6 +225,10 @@ bool sculpt_apply(App &a, float tx, float tz, float dt) {
           d += nse * (inv ? -0.8f : 0.8f) * w;
         } break;
         case SculptTool::Erase:
+          // Back toward the value that does nothing, which is zero in field
+          // units - mid grey on a sculpt layer (-1..1), black on a mask
+          // (0..1). In both cases it is "no longer painted here", and the
+          // terrain underneath is untouched either way.
           d *= 1.f - std::min(w * 2.f, 1.f);
           break;
         case SculptTool::Shade: {
@@ -213,6 +242,7 @@ bool sculpt_apply(App &a, float tx, float tz, float dt) {
       }
       d = std::clamp(d, lo, hi);
     }
+  } // stamps
 
   a.graph.mark_dirty(n->id);
   a.eval_interactive.store(true);

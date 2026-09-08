@@ -45,20 +45,35 @@ chain will lag the pointer. The layer itself is always immediate.
 | **Smooth** | Relaxes the painted layer toward its surroundings — softening a bank, blending a stroke into what it meets. |
 | **Erase** | Takes paint back out, down to the layer doing nothing. The terrain underneath is untouched. |
 
-**Size** is the brush width as a fraction of the tile. **Edge** runs from a
+**Size** is the brush width as a fraction of the tile — **`[`** makes the brush
+smaller and **`]`** larger, as in Photoshop, in proportional steps so the key
+does the same thing at a hairline as at half the tile. **Edge** runs from a
 soft airbrush at the left to a hard pen at the right. **Flow** is how fast the
 stroke builds while the button is held.
+
+Strokes are stamped along the path the pointer covered, not only where it
+ended up, so a fast hand leaves a line rather than a row of separate dabs.
 
 The **Shade** ramp runs black to white; the swatch with the orange frame is mid
 grey, the value that changes nothing. The number beside it takes an exact
 value, so 0.5 can be typed rather than aimed at.
 
-## Starting from a picture
+## Save, clear, load
 
-**Open image...** loads a greyscale PNG, JPG, TGA or BMP into the layer,
-resampled to its resolution. Mid grey stays neutral, so a height map exported
-from somewhere else drops straight in and can then be painted on. **Clear**
-puts the layer back to doing nothing; the terrain under it is not touched.
+**Save image...** writes the layer as a **16-bit greyscale PNG** — mid grey
+where it does nothing, darker where it carves, lighter where it raises.
+Sixteen bits because eight is 256 steps of terrain height and the terracing
+shows the moment the layer is scaled up. It opens in any image editor.
+
+**Open image...** reads one back — 16-bit or 8-bit, PNG, JPG, TGA or BMP —
+resampled to the layer's resolution, mid grey still neutral. So a height map
+made anywhere else drops straight in, and a layer edited in Photoshop comes
+back exactly as it went out.
+
+**Clear** puts the layer back to doing nothing. The terrain under it is not
+touched: this resets the painting, not the shape.
+
+All three are scriptable, as `paint_save`, `paint_load` and `paint_clear`.
 
 ## The canvas
 

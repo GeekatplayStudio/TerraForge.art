@@ -1,11 +1,11 @@
 // Geekatplay TerraForge — the height painter. See paint_canvas.hpp.
 #include "paint_canvas.hpp"
+#include "paint_canvas_internal.hpp"
 #include "app.hpp"
 #include "graph_lease.hpp"
 #include "icons.hpp"
 #include "panel_float.hpp"
 #include "sculpt.hpp"
-#include "undo.hpp"
 #include <glad/gl.h>
 #include <algorithm>
 #include <cmath>
@@ -14,12 +14,7 @@
 #include <string>
 #include <vector>
 
-#define STB_IMAGE_STATIC
-#include <stb_image.h>
-
 namespace studio {
-
-std::string dialog_open_file(const char *filter, const char *def_ext);
 
 PaintCanvasState &paint_canvas() {
   static PaintCanvasState s;
@@ -28,20 +23,28 @@ PaintCanvasState &paint_canvas() {
 
 namespace {
 
-// The canvas texture. Rebuilt only when the painted layer can have changed -
-// a stroke, a different node, or an evaluation (which is what undo and an
-// image load both end in) - because a 512 canvas is a megabyte a time.
-struct CanvasTex {
-  unsigned tex = 0;
-  int w = 0, h = 0;
-  uint64_t node = 0;
-  uint64_t seen_eval = ~0ull;
-  bool dirty = true;
-  // A copy of the layer, so the readout under the canvas can name the value
-  // beneath the pointer without holding the graph while it does it. Taken
-  // when the picture is, which is the only time it can have changed.
-  std::vector<float> value;
-} g_tex;
+CanvasTex &g_tex = canvas_tex();
+
+// Note the ground a stroke covered, so only that is rebuilt next frame.
+void mark_brushed(PaintCanvasState &, float u0, float v0, float u1, float v1,
+                  float radius) {
+  if (g_tex.w <= 0 || g_tex.h <= 0) return;
+  const float pad = radius + 2.f / g_tex.w;
+  const float lo_u = std::min(u0, u1) - pad, hi_u = std::max(u0, u1) + pad;
+  const float lo_v = std::min(v0, v1) - pad, hi_v = std::max(v0, v1) + pad;
+  const int x0 = std::clamp((int)(lo_u * g_tex.w), 0, g_tex.w - 1);
+  const int x1 = std::clamp((int)(hi_u * g_tex.w) + 1, 0, g_tex.w - 1);
+  const int y0 = std::clamp((int)(lo_v * g_tex.h), 0, g_tex.h - 1);
+  const int y1 = std::clamp((int)(hi_v * g_tex.h) + 1, 0, g_tex.h - 1);
+  if (!g_tex.has_rect()) {
+    g_tex.rx0 = x0; g_tex.ry0 = y0; g_tex.rx1 = x1; g_tex.ry1 = y1;
+  } else {
+    g_tex.rx0 = std::min(g_tex.rx0, x0);
+    g_tex.ry0 = std::min(g_tex.ry0, y0);
+    g_tex.rx1 = std::max(g_tex.rx1, x1);
+    g_tex.ry1 = std::max(g_tex.ry1, y1);
+  }
+}
 
 // What the panel needs after it has let go of the graph. Everything below the
 // lease works from this: a gpx::Node* would be a pointer into a structure the
@@ -54,11 +57,7 @@ struct LayerInfo {
   bool valid = false;
 };
 
-// The layer's own field, whichever kind of node it belongs to.
-gpx::Attribute *layer_field(gpx::Node *n) {
-  if (!n) return nullptr;
-  return n->attrs.find(n->type == "MaskPaint" ? "strokes" : "delta");
-}
+
 
 void upload(const std::vector<uint8_t> &rgba, int w, int h) {
   if (!g_tex.tex) glGenTextures(1, &g_tex.tex);
@@ -80,6 +79,12 @@ void upload(const std::vector<uint8_t> &rgba, int w, int h) {
 // `terrain` tints it, so a river being drawn can be seen against the hills it
 // has to run between. It is a tint and not a blend: the grey has to stay
 // readable as a value, because that is the whole point of painting one.
+// Repaint only the texels a stroke touched. The colour of a texel depends on
+// nothing but itself, so a rectangle can be redone on its own - which is what
+// keeps a stroke costing a few thousand pixels instead of a megabyte a frame.
+void rebuild_rect(const gpx::Attribute *fa, const gpx::Heightmap *terrain,
+                  bool show_terrain, int x0, int y0, int x1, int y1);
+
 void rebuild(gpx::Node *n, const gpx::Attribute *fa, const gpx::Heightmap *terrain,
              bool show_terrain) {
   const int w = fa->fw, h = fa->fh;
@@ -117,207 +122,109 @@ void rebuild(gpx::Node *n, const gpx::Attribute *fa, const gpx::Heightmap *terra
   g_tex.value = fa->field;
   g_tex.node = n->id;
   g_tex.dirty = false;
+  g_tex.clear_rect();
 }
 
-// ------------------------------------------------------------------ toolbar
-struct ToolDef {
-  SculptTool tool;
-  Icon icon;
-  const char *id;   // "##" prefixed: IconButton draws its id as a label
-  const char *tip;
-};
-const ToolDef TOOLS[] = {
-    {SculptTool::Shade, Icon::Brush, "##t_shade",
-     "Paint a chosen grey.\nMid grey leaves the terrain alone, darker carves,\n"
-     "lighter raises. Going over the same ground again deepens\nthe stroke up "
-     "to the chosen value and then stops."},
-    {SculptTool::Raise, Icon::Raise, "##t_raise",
-     "Push the layer up under the brush, and down with Invert.\nUnlike Shade "
-     "this keeps going the longer you hold it."},
-    {SculptTool::Smooth, Icon::Smooth, "##t_smooth",
-     "Relax the painted layer toward its surroundings - the way\nto soften a "
-     "bank or blend a stroke into what it meets."},
-    {SculptTool::Erase, Icon::Erase, "##t_erase",
-     "Take the paint back out, down to the layer doing nothing.\nThe terrain "
-     "underneath is untouched, so this undoes\npainting rather than terrain."},
-};
-
-// The grey being painted, as a ramp of swatches plus the exact value. The
-// ramp is the control people reach for; the number is there because "0.5 is
-// neutral" is a fact worth being able to type.
-void shade_picker(SculptState &S) {
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("Shade");
-  ImGui::SameLine(54.f);
-  const float hgt = ImGui::GetFrameHeight();
-  const int N = 11;
-  ImDrawList *dl = ImGui::GetWindowDrawList();
-  for (int i = 0; i < N; ++i) {
-    const float g = i / float(N - 1);
-    ImGui::PushID(i);
-    const ImVec2 p = ImGui::GetCursorScreenPos();
-    if (ImGui::InvisibleButton("##sw", ImVec2(hgt, hgt))) S.shade = g;
-    const bool hot = std::fabs(S.shade - g) < 0.5f / (N - 1);
-    dl->AddRectFilled(p, ImVec2(p.x + hgt, p.y + hgt),
-                      IM_COL32((int)(g * 255), (int)(g * 255), (int)(g * 255), 255));
-    // mid grey is the one that means "no change", so it is marked
-    if (i == N / 2)
-      dl->AddRect(ImVec2(p.x + 2, p.y + 2), ImVec2(p.x + hgt - 2, p.y + hgt - 2),
-                  IM_COL32(217, 140, 51, 200));
-    if (hot)
-      dl->AddRect(p, ImVec2(p.x + hgt, p.y + hgt), IM_COL32(255, 255, 255, 255), 0, 0, 2.f);
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip(i == N / 2 ? "%.2f - mid grey: the layer does nothing here"
-                                   : "%.2f", g);
-    ImGui::PopID();
-    ImGui::SameLine(0, 2);
+// One texel's colour, shared by the whole rebuild and the rectangle one so
+// the two can never drift apart and leave a seam where a stroke was.
+inline void shade_texel(const gpx::Attribute *fa, const gpx::Heightmap *terrain,
+                        bool show_terrain, int x, int y, int w, int h, float lo,
+                        float span, float tmn, float tspan, uint8_t *out) {
+  const size_t i = (size_t)y * w + x;
+  float g = fa->field.empty() ? (0.f - lo) / span : (fa->field[i] - lo) / span;
+  g = std::clamp(g, 0.f, 1.f);
+  float r = g, gg = g, b = g;
+  if (show_terrain && terrain && !terrain->empty()) {
+    const float t = std::clamp(
+        (terrain->sample(x / float(w - 1), y / float(h - 1)) - tmn) / tspan, 0.f,
+        1.f);
+    r = std::clamp(g * (0.94f + 0.11f * t), 0.f, 1.f);
+    gg = std::clamp(g * (0.95f + 0.06f * t), 0.f, 1.f);
+    b = std::clamp(g * (1.02f - 0.09f * t), 0.f, 1.f);
   }
-  ImGui::SetNextItemWidth(90);
-  float mn = 0.f, mx = 1.f;
-  scalar_float("##shadev", &S.shade, mn, mx, false);
-  S.shade = std::clamp(S.shade, 0.f, 1.f);
+  out[0] = (uint8_t)(r * 255.f);
+  out[1] = (uint8_t)(gg * 255.f);
+  out[2] = (uint8_t)(b * 255.f);
+  out[3] = 255;
 }
 
-void toolbar(App &a, PaintCanvasState &C, const std::string &layer_name,
-             uint64_t layer_id) {
-  SculptState &S = sculpt_state();
-  const float bw = ImGui::GetFrameHeight() + 4.f;
-  for (const ToolDef &t : TOOLS) {
-    if (IconButton(t.icon, t.id, t.tip, S.tool == t.tool, bw))
-      S.tool = t.tool;
-    ImGui::SameLine();
-  }
-  Checkbox("Invert", &S.invert);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Raise digs instead. Shade is a value, so it ignores this.");
+void rebuild_rect(const gpx::Attribute *fa, const gpx::Heightmap *terrain,
+                  bool show_terrain, int x0, int y0, int x1, int y1) {
+  const int w = fa->fw, h = fa->fh;
+  if (g_tex.w != w || g_tex.h != h || !g_tex.tex) return; // caller falls back
+  x0 = std::clamp(x0, 0, w - 1);
+  x1 = std::clamp(x1, 0, w - 1);
+  y0 = std::clamp(y0, 0, h - 1);
+  y1 = std::clamp(y1, 0, h - 1);
+  if (x1 < x0 || y1 < y0) return;
+  const int rw = x1 - x0 + 1, rh = y1 - y0 + 1;
+  const float lo = fa->fmin;
+  const float span = (fa->fmax - lo) > 1e-9f ? (fa->fmax - lo) : 1.f;
+  float tmn = 0.f, tmx = 1.f;
+  if (terrain && !terrain->empty()) terrain->minmax(tmn, tmx);
+  const float tspan = (tmx - tmn) > 1e-9f ? (tmx - tmn) : 1.f;
 
-  // One number per row with the labels on a common column: scalar_float sets
-  // its own width (it reserves room for its - and + buttons), so it cannot be
-  // squeezed into a shared row from outside - three of them on one line put
-  // two of them past the right edge of the window.
-  const float label_col = 54.f;
-  auto num = [&](const char *label, const char *id, float *v, float mn, float mx,
-                 const char *tip) {
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(label);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
-    ImGui::SameLine(label_col);
-    scalar_float(id, v, mn, mx, false);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
-  };
-  float r0 = 0.005f, r1 = 0.5f, f0 = 0.3f, f1 = 8.f, w0 = 0.02f, w1 = 2.f;
-  num("Size", "##rad", &S.radius, r0, r1,
-      "The brush's width, as a fraction of the tile.");
-  // falloff is the brush profile's exponent: low is a wide soft shoulder,
-  // high is a nearly hard rim. Named for what it does, not for the maths.
-  num("Edge", "##fall", &S.falloff, f0, f1,
-      "Soft airbrush at the left, hard pen at the right.");
-  num("Flow", "##flow", &S.flow, w0, w1,
-      "How fast the stroke builds while the button is held.");
-
-  if (S.tool == SculptTool::Shade) shade_picker(S);
-
-  // second row: the layer, the picture, and what the canvas shows
-  ImGui::TextDisabled("Layer");
-  ImGui::SameLine();
-  if (layer_id) {
-    ImGui::TextUnformatted(layer_name.c_str());
-    ImGui::SameLine();
-    ImGui::TextDisabled("#%llu", (unsigned long long)layer_id);
-  } else {
-    ImGui::TextDisabled("none yet - the first stroke makes one");
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Open image...")) {
-    std::string p = dialog_open_file(
-        "Images\0*.png;*.jpg;*.jpeg;*.tga;*.bmp\0", "png");
-    if (!p.empty()) {
-      std::string err;
-      if (!paint_canvas_load_image(a, p, err)) C.last_error = err;
-      else C.last_error.clear();
-      g_tex.dirty = true;
-    }
-  }
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Load a greyscale picture into this layer, resampled to\n"
-                      "its resolution. Mid grey stays neutral, so a photo of a\n"
-                      "height map drops straight in.");
-  ImGui::SameLine();
-  if (ImGui::Button("Clear")) {
-    GraphLease lk(a);
-    gpx::Node *n = lk.owns_lock() ? a.graph.find_node(layer_id) : nullptr;
-    if (gpx::Attribute *fa = layer_field(n)) {
-      undo_push_locked(a, "clear painted layer");
-      fa->field.assign((size_t)fa->fw * fa->fh, 0.f);
-      a.graph.mark_dirty(n->id);
-      a.request_eval();
-      g_tex.dirty = true;
-    }
-  }
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Back to a layer that does nothing. The terrain under it\n"
-                      "is not touched.");
-  ImGui::SameLine();
-  if (Checkbox("Terrain under", &C.show_terrain)) g_tex.dirty = true;
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Tint the canvas with the shape coming in, so a river can\n"
-                      "be drawn between the hills it has to run through.");
-  if (!C.last_error.empty()) {
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.85f, 0.31f, 0.24f, 1.f), "%s", C.last_error.c_str());
-  }
+  std::vector<uint8_t> rgba((size_t)rw * rh * 4, 255);
+  for (int y = y0; y <= y1; ++y)
+    for (int x = x0; x <= x1; ++x)
+      shade_texel(fa, terrain, show_terrain, x, y, w, h, lo, span, tmn, tspan,
+                  &rgba[((size_t)(y - y0) * rw + (x - x0)) * 4]);
+  glBindTexture(GL_TEXTURE_2D, g_tex.tex);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, x0, y0, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE,
+                  rgba.data());
+  // keep the readout's copy in step with what is on screen
+  if (g_tex.value.size() == fa->field.size())
+    for (int y = y0; y <= y1; ++y)
+      std::copy(fa->field.begin() + (size_t)y * w + x0,
+                fa->field.begin() + (size_t)y * w + x1 + 1,
+                g_tex.value.begin() + (size_t)y * w + x0);
+  g_tex.clear_rect();
 }
 
 } // namespace
 
-bool paint_canvas_load_image(App &a, const std::string &path, std::string &err) {
-  int w = 0, h = 0, comp = 0;
-  unsigned char *px = stbi_load(path.c_str(), &w, &h, &comp, 1);
-  if (!px || w <= 0 || h <= 0) {
-    err = "could not read " + path;
-    if (px) stbi_image_free(px);
-    return false;
-  }
-  GraphLease lk(a);
-  if (!lk.owns_lock()) {
-    stbi_image_free(px);
-    err = "busy - try again";
-    return false;
-  }
-  gpx::Node *n = a.graph.find_node(sculpt_target_node(a));
-  gpx::Attribute *fa = layer_field(n);
-  if (!fa || fa->fw <= 0 || fa->fh <= 0) {
-    stbi_image_free(px);
-    err = "no layer to paint into";
-    return false;
-  }
-  undo_push_locked(a, "load painted layer");
-  fa->field.assign((size_t)fa->fw * fa->fh, 0.f);
-  const float lo = fa->fmin, hi = fa->fmax;
-  for (int y = 0; y < fa->fh; ++y)
-    for (int x = 0; x < fa->fw; ++x) {
-      // nearest is enough and keeps a hand-drawn mask's hard edges hard
-      const int sx = std::clamp(x * w / fa->fw, 0, w - 1);
-      const int sy = std::clamp(y * h / fa->fh, 0, h - 1);
-      const float g = px[(size_t)sy * w + sx] / 255.f;
-      fa->field[(size_t)y * fa->fw + x] = lo + g * (hi - lo);
-    }
-  stbi_image_free(px);
-  a.graph.mark_dirty(n->id);
-  a.request_eval();
-  return true;
+CanvasTex &canvas_tex() {
+  static CanvasTex t;
+  return t;
 }
 
+gpx::Attribute *layer_field(gpx::Node *n) {
+  if (!n) return nullptr;
+  return n->attrs.find(n->type == "MaskPaint" ? "strokes" : "delta");
+}
+
+void paint_canvas_invalidate() { canvas_tex().dirty = true; }
+
+
 void draw_panel_paint_canvas(App &a) {
-  if (!a.show_paint_canvas) return;
+  if (!a.show_paint_canvas) {
+    paint_canvas().was_shown = false;
+    return;
+  }
   PaintCanvasState &C = paint_canvas();
   ImGui::SetNextWindowSize(ImVec2(720, 640), ImGuiCond_FirstUseEver);
+  // Opening it has to show it. Docked into a tab beside other panels, a
+  // window that is merely "visible" can be behind one of them, so switching
+  // it on from the menu appears to do nothing at all.
+  if (!C.was_shown) ImGui::SetNextWindowFocus();
+  C.was_shown = true;
   panel_float_prepare(a, "Height Paint");
   if (!ImGui::Begin("Height Paint", &a.show_paint_canvas)) {
     ImGui::End();
     return;
   }
   panel_float_controls(a, "Height Paint");
+
+  // [ and ] resize the brush, as in every painting application. Photoshop's
+  // direction: [ smaller, ] larger. Geometric steps, so the key does the same
+  // proportional thing at a hairline and at half the tile.
+  if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
+    SculptState &S = sculpt_state();
+    if (ImGui::IsKeyPressed(ImGuiKey_LeftBracket, true))
+      S.radius = std::max(S.radius / 1.15f, 0.002f);
+    if (ImGui::IsKeyPressed(ImGuiKey_RightBracket, true))
+      S.radius = std::min(S.radius * 1.15f, 1.f);
+  }
 
   // The painter opens on Shade. The brush state is shared with viewport
   // sculpting, where Raise is the right default and must stay it - so this is
@@ -359,11 +266,22 @@ void draw_panel_paint_canvas(App &a) {
         C.node = n->id;
         L = {n->id, gpx::node_display_name(n->type), fa->fw, fa->fh, fa->fmin,
              fa->fmax, true};
-        if (g_tex.dirty || g_tex.node != n->id || g_tex.w != fa->fw ||
-            g_tex.seen_eval != a.eval_serial) {
+        const gpx::Heightmap *under =
+            C.show_terrain ? n->in_hmap("input") : nullptr;
+        const bool whole = g_tex.dirty || g_tex.node != n->id ||
+                           g_tex.w != fa->fw || g_tex.h != fa->fh;
+        if (whole) {
           g_tex.seen_eval = a.eval_serial;
-          rebuild(n, fa, C.show_terrain ? n->in_hmap("input") : nullptr,
-                  C.show_terrain);
+          rebuild(n, fa, under, C.show_terrain);
+        } else if (g_tex.has_rect()) {
+          // mid-stroke: only the ground the brush covered
+          rebuild_rect(fa, under, C.show_terrain, g_tex.rx0, g_tex.ry0,
+                       g_tex.rx1, g_tex.ry1);
+          g_tex.seen_eval = a.eval_serial;
+        } else if (g_tex.seen_eval != a.eval_serial) {
+          // something else changed the layer - an undo, a load, a script
+          g_tex.seen_eval = a.eval_serial;
+          rebuild(n, fa, under, C.show_terrain);
         }
       }
     } else if (g_tex.node) {
@@ -372,7 +290,7 @@ void draw_panel_paint_canvas(App &a) {
     }
   }
 
-  toolbar(a, C, L.valid ? L.name : std::string(), L.node);
+  paint_toolbar(a, C, L.valid ? L.name : std::string(), L.node);
   ImGui::Separator();
 
   if (!L.valid) {
@@ -435,27 +353,17 @@ void draw_panel_paint_canvas(App &a) {
   static float last_u = 0.f, last_v = 0.f;
   if (hovered && on_canvas && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
     const float cu = std::clamp(u, 0.f, 1.f), cv = std::clamp(v, 0.f, 1.f);
-    const float dt = ImGui::GetIO().DeltaTime;
-    // Stamp along the way, not just where the pointer ended up. The brush
-    // lands once per frame, so a hand moving at any speed leaves a row of
-    // separate dabs with gaps between them instead of a stroke. Stepping at a
-    // third of the brush's width is close enough that the dabs overlap into a
-    // line, and the frame's worth of flow is divided between them so drawing
-    // fast does not also draw harder.
-    const float step = std::max(sculpt_state().radius / 3.f, 1.f / 512.f);
-    const float dist = painting ? std::sqrt((cu - last_u) * (cu - last_u) +
-                                            (cv - last_v) * (cv - last_v))
-                                : 0.f;
-    const int n = std::clamp((int)(dist / step), 1, 64);
-    for (int i = 1; i <= n; ++i) {
-      const float t = painting ? (float)i / n : 1.f;
-      sculpt_apply(a, last_u + (cu - last_u) * t, last_v + (cv - last_v) * t,
-                   dt / n);
-    }
+    // The whole segment the pointer covered, in one call: the brush stamps
+    // along it under a single lock rather than one lock, dirty walk and
+    // worker wake-up per dab.
+    if (!painting) { last_u = cu; last_v = cv; }
+    sculpt_apply_segment(a, last_u, last_v, cu, cv, ImGui::GetIO().DeltaTime);
+    // Only the ground the brush covered needs re-uploading; rebuilding the
+    // whole canvas is a megabyte a frame for a stroke that touched a circle.
+    mark_brushed(C, last_u, last_v, cu, cv, sculpt_state().radius);
     last_u = cu;
     last_v = cv;
     painting = true;
-    g_tex.dirty = true;
   } else if (painting && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
     sculpt_end_stroke(a);
     painting = false;

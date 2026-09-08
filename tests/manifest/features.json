@@ -1545,6 +1545,22 @@
       "description": "SculptTool::Shade paints toward a chosen value rather than accumulating: going over the same ground deepens the stroke up to that grey and then stops, which is what makes a level riverbed or a flat plateau paintable. The value is a fraction of the field's own range, so one swatch means the same thing on a -1..1 sculpt and a 0..1 mask",
       "test_file": "test_imprint.cpp",
       "test_symbol": "test_imprint_run"
+    },
+    {
+      "id": "paint.save_load",
+      "area": "studio",
+      "phase": "41",
+      "description": "The painted layer saves as a 16-bit greyscale PNG and loads back at that precision - mid grey neutral, so it round-trips through any image editor. Sixteen bits because eight is 256 steps of terrain height and the terracing shows once the layer is scaled. Written with miniz (studio/png16.cpp) since stb_image_write only emits 8; paint_save, paint_load and paint_clear make all three scriptable",
+      "test_file": "test_imprint.cpp",
+      "test_symbol": "test_imprint_run"
+    },
+    {
+      "id": "paint.stroke_cost",
+      "area": "studio",
+      "phase": "41",
+      "description": "A stroke is stamped along the segment the pointer covered inside one graph lock, with one dirty mark and one evaluation request per frame rather than per dab, and only the brushed rectangle of the canvas texture is re-uploaded instead of the whole megabyte. Bracket keys resize the brush in proportional steps",
+      "test_file": "test_imprint.cpp",
+      "test_symbol": "test_imprint_run"
     }
   ]
 }

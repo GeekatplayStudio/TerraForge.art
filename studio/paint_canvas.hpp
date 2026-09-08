@@ -26,12 +26,24 @@ struct PaintCanvasState {
   // Where the view is centred, in 0..1 canvas coordinates.
   float pan_x = 0.5f, pan_y = 0.5f;
   bool show_terrain = true;   // tint the canvas with the terrain underneath
+  // Whether the window was up last frame, so opening it can raise it above
+  // whatever it shares a dock with.
+  bool was_shown = false;
   std::string last_error;
 };
 PaintCanvasState &paint_canvas();
 
 // The window. Toggled by App::show_paint_canvas.
 void draw_panel_paint_canvas(App &a);
+
+// Write the painted layer out as a 16-bit greyscale PNG, and read one back.
+// Mid grey is the value that does nothing, so a height map round-trips through
+// any image editor.
+bool paint_canvas_save_image(App &a, const std::string &path, std::string &err);
+
+// Tell the canvas its picture is stale - for anything that changes the layer
+// from outside the panel (a script, an undo, a load).
+void paint_canvas_invalidate();
 
 // Load a greyscale picture into the painted layer, resampled to the field.
 // Returns false and fills `err` if the file cannot be read.

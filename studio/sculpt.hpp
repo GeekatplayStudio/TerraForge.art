@@ -45,6 +45,13 @@ SculptState &sculpt_state();
 // Returns true if the terrain changed (caller requests an eval).
 bool sculpt_apply(App &a, float tx, float tz, float dt);
 
+// The same, along the segment the pointer covered this frame. Prefer it
+// wherever the previous position is known: it stamps the whole segment under
+// one lock with one dirty mark and one evaluation request, where calling
+// sculpt_apply per point pays all three per dab.
+bool sculpt_apply_segment(App &a, float u0, float v0, float u1, float v1,
+                          float dt);
+
 // Called when the mouse is released: ends the stroke.
 void sculpt_end_stroke(App &a);
 

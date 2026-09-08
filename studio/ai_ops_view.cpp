@@ -13,7 +13,10 @@
 #include "ai_assist.hpp"
 #include "app.hpp"
 #include "prefs.hpp"
+#include "graph_lease.hpp"
+#include "paint_canvas.hpp"
 #include "render_settings.hpp"
+#include "undo.hpp"
 #include <algorithm>
 #include <json.hpp>
 #include <map>
@@ -153,6 +156,52 @@ int ai_view_op(App &a, const std::string &op, const json &act,
       }
     err = "show_panel: no panel called '" + want + "'";
     return 0;
+  }
+
+  // The painted height layer as a file. Scriptable because importing a real
+  // height map, or handing one to somebody else, is not a thing that should
+  // require a mouse - and because it is the only way to test the round trip.
+  if (op == "paint_save" || op == "paint_load") {
+    const std::string path = act.value("path", std::string());
+    if (path.empty()) {
+      err = op + ": needs a path";
+      return 0;
+    }
+    std::string e;
+    const bool ok = op == "paint_save" ? paint_canvas_save_image(a, path, e)
+                                       : paint_canvas_load_image(a, path, e);
+    if (!ok) {
+      err = op + ": " + e;
+      return 0;
+    }
+    a.status = (op == "paint_save" ? "wrote " : "loaded ") + path;
+    return 1;
+  }
+
+  if (op == "paint_clear") {
+    GraphLease lk(a);
+    if (!lk.owns_lock()) {
+      err = "paint_clear: busy";
+      return 0;
+    }
+    gpx::Node *n = a.graph.find_node(paint_canvas().node);
+    if (!n) {
+      for (auto &c : a.graph.nodes)
+        if (c->type == "TerrainSculpt" || c->type == "MaskPaint") n = c.get();
+    }
+    gpx::Attribute *fa =
+        n ? n->attrs.find(n->type == "MaskPaint" ? "strokes" : "delta") : nullptr;
+    if (!fa) {
+      err = "paint_clear: nothing painted";
+      return 0;
+    }
+    undo_push_locked(a, "clear painted layer");
+    fa->field.assign((size_t)fa->fw * fa->fh, 0.f);
+    a.graph.mark_dirty(n->id);
+    a.request_eval();
+    paint_canvas_invalidate();
+    a.status = "painted layer cleared";
+    return 1;
   }
 
   if (op != "set_viewport") return -1;
