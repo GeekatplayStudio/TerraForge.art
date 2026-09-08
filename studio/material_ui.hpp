@@ -57,6 +57,11 @@ void material_channel_row(App &a, gpx::Node *mat, const char *port,
 bool material_surface_ui(App &a, gpx::Node *mat, float label_w);
 // One attribute as the widget its type wants (material_channel_ui.cpp).
 void material_attr_widget(App &a, gpx::Node *n, const char *key, float label_w);
+// The widest a value control gets in the material panels. A slider spanning
+// a 1200 px window is a ruler, not a control - a pixel of travel is a change
+// too small to see - and it puts the value half a screen from the preview
+// it changes.
+constexpr float MATERIAL_SLIDER_MAX_W = 340.f;
 
 // Vue's channel block (material_channel_ui.cpp): the Mode combo and what the
 // mode needs - picture controls, the function's parameters and preview, or

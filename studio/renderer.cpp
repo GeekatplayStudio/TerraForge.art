@@ -336,7 +336,17 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   static ViewCache cache[SLOT_COUNT];
   auto &cached = cache[slot];
   double now = ImGui::GetTime();
-  if (slot < RenderSettings::MAX_VIEWS && slot != app().view_focus &&
+  const bool secondary = slot < RenderSettings::MAX_VIEWS && slot != app().view_focus;
+  // While a value is being dragged, only the focused view follows it. The
+  // others keep their last picture and catch up when the hand stops: a drag
+  // that re-evaluates the terrain every frame was redrawing every open view
+  // every frame, so four viewports meant the one you were watching ran at a
+  // quarter of the rate, and all of them refreshed visibly in step with it.
+  const bool settling = app().eval_interactive.load() ||
+                        (ImGui::IsAnyItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left));
+  if (secondary && settling && cached.texture && cached.width == w && cached.height == h)
+    return cached.texture;
+  if (secondary &&
       cached.texture && cached.width == w && cached.height == h &&
       cached.revision == view_revision &&
       cached.terrain == g_shadow_revision && cached.config == vc &&

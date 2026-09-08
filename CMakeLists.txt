@@ -185,6 +185,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_quilt.cpp
     engine/nodes/nodes_noise_extra.cpp
     engine/nodes/nodes_warp.cpp
+    engine/nodes/nodes_tile.cpp
     engine/nodes/nodes_texture.cpp
     engine/nodes/nodes_materials.cpp
     engine/nodes/nodes_pbr_library.cpp
@@ -321,6 +322,8 @@ set(STUDIO_SOURCES
     studio/toolbar_menus.cpp
     studio/console_cmd.cpp
     studio/console_shorthand.cpp
+    studio/gradient_library.cpp
+    studio/material_presets.cpp
     studio/imprint.cpp
     studio/updater.cpp
     studio/mesh_thumbnail.cpp

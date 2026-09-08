@@ -68,6 +68,7 @@ const char *const COMMON_OPS[] = {
     "select_node",   "find_nodes",    "set_resolution", "clear_graph",
     "evaluate",      "graph",         "import_object",  "import_mesh",
     "assign_material", "set_material", "open_material", "list_materials",
+    "preset_material",
     "add_camera",    "set_camera",    "set_workspace",  "show_panel",
     "set_viewport",  "save_layout",   "load_layout",    "arrange_views",
     "set_sun",       "set_sky",       "set_fog",        "set_water",

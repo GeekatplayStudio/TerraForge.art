@@ -11,6 +11,7 @@
 #include "graph_lease.hpp"
 #include "asset_store.hpp"
 #include "material_library.hpp"
+#include "material_presets.hpp"
 #include "material_ui.hpp"
 #include "panel_float.hpp"
 #include "render_settings.hpp"
@@ -19,6 +20,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <imgui.h>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -138,13 +140,51 @@ void trash_library_material(LibraryMaterial &m) {
   material_library_rescan();
 }
 
+// The base materials: made, not loaded, so they are always here. Click makes
+// one and opens it; right-click makes one and puts it on the selected object.
+void base_materials_strip(App &a) {
+  ImGui::TextDisabled("Base materials");
+  const char *last_group = nullptr;
+  for (const MaterialPresetInfo &p : material_presets()) {
+    if (!last_group || std::strcmp(p.group, last_group) != 0) {
+      if (last_group) ImGui::NewLine();
+      ImGui::TextDisabled("%s:", p.group);
+      last_group = p.group;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton(p.name)) {
+      std::string err;
+      if (uint64_t id = material_preset_create(a, p.name, err)) {
+        material_studio_open(a, id);
+        a.status = std::string("base material: ") + p.name;
+      } else {
+        a.status = "base material: " + err;
+      }
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("%s\n\nClick: make it and open it in the studio.\n"
+                        "Right-click: make it and assign it to the selected object.",
+                        p.blurb);
+    if (ImGui::BeginPopupContextItem()) {
+      if (ImGui::MenuItem("Make and assign to the selected object")) {
+        std::string err;
+        if (uint64_t id = material_preset_create(a, p.name, err)) assign_to_selected(a, id);
+        else a.status = "base material: " + err;
+      }
+      ImGui::EndPopup();
+    }
+  }
+  ImGui::Separator();
+}
+
 void library_tab(App &a, float cell) {
+  base_materials_strip(a);
   auto &lib = material_library();
   if (ImGui::SmallButton("Rescan")) material_library_rescan();
   ImGui::SameLine();
-  ImGui::TextDisabled("%zu in %s", lib.size(), material_library_dir().c_str());
+  ImGui::TextDisabled("%zu saved in %s", lib.size(), material_library_dir().c_str());
   if (lib.empty()) {
-    ImGui::TextDisabled("The library is empty - Save in the studio starts it.");
+    ImGui::TextDisabled("Nothing saved yet - Save in the studio starts it.");
     return;
   }
   float avail = ImGui::GetContentRegionAvail().x;

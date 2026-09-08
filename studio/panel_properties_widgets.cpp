@@ -59,7 +59,7 @@ static void extend_float(float *v, float &mn, float &mx, bool pushed_lo,
 
 // float row: [-] [slider-look drag: click types, drag slides, wheel steps] [+]
 bool scalar_float(const char *id, float *v, float &mn, float &mx,
-                  bool log_scale) {
+                  bool log_scale, float width) {
   bool changed = false;
   float step = (mx - mn) / 200.f;   // wheel/button step: slow, fine control
   ImGui::PushID(id);
@@ -69,7 +69,8 @@ bool scalar_float(const char *id, float *v, float &mn, float &mx,
     changed = true;
   }
   ImGui::SameLine(0, 2);
-  ImGui::SetNextItemWidth(-btn - 2);
+  // a caller's cap is for the whole row, so the two buttons come out of it
+  ImGui::SetNextItemWidth(width > 0.f ? width - (btn + 2.f) * 2.f : -btn - 2);
   slider_fill(*v, mn, mx);
   ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
   ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1, 1, 1, 0.06f));
@@ -103,7 +104,7 @@ bool scalar_float(const char *id, float *v, float &mn, float &mx,
   return changed;
 }
 
-bool scalar_int(const char *id, int *v, int &mn, int &mx) {
+bool scalar_int(const char *id, int *v, int &mn, int &mx, float width) {
   bool changed = false;
   int step = std::max(1, (mx - mn) / 200);
   ImGui::PushID(id);
@@ -113,7 +114,7 @@ bool scalar_int(const char *id, int *v, int &mn, int &mx) {
     changed = true;
   }
   ImGui::SameLine(0, 2);
-  ImGui::SetNextItemWidth(-btn - 2);
+  ImGui::SetNextItemWidth(width > 0.f ? width - (btn + 2.f) * 2.f : -btn - 2);
   slider_fill((float)*v, (float)mn, (float)mx);
   ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
   ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1, 1, 1, 0.06f));

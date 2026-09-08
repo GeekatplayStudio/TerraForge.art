@@ -6,6 +6,8 @@
 // whole run, and a panel that blocks on it blinks out while you are dragging
 // a value.
 #include "app.hpp"
+#include "console.hpp"
+#include "gradient_library.hpp"
 #include "ai_assist.hpp"
 #include "node_library.hpp"
 #include "undo.hpp"
@@ -27,7 +29,6 @@ namespace studio {
 
 // studio/panel_properties_widgets.cpp — one row's worth of widget each.
 void show_attr_tooltip(const gpx::Attribute &at);
-bool scalar_int(const char *id, int *v, int &mn, int &mx);
 bool object_ref_combo(gpx::Attribute &at);
 // scalar_float is declared in app.hpp: prop_lengths.hpp uses it too.
 
@@ -147,6 +148,79 @@ bool draw_attribute(gpx::Attribute &at) {
         s.t = std::min(s.t + 0.1f, 1.f);
         at.stops.push_back(s);
         changed = true;
+      }
+      // The library: the built-in natural gradients and the user's own.
+      // Picking one replaces the stops; Save keeps the current stops under a
+      // name, so a look arrived at once is arrived at once.
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(150);
+      if (ImGui::BeginCombo("##gradlib", "Library...")) {
+        const char *last_group = nullptr;
+        for (const GradientPreset &p : gradient_library()) {
+          const char *group = p.builtin ? "Natural" : "Saved";
+          if (!last_group || std::strcmp(group, last_group) != 0) {
+            if (last_group) ImGui::Separator();
+            ImGui::TextDisabled("%s", group);
+            last_group = group;
+          }
+          // the gradient drawn as a strip beside its name, so it is chosen by
+          // eye rather than by name
+          ImVec2 sp = ImGui::GetCursorScreenPos();
+          const float sw = 48.f, sh = ImGui::GetTextLineHeight();
+          ImDrawList *cdl = ImGui::GetWindowDrawList();
+          for (int i = 0; i < 16; ++i) {
+            float t = (i + 0.5f) / 16.f, rgb[3] = {t, t, t};
+            for (size_t k = 0; k + 1 < p.stops.size(); ++k)
+              if (t >= p.stops[k].t && t <= p.stops[k + 1].t) {
+                float f = (t - p.stops[k].t) / std::max(p.stops[k + 1].t - p.stops[k].t, 1e-6f);
+                rgb[0] = p.stops[k].r + (p.stops[k + 1].r - p.stops[k].r) * f;
+                rgb[1] = p.stops[k].g + (p.stops[k + 1].g - p.stops[k].g) * f;
+                rgb[2] = p.stops[k].b + (p.stops[k + 1].b - p.stops[k].b) * f;
+              }
+            if (t < p.stops.front().t) { rgb[0] = p.stops.front().r; rgb[1] = p.stops.front().g; rgb[2] = p.stops.front().b; }
+            if (t > p.stops.back().t) { rgb[0] = p.stops.back().r; rgb[1] = p.stops.back().g; rgb[2] = p.stops.back().b; }
+            cdl->AddRectFilled(ImVec2(sp.x + i * sw / 16.f, sp.y),
+                               ImVec2(sp.x + (i + 1) * sw / 16.f, sp.y + sh),
+                               IM_COL32((int)(rgb[0] * 255), (int)(rgb[1] * 255), (int)(rgb[2] * 255), 255));
+          }
+          ImGui::Dummy(ImVec2(sw, sh));
+          ImGui::SameLine();
+          if (ImGui::Selectable((p.name + "##g").c_str())) {
+            at.stops = p.stops;
+            changed = true;
+          }
+          if (!p.builtin && ImGui::BeginPopupContextItem()) {
+            if (ImGui::MenuItem("Delete this saved gradient")) {
+              std::string err;
+              gradient_library_erase(p.name, err);
+              ImGui::EndPopup();
+              break; // the list just changed under us
+            }
+            ImGui::EndPopup();
+          }
+        }
+        ImGui::EndCombo();
+      }
+      ImGui::SameLine();
+      if (ImGui::SmallButton("Save...")) ImGui::OpenPopup("save_gradient");
+      if (ImGui::BeginPopup("save_gradient")) {
+        static char gname[64] = "";
+        ImGui::TextUnformatted("Save this gradient as:");
+        ImGui::SetNextItemWidth(220);
+        // once, as the popup appears - every frame would hold the field
+        // active and no button here could be pressed
+        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+        const bool entered = ImGui::InputText("##gname", gname, sizeof gname,
+                                              ImGuiInputTextFlags_EnterReturnsTrue);
+        if (ImGui::Button("Save") || entered) {
+          std::string err;
+          if (gradient_library_save(gname, at.stops, err).empty())
+            log_error("gradients", err);
+          ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
       }
     } break;
     case gpx::AttrType::Filename: {

@@ -110,15 +110,22 @@ void material_attr_widget(App &a, gpx::Node *n, const char *key, float label_w) 
     ImGui::TextUnformatted(at->label.c_str());
     if (ImGui::IsItemHovered() && !at->tooltip.empty()) ImGui::SetTooltip("%s", at->tooltip.c_str());
     ImGui::SameLine(col);
-    ImGui::SetNextItemWidth(-1.f);
   }
+  // A slider is a control, not a ruler: past ~340 px a pixel of travel is a
+  // change too small to see, and the value ends up half a screen from the
+  // preview it changes. The rest of the line is left as air.
+  const float w = std::min(ImGui::GetContentRegionAvail().x, MATERIAL_SLIDER_MAX_W);
+  if (!own_label) ImGui::SetNextItemWidth(w);
   switch (at->type) {
   case gpx::AttrType::Float:
-    changed = ImGui::SliderFloat("##v", &at->f, at->fmin, at->fmax, "%.3f",
-                                 at->log_scale ? ImGuiSliderFlags_Logarithmic : 0);
+    // The Properties editor's own widget rather than a bare SliderFloat: the
+    // wheel adjusts it (and is claimed, so the panel does not scroll under
+    // the pointer), - and + step it, and the range grows if a typed value is
+    // past it. One float control, the same everywhere.
+    changed = scalar_float("v", &at->f, at->fmin, at->fmax, at->log_scale, w);
     break;
   case gpx::AttrType::Int:
-    changed = ImGui::SliderInt("##v", &at->i, at->imin, at->imax);
+    changed = scalar_int("i", &at->i, at->imin, at->imax, w);
     break;
   case gpx::AttrType::Bool:
     changed = studio::Checkbox(at->label.c_str(), &at->b);
@@ -150,6 +157,14 @@ void material_attr_widget(App &a, gpx::Node *n, const char *key, float label_w) 
     if (ImGui::InputText("##v", buf, sizeof buf)) { at->s = buf; changed = true; }
     break;
   }
+  case gpx::AttrType::Gradient:
+    // The Properties editor's gradient widget - the strip, the stops, and
+    // the gradient library with its natural presets. A fractal colour's map
+    // was not editable from the studio at all before this; it silently fell
+    // through to nothing.
+    ImGui::NewLine();
+    changed = draw_attribute(*at);
+    break;
   default:
     break;
   }

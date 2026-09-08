@@ -6,6 +6,7 @@
 // selected. The graph stays the truth - every control here edits a node -
 // which is why the node editor sits directly below this window.
 #include "app.hpp"
+#include "console.hpp"
 #include "graph_lease.hpp"
 #include "icons.hpp"
 #include "gpx/serialization.hpp"
@@ -318,6 +319,10 @@ void draw_panel_material_studio(App &a) {
   MaterialStudioState &st = material_studio();
   GraphLease lk(a);
   if (!lk.owns_lock()) {
+    // Counted, because this frame is the flicker: the panel's body is gone
+    // for it. The lease waits through a drag now, so this should be rare;
+    // if the log fills with it, the wait is too short for the evaluation.
+    log_trace("studio", "material studio skipped a frame (graph busy)");
     ImGui::TextDisabled("computing...");
     ImGui::End();
     return;
@@ -337,12 +342,14 @@ void draw_panel_material_studio(App &a) {
     }
   }
 
-  // Top: the preview on the left, the header and the hierarchy in the
-  // middle, the stored previews on the right; the tabs beneath. Every
-  // measure follows the window and the font: the preview is a share of the
-  // width (within limits), the top band is as tall as the preview and its
-  // controls need, and the hierarchy takes what the header leaves. The
-  // band's height can be dragged; nothing is ever drawn where it cannot fit.
+  // The preview down the whole left side; everything else in a column to its
+  // right - the header and the hierarchy in a band across the top, the stored
+  // previews at the band's right end, and the tabs beneath, which are the
+  // only thing that scrolls. The preview used to sit in the top band only, so
+  // with the tabs scrolled to a slider it was off the top of the window: you
+  // changed a value and could not see what it did. Now it is always beside the
+  // control being moved. Every measure follows the window and the font; the
+  // band's height can be dragged; nothing is drawn where it cannot fit.
   const ImGuiStyle &sty = ImGui::GetStyle();
   const float fh = ImGui::GetFrameHeightWithSpacing();
   const float avail_w = ImGui::GetContentRegionAvail().x;
@@ -353,11 +360,13 @@ void draw_panel_material_studio(App &a) {
   const float top_h = std::max(preview_h, fh * 5.f + 60.f) + band_extra;
   const float right_w = std::clamp(avail_w * 0.14f, 90.f, 180.f);
 
-  ImGui::BeginChild("##left", ImVec2(left_w, top_h), ImGuiChildFlags_AlwaysUseWindowPadding,
+  ImGui::BeginChild("##left", ImVec2(left_w, 0), ImGuiChildFlags_AlwaysUseWindowPadding,
                     ImGuiWindowFlags_NoScrollbar);
   preview(a, st, mat, side);
   ImGui::EndChild();
   ImGui::SameLine();
+  ImGui::BeginChild("##column", ImVec2(0, 0), ImGuiChildFlags_None,
+                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
   ImGui::BeginChild("##mid", ImVec2(-right_w, top_h), ImGuiChildFlags_AlwaysUseWindowPadding,
                     ImGuiWindowFlags_NoScrollbar);
   header(a, st, mat);
@@ -383,12 +392,13 @@ void draw_panel_material_studio(App &a) {
                                                                                   : ImGuiCol_Separator));
   }
 
-  // bottom: the tabs of the selected hierarchy line
+  // bottom: the tabs of the selected hierarchy line - the scrolling part
   ImGui::BeginChild("##tabs", ImVec2(0, 0));
   if (mat) material_tabs_ui(a, mat);
   else
     ImGui::TextDisabled("No material in the project yet. Press New, or load one from the browser below.");
   ImGui::EndChild();
+  ImGui::EndChild(); // ##column
 
   zoom_window(a, st, mat);
   save_prompt(a, st);

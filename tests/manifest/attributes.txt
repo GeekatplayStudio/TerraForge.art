@@ -1455,6 +1455,13 @@ Thermal.talus|float
 Threshold.invert|bool
 Threshold.level|float
 Threshold.softness|float
+TileRotate.across|int
+TileRotate.blend_invert|bool
+TileRotate.down|int
+TileRotate.feather|float
+TileRotate.seed|seed
+TileRotate.turn|choice
+TileRotate.whole|choice
 TimeRemap.loop|float
 TimeRemap.offset|float
 TimeRemap.pingpong|bool

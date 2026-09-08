@@ -239,6 +239,7 @@ TextureTransform|Material
 Thermal|Erosion
 Threshold|Logic
 Thru|Logic
+TileRotate|Transform
 TimeRemap|Animation
 Transform|Transform
 VolumetricLight|Light

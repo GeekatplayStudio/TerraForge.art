@@ -2,6 +2,7 @@
 // the assistant, the Python API and MCP can do what the two panels do.
 #include "app.hpp"
 #include "material_library.hpp"
+#include "material_presets.hpp"
 #include "material_ui.hpp"
 #include "scene.hpp"
 #include "undo.hpp"
@@ -42,6 +43,35 @@ gpx::Node *resolve_material(App &a, const json &act, std::string &err) {
 
 int ai_material_op(App &a, const std::string &op, const json &act,
                    std::string &err) {
+  if (op == "preset_material") {
+    // One of the base materials, made in the graph; "object" assigns it too.
+    const std::string name = act.value("name", std::string());
+    if (name.empty()) {
+      std::string all;
+      for (const MaterialPresetInfo &p : material_presets())
+        all += (all.empty() ? "" : ", ") + std::string(p.name);
+      err = "preset_material needs a name: " + all;
+      return 0;
+    }
+    const uint64_t id = material_preset_create(a, name, err);
+    if (!id) return 0;
+    const std::string want = act.value("object", std::string());
+    if (!want.empty()) {
+      int hits = 0;
+      for (SceneObject &o : scene().objects)
+        if (o.name == want) {
+          o.material_node = id;
+          ++hits;
+        }
+      if (!hits) {
+        err = "preset_material: made '" + name + "', but no object named '" + want + "'";
+        return 0;
+      }
+    }
+    a.status = "base material: " + name;
+    return 1;
+  }
+
   if (op == "open_material") {
     gpx::Node *m = resolve_material(a, act, err);
     if (!m) return 0;

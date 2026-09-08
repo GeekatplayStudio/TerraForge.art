@@ -56,6 +56,29 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
                        "selected object.",
         "params": {"name": "str", "open": "bool", "assign": "bool"},
     },
+    "studio_preset_material": {
+        "description": "Make one of the base materials in the graph - Basic "
+                       "Color, Mirror, Wax, Slime, Metal, Copper, Gold, Iron, "
+                       "Glass, Water, Ice, Smoke, Glow, Ground, Sand, Rock, "
+                       "Snow, Swamp, Displacement rock, Displacement ground - "
+                       "and optionally assign it to a named object.",
+        "params": {"name": "str", "object": "str"},
+    },
+    "studio_paint_save": {
+        "description": "Save the Height Paint layer (the terrain's painted "
+                       "sculpt, as 16-bit greyscale PNG) to a path.",
+        "params": {"path": "str"},
+    },
+    "studio_paint_load": {
+        "description": "Load a greyscale image into the Height Paint layer: mid "
+                       "grey leaves the terrain alone, darker carves, lighter "
+                       "raises.",
+        "params": {"path": "str"},
+    },
+    "studio_paint_clear": {
+        "description": "Reset the Height Paint layer to mid grey (no effect).",
+        "params": {},
+    },
     "studio_ai_generate_texture": {
         "description": "Generate a seamless tileable texture from a prompt with "
                        "the configured image provider (ComfyUI, OpenAI Images, "
@@ -190,6 +213,10 @@ ASSET_SIMPLE = {
     "studio_set_material": "set_material",
     "studio_save_material": "save_material",
     "studio_load_material": "load_material",
+    "studio_preset_material": "preset_material",
+    "studio_paint_save": "paint_save",
+    "studio_paint_load": "paint_load",
+    "studio_paint_clear": "paint_clear",
     "studio_ai_generate_texture": "ai_generate_texture",
     "studio_ai_generate_skydome": "ai_generate_skydome",
     "studio_ai_generate_image": "ai_generate_image",

@@ -34,6 +34,10 @@ struct App;
 // for any evaluation a person could trigger while pointing at a dropdown,
 // short enough that a runaway bake costs frame rate rather than the session.
 constexpr int GRAPH_LEASE_WAIT_MS = 250;
+// While a widget is being dragged: about two frames, enough to cover an
+// interactive-resolution evaluation and short enough that a slow one costs
+// a stutter rather than a stall.
+constexpr int GRAPH_LEASE_DRAG_MS = 40;
 
 class GraphLease {
 public:

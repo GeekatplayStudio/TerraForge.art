@@ -158,6 +158,7 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    color_reflected, color_transmitted)
 - {"op":"save_material","material":"Mossy rock"}  (to the library, with thumbnail)
 - {"op":"load_material","name":"Mossy rock","open":true,"assign":false}
+- {"op":"preset_material","name":"Copper","object":"Cube"}  (a base material, made in the graph: Basic Color, Mirror, Wax, Slime, Metal, Copper, Gold, Iron, Glass, Water, Ice, Smoke, Glow, Ground, Sand, Rock, Snow, Swamp, Displacement rock, Displacement ground; "object" also assigns it)
 - {"op":"ai_generate_texture","prompt":"wet mossy granite","apply":true,
    "material":"Mossy rock","channel":"base color","provider":"comfyui","width":1024,"seed":0}
    (a seamless tileable texture; apply connects it to the material's channel)

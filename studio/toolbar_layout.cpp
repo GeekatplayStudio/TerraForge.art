@@ -127,7 +127,11 @@ void layout_dialogs(App &a) {
     return;
   ImGui::TextUnformatted("Name this arrangement of windows:");
   ImGui::SetNextItemWidth(320);
-  ImGui::SetKeyboardFocusHere();
+  // Once, as the dialog appears - not every frame. Re-focusing the field each
+  // frame kept it the active item permanently, and while it held ActiveId no
+  // button in the dialog could be pressed and Escape was eaten by the field:
+  // "Save does nothing, Cancel does nothing, no error in the console".
+  if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
   const bool entered = ImGui::InputText(
       "##layoutname", g_save_layout_name, sizeof g_save_layout_name,
       ImGuiInputTextFlags_EnterReturnsTrue);

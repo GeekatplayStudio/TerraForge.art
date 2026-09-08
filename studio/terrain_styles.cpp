@@ -87,6 +87,50 @@ static void apply_terrain_style(App &a, const char *name,
   a.status = std::string("terrain style: ") + name;
 }
 
+// A node slipped in between the terrain chain and the Terrain Output: what
+// fed the output now feeds the node, and the node feeds the output. The
+// chain that made the terrain is untouched, and the new node is one more
+// thing in it to retune or delete. One undo step.
+void terrain_insert_before_output(App &a, const char *type, const char *what,
+                                  const std::vector<std::pair<const char *, float>> &floats,
+                                  const std::vector<std::pair<const char *, int>> &ints) {
+  undo_push(a, what);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
+  gpx::Node *out = nullptr;
+  for (auto &n : a.graph.nodes)
+    if (n->type == "TerrainOutput") out = n.get();
+  if (!out) {
+    a.status = std::string(what) + ": there is no Terrain Output yet";
+    return;
+  }
+  const gpx::Link *feed = nullptr;
+  for (const gpx::Link &l : a.graph.links)
+    if (l.to_node == out->id && l.to_port == "heightmap") feed = &l;
+  if (!feed) {
+    a.status = std::string(what) + ": nothing feeds the Terrain Output yet";
+    return;
+  }
+  const uint64_t from_node = feed->from_node, feed_id = feed->id;
+  const std::string from_port = feed->from_port;
+  gpx::Node *n = a.graph.add_node(type, out->pos_x - 190.f, out->pos_y + 60.f);
+  if (!n) {
+    a.status = std::string(what) + ": '" + type + "' is not a node type";
+    return;
+  }
+  for (auto &kv : floats)
+    if (gpx::Attribute *at = n->attrs.find(kv.first)) at->f = kv.second;
+  for (auto &kv : ints)
+    if (gpx::Attribute *at = n->attrs.find(kv.first)) at->i = kv.second;
+  a.graph.remove_link(feed_id);
+  a.graph.add_link(from_node, from_port, n->id, "input");
+  a.graph.add_link(n->id, "output", out->id, "heightmap");
+  a.selected_node = n->id;
+  a.view_node = 0;
+  a.graph_layout_serial++;
+  a.request_eval();
+  a.status = what;
+}
+
 void menu_terrain(App &a) {
   if (!ImGui::BeginMenu("Terrain")) return;
 
@@ -223,6 +267,39 @@ void menu_terrain(App &a) {
                       "nothing, darker carves a valley, lighter raises\n"
                       "ground. The same layer and brushes as Sculpt, drawn\n"
                       "flat — the only sane way to draw a river's course.");
+  ImGui::Separator();
+  // Turning and tiling the terrain that is already there: a node inserted
+  // just before the Terrain Output, so the chain that made it stays intact
+  // and the new node can be retuned or removed like any other.
+  if (ImGui::BeginMenu("Rotate terrain")) {
+    for (int q = 1; q <= 3; ++q) {
+      char lbl[16];
+      std::snprintf(lbl, sizeof lbl, "%d\xC2\xB0", q * 90);
+      if (ImGui::MenuItem(lbl))
+        terrain_insert_before_output(a, "Transform", "Rotate terrain",
+                                     {{"angle", (float)(q * 90)}}, {{"extend", 2}});
+    }
+    ImGui::Separator();
+    ImGui::TextDisabled("Any other angle: the Transform node's Rotate.");
+    ImGui::EndMenu();
+  }
+  if (ImGui::BeginMenu("Tile terrain")) {
+    for (int t = 2; t <= 4; ++t) {
+      char lbl[40];
+      std::snprintf(lbl, sizeof lbl, "%d x %d, each tile turned at random", t, t);
+      if (ImGui::MenuItem(lbl))
+        terrain_insert_before_output(a, "TileRotate", "Tile terrain", {},
+                                     {{"across", t}, {"down", t}});
+    }
+    if (ImGui::MenuItem("2 x 2, turned and mirrored"))
+      terrain_insert_before_output(a, "TileRotate", "Tile terrain", {},
+                                   {{"across", 2}, {"down", 2}, {"turn", 1}});
+    ImGui::Separator();
+    ImGui::TextDisabled("Each copy gets a random quarter-turn so no\n"
+                        "lattice shows; a feather hides the seams.\n"
+                        "The counts and the seed are on the node.");
+    ImGui::EndMenu();
+  }
   ImGui::Separator();
   if (ImGui::BeginMenu("Resolution")) {
     for (int res : {256, 512, 1024, 2048, 4096}) {

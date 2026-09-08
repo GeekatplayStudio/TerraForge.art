@@ -278,8 +278,10 @@ void scene_properties_ui(App &a);
 // the labelled slider + stepper used throughout the properties editor
 // `mn` and `mx` by reference: the range grows when the value is pushed past
 // it, and the widened range is kept on the attribute it belongs to.
+// `width` > 0 caps the whole [-][slider][+] row; the default fills the line.
 bool scalar_float(const char *id, float *v, float &mn, float &mx,
-                  bool log_scale = false);
+                  bool log_scale = false, float width = -1.f);
+bool scalar_int(const char *id, int *v, int &mn, int &mx, float width = -1.f);
 void world_properties_ui(App &a);
 void material_properties_ui(App &a);
 void render_properties_ui(App &a);
