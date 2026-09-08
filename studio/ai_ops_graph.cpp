@@ -341,8 +341,14 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
     // which node the 3D viewport shows. Without this a script can build a
     // graph and never see it, because the viewport stays pinned to whatever
     // it was looking at.
+    // Both branches force the upload. Which node the viewport draws is not
+    // part of the evaluation, so nothing downstream marks the frame stale:
+    // releasing the pin used to change the answer and leave the previous
+    // picture on screen until something else happened to invalidate it.
     if (act.value("node", json()).is_null() && !act.contains("node")) {
       a.view_node = 0; // back to automatic
+      a.uploaded_serial = 0;
+      a.request_eval();
       return 1;
     }
     gpx::Node *n = find_node(a, act, "node");
@@ -351,6 +357,7 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
       return 0;
     }
     a.view_node = n->id;
+    a.uploaded_serial = 0;
     a.request_eval();
     return 1;
   }

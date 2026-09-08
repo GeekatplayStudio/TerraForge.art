@@ -5,6 +5,7 @@
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gizmo.hpp"
+#include "graph_lease.hpp"
 #include "icons.hpp"
 #include "panel_float.hpp"
 #include "sculpt.hpp"
@@ -157,6 +158,31 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
   ImGui::AlignTextToFramePadding();
   ImGui::TextDisabled("%s", CAMERA_NAMES[vc.camera & 3]);
   ImGui::SameLine();
+  // Pinned to one node, and the way out of it.
+  //
+  // Double-clicking a node in the graph makes the 3D views draw that node's
+  // output instead of the Terrain Output. Nothing used to say so and nothing
+  // could undo it, so one stray double-click - a natural gesture on a node -
+  // left every later edit apparently having no effect. That is what "the
+  // erosion effect is not reflected in the viewport" looks like from outside.
+  if (a.view_node) {
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.33f, 0.13f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.70f, 0.44f, 0.18f, 1.f));
+    if (ImGui::SmallButton("Unpin")) {
+      a.view_node = 0;
+      a.uploaded_serial = 0; // redraw from the output now
+      a.status = "viewport follows the Terrain Output again";
+    }
+    ImGui::PopStyleColor(2);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip(
+          "This view is pinned to one node, so anything you change\n"
+          "downstream of it does not appear here. Releases it, and the\n"
+          "views follow the Terrain Output again.\n\n"
+          "Double-clicking a node in the graph is what pins it, and\n"
+          "double-clicking the same node again also releases it.");
+    ImGui::SameLine();
+  }
   const float used = ImGui::GetCursorPosX();
 
   const float bw = tool_size();
@@ -454,6 +480,40 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
            ENGINE_NAMES[render_settings().viewport_engine & 1];
   dl->AddText(ImVec2(p0.x + 9, p0.y + 7), sh, cam.c_str());
   dl->AddText(ImVec2(p0.x + 8, p0.y + 6), fg, cam.c_str());
+
+  // Pinned to a node.
+  //
+  // Double-clicking a node in the graph pins the 3D view to that node's
+  // output instead of following the Terrain Output. Nothing used to say so
+  // and nothing could undo it, which meant one stray double-click - an
+  // entirely natural gesture on a node - left every later edit apparently
+  // doing nothing. "The erosion effect is not reflected in the viewport" is
+  // what that looks like from the outside, and it was right.
+  if (a.view_node) {
+    std::string pin = "pinned: ";
+    {
+      GraphLease lease(a);
+      const gpx::Node *pn =
+          lease.owns_lock() ? a.graph.find_node(a.view_node) : nullptr;
+      pin += pn ? gpx::node_display_name(pn->type) : std::string("a node");
+    }
+    pin += "   —  the Unpin button in this view's header releases it";
+    // Drawn, not clickable. An overlay on top of the viewport image cannot
+    // reliably take a click: the image is submitted first and owns the hover
+    // for the frame, and every way of asking ImGui about it here reads false
+    // (IsWindowHovered says no window is hovered at all at this call site).
+    // The control that releases the pin is a plain button in the view header,
+    // where ordinary widget behaviour applies; this says what is going on,
+    // where the person is already looking.
+    const ImVec2 tp(p0.x + 8, p0.y + 24);
+    const ImVec2 tsz = ImGui::CalcTextSize(pin.c_str());
+    dl->AddRectFilled(ImVec2(tp.x - 4, tp.y - 2),
+                      ImVec2(tp.x + tsz.x + 4, tp.y + tsz.y + 2),
+                      IM_COL32(0, 0, 0, 150), 3.f);
+    dl->AddText(ImVec2(tp.x + 1, tp.y + 1), sh, pin.c_str());
+    dl->AddText(tp, IM_COL32(245, 190, 110, 240), pin.c_str());
+  }
+
   // selected object name
   SceneState &sc = scene();
   if (sc.selected >= 0 && sc.selected < (int)sc.objects.size()) {

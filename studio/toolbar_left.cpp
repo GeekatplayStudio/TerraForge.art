@@ -186,11 +186,21 @@ void column_objects(App &a) {
     a.show_mesh_tools = !a.show_mesh_tools;
 }
 
+// The three windows a material is worked on in, then what the viewport does
+// with the result. Studio was missing entirely, which is the one that shows
+// every property of the material being edited.
 void column_materials(App &a) {
   RenderSettings &rs = render_settings();
-  if (tool_icon(Icon::Material, "##mateditor", tr("Material Editor"), a.show_material_editor))
+  if (tool_icon(Icon::Material, "##mateditor", tr("Material Editor\n\nThe material graph: channels, layers and the\npreview sphere."),
+                a.show_material_editor))
     a.show_material_editor = !a.show_material_editor;
-  if (tool_icon(Icon::Folder, "##matbrowser", tr("Material Browser"), a.show_material_browser))
+  if (tool_icon(Icon::Scene, "##matstudio",
+                tr("Material Studio\n\nEvery property of the material being edited,\nwith its preview."),
+                a.show_material_studio))
+    a.show_material_studio = !a.show_material_studio;
+  if (tool_icon(Icon::Folder, "##matbrowser",
+                tr("Material Browser\n\nThe project's materials, the library, and the\nasset index."),
+                a.show_material_browser))
     a.show_material_browser = !a.show_material_browser;
   tool_sep();
   if (tool_icon(Icon::Textured, "##textured",
@@ -200,18 +210,26 @@ void column_materials(App &a) {
     rs.use_albedo = !rs.use_albedo;
 }
 
+// What is in the air, then how much of it. Fog is a kind, not a switch, so
+// the button cycles it and says which one it is on.
 void column_atmosphere(App &a) {
   (void)a;
   RenderSettings &rs = render_settings();
   if (tool_icon(Icon::Cloud, "##clouds", tr("Clouds"), rs.clouds_on)) rs.clouds_on = !rs.clouds_on;
+  static const char *const FOG[] = {"off", "haze", "fog", "pollution"};
+  char fog_tip[160];
+  std::snprintf(fog_tip, sizeof fog_tip,
+                "Fog: %s\n\nCycles off, haze, fog, pollution. The density and\n"
+                "height are on the tool row and in the Atmosphere menu.",
+                FOG[std::clamp(rs.fog_type, 0, 3)]);
+  if (tool_icon(Icon::Atmosphere, "##fog", fog_tip, rs.fog_type != 0))
+    rs.fog_type = (rs.fog_type + 1) % 4;
   if (tool_icon(Icon::Water, "##water", tr("Water"), rs.show_water)) rs.show_water = !rs.show_water;
   if (tool_icon(Icon::Sun, "##shadows", tr("Shadows"), rs.shadows)) rs.shadows = !rs.shadows;
 }
 
 void column_lighting(App &a) {
   RenderSettings &rs = render_settings();
-  if (tool_icon(Icon::Sun, "##shadows2", tr("Shadows"), rs.shadows)) rs.shadows = !rs.shadows;
-  tool_sep();
   if (tool_icon(Icon::Light, "##addlight",
                 tr("Add light\n\nA point light in the scene. A LightSource node in the\n"
                    "graph does the same and keeps it in the network."))) {
@@ -219,11 +237,29 @@ void column_lighting(App &a) {
     scene().selected = scene_add_light("");
     a.scene_selection_serial++;
   }
+  tool_sep();
+  if (tool_icon(Icon::Sun, "##shadows2", tr("Shadows"), rs.shadows)) rs.shadows = !rs.shadows;
+  // Sun altitude is the one light control worth a button: it is what turns
+  // midday into dusk, and it is the first thing anyone reaches for here.
+  if (tool_icon(Icon::Atmosphere, "##sunlow",
+                tr("Low sun\n\nDrops the sun to 8 degrees - the long shadows and warm\n"
+                   "light every landscape shot is made at. Again to restore."),
+                rs.sun_altitude < 12.f)) {
+    static float saved = 35.f;
+    if (rs.sun_altitude < 12.f) {
+      rs.sun_altitude = saved;
+    } else {
+      saved = rs.sun_altitude;
+      rs.sun_altitude = 8.f;
+    }
+  }
 }
 
 void column_cameras(App &a) {
   SceneState &sc = scene();
-  if (tool_icon(Icon::Camera, "##addcam", tr("Add camera"))) {
+  if (tool_icon(Icon::Camera, "##addcam",
+                tr("Add camera\n\nA camera with real optics: focal length, format,\n"
+                   "aperture, shutter and film."))) {
     int idx = scene_add_camera();
     scene_active_camera() = idx;
     sc.selected = idx;
@@ -239,6 +275,16 @@ void column_cameras(App &a) {
     scene_active_camera() = through ? -1 : sc.selected;
     if (!through) scene_last_used_camera() = sc.selected;
   }
+  tool_sep();
+  // A camera you cannot key is a still. The transport and the curve editor
+  // are one workspace away, but the key itself belongs where the camera is.
+  ImGui::BeginDisabled(!sel_cam);
+  if (tool_icon(Icon::KeyAdd, "##camkey",
+                tr("Key this camera\n\nSets a key on the selected camera's position and\n"
+                   "aim at the current frame, so a move can be built here\n"
+                   "rather than in the Animation workspace.")))
+    anim_key_selection_transform(a);
+  ImGui::EndDisabled();
 }
 
 void column_animation(App &a) {
@@ -254,12 +300,34 @@ void column_animation(App &a) {
 }
 
 void column_render(App &a) {
-  if (tool_icon(Icon::Scene, "##previewpanel", tr("Preview render panel"), a.show_preview))
-    a.show_preview = !a.show_preview;
   if (tool_icon(Icon::Render, "##rendercam2",
                 tr("Render the active camera\n\nRender through the active camera with its own\n"
                    "engine, resolution and sample settings.")))
     a.request_camera_render = scene_active_camera();
+  if (tool_icon(Icon::Scene, "##previewpanel",
+                tr("Preview render panel\n\nThe progressive render, updating as the scene\nchanges."),
+                a.show_preview))
+    a.show_preview = !a.show_preview;
+  tool_sep();
+  // What the render is of: the camera it looks through, and whether the
+  // viewport is showing you the cheap version or the expensive one.
+  RenderSettings &rs = render_settings();
+  if (tool_icon(Icon::Eye, "##vpengine",
+                tr("Cinematic viewport\n\nDraw the viewport with the raymarcher instead of the\n"
+                   "rasterizer: slower, and much closer to the render."),
+                rs.viewport_engine == 1))
+    rs.viewport_engine = rs.viewport_engine == 1 ? 0 : 1;
+  if (tool_icon(Icon::Camera, "##rendercamsel",
+                tr("Look through the active camera\n\nAgain to return to the free camera."),
+                scene_active_camera() >= 0)) {
+    static int saved = -1;
+    if (scene_active_camera() >= 0) {
+      saved = scene_active_camera();
+      scene_active_camera() = -1;
+    } else {
+      scene_active_camera() = saved >= 0 ? saved : scene_last_used_camera();
+    }
+  }
 }
 
 } // namespace

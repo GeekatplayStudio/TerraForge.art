@@ -123,6 +123,15 @@ void tools_atmosphere(App &a) {
   static const char *const K[] = {"Off", "Haze", "Fog", "Pollution"};
   ImGui::Combo("##fogtype", &rs.fog_type, tr_combo(K, 4).c_str());
   tool_sep();
+  // Coverage rather than the on/off, which is the button in the left column:
+  // clear to overcast is the value anyone actually moves, and it is the one
+  // that changes the light on the ground.
+  tool_label(tr("cloud"));
+  ImGui::SetNextItemWidth(110);
+  ImGui::SliderFloat("##cloudcov", &rs.cloud_coverage, 0.f, 1.f, "%.2f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("%s", tr("Cloud coverage: 0 clear, 1 overcast."));
+  tool_sep();
   sun_tools(a, "");
 }
 

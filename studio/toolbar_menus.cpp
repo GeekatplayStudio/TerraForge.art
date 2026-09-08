@@ -246,11 +246,17 @@ void menu_render(App &a) {
   SceneState &sc = scene();
   int active = scene_active_camera();
   if (ImGui::MenuItem("Free camera", nullptr, active < 0)) scene_active_camera() = -1;
-  for (int idx : scene_camera_indices())
-    if (ImGui::MenuItem(sc.objects[idx].name.c_str(), nullptr, idx == active)) {
+  for (int idx : scene_camera_indices()) {
+    // Two cameras are allowed the same name; two widgets with the same label
+    // in one window are the same widget, and ImGui marks that by drawing its
+    // conflict highlight over both. The index is the identity here.
+    const std::string label =
+        sc.objects[idx].name + "##cam" + std::to_string(idx);
+    if (ImGui::MenuItem(label.c_str(), nullptr, idx == active)) {
       scene_active_camera() = idx;
       scene_last_used_camera() = idx;
     }
+  }
   ImGui::EndMenu();
 }
 

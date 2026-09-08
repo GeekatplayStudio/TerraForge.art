@@ -380,10 +380,16 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
 
   editor_shortcuts(a, e, eval_running, can_edit);
 
-  // double-click a node -> pin it to the 3D view
+  // Double-click a node -> pin it to the 3D view; double-click it again ->
+  // let go. It has to be reversible where it is made: pinning used to be a
+  // one-way door with nothing saying it had closed, so a stray double-click
+  // left every later edit apparently having no effect on the terrain.
   if (ed::NodeId dbl = ed::GetDoubleClickedNode()) {
-    a.view_node = (uint64_t)dbl.Get();
+    const uint64_t id = (uint64_t)dbl.Get();
+    a.view_node = (a.view_node == id) ? 0 : id;
     a.uploaded_serial = 0; // force viewport refresh
+    a.status = a.view_node ? "viewport pinned to this node (double-click to release)"
+                           : "viewport follows the Terrain Output again";
   }
 
   editor_context_menus(a, eval_running, can_edit, domain, all);

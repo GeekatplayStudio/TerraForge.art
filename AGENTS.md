@@ -128,6 +128,35 @@ each one was a bug we already paid for. Do not regress them.
    its whole run; an erosion bake is seconds. The choice is the lease's bounded
    wait or a mirror (`panel_properties_node.cpp`), never an unbounded one.
 
+## Modes you cannot see, and cannot leave
+
+A mode the application is in, that the screen does not show and the user
+cannot undo, turns every later action into an apparent no-op. It reads as
+"the change had no effect", which sends the search to the feature that was
+changed rather than to the mode that is hiding it.
+
+1. **The 3D views can be pinned to one node.** Double-clicking a node in the
+   graph sets `App::view_node`, and from then on the viewport draws that
+   node's output instead of the Terrain Output. That was the whole of "the
+   erosion effect is not reflected in the viewport": measured on a
+   Noise→Hydraulic→Output chain, changing the erosion moved the viewport by a
+   mean of 1.022 unpinned and 0.030 while pinned to the Noise upstream of it.
+2. **So it says so, and there are three ways out**: the "Unpin" button in the
+   view header, double-clicking the same node again, and "Follow the Terrain
+   Output again" in the graph canvas's right-click menu. The viewport also
+   draws a badge naming the pinned node.
+3. **A state that changes what is drawn but is not part of the evaluation
+   must force the upload itself** (`a.uploaded_serial = 0`). Releasing the pin
+   through the API changed the answer and left the previous picture on screen,
+   because nothing downstream marked the frame stale: 0.023 mean change before,
+   1.166 after.
+4. **An overlay drawn on top of the viewport image cannot take a click.** The
+   image is submitted first and owns the hover for the frame; every
+   `IsWindowHovered` variant reads false at that call site, and an
+   `InvisibleButton` over it highlights on hover and goes cold on the press
+   frame. Put the control in the view header, where ordinary widget behaviour
+   applies, and let the overlay only say what is going on.
+
 ## Workspaces and materials
 
 1. **Every workspace owns its arrangement.** `workspace_layout_switch`

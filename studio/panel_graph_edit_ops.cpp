@@ -292,6 +292,21 @@ void editor_context_menus(App &a, bool eval_running, bool can_edit, int domain,
     ImGui::OpenPopup("add_node");
   }
   if (ImGui::BeginPopup("add_node")) {
+    // The way out of a pinned viewport, from the canvas the pin was made on.
+    // Double-clicking the node again releases it too, but that only helps if
+    // you remember which node you double-clicked.
+    if (a.view_node) {
+      if (ImGui::MenuItem(tr("Follow the Terrain Output again"))) {
+        a.view_node = 0;
+        a.uploaded_serial = 0;
+        a.status = "viewport follows the Terrain Output again";
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s",
+                          tr("The 3D view is pinned to one node, so changes\n"
+                             "downstream of it do not show. This releases it."));
+      ImGui::Separator();
+    }
     if (eval_running) {
       ImGui::TextDisabled("%s", tr("computing..."));
     } else {
