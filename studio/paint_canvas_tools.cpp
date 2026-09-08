@@ -16,7 +16,11 @@
 #include <string>
 #include <vector>
 
-#define STB_IMAGE_STATIC
+// Declarations only. The implementation is compiled once, in
+// engine/nodes/nodes_materials.cpp, and the studio links it - so this must
+// NOT define STB_IMAGE_STATIC, which would make these declarations internal
+// to this file with nothing behind them. It linked anyway, on a technicality,
+// with the compiler warning that stbi_load_16 was "used but never defined".
 #include <stb_image.h>
 
 namespace studio {
