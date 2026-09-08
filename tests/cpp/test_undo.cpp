@@ -1040,6 +1040,7 @@ int test_material_source_scene_run(); // test_material_source_scene.cpp
 int test_material_stack_ops_run(); // test_material_stack_ops.cpp
 
 int test_material_channel_ops_run();
+int test_console_shorthand_run(); // test_console_shorthand.cpp
 int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   g_failures += test_undo_render_run();
@@ -1049,6 +1050,7 @@ int main() {
   g_failures += test_material_source_scene_run();
   g_failures += test_material_stack_ops_run();
   g_failures += test_material_channel_ops_run();
+  g_failures += test_console_shorthand_run();
   test_graph_view_sanity();
   test_graph_undo();
   test_attributes_and_links();

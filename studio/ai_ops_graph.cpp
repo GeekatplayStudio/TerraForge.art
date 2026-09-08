@@ -164,9 +164,19 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
       err = "unknown node type '" + type + "'";
       return 0;
     }
-    if (act.contains("attrs") && act["attrs"].is_object())
-      for (auto &[key, val] : act["attrs"].items())
+    if (act.contains("attrs") && act["attrs"].is_object()) {
+      // An attribute this node does not have is said so, not swallowed. A
+      // misspelled key used to apply nothing and report success, which is
+      // indistinguishable from "the setting had no effect" - the worst way
+      // for a script or the assistant to be wrong.
+      std::string unknown;
+      for (auto &[key, val] : act["attrs"].items()) {
         if (gpx::Attribute *at = n->attrs.find(key)) set_attr_value(*at, val);
+        else unknown += (unknown.empty() ? "" : ", ") + key;
+      }
+      if (!unknown.empty())
+        err = "add_node: '" + type + "' has no attribute " + unknown;
+    }
     if (act.contains("alias") && act["alias"].is_string())
       aliases()[act["alias"].get<std::string>()] = n->id;
     a.selected_node = n->id;
@@ -308,9 +318,17 @@ int ai_graph_op(App &a, const std::string &op, const json &act,
   }
 
   if (op == "set_resolution") {
-    int r = act.value("resolution", act.value("value", 0));
+    // "size" as well, because it is the word a person reaches for and the
+    // failure was otherwise reported as an out-of-range number rather than
+    // as the missing key it actually was.
+    int r = act.value("resolution", act.value("value", act.value("size", 0)));
+    if (r == 0 && !act.contains("resolution") && !act.contains("value") &&
+        !act.contains("size")) {
+      err = "set_resolution needs 'resolution' (or 'size')";
+      return 0;
+    }
     if (r < 64 || r > 8192) {
-      err = "set_resolution: 64..8192";
+      err = "set_resolution: " + std::to_string(r) + " is outside 64..8192";
       return 0;
     }
     g.resolution = r;

@@ -23,6 +23,10 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_internal.h>
 
+#ifdef GPX_ID_AUDIT
+extern "C" void gpx_id_audit_frame_begin();
+#endif
+
 namespace studio {
 void anim_service(App &a);
 
@@ -91,6 +95,9 @@ void run_main() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+#ifdef GPX_ID_AUDIT
+    gpx_id_audit_frame_begin();
+#endif
 
     // A layout being loaded lands here: ImGui can only take a new set of
     // window positions between frames, before anything is submitted.

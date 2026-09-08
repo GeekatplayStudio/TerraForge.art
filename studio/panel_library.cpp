@@ -103,7 +103,13 @@ void draw_panel_library(App &a) {
     }
   };
   auto row = [&](const gpx::NodeDef *d, const std::string &label) {
-    if (ImGui::Selectable(label.c_str())) add_node(d->type);
+    // The type, not the label, is the identity. A node whose display name
+    // happens to equal a category name - Shape is in Primitive, and there is
+    // also a Shape category; Transform is in Transform - otherwise submits the
+    // same ImGui id as that category's header, which ImGui answers by drawing
+    // its conflict highlight over both. Two nodes that ever came to share a
+    // display name would collide the same way.
+    if (ImGui::Selectable((label + "##" + d->type).c_str())) add_node(d->type);
     if (ImGui::IsItemHovered() && !d->description.empty())
       ImGui::SetTooltip("%s", d->description.c_str());
   };
@@ -154,7 +160,7 @@ void draw_panel_library(App &a) {
   for (const gpx::NodeDef *d : gpx::NodeRegistry::instance().all()) {
     if (domain_of_category(d->category) != a.workspace) continue;
     if (d->category != last_cat) {
-      open = ImGui::CollapsingHeader(d->category.c_str(),
+      open = ImGui::CollapsingHeader((d->category + "##cat").c_str(),
                                      ImGuiTreeNodeFlags_DefaultOpen);
       last_cat = d->category;
     }

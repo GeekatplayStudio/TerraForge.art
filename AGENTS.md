@@ -71,6 +71,44 @@ each one was a bug we already paid for. Do not regress them.
    appearing a frame later, and `scene_nodes_objects.cpp` adopts it by that id
    instead of by name.
 
+## ImGui identity
+
+1. **A widget's identity is its label, so two things with the same label in
+   one window are one thing.** ImGui answers that by drawing its conflict
+   highlight over both, which reads as a rendering fault rather than as a
+   programming one - "the Shape node has some overlay error" was the Shape
+   node and the Shape *category header* colliding in the library list.
+2. **Give list rows an identity that is not their text**: `label + "##" + type`
+   for a node, `name + "##cat"` for a category. Display names are chosen to
+   read well and are allowed to collide; types are not.
+3. **`GPX_ID_AUDIT` finds these on purpose.** Configure with
+   `-DCMAKE_CXX_FLAGS=-DGPX_ID_AUDIT` and every id submitted twice in one
+   frame in one window is logged with its window name (studio/id_audit.cpp).
+   ImGui's own detector only fires for the item under the pointer, which on a
+   screen with a few thousand widgets means finding the conflict by hovering
+   the right pixel; this one names it.
+
+   It needs a two-part hook in `external/imgui/imgui.cpp`, which `external/`
+   being gitignored means is **not** in the repository — re-apply it by hand,
+   and again after any ImGui update. Immediately above `bool ImGui::ItemAdd`:
+
+   ```cpp
+   #ifdef GPX_ID_AUDIT
+   void gpx_id_audit(unsigned id, const char *window);
+   #endif
+   ```
+
+   and as the first statement inside it, after `ImGuiWindow* window = ...`:
+
+   ```cpp
+   #ifdef GPX_ID_AUDIT
+       if (id != 0) gpx_id_audit((unsigned)id, window ? window->Name : "?");
+   #endif
+   ```
+
+   Then run the application, open every panel in every workspace, and read
+   the log for `[idaudit]`. A clean sweep is the evidence; hovering is not.
+
 ## Panels and the graph lock
 
 1. **A panel that skips its body takes the user's menus down with it.** ImGui

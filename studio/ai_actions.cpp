@@ -26,6 +26,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -70,9 +71,28 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
   RenderSettings &rs = render_settings();
   SceneState &sc = scene();
   int applied = 0;
+  // Every action's failure is kept, not just the last one's. A document that
+  // set a resolution and misspelled an attribute used to report plain success,
+  // because one `++applied` anywhere was enough — so a setting that quietly did
+  // nothing looked exactly like a setting that had no visible effect. Handlers
+  // signal a failure by writing `err`; none of them writes it and then declines
+  // the op (returns -1), so clearing it per action is safe.
+  std::vector<std::string> failures;
+  int attempted = 0;
   for (const json &act : actions) {
     if (!act.is_object() || !act.contains("op")) continue;
     std::string op = act["op"].get<std::string>();
+    ++attempted;
+    err.clear();
+    struct Collect {
+      std::string &err;
+      const std::string &op;
+      std::vector<std::string> &out;
+      ~Collect() {
+        if (!err.empty()) out.push_back(err.rfind(op, 0) == 0 ? err
+                                                             : op + ": " + err);
+      }
+    } collect{err, op, failures};
 
     if (op == "add_camera" || op == "set_camera") {
       int idx = -1;
@@ -332,8 +352,21 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (r > 0) ++applied;
     }
   }
+  err.clear();
+  for (const std::string &f : failures) err += (err.empty() ? "" : "; ") + f;
+  if (!failures.empty()) {
+    // Some of it may well have been applied — say so, because the caller has
+    // to know the graph moved even though the answer is "no". The count is of
+    // actions attempted, not of successes plus failures: one action can do
+    // part of its work and still report a fault, and calling that two actions
+    // would make a one-line document read as a two-line one.
+    if (applied)
+      err = std::to_string(applied) + " of " + std::to_string(attempted) +
+            " actions applied - " + err;
+    return false;
+  }
   if (!applied) {
-    if (err.empty()) err = "no supported actions in the reply";
+    err = "no supported actions in the reply";
     return false;
   }
   return true;

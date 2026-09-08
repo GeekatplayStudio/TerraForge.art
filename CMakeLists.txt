@@ -318,6 +318,9 @@ set(STUDIO_SOURCES
     studio/layout_store.cpp
     studio/layout_workspace.cpp
     studio/toolbar_left.cpp
+    studio/toolbar_menus.cpp
+    studio/console_cmd.cpp
+    studio/console_shorthand.cpp
     studio/imprint.cpp
     studio/updater.cpp
     studio/mesh_thumbnail.cpp
@@ -467,6 +470,7 @@ set(STUDIO_SOURCES
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
     studio/graph_lease.cpp
+    studio/id_audit.cpp
     studio/component_new.cpp
     studio/material_source.cpp
     studio/paint_canvas.cpp
@@ -615,6 +619,8 @@ add_executable(undo_tests
     studio/material_source.cpp
     tests/cpp/test_material_stack_ops.cpp
     tests/cpp/test_material_channel_ops.cpp
+    tests/cpp/test_console_shorthand.cpp
+    studio/console_shorthand.cpp
     studio/material_stack_ops.cpp
     studio/material_channel_ops.cpp
     studio/undo.cpp

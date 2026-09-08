@@ -5,10 +5,16 @@
 // graph. Pick "Eroded mountain" and the Noise, Hydraulic and Thermal nodes
 // that made it are sitting in the editor, wired up and retunable. A preset
 // that cannot be taken apart is a dead end.
+#include "ai_describe.hpp"
 #include "app.hpp"
+#include "icons.hpp"
+#include "sculpt.hpp"
+#include "toolbar_internal.hpp"
 #include "undo.hpp"
 #include "gpx/node_graph.hpp"
 #include <imgui.h>
+#include <cstdio>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -83,6 +89,26 @@ static void apply_terrain_style(App &a, const char *name,
 
 void menu_terrain(App &a) {
   if (!ImGui::BeginMenu("Terrain")) return;
+
+  // Blank first, because it is the one every other entry is an alternative to:
+  // flat ground at mid height with a sculpt layer already on it, so the very
+  // next thing you can do is paint. Nothing generated, nothing to undo first.
+  if (ImGui::MenuItem("Blank terrain")) {
+    apply_terrain_style(a, "Blank terrain",
+                        {{"Constant", {{"value", 0.5f}}, {}},
+                         {"TerrainSculpt", {}, {}}});
+    a.show_paint_canvas = true; // the panel that goes with it
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Flat ground at mid height — 50%% grey, no shape of its\n"
+                      "own — with a sculpt layer wired on top and the Height\n"
+                      "Paint panel open. Paint dark to carve, light to raise;\n"
+                      "anything you add downstream still applies.");
+  if (ImGui::MenuItem("New terrain...")) new_terrain_request();
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The full dialog: size, resolution and a starting shape.");
+  ImGui::Separator();
+
   ImGui::TextDisabled("Style presets (build editable node chains)");
   ImGui::Separator();
   // The realistic chain: the way real ranges form. A fractal for the
@@ -146,6 +172,94 @@ void menu_terrain(App &a) {
   ImGui::TextDisabled("Each style drops a fresh chain into the graph\n"
                       "and wires it to the Terrain Output — the old\n"
                       "chain stays in the graph, and Ctrl+Z undoes it.");
+
+  // ---- the terrain commands, which until now existed only as icons --------
+  ImGui::Separator();
+  SculptState &s = sculpt_state();
+  if (IconMenuItem(Icon::Brush, "Sculpt mode", s.active)) {
+    sculpt_set_active(a, !s.active);
+    if (a.workspace != WS_TERRAIN) a.workspace = WS_TERRAIN;
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Brush directly on the terrain in the 3D view. Strokes\n"
+                      "live in a TerrainSculpt node, so retuning the\n"
+                      "procedural chain underneath does not lose them.\n"
+                      "[ and ] resize the brush, the wheel does too.");
+  if (ImGui::BeginMenu("Brush", s.active)) {
+    struct B { Icon icon; SculptTool tool; const char *label, *tip; };
+    static const B brushes[] = {
+        {Icon::Raise, SculptTool::Raise, "Raise", "Add relief; Alt digs."},
+        {Icon::Flatten, SculptTool::Flatten, "Flatten",
+         "Pull the surface toward the height under the first click."},
+        {Icon::Smooth, SculptTool::Smooth, "Smooth", "Relax bumps and stroke marks."},
+        {Icon::Terrace, SculptTool::Terrace, "Terrace", "Cut the slope into steps."},
+        {Icon::Noise, SculptTool::Noise, "Noise", "Stamp fractal detail; Alt inverts."},
+        {Icon::Erase, SculptTool::Erase, "Erase",
+         "Remove sculpted strokes, revealing the procedural terrain."},
+        {Icon::Textured, SculptTool::Shade, "Shade",
+         "Paint a chosen grey: dark carves, light raises, mid does nothing."}};
+    for (const B &b : brushes) {
+      if (IconMenuItem(b.icon, b.label, s.tool == b.tool)) s.tool = b.tool;
+      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", b.tip);
+    }
+    if (s.tool == SculptTool::Shade) {
+      ImGui::Separator();
+      ImGui::SetNextItemWidth(160);
+      ImGui::SliderFloat("Shade", &s.shade, 0.f, 1.f, "%.2f");
+    }
+    ImGui::Separator();
+    ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Size", &s.radius, 0.005f, 0.4f, "%.3f");
+    ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Strength", &s.flow, 0.f, 2.f, "%.2f");
+    ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Edge", &s.falloff, 0.2f, 8.f, "%.2f");
+    ImGui::EndMenu();
+  }
+  if (IconMenuItem(Icon::Textured, "Height Paint", a.show_paint_canvas))
+    a.show_paint_canvas = !a.show_paint_canvas;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The terrain as a greyscale picture: mid grey does\n"
+                      "nothing, darker carves a valley, lighter raises\n"
+                      "ground. The same layer and brushes as Sculpt, drawn\n"
+                      "flat — the only sane way to draw a river's course.");
+  ImGui::Separator();
+  if (ImGui::BeginMenu("Resolution")) {
+    for (int res : {256, 512, 1024, 2048, 4096}) {
+      char lbl[24];
+      std::snprintf(lbl, sizeof lbl, "%d x %d", res, res);
+      if (ImGui::MenuItem(lbl, nullptr, a.graph.resolution == res)) {
+        std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
+        a.graph.resolution = res;
+        a.graph.mark_all_dirty();
+        a.request_eval();
+      }
+    }
+    ImGui::Separator();
+    ImGui::TextDisabled("Any value 64..8192 on the tool row above");
+    ImGui::EndMenu();
+  }
+  if (IconMenuItem(Icon::Refresh, "Recompute everything"))
+    {
+      std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
+      a.graph.mark_all_dirty();
+      a.request_eval();
+    }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Marks every node dirty and evaluates the whole graph.");
+  if (IconMenuItem(Icon::Bake, "Bake 4k exports")) {
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
+    for (auto &n : a.graph.nodes)
+      if (auto *e = n->attrs.find("auto_export")) e->b = true;
+    a.graph.resolution = 4096;
+    a.graph.mark_all_dirty();
+    a.request_eval();
+    a.status = "baking at 4096; export nodes write when done";
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Re-evaluate at 4096 with every export node enabled.");
+  ImGui::Separator();
+  if (ImGui::MenuItem("Describe the terrain...")) ai_describe_open(DESCRIBE_TERRAIN);
   ImGui::EndMenu();
 }
 

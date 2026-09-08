@@ -358,6 +358,9 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
       bool on_terrain = renderer_pick_terrain(slot, vc, u, v, w, h, tx, tz);
       bool erase_look = SC.tool == SculptTool::Erase ||
                         (SC.invert != io.KeyAlt); // live Alt flips the ring
+      // Shade ignores invert - the swatch says which way it goes - so the ring
+      // follows the swatch: below mid grey it carves, above it raises.
+      if (SC.tool == SculptTool::Shade) erase_look = SC.shade < 0.5f;
       if (on_terrain)
         renderer_set_brush_cursor(tx, tz, SC.radius,
                                   SC.tool == SculptTool::Erase ? true
@@ -368,14 +371,38 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
         SC.radius = std::clamp(SC.radius * (io.MouseWheel > 0 ? 1.12f : 0.89f),
                                0.005f, 0.4f);
       }
+      // Stamp the whole segment the pointer covered, not just where it ended
+      // up. One dab per frame leaves a dotted line the moment the hand moves
+      // faster than the frame rate, which is exactly when you are drawing a
+      // river's course rather than dabbing at a hill. Same path the flat
+      // painter uses, so the two draw identically.
+      static float prev_tx = 0.f, prev_tz = 0.f;
+      static bool have_prev = false;
       if (on_terrain && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
           !io.KeyCtrl) {
         bool saved_inv = SC.invert;
         if (io.KeyAlt) SC.invert = !SC.invert;
-        sculpt_apply(a, tx, tz, io.DeltaTime);
+        if (have_prev)
+          sculpt_apply_segment(a, prev_tx, prev_tz, tx, tz, io.DeltaTime);
+        else
+          sculpt_apply(a, tx, tz, io.DeltaTime);
         SC.invert = saved_inv;
+        prev_tx = tx;
+        prev_tz = tz;
+        have_prev = true;
+      } else if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        have_prev = false; // a new stroke starts where it starts
       }
-      if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) sculpt_end_stroke(a);
+      if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        have_prev = false;
+        sculpt_end_stroke(a);
+      }
+      // [ and ] resize the brush here too, so the keys mean the same thing in
+      // the 3D view as they do in the painter and in every image editor.
+      if (ImGui::IsKeyPressed(ImGuiKey_LeftBracket, true))
+        SC.radius = std::max(SC.radius / 1.15f, 0.005f);
+      if (ImGui::IsKeyPressed(ImGuiKey_RightBracket, true))
+        SC.radius = std::min(SC.radius * 1.15f, 0.4f);
     }
 
     bool rot = !sculpting && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&

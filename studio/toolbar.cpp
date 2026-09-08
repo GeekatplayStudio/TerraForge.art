@@ -273,20 +273,44 @@ void layout_dialogs(App &a);
 
 static void menu_view(App &a) {
   if (!ImGui::BeginMenu("View")) return;
+  // Grouped by what the panel is for: the graph, then the scene and its
+  // properties, then the editors you open on top, then the overlays. An
+  // alphabetical list of fourteen checkboxes is a list; this is a menu.
+  ImGui::TextDisabled("Graph");
   ImGui::MenuItem("Library", nullptr, &a.show_library);
   ImGui::MenuItem("Node List", nullptr, &a.show_nodelist);
-  ImGui::MenuItem("Properties", nullptr, &a.show_properties);
+  ImGui::Separator();
+  ImGui::TextDisabled("Scene");
   ImGui::MenuItem("Viewport", nullptr, &a.show_viewport);
-  ImGui::MenuItem("Timeline", nullptr, &a.show_timeline);
-  ImGui::MenuItem("Gizmos", shortcut_chord("view.gizmos").c_str(), &gizmo_visible());
+  ImGui::MenuItem("Properties", nullptr, &a.show_properties);
   ImGui::MenuItem("Preview", nullptr, &a.show_preview);
+  ImGui::Separator();
+  ImGui::TextDisabled("Editors");
   ImGui::MenuItem("Material Editor", nullptr, &a.show_material_editor);
+  ImGui::MenuItem("Material Studio", nullptr, &a.show_material_studio);
+  ImGui::MenuItem("Material Browser", nullptr, &a.show_material_browser);
+  ImGui::MenuItem("Mesh Tools", nullptr, &a.show_mesh_tools);
   ImGui::MenuItem("Height Paint", nullptr, &a.show_paint_canvas);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Paint the terrain as a greyscale picture: mid grey does\n"
                       "nothing, darker carves a valley, lighter raises ground.\n"
                       "The strokes are a layer in the graph, so erosion and\n"
                       "everything else downstream follow as you draw.");
+  ImGui::MenuItem("Timeline", nullptr, &a.show_timeline);
+  ImGui::MenuItem("Curve Editor", nullptr, &a.show_curve_editor);
+  // The console was reachable only from an icon in the left column, which is
+  // the last place someone looks for a window - and it is now a terminal,
+  // with a command line running the same ops the API and the assistant use.
+  ImGui::MenuItem("Console / Terminal", nullptr, &a.show_console);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Every message the application produces — shader errors,\n"
+                      "node failures, file I/O — kept so they can be read and\n"
+                      "copied, plus a command line: type `help` for what it\n"
+                      "takes. Docks and floats like any other viewport.");
+  ImGui::Separator();
+  ImGui::TextDisabled("Overlays");
+  ImGui::MenuItem("Gizmos", shortcut_chord("view.gizmos").c_str(), &gizmo_visible());
+  ImGui::MenuItem("Tool row", nullptr, &a.show_toolbar);
   ImGui::Separator();
   if (ImGui::BeginMenu("New node editor")) {
     // Another graph window, pinned to one domain, with its own canvas and
@@ -310,8 +334,15 @@ static void menu_view(App &a) {
   ImGui::EndMenu();
 }
 
-// the Terrain menu lives in terrain_styles.cpp
+// the Terrain menu lives in terrain_styles.cpp; the other workflow menus in
+// toolbar_menus.cpp, because this file is at its size limit and each of them
+// is the whole vocabulary of one workspace
 void menu_terrain(App &a);
+void menu_objects(App &a);
+void menu_materials(App &a);
+void menu_atmosphere(App &a);
+void menu_animation(App &a);
+void menu_render(App &a);
 
 // The AI menu: generate an image, a texture or a skydome, a 3D model; build
 // a scene, a terrain or an atmosphere from words; the jobs list; settings.
@@ -372,9 +403,17 @@ static void about_dialog() {
 
 void draw_toolbar(App &a) {
   if (ImGui::BeginMenuBar()) {
+    // File and Edit, then one menu per workflow in the order the work runs -
+    // shape the ground, put things on it, give them a surface, light the air,
+    // move it, render it - then the windows, the assistant and Help.
     menu_file(a);
     menu_edit(a);
     menu_terrain(a);
+    menu_objects(a);
+    menu_materials(a);
+    menu_atmosphere(a);
+    menu_animation(a);
+    menu_render(a);
     menu_view(a);
     menu_ai(a);
     menu_help();

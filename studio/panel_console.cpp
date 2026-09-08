@@ -16,6 +16,8 @@ namespace studio {
 // file_dialogs.cpp
 std::string dialog_save_file(const char *filter, const char *def_ext,
                              const char *suggested);
+// console_cmd.cpp — the input line that makes this a terminal, not just a log
+void console_command_line(App &a);
 
 namespace {
 
@@ -89,7 +91,11 @@ void draw_console(App &a) {
 
   ImGui::Separator();
 
-  ImGui::BeginChild("##log", ImVec2(0, 0), false,
+  // The command line is pinned at the bottom, so the log scrolling never
+  // pushes it off the panel.
+  const float cmd_h = ImGui::GetFrameHeightWithSpacing() +
+                      ImGui::GetStyle().ItemSpacing.y * 2.f + 1.f;
+  ImGui::BeginChild("##log", ImVec2(0, -cmd_h), false,
                     ImGuiWindowFlags_HorizontalScrollbar);
   std::vector<LogEntry> lines = log_snapshot();
   std::string lf = filter;
@@ -123,6 +129,7 @@ void draw_console(App &a) {
   if (autoscroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.f)
     ImGui::SetScrollHereY(1.f);
   ImGui::EndChild();
+  console_command_line(a); // console_cmd.cpp
   ImGui::End();
 }
 

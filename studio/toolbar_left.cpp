@@ -60,9 +60,38 @@ void column_terrain(App &a) {
         {Icon::Noise, SculptTool::Noise, "##b_noise",
          "Noise\n\nStamp fractal detail (Alt inverts)."},
         {Icon::Erase, SculptTool::Erase, "##b_erase",
-         "Erase\n\nRemove sculpted strokes, revealing the procedural terrain."}};
+         "Erase\n\nRemove sculpted strokes, revealing the procedural terrain."},
+        // The heightfield brush: pick a grey, paint it. Dark carves, light
+        // raises, mid grey is the layer doing nothing - the same brush the
+        // flat painter uses, on the 3D surface.
+        {Icon::Textured, SculptTool::Shade, "##b_shade",
+         "Shade\n\nPaint a chosen grey straight onto the terrain. Below mid\n"
+         "grey carves a valley, above it raises ground, and going over\n"
+         "the same ground stops at the shade you picked.\n\n"
+         "The swatch below sets it."}};
     for (const B &b : brushes)
       if (tool_icon(b.icon, b.id, tr(b.tip), s.tool == b.tool)) s.tool = b.tool;
+    if (s.tool == SculptTool::Shade) {
+      // The swatch, drawn as the grey it will paint, at the tile width so the
+      // column stays one button wide.
+      const float sw = tool_size();
+      ImVec4 col(s.shade, s.shade, s.shade, 1.f);
+      ImGui::PushStyleColor(ImGuiCol_Button, col);
+      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
+      ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
+      ImGui::Button("##shadeswatch", ImVec2(sw, sw * 0.55f));
+      ImGui::PopStyleColor(3);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", tr("The grey being painted. Drag the slider below,\n"
+                                   "or scroll here. Mid grey changes nothing."));
+      if (ImGui::IsItemHovered() && ImGui::GetIO().MouseWheel != 0.f)
+        s.shade = std::clamp(s.shade + ImGui::GetIO().MouseWheel * 0.05f, 0.f, 1.f);
+      ImGui::SetNextItemWidth(sw);
+      ImGui::VSliderFloat("##shadev", ImVec2(sw, sw * 1.6f), &s.shade, 0.f, 1.f, "");
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", tr("Black carves deepest, white raises highest,\n"
+                                   "the middle leaves the terrain alone."));
+    }
   }
   tool_sep();
   // The painter, beside the brushes rather than buried in the View menu: it
