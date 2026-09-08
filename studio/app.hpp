@@ -118,6 +118,10 @@ struct App {
   bool show_material_browser = false;
   // The height painter: a sculpt layer drawn flat, as a greyscale picture.
   bool show_paint_canvas = false;
+  // The MaterialOutput most recently assigned to something. A new component
+  // gets this rather than nothing, because working on a set of objects that
+  // share a look is the common case (studio/component_new.cpp).
+  uint64_t last_material = 0;
   // animation transport
   float anim_start = 0.f, anim_end = 10.f;
   bool anim_playing = false, anim_loop = true;

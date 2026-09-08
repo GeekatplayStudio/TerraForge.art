@@ -467,6 +467,7 @@ set(STUDIO_SOURCES
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
     studio/graph_lease.cpp
+    studio/component_new.cpp
     studio/material_source.cpp
     studio/paint_canvas.cpp
     studio/paint_canvas_tools.cpp
@@ -610,6 +611,7 @@ add_executable(undo_tests
     tests/cpp/test_anim_scene.cpp
     tests/cpp/test_imprint.cpp
     tests/cpp/test_material_source_scene.cpp
+    studio/component_new.cpp
     studio/material_source.cpp
     tests/cpp/test_material_stack_ops.cpp
     tests/cpp/test_material_channel_ops.cpp

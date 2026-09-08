@@ -1561,6 +1561,14 @@
       "description": "A stroke is stamped along the segment the pointer covered inside one graph lock, with one dirty mark and one evaluation request per frame rather than per dab, and only the brushed rectangle of the canvas texture is re-uploaded instead of the whole megabyte. Bracket keys resize the brush in proportional steps",
       "test_file": "test_imprint.cpp",
       "test_symbol": "test_imprint_run"
+    },
+    {
+      "id": "scene.complete_component",
+      "area": "studio",
+      "phase": "41",
+      "description": "Adding a component builds the whole thing: the scene object, the node in the editor that drives it (bound by driver_node), and a material assigned to it - App::last_material if there is one, else a plain grey FlatColor into a MaterialOutput, created once and shared by everything added afterwards. A new project's terrain gets the same treatment, so the Material Studio always has something to open. The toolbar and the add_primitive op share the one path",
+      "test_file": "test_scene_tree.cpp",
+      "test_symbol": "test_scene_tree_run"
     }
   ]
 }

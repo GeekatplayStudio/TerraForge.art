@@ -13,6 +13,7 @@
 // workspace. Every button is a palette icon in its functional colour.
 #include "anim_widgets.hpp"
 #include "app.hpp"
+#include "component_new.hpp"
 #include "i18n.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -102,9 +103,13 @@ void column_objects(App &a) {
   // tool palette remembers which of its tools you last reached for.
   static int chosen = 0;
   auto add_primitive = [&](const P &p) {
-    undo_push(a, std::string("Add ") + p.kind);
-    sc.selected = scene_add_primitive(p.kind, "");
-    a.scene_selection_serial++;
+    // The whole component: the object, the node in the editor that drives it,
+    // and a material on it - the last one used, or a plain grey one.
+    const NewComponent nc = component_add_primitive(a, p.kind);
+    if (nc.object >= 0) {
+      sc.selected = nc.object;
+      a.scene_selection_serial++;
+    }
   };
   const P &cur = prims[std::clamp(chosen, 0, PRIM_COUNT - 1)];
   char tip[192];

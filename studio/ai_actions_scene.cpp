@@ -5,6 +5,7 @@
 #include "ai_actions_internal.hpp"
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "component_new.hpp"
 #include "render_settings.hpp"
 #include "imprint.hpp"
 #include "scene.hpp"
@@ -156,8 +157,16 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       ++applied;
     } else if (op == "add_primitive") {
       std::string kind = act.value("kind", std::string("cube"));
-      int idx = scene_add_primitive(kind, act.value("name", std::string()),
-                                    act.value("detail", 24));
+      // The same complete component the toolbar makes: object, the node that
+      // drives it, and a material. A script adding a cube should get what a
+      // person adding a cube gets.
+      const NewComponent nc = component_add_primitive(
+          a, kind, act.value("name", std::string()));
+      int idx = nc.object;
+      if (idx >= 0 && act.contains("detail"))
+        if (gpx::Node *pn = a.graph.find_node(nc.node))
+          if (gpx::Attribute *d = pn->attrs.find("detail"))
+            d->i = act.value("detail", 24);
       if (idx < 0) {
         err = "unknown primitive '" + kind +
               "' (cube, sphere, plane, cylinder, cone)";

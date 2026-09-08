@@ -248,6 +248,7 @@ int ai_scene_op(App &a, const std::string &op, const json &act,
     for (SceneObject &o : scene().objects) {
       if (want.empty() ? o.type != SceneObject::Terrain : o.name != want) continue;
       o.material_node = m ? m->id : 0;
+      if (m) a.last_material = m->id;
       ++hits;
     }
     if (!hits) {

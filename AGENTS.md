@@ -54,6 +54,23 @@ each one was a bug we already paid for. Do not regress them.
     soon as a fifth viewport existed - two features resizing one FBO every
     frame.
 
+## Adding a component
+
+1. **Adding anything goes through `component_new.cpp`, never
+   `scene_add_primitive` on its own.** A component is the object *plus* the
+   node that drives it *plus* a material assigned to it. Adding a cube used to
+   produce a bare object: no node in the editor, no material, nothing to open
+   in the Material Studio - none of the architecture the application is built
+   around existed for that cube until somebody made it by hand.
+2. **A new component wears `App::last_material`, or a plain grey one.** Set
+   `last_material` wherever a material is assigned. Grey rather than coloured
+   because it is a starting point and not a decision, and because every value
+   in it is easy to judge against.
+3. **The object is made before the node, and bound with `driver_node`.** The
+   object then exists with geometry and a name immediately rather than
+   appearing a frame later, and `scene_nodes_objects.cpp` adopts it by that id
+   instead of by name.
+
 ## Panels and the graph lock
 
 1. **A panel that skips its body takes the user's menus down with it.** ImGui

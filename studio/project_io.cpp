@@ -4,6 +4,8 @@
 // planets and infinite terrain layers (the loader ignores keys it does not
 // know, so older files load unchanged).
 #include "app.hpp"
+#include "component_new.hpp"
+#include "render_settings.hpp"
 #include "scene.hpp"
 #include "scene_io.hpp"
 #include "undo.hpp"
@@ -225,6 +227,16 @@ void project_default_graph(App &a) {
     a.view_node = out->id;
     a.selected_node = out->id;
   }
+
+  // The terrain gets a material too, the way every other component does: a
+  // plain grey one, assigned. Without it the Material Studio opens on nothing
+  // and there is no way in but to build a material by hand first - which is
+  // the wrong first step for somebody who has just made a terrain.
+  a.last_material = 0; // a new project starts from grey, not from the last one
+  const uint64_t mat = component_material(a);
+  for (SceneObject &o : scene().objects)
+    if (o.type == SceneObject::Terrain) o.material_node = mat;
+  render_settings().terrain_material_node = mat;
 }
 
 // ------------------------------------------------------- graph view state

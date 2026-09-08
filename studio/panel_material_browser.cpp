@@ -76,6 +76,7 @@ void assign_to_selected(App &a, uint64_t mat_id) {
   }
   undo_push_locked(a, "assign material");
   sc.objects[(size_t)sc.selected].material_node = mat_id;
+  app().last_material = mat_id;
   a.uploaded_serial = 0;
   a.status = "assigned to " + sc.objects[(size_t)sc.selected].name;
 }
