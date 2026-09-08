@@ -1,6 +1,7 @@
 // Geekatplay TerraForge - a panel's hold on the graph for one frame.
 #include "graph_lease.hpp"
 #include "app.hpp"
+#include "perf_watch.hpp"
 #include <chrono>
 #include <imgui.h>
 
@@ -28,6 +29,7 @@ GraphLease::GraphLease(App &a) : a_(a) {
     owns_ = a_.graph_mtx.try_lock_for(std::chrono::milliseconds(GRAPH_LEASE_DRAG_MS));
   else
     owns_ = a_.graph_mtx.try_lock();
+  if (!owns_) perf_count("lease.miss"); // a blanked panel, counted
 }
 
 void GraphLease::unlock() {

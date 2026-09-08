@@ -288,6 +288,11 @@ void main(){
   // emissive) is the terrain's own PBR pipeline, shared through
   // MATERIAL_*_PLACEHOLDER so one material means the same thing everywhere.
   vec3 N = normalize(v_nrm);
+  if (u_id_mode != 0 && u_aov == 0) {
+    vec3 c = id_colour(u_id_mode == 2 ? u_id_key : float(u_object_id));
+    frag = vec4(c * (0.7 + 0.3 * max(N.y, 0.0)), 1.0);
+    return;
+  }
   if (u_v_density > 0.0) {
     // The mesh as a medium. The ray enters the object's bounding box at this
     // fragment and is marched to where it leaves, in the box's own 0..1

@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — the UI snapshot of the node graph and the background
 // evaluation worker. Split from app.cpp for the 500-line module rule.
 #include "app.hpp"
+#include "perf_watch.hpp"
 #include "console.hpp"
 #include "prefs.hpp"
 #include "gpx/field.hpp"
@@ -146,6 +147,7 @@ void eval_worker(App &a) {
       a.graph.on_progress = nullptr;
       node_count = a.graph.nodes.size();
       a.eval_serial++;
+      perf_count("eval");
     }
     log_fmt(LogLevel::Trace, "eval", "serial %llu done, %zu nodes",
             (unsigned long long)a.eval_serial.load(), node_count);

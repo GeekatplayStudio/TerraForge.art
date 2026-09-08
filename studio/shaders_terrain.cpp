@@ -373,6 +373,18 @@ uniform vec3 u_fog_color, u_absorb;
 uniform float u_fog_albedo, u_fog_g, u_fog_hetero;
 uniform int u_fog_steps;
 uniform int u_aov, u_object_id;
+// ID colours: a view's shading mode that paints every object (mode 1) or
+// every material (mode 2) in one flat bright colour, so a layer or an object
+// is found by eye rather than by name. The colour is the golden-ratio hue of
+// the key, which spreads any set of keys evenly round the wheel.
+uniform int u_id_mode;
+uniform float u_id_key;
+vec3 id_colour(float key){
+  float h = fract(key * 0.61803398875 + 0.13);
+  vec3 k = vec3(h, h + 0.3333, h + 0.6667);
+  vec3 rgb = clamp(abs(fract(k) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+  return mix(vec3(1.0), rgb, 0.85); // bright, fully saturated
+}
 // Fog as a participating medium, not a colour blend.
 //
 // Light along the view ray is extinguished by exp(-optical depth) (Beer-

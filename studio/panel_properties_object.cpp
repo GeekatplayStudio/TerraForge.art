@@ -377,6 +377,31 @@ void object_properties_ui(App &a) {
                             "against this.");
         text_length("Highest possible point",
                     rs.height_scale * rs.terrain_size_m);
+        // The outline. The tile is always computed as a square; this is the
+        // shape its feature is cut to when it is placed on the planet, with
+        // the feather running along the outline.
+        ImGui::TextUnformatted("Shape");
+        ImGui::SetNextItemWidth(-1);
+        ImGui::Combo("##tshape", &rs.terrain_shape, "Square\0Round\0Rectangle\0");
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("Square is the whole tile. Round cuts a disc out of\n"
+                            "it; Rectangle a centred box of the depth below. The\n"
+                            "edge feather follows the outline, so the feature\n"
+                            "fades into the planet along it. Needs 'Place on\n"
+                            "planet surface'.");
+        if (rs.terrain_shape == 2) {
+          const float depth_m = rs.terrain_size_m * std::min(rs.terrain_aspect, 1.f);
+          const float width_m = rs.terrain_size_m * std::min(1.f / std::max(rs.terrain_aspect, 0.05f), 1.f);
+          float d = depth_m;
+          ImGui::TextUnformatted("Depth");
+          ImGui::SetNextItemWidth(-1);
+          if (ImGui::DragFloat("##tdepth", &d, 50.f, rs.terrain_size_m * 0.05f, rs.terrain_size_m,
+                               "%.0f m"))
+            rs.terrain_aspect = std::clamp(d / std::max(rs.terrain_size_m, 1.f), 0.05f, 1.f);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("The rectangle is %.0f m across and %.0f m deep; the rest of\n"
+                              "the tile is the planet showing through.", width_m, depth_m);
+        }
       }
       ImGui::SeparatorText("Shape");
       labeled_scalar("Height scale", "hs", &rs.height_scale, 0.02f, 0.8f);

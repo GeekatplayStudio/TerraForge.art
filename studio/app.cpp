@@ -2,6 +2,7 @@
 #include "app.hpp"
 #include "toolbar_internal.hpp"
 #include "perf.hpp"
+#include "perf_watch.hpp"
 #include "ai_describe.hpp"
 #include "ai_jobs.hpp"
 #include "console.hpp"
@@ -288,6 +289,7 @@ void run_main() {
     draw_panel_preview(a);
     perf_mark("preview");
     perf_governor_tick(a);
+    perf_watch_tick(a); // where the frame went, and what ran for nothing
     ImGui::Render();
     int dw, dh;
     glfwGetFramebufferSize(a.window, &dw, &dh);

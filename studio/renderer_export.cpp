@@ -145,6 +145,12 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     uni1(prog_sky, "u_cl_time", cloud_time);
     uni1(prog_sky, "u_cl_ambient", RS.cloud_ambient);
     uni1(prog_sky, "u_cl_anvil", RS.cloud_anvil);
+    unii(prog_sky, "u_cl2", RS.cloud2_on ? 1 : 0);
+    unii(prog_sky, "u_cl2_type", RS.cloud2_type);
+    uni1(prog_sky, "u_cl2_cov", RS.cloud2_coverage);
+    uni1(prog_sky, "u_cl2_den", RS.cloud2_density);
+    uni1(prog_sky, "u_cl2_alt", RS.cloud2_altitude);
+    uni1(prog_sky, "u_cl2_thick", RS.cloud2_thickness);
     float wr = RS.cloud_wind_dir * 0.017453293f;
     float wind[2] = {std::cos(wr) * RS.cloud_wind_speed,
                      std::sin(wr) * RS.cloud_wind_speed};

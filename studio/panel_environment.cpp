@@ -98,6 +98,20 @@ static void section_clouds(RenderSettings &rs) {
   ImGui::SliderFloat("Sky light", &rs.cloud_ambient, 0.f, 2.f);
   ImGui::SliderFloat("Wind speed", &rs.cloud_wind_speed, 0.f, 0.3f, "%.3f");
   ImGui::SliderFloat("Wind direction", &rs.cloud_wind_dir, 0.f, 360.f, "%.0f\xC2\xB0");
+  ImGui::SeparatorText("Second layer");
+  studio::Checkbox("Second layer on", &rs.cloud2_on);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Another cloud layer at its own height - a cirrus veil\n"
+                      "above the cumulus, or a low stratus sheet under it.\n"
+                      "Drawn back to front from the camera.");
+  if (rs.cloud2_on) {
+    ImGui::Combo("Type##2", &rs.cloud2_type, "Stratus\0Cumulus\0Cumulonimbus\0");
+    ImGui::SliderFloat("Coverage##2", &rs.cloud2_coverage, 0.f, 1.f);
+    ImGui::SliderFloat("Density##2", &rs.cloud2_density, 0.1f, 3.f);
+    ImGui::SliderFloat("Altitude##2", &rs.cloud2_altitude, 0.2f, 4.f);
+    ImGui::SliderFloat("Thickness##2", &rs.cloud2_thickness, 0.05f, 1.5f);
+  }
+  ImGui::SeparatorText("Quality");
   ImGui::Combo("Quality", &rs.cloud_quality, "Draft\0Normal\0High\0");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Raymarch step count: higher is smoother but slower.");

@@ -29,6 +29,11 @@ uniform int u_cl_octaves;        // multiple-scattering octaves, 1 = single
 uniform float u_cl_ms_depth;     // extinction attenuation per bounce
 uniform float u_cl_cov, u_cl_den, u_cl_alt, u_cl_thick, u_cl_detail_amt;
 uniform float u_cl_time, u_cl_ambient, u_cl_anvil;
+// a second layer: its own kind, height, coverage and density; same march
+uniform int u_cl2, u_cl2_type;
+uniform float u_cl2_cov, u_cl2_den, u_cl2_alt, u_cl2_thick;
+// the layer being marched (set per march from the uniforms above)
+int g_type; float g_alt, g_thick, g_cov, g_den;
 uniform float u_sun_intensity;
 uniform vec2 u_cl_wind;
 uniform vec3 u_cl_color;
@@ -58,9 +63,9 @@ float hg(float c, float g){
   return (1.0-g2) / (4.0*PI*pow(max(1.0+g2-2.0*g*c, 1e-4), 1.5));
 }
 float cloud_gradient(float hf){
-  if (u_cl_type == 0)            // stratus: low flat sheet
+  if (g_type == 0)               // stratus: low flat sheet
     return remap01(hf, 0.0, 0.08) * (1.0 - remap01(hf, 0.18, 0.36));
-  if (u_cl_type == 2){           // cumulonimbus: tall with anvil top
+  if (g_type == 2){              // cumulonimbus: tall with anvil top
     float base = remap01(hf, 0.0, 0.08);
     float top = 1.0 - remap01(hf, 0.75 + u_cl_anvil*0.2, 1.0);
     return base * top;
@@ -68,25 +73,26 @@ float cloud_gradient(float hf){
   return remap01(hf, 0.0, 0.16) * (1.0 - remap01(hf, 0.45, 0.85)); // cumulus
 }
 float cloud_density(vec3 p, out float hf){
-  hf = clamp((p.y - u_cl_alt) / max(u_cl_thick, 1e-3), 0.0, 1.0);
+  hf = clamp((p.y - g_alt) / max(g_thick, 1e-3), 0.0, 1.0);
   vec3 wp = p; wp.xz += u_cl_wind * u_cl_time;
   vec4 sn = texture(u_cl_shape, wp * 0.18);
   float fbm = sn.g*0.625 + sn.b*0.25 + sn.a*0.125;
   // base shape: Perlin-Worley eroded by the Worley FBM (Schneider/Guerrilla)
   float shape = clamp(remapf(sn.r, fbm - 1.0, 1.0, 0.0, 1.0), 0.0, 1.0);
   shape *= cloud_gradient(hf);
-  float d = clamp(remapf(shape, 1.0 - u_cl_cov, 1.0, 0.0, 1.0), 0.0, 1.0);
+  float d = clamp(remapf(shape, 1.0 - g_cov, 1.0, 0.0, 1.0), 0.0, 1.0);
   if (d <= 0.001) return 0.0;
   vec3 dp = p * 2.6; dp.xz += u_cl_wind * u_cl_time * 2.0;
   vec3 dn = texture(u_cl_detail, dp).rgb;
   float dfbm = dn.r*0.625 + dn.g*0.25 + dn.b*0.125;
   float er = mix(dfbm, 1.0 - dfbm, clamp(hf*4.0, 0.0, 1.0));
   d = clamp(remapf(d, er * u_cl_detail_amt * 0.55, 1.0, 0.0, 1.0), 0.0, 1.0);
-  return d * u_cl_den;
+  return d * g_den;
 }
-vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
-  if (u_clouds == 0 || rd.y < 0.015) return vec4(bg, 1.0);
-  float y0 = u_cl_alt, y1 = u_cl_alt + u_cl_thick;
+vec4 march_layer(vec3 ro, vec3 rd, vec3 bg, int type, float alt, float thick, float cov, float den){
+  g_type = type; g_alt = alt; g_thick = thick; g_cov = cov; g_den = den;
+  if (rd.y < 0.015) return vec4(bg, 1.0);
+  float y0 = g_alt, y1 = g_alt + g_thick;
   float t0 = (y0 - ro.y) / rd.y;
   float t1 = (y1 - ro.y) / rd.y;
   if (ro.y > y0 && ro.y < y1) t0 = 0.0;
@@ -119,11 +125,29 @@ vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
                            u_sun_color, u_atmo) * u_cl_ambient;
   float transmittance = 1.0;
   vec3 scatter = vec3(0.0);
+  // Empty-space skipping: in clear air the ray takes three steps at once,
+  // and drops back to one the moment it meets density, so the edge of a
+  // cloud is integrated finely and the sky between clouds costs a third.
+  float t = t0 + dt * jitter;
+  float stride = 3.0;
   for (int i = 0; i < steps; ++i){
-    float t = t0 + dt * (float(i) + jitter);
+    if (t >= t1) break;
     vec3 p = ro + rd * t;
     float hf;
     float d = cloud_density(p, hf);
+    if (d <= 0.002){
+      stride = 3.0;
+      t += dt * stride;
+      continue;
+    }
+    if (stride > 1.0){
+      // just entered: step back to where the edge is and resample finely
+      stride = 1.0;
+      t = max(t - dt * 2.0, t0);
+      p = ro + rd * t;
+      d = cloud_density(p, hf);
+    }
+    t += dt;
     if (d > 0.002){
       // light march toward the sun
       float ldt = u_cl_thick / 5.0;
@@ -182,6 +206,18 @@ vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
     }
   }
   return vec4(bg * transmittance + scatter, transmittance);
+}
+// Both layers, far one first so the near one composes over it. From below
+// both, the higher layer is the far one; from above both, the lower.
+vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
+  if (u_clouds == 0) return vec4(bg, 1.0);
+  if (u_cl2 == 0) return march_layer(ro, rd, bg, u_cl_type, u_cl_alt, u_cl_thick, u_cl_cov, u_cl_den);
+  bool one_far = abs(u_cl_alt - ro.y) > abs(u_cl2_alt - ro.y);
+  vec4 c = one_far ? march_layer(ro, rd, bg, u_cl_type, u_cl_alt, u_cl_thick, u_cl_cov, u_cl_den)
+                   : march_layer(ro, rd, bg, u_cl2_type, u_cl2_alt, u_cl2_thick, u_cl2_cov, u_cl2_den);
+  vec4 n = one_far ? march_layer(ro, rd, c.rgb, u_cl2_type, u_cl2_alt, u_cl2_thick, u_cl2_cov, u_cl2_den)
+                   : march_layer(ro, rd, c.rgb, u_cl_type, u_cl_alt, u_cl_thick, u_cl_cov, u_cl_den);
+  return vec4(n.rgb, c.a * n.a);
 }
 void main(){
   vec3 dir;

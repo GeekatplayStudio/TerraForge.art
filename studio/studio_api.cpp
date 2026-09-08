@@ -236,8 +236,10 @@ static void publish_state(App &a) {
     // the last op's one-line result, so a script can read what it did
   j["status"] = a.status;
   if (!a.api_reply.empty()) {
+    // Kept until the next action document rather than cleared here: the state
+    // is republished every tick, so a reply cleared on publish lived for one
+    // file write and a script reading a moment later found nothing.
     try { j["reply"] = json::parse(a.api_reply); } catch (...) { j["reply"] = a.api_reply; }
-    a.api_reply.clear();
   }
   {
     const gpx::Timeline &tl = scene().timeline;
@@ -297,6 +299,7 @@ void studio_api_tick(App &a) {
     fs::remove(inbox, ec);
     if (!text.empty()) {
       std::string err;
+      a.api_reply.clear(); // the previous document's answer is spent
       // an op that reported something keeps its line; the generic one is
       // for batches that said nothing
       const std::string before = a.status;

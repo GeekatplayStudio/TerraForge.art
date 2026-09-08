@@ -163,6 +163,16 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (act.contains("altitude")) rs.cloud_altitude = act["altitude"].get<float>();
       if (act.contains("thickness")) rs.cloud_thickness = act["thickness"].get<float>();
       if (act.contains("wind_speed")) rs.cloud_wind_speed = act["wind_speed"].get<float>();
+      // the second layer: its own kind, height, coverage and density
+      if (act.contains("layer2")) rs.cloud2_on = act["layer2"].get<bool>();
+      if (act.contains("layer2_type") && act["layer2_type"].is_string()) {
+        std::string t = act["layer2_type"].get<std::string>();
+        rs.cloud2_type = t == "stratus" ? 0 : t == "cumulonimbus" ? 2 : 1;
+      }
+      if (act.contains("layer2_coverage")) rs.cloud2_coverage = std::clamp(act["layer2_coverage"].get<float>(), 0.f, 1.f);
+      if (act.contains("layer2_density")) rs.cloud2_density = std::clamp(act["layer2_density"].get<float>(), 0.1f, 3.f);
+      if (act.contains("layer2_altitude")) rs.cloud2_altitude = std::clamp(act["layer2_altitude"].get<float>(), 0.2f, 4.f);
+      if (act.contains("layer2_thickness")) rs.cloud2_thickness = std::clamp(act["layer2_thickness"].get<float>(), 0.05f, 1.5f);
       ++applied;
     } else if (op == "set_water") {
       if (act.contains("enabled")) rs.show_water = act["enabled"].get<bool>();

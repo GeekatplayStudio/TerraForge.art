@@ -1,6 +1,7 @@
 #include "app.hpp"
 #include "console.hpp"
 #include "perf.hpp"
+#include "perf_watch.hpp"
 #include "render_settings.hpp"
 #include "planet_place.hpp"
 #include "planet_renderer.hpp"
@@ -90,6 +91,8 @@ static uint64_t placement_key() {
   mix(&rs.place_flatten, sizeof rs.place_flatten);
   mix(&rs.place_presence, sizeof rs.place_presence);
   mix(&rs.place_ground, sizeof rs.place_ground);
+  mix(&rs.terrain_shape, sizeof rs.terrain_shape);
+  mix(&rs.terrain_aspect, sizeof rs.terrain_aspect);
   return h;
 }
 
@@ -102,7 +105,8 @@ static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> 
   const auto &rs = render_settings();
   g_place_key = placement_key();
   g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(),
-      {rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence, rs.place_ground},
+      {rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence, rs.place_ground,
+       rs.terrain_shape, rs.terrain_aspect},
       g_last_features, a.eval_serial, g_place_key};
 }
 
@@ -118,6 +122,7 @@ static void service_placement(App &a) {
         app_set_overlay_terrain(ready.height);
         g_natural_ground = ready.natural;
         a.uploaded_serial = ready.serial;
+        perf_count("upload");
       } else if (!g_placement_next && ready.serial != a.eval_serial &&
                  g_prepared_serial == a.eval_serial) {
         // The newer graph no longer has a terrain output; retain the image.

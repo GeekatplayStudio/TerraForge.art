@@ -157,6 +157,19 @@ changed rather than to the mode that is hiding it.
    frame. Put the control in the view header, where ordinary widget behaviour
    applies, and let the overlay only say what is going on.
 
+## The performance watcher
+
+`studio/perf_watch.cpp` counts events the subsystems report (`perf_count`:
+`eval`, `upload`, `view.draw.primary/secondary`, `lease.miss`,
+`input.frames`) alongside the frame phases, and every ten seconds writes
+`logs/perf_watch.json` and logs its findings - work done while nothing
+changed, evaluations with no input, secondary views redrawn while idle,
+panels losing the lock, uploads outrunning evaluations, the heaviest phase
+when over budget, GPU-bound frames. `perf_report` (op, MCP, console) asks for
+it now. **When you add a subsystem that can run for nothing, give it a
+counter**, or the watcher cannot see it. Read `logs/perf_watch.json` before
+optimising anything: it says where the time went.
+
 ## Participating media
 
 1. **Fog, clouds and volumetric materials are one model**: Beer-Lambert

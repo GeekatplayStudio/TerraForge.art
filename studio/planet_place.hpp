@@ -38,6 +38,12 @@ struct PlaceSettings {
   // planet's, not the tile's - a normalised mountain whose rim happens to sit
   // at 0.6 must not lift the whole world 600 m into the snow.
   float ground = 0.14f;
+  // The outline the tile's feature is cut to: 0 the whole square, 1 a disc
+  // inscribed in it, 2 a centred rectangle `aspect` as deep as it is wide
+  // (a value above 1 is deeper than wide). The feather runs along that
+  // outline, so a round terrain fades into the planet round.
+  int shape = 0;
+  float aspect = 1.f;
 };
 
 // What the compositing decided, for the Properties panel and for tests.

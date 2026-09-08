@@ -52,6 +52,9 @@ struct PerfConfig {
   bool governor = true;
   int fps_primary = 30;   // the main view must be able to run at this
   int fps_secondary = 20; // other views, the preview: lightened first
+  // The watcher (perf_watch.hpp): every ten seconds, where the frame went
+  // and what ran for nothing, to the log and logs/perf_watch.json.
+  bool watch = true;
 };
 
 // Checking GitHub for a newer version (updater.hpp).

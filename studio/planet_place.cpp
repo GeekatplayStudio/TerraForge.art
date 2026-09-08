@@ -183,8 +183,21 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
         const size_t i = (size_t)y * w + x;
         // a blurred blob is 0.5 at its own outline: 1 inside, a halo outside
         float wgt = smoothstep01(0.f, 0.5f, pres[i]);
-        // the tile has nothing to say past its border
-        float b = std::min(std::min(u, 1.f - u), std::min(v, 1.f - v));
+        // the tile has nothing to say past its outline: the border of the
+        // square, the rim of a disc, or the sides of a centred rectangle
+        float b;
+        if (s.shape == 1) {
+          const float du = u - 0.5f, dv = v - 0.5f;
+          b = 0.5f - std::sqrt(du * du + dv * dv);
+        } else if (s.shape == 2) {
+          const float a = std::max(s.aspect, 0.05f);
+          const float hw = a >= 1.f ? 0.5f / a : 0.5f;   // half width
+          const float hd = a >= 1.f ? 0.5f : 0.5f * a;   // half depth
+          b = std::min(std::min(hw - std::fabs(u - 0.5f), hd - std::fabs(v - 0.5f)),
+                       std::min(std::min(u, 1.f - u), std::min(v, 1.f - v)));
+        } else {
+          b = std::min(std::min(u, 1.f - u), std::min(v, 1.f - v));
+        }
         wgt *= smoothstep01(0.f, edge, b);
         const float pb = ground + relief[i];
         const float pbs = ground + smooth[i];

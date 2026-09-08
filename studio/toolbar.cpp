@@ -1,6 +1,8 @@
 ﻿// Geekatplay TerraForge — menu bar (File/Edit/View/Render/Help), tool strip
 // with typed resolution, progress and resource usage.
 #include "app.hpp"
+#include "config.hpp"
+#include "perf_watch.hpp"
 #include "ai_describe.hpp"
 #include "ai_jobs.hpp"
 #include "shortcuts.hpp"
@@ -311,6 +313,18 @@ static void menu_view(App &a) {
   ImGui::TextDisabled("Overlays");
   ImGui::MenuItem("Gizmos", shortcut_chord("view.gizmos").c_str(), &gizmo_visible());
   ImGui::MenuItem("Tool row", nullptr, &a.show_toolbar);
+  ImGui::Separator();
+  ImGui::TextDisabled("Performance");
+  if (ImGui::MenuItem("Performance watcher", nullptr, &config().perf.watch)) config_save();
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Every ten seconds: where the frame went and what ran for\n"
+                      "nothing - to the console and logs/perf_watch.json, for a\n"
+                      "person or an agent to act on. Costs a few counters.");
+  if (ImGui::MenuItem("Performance report now")) {
+    perf_watch_report_now(a);
+    a.status = perf_watch_findings_text();
+    a.show_console = true;
+  }
   ImGui::Separator();
   if (ImGui::BeginMenu("New node editor")) {
     // Another graph window, pinned to one domain, with its own canvas and

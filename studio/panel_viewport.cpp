@@ -74,7 +74,13 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
   ImGui::SetNextItemWidth(W);
   ImGui::Combo("Camera", &vc.camera, "Perspective\0Top\0Front\0Right\0");
   ImGui::SetNextItemWidth(W);
-  ImGui::Combo("Shading", &vc.display, "Wireframe\0Solid\0Textured\0");
+  ImGui::Combo("Shading", &vc.display, "Wireframe\0Solid\0Textured\0ID colours\0");
+  if (vc.display == 3) {
+    ImGui::SetNextItemWidth(W);
+    ImGui::Combo("ID colours by", &rs.id_mode, "Object\0Material\0");
+    ImGui::TextDisabled("Masks and distributions: double-click the\n"
+                        "node to show its output in the view.");
+  }
   studio::Checkbox("Atmosphere", &vc.atmosphere);
   studio::Checkbox("Water", &vc.show_water_view);
   studio::Checkbox("Grid", &vc.grid);
@@ -187,7 +193,7 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
 
   const float bw = tool_size();
   const float gap = 3.f, air = 7.f;
-  const float full = bw * 11.f + gap * 8.f + (air * 2.f + 1.f) * 3.f;
+  const float full = bw * 12.f + gap * 9.f + (air * 2.f + 1.f) * 3.f;
   // the float / dock button owns the far corner; the strip stops short of it
   const float float_w = ImGui::GetFontSize() + 6.f + 8.f;
   const float right = ImGui::GetContentRegionMax().x - float_w - bw - 6.f;
@@ -228,6 +234,10 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
     pick(Icon::Wireframe, "##sw", "Wireframe", &vc.display, 0);
     pick(Icon::Shaded, "##ss", "Solid", &vc.display, 1);
     pick(Icon::Textured, "##sx", "Textured\n\nThe material's colour on the surface.", &vc.display, 2);
+    pick(Icon::Tag, "##si",
+         "ID colours\n\nOne flat bright colour per object, or per material\n"
+         "(View options chooses which), so a layer or an object is\nfound by eye.",
+         &vc.display, 3);
     divider();
     // overlays: each on or off by itself
     flag(Icon::Sky, "##oa", "Sky, fog and clouds in this view", &vc.atmosphere);
@@ -244,7 +254,7 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
       if (ImGui::IsItemHovered()) ImGui::SetTooltip("Projection");
       ImGui::SameLine(0, gap);
       ImGui::SetNextItemWidth(84);
-      ImGui::Combo("##disp", &vc.display, "Wireframe\0Solid\0Textured\0");
+      ImGui::Combo("##disp", &vc.display, "Wireframe\0Solid\0Textured\0ID colours\0");
       if (ImGui::IsItemHovered()) ImGui::SetTooltip("Shading");
       ImGui::SameLine(0, gap);
     } else {

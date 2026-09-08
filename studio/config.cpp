@@ -158,7 +158,8 @@ std::string config_to_json(const Config &c, bool protect) {
   j["shortcuts"] = c.shortcuts;
   j["perf"] = {{"governor", c.perf.governor},
                {"fps_primary", c.perf.fps_primary},
-               {"fps_secondary", c.perf.fps_secondary}};
+               {"fps_secondary", c.perf.fps_secondary},
+               {"watch", c.perf.watch}};
   j["updates"] = {{"check_on_start", c.updates.check_on_start},
                   {"repo", c.updates.repo},
                   {"branch", c.updates.branch},
@@ -219,6 +220,7 @@ bool config_from_json(Config &c, const std::string &text, std::string &err) {
     n.perf.governor = pf.value("governor", true);
     n.perf.fps_primary = std::clamp(pf.value("fps_primary", 30), 5, 240);
     n.perf.fps_secondary = std::clamp(pf.value("fps_secondary", 20), 1, 240);
+    n.perf.watch = pf.value("watch", true);
   }
   json up = j.value("updates", json::object());
   if (up.is_object()) {

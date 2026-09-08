@@ -12,6 +12,7 @@
 // on and off, which is how the omission was noticed.
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "perf_watch.hpp"
 #include "prefs.hpp"
 #include "graph_lease.hpp"
 #include "paint_canvas.hpp"
@@ -204,6 +205,15 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     return 1;
   }
 
+  if (op == "perf_report") {
+    // The watcher's report, now: findings in the status line, the whole JSON
+    // (phases, event rates, memory) in "reply" for a script or an agent.
+    perf_watch_report_now(a);
+    a.api_reply = perf_watch_report_json();
+    a.status = perf_watch_findings_text();
+    return 1;
+  }
+
   if (op != "set_viewport") return -1;
   RenderSettings &rs = render_settings();
   int n = 0;
@@ -273,13 +283,14 @@ int ai_view_op(App &a, const std::string &op, const json &act,
       if (t.rfind("wire", 0) == 0) mode = 0;
       else if (t.rfind("solid", 0) == 0 || t.rfind("shade", 0) == 0) mode = 1;
       else if (t.rfind("text", 0) == 0) mode = 2;
+      else if (t.rfind("id", 0) == 0) mode = 3;
     }
-    if (mode < 0 || mode > 2) {
-      err = "set_viewport: shading is 0..2, or wireframe/solid/textured";
+    if (mode < 0 || mode > 3) {
+      err = "set_viewport: shading is 0..3, or wireframe/solid/textured/ids";
       return 0;
     }
     int view = act.value("view", -1); // -1 = every view
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < RenderSettings::MAX_VIEWS; ++i)
       if (view < 0 || view == i) rs.views[i].display = mode;
     ++n;
   }
@@ -288,6 +299,13 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     rs.viewport_layout = std::clamp(act["layout"].get<int>(), 0, 5), ++n;
   if (act.contains("engine") && act["engine"].is_number())
     rs.viewport_engine = std::clamp(act["engine"].get<int>(), 0, 1), ++n;
+  // the terrain's outline (0 square, 1 round, 2 rectangle of `terrain_aspect`)
+  // and what the ID-colour shading keys on (0 object, 1 material)
+  if (act.contains("terrain_shape") && act["terrain_shape"].is_number())
+    rs.terrain_shape = std::clamp(act["terrain_shape"].get<int>(), 0, 2), ++n;
+  n += take_f(act, "terrain_aspect", rs.terrain_aspect, 0.05f, 20.f);
+  if (act.contains("id_mode") && act["id_mode"].is_number())
+    rs.id_mode = std::clamp(act["id_mode"].get<int>(), 0, 1), ++n;
 
   if (!n) {
     err = "set_viewport: no recognised setting in the action";

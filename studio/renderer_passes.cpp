@@ -114,6 +114,12 @@ void pass_sky(const FrameCtx &F) {
     uni1(prog_sky, "u_cl_time", cloud_time);
     uni1(prog_sky, "u_cl_ambient", RS.cloud_ambient);
     uni1(prog_sky, "u_cl_anvil", RS.cloud_anvil);
+    unii(prog_sky, "u_cl2", RS.cloud2_on ? 1 : 0);
+    unii(prog_sky, "u_cl2_type", RS.cloud2_type);
+    uni1(prog_sky, "u_cl2_cov", RS.cloud2_coverage);
+    uni1(prog_sky, "u_cl2_den", RS.cloud2_density);
+    uni1(prog_sky, "u_cl2_alt", RS.cloud2_altitude);
+    uni1(prog_sky, "u_cl2_thick", RS.cloud2_thickness);
     glUniform2fv(uniform_location(prog_sky, "u_cl_wind"), 1, wind);
     uni3(prog_sky, "u_cl_color", RS.cloud_color);
     glActiveTexture(GL_TEXTURE3);
@@ -217,6 +223,16 @@ void pass_terrain(const FrameCtx &F) {
     // button and the "textured" checkbox entirely - the reported symptom was
     // that the texture could not be turned off at all.
     unii(PT, "u_textured", textured ? 1 : 0);
+    // ID colours: one flat bright colour per object or per material, so a
+    // layer or an object is found by eye. The terrain's key is its material.
+    {
+      float key = 1.f;
+      for (const SceneObject &o : scene().objects)
+        if (o.type == SceneObject::Terrain && o.material_node)
+          key = (float)(o.material_node % 1024);
+      unii(PT, "u_id_mode", vc.display == 3 ? RS.id_mode + 1 : 0);
+      uni1(PT, "u_id_key", key);
+    }
     unii(PT, "u_surface_on",
          (!g_surface_glsl.empty() && textured && RS.use_albedo) ? 1 : 0);
     unii(PT, "u_surf_rough_on", (!g_rough_glsl.empty() && textured) ? 1 : 0);

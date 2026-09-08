@@ -144,8 +144,23 @@ struct RenderSettings {
   float scatter_lod_min_keep = 0.15f; // the far crowd's share of the copies
   float terrain_lod = 0.5f;          // 0 off .. 1 the relief calms early
 
+  // ID colours (a view's shading mode 3): what each solid colour stands for.
+  // 0 one colour per object, 1 one per material. Masks and distributions
+  // show through the node preview in the viewport (view_node).
+  int id_mode = 0;
+
   // volumetric clouds
   bool clouds_on = true;
+  // A second cloud layer, with its own kind and height: a sky reads as a sky
+  // when a cirrus veil sits far above the cumulus. Same march, drawn back to
+  // front from the camera. The natural generalisation is a list; two is the
+  // start of it (docs/VOLUMETRICS.md).
+  bool cloud2_on = false;
+  int cloud2_type = 0;          // stratus by default: a thin high sheet
+  float cloud2_coverage = 0.35f;
+  float cloud2_density = 0.4f;
+  float cloud2_altitude = 2.4f;
+  float cloud2_thickness = 0.25f;
   float cloud_coverage = 0.55f;   // 0 clear .. 1 overcast
   float cloud_density = 1.0f;     // extinction multiplier
   float cloud_altitude = 1.4f;    // slab bottom (world units; terrain is ~0.2)
@@ -225,6 +240,11 @@ struct RenderSettings {
   float place_flatten = 1.f;    // 1 levels the planet under a feature, 0 adds
   float place_presence = 0.04f; // relief (heightmap units) that counts as one
   float place_ground = 0.14f;   // the planet's ground level, heightmap units
+  // The terrain's outline: 0 square, 1 round, 2 rectangle of `terrain_aspect`
+  // (depth over width; above 1 is deeper than wide). Cut at placement, so
+  // the feature fades into the planet along that outline.
+  int terrain_shape = 0;
+  float terrain_aspect = 1.f;
 
   // terrain / global
   float height_scale = 0.22f;

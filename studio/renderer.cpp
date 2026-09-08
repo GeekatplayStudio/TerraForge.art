@@ -25,6 +25,7 @@
 #include "stb_image_write.h" // implementation lives in the engine lib
 
 #include "perf.hpp"
+#include "perf_watch.hpp"
 #include "renderer_internal.hpp"
 #include "config.hpp"
 #include "renderer_shaders.hpp"
@@ -353,6 +354,7 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
       g_last_mvp_valid[slot] && std::equal(mvp, mvp + 16, g_last_mvp[slot]) &&
       now - cached.drawn_at < 1.0 / std::max(config().perf.fps_secondary, 1))
     return cached.texture;
+  perf_count(secondary ? "view.draw.secondary" : "view.draw.primary");
   cached.drawn_at = now;
   cached.revision = view_revision;
   cached.terrain = g_shadow_revision;

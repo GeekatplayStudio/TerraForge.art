@@ -79,6 +79,14 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
         "description": "Reset the Height Paint layer to mid grey (no effect).",
         "params": {},
     },
+    "studio_perf_report": {
+        "description": "The performance watcher's report: frame phases, event "
+                       "rates (evaluations, uploads, view draws, lock misses), "
+                       "memory, and findings about work done for nothing. The "
+                       "JSON comes back in the state's reply; the findings in "
+                       "status. Also written to logs/perf_watch.json every 10 s.",
+        "params": {},
+    },
     "studio_ai_generate_texture": {
         "description": "Generate a seamless tileable texture from a prompt with "
                        "the configured image provider (ComfyUI, OpenAI Images, "
@@ -217,6 +225,7 @@ ASSET_SIMPLE = {
     "studio_paint_save": "paint_save",
     "studio_paint_load": "paint_load",
     "studio_paint_clear": "paint_clear",
+    "studio_perf_report": "perf_report",
     "studio_ai_generate_texture": "ai_generate_texture",
     "studio_ai_generate_skydome": "ai_generate_skydome",
     "studio_ai_generate_image": "ai_generate_image",

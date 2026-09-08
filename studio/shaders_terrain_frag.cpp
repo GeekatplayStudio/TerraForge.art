@@ -186,6 +186,11 @@ float cloud_shadow(vec3 world){
 MATERIAL_FN_PLACEHOLDER
 void main(){
   vec3 N = get_normal(v_uv);
+  if (u_id_mode != 0 && u_aov == 0) {
+    vec3 c = id_colour(u_id_mode == 2 ? u_id_key : float(u_object_id));
+    frag = vec4(c * (0.7 + 0.3 * max(N.y, 0.0)), 1.0);
+    return;
+  }
   // steepness in the tile's own frame, before the planet rotation below: on
   // a globe smaller than the tile world-up is not local-up, and the palette
   // would paint every slope of a wrapped marble as rock

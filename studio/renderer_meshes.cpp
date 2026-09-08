@@ -137,6 +137,8 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
                        nrm);
     uni3(prog_mesh, "u_color", o.color);
     renderer_material_uniforms(prog_mesh, mp);
+    unii(prog_mesh, "u_id_mode", vc.display == 3 ? RS.id_mode + 1 : 0);
+    uni1(prog_mesh, "u_id_key", (float)(o.material_node % 1024));
     uni3(prog_mesh, "u_sun", sun);
     uni3(prog_mesh, "u_sun_color", RS.sun_color);
     uni3(prog_mesh, "u_cam", view_eye);

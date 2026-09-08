@@ -324,6 +324,7 @@ set(STUDIO_SOURCES
     studio/console_shorthand.cpp
     studio/gradient_library.cpp
     studio/material_presets.cpp
+    studio/perf_watch.cpp
     studio/imprint.cpp
     studio/updater.cpp
     studio/mesh_thumbnail.cpp
