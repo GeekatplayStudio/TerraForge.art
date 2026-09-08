@@ -94,6 +94,72 @@ void test_flat_tile_is_the_planet() {
   check(span > 0.15f, "the planet under the tile has real relief");
 }
 
+void test_blend_controls() {
+  std::printf("placement: gradient, whole-tile mode and the mask...\n");
+  const int n = 96;
+  auto L = layers_realistic();
+  std::vector<float> relief, smooth;
+  studio::planet_relief_under_tile(L, n, n, relief, smooth);
+  // a raised flat pad: in features-only mode it is not a feature (flat),
+  // so the planet shows; whole-tile mode keeps it standing at the settled
+  // ground level away from the border
+  gpx::Heightmap pad(n, n, 0.40f);
+  const int c = n / 2;
+  const size_t ci = (size_t)c * n + c;
+  {
+    studio::PlaceSettings s;
+    s.ground = 0.12f;
+    s.mode = 1;
+    s.edge = 0.10f;
+    studio::PlaceResult r;
+    gpx::Heightmap out = studio::planet_place_tile(pad, L, s, &r);
+    // the pad's own ground (0.40) settles to the planet's (0.12) on the
+    // smooth planet shape, so the centre is planet ground + broad relief
+    const float expect = 0.12f + smooth[ci];
+    check(std::fabs(out.v[ci] - expect) < 2e-3f, "whole tile: the flat pad stands on levelled ground");
+    // at the very border the planet wins
+    check(std::fabs(out.v[(size_t)c * n] - (0.12f + relief[(size_t)c * n])) < 1e-4f,
+          "whole tile: the border is the planet");
+  }
+  // the gradient: for the same point inside the feather, a beach (>1)
+  // blends less of the tile than the S-curve, a plateau (<1) more
+  {
+    // a wide dome, so the probe point 10% in from the edge carries relief
+    // of its own: with flatten 0 the excess over the planet is that relief
+    // times the blend weight
+    gpx::Heightmap dome = tile_with_bump(n, 0.12f, 0.5f, 0.7f);
+    auto weight_at = [&](float grad) {
+      studio::PlaceSettings s;
+      s.ground = 0.12f;
+      s.mode = 1;
+      s.edge = 0.30f;
+      s.gradient = grad;
+      s.flatten = 0.f;
+      gpx::Heightmap out = studio::planet_place_tile(dome, L, s, nullptr);
+      // a point 10% in from the left edge, mid-height: b = 0.1, t = 1/3
+      const size_t i = (size_t)c * n + (size_t)std::lround(0.1f * (n - 1));
+      return out.v[i] - (0.12f + relief[i]);
+    };
+    const float s1 = weight_at(1.f), beach = weight_at(3.f), plateau = weight_at(0.3f);
+    check(beach < s1 - 1e-4f, "gradient above 1 gives way sooner");
+    check(plateau > s1 + 1e-4f, "gradient below 1 holds its ground longer");
+  }
+  // the mask: zero on the left half hands that half to the planet
+  {
+    auto mask = std::make_shared<gpx::Heightmap>(n, n, 1.f);
+    for (int y = 0; y < n; ++y)
+      for (int x = 0; x < n / 2; ++x) mask->at(x, y) = 0.f;
+    studio::PlaceSettings s;
+    s.ground = 0.12f;
+    s.mode = 1;
+    s.mask = mask;
+    gpx::Heightmap out = studio::planet_place_tile(pad, L, s, nullptr);
+    const size_t left = (size_t)c * n + n / 4, right = (size_t)c * n + 3 * n / 4;
+    check(std::fabs(out.v[left] - (0.12f + relief[left])) < 1e-4f, "mask 0: the planet");
+    check(std::fabs(out.v[right] - (0.12f + smooth[right])) < 2e-3f, "mask 1: the tile");
+  }
+}
+
 void test_feature_stands_on_levelled_ground() {
   std::printf("placement: a feature stands on levelled ground...\n");
   const int n = 128;
@@ -202,6 +268,7 @@ int test_planet_place_run() {
   g_fail = 0;
   test_flat_tile_is_the_planet();
   test_feature_stands_on_levelled_ground();
+  test_blend_controls();
   test_hole_is_a_basin();
   test_border_meets_the_planet();
   test_deterministic_and_off();

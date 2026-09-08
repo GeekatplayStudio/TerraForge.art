@@ -528,6 +528,16 @@ wanted his students to have.
   and the planet shows through outside; off a planet the tile ends there.
   The **Surface** sliders edit the assigned material's roughness and
   reflection, and say so; with no material they are disabled and say why.
+- **How the tile joins the planet is yours to set.** *Blend* chooses
+  between the tile's features only (the planet shows through wherever the
+  tile is flat) and the whole tile; *Edge blend* is how far the join
+  reaches, up to half the tile; *Edge gradient* is its curve, a plateau
+  with a cliff below 1 and a beach above; and any heightmap wired into
+  Terrain output's **blend mask** port decides where the join is, 1 the
+  tile and 0 the planet - a Shape node's mask with a wandering rim makes an
+  island, a slope mask keeps only the flats. A mask connected to a Shape
+  node beside a named shape now carves that shape instead of being
+  ignored.
 - **Node graph engine** with dirty-tracking evaluation, multithreaded solvers,
   per-node previews and timings, and any resolution from 64 to 8192.
 - **Erosion that models the physics:** particle-droplet hydraulic erosion, a

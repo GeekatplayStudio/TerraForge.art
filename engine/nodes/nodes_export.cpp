@@ -13,12 +13,17 @@ namespace gpx {
 // shape layers and the albedo, applies global zero-edges and height range.
 // The viewport prefers this node automatically.
 REGISTER_NODE(
-    TerrainOutput, "Export", "Final terrain: combines height layers + material, zero edges",
+    TerrainOutput, "Export",
+    "Final terrain: combines height layers + material, zero edges; a blend mask decides where the tile joins the planet",
     [](Node &n) {
       n.add_in("heightmap");
       n.add_in("extra layer 1", DataType::Heightmap, true);
       n.add_in("extra layer 2", DataType::Heightmap, true);
       n.add_in("albedo", DataType::Texture, true);
+      // Where the tile stands and where the planet shows through, 1 to 0,
+      // read by the planet placement (studio/planet_place.hpp): a Shape
+      // node's mask, a slope mask, a painted one - any heightmap.
+      n.add_in("blend mask", DataType::Heightmap, true);
       n.add_out("heightmap");
       n.add_out("albedo", DataType::Texture);
       add_choice(n.attrs, "combine", "Combine layers", {"Add", "Max (merge)", "Min"},

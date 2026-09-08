@@ -319,6 +319,18 @@ size; and a status line proves an op ran, a log line does not.
 4. **The UI snapshot is rebuilt on change, not per frame** (eval serial,
    layout serial, node count, a pointer button, or a quarter second).
 
+## The tile's join with the planet
+
+studio/planet_place.cpp composes weight = feature halo (or 1 in whole-tile
+mode) x border feather x mask. `PlaceSettings` carries edge (distance),
+gradient (the feather's curve, pow before the smoothstep), mode and an
+optional mask copied from Terrain output's "blend mask" input at request
+time - copied, because the placement runs on a worker after the graph's
+buffers move on. `place_gradient`/`place_mode` are render settings (saved,
+`set_setting`, `set_viewport`, in the placement key). A control that changes
+the join must be mixed into `placement_key()` or the tile is not re-placed
+until the next evaluation. tests/cpp/test_planet_place.cpp pins the three.
+
 ## The terrain is an object with a transform
 
 studio/terrain_xform.cpp: the Terrain SceneObject's pos (an offset; pos[1]

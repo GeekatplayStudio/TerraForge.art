@@ -61,7 +61,9 @@ REGISTER_NODE(
                  2, "Shape")
           .tooltip = "Round is an ellipse when the width and height differ.\n"
                      "From mask takes the outline from the mask input and\n"
-                     "only the edge treatment from here.";
+                     "only the edge treatment from here. With a named shape,\n"
+                     "a connected mask carves it: a fractal there gives a\n"
+                     "ragged coast, a slope mask keeps only the flats.";
       add_vec2(n.attrs, "size", "Size", 0.84f, 0.84f, 0.01f, 2.f, "Shape")
           .tooltip = "Width and height across, as a fraction of the tile. 1\n"
                      "touches the borders; less leaves ground around it.";
@@ -154,6 +156,16 @@ REGISTER_NODE(
                             (1.f - shape::falloff(p, m));
             } else {
               a = shape::presence(p, u, v);
+              // A mask connected beside a named shape used to be ignored,
+              // which read as "plugging a fractal in does nothing". It
+              // carves the shape now: where the mask is 0 the shape is
+              // gone, where it is 1 the shape decides.
+              if (shape_mask) {
+                const float m = shape_mask->at(
+                    std::clamp(x * shape_mask->w / std::max(w, 1), 0, shape_mask->w - 1),
+                    std::clamp(y * shape_mask->h / std::max(h, 1), 0, shape_mask->h - 1));
+                a *= std::clamp(m, 0.f, 1.f);
+              }
             }
             const size_t i = (size_t)y * w + x;
             msk.v[i] = a;

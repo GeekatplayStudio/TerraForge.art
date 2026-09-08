@@ -242,7 +242,13 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    globe made from the heightmap, 2e-8 = a 0.1 mm globe, 1e12 = a giant,
    0 = flat world)
 - {"op":"set_viewport","place_on_planet":true,"place_edge":0.1,
-   "place_flatten":1.0,"place_presence":0.04,"place_ground":0.14}
+   "place_flatten":1.0,"place_presence":0.04,"place_ground":0.14,
+   "place_gradient":1.0,"place_mode":0}
+   (place_edge: how far the join reaches, fraction of the tile; place_gradient: its curve,
+    below 1 the tile holds its ground and drops at the rim, above 1 it gives way from further
+    in; place_mode 0 blends the tile's features and lets the planet through where the tile
+    is flat, 1 blends the whole tile; a heightmap into Terrain output's "blend mask" port
+    multiplies the join, 1 tile, 0 planet)
    (how the terrain tile sits on the planet: the planet's relief shows
     through where the tile is flat, is levelled under the tile's features
     (flatten 1) or kept beneath them (0), feathered over place_edge of the

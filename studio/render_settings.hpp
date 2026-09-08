@@ -249,6 +249,8 @@ struct RenderSettings {
   float place_flatten = 1.f;    // 1 levels the planet under a feature, 0 adds
   float place_presence = 0.04f; // relief (heightmap units) that counts as one
   float place_ground = 0.14f;   // the planet's ground level, heightmap units
+  float place_gradient = 1.f;   // the feather's curve (planet_place.hpp)
+  int place_mode = 0;           // 0 blend the features, 1 blend the whole tile
   // The terrain's outline: 0 square, 1 round, 2 rectangle of `terrain_aspect`
   // (depth over width; above 1 is deeper than wide). Cut at placement, so
   // the feature fades into the planet along that outline.

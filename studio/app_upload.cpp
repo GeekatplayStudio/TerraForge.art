@@ -91,6 +91,8 @@ static uint64_t placement_key() {
   mix(&rs.place_flatten, sizeof rs.place_flatten);
   mix(&rs.place_presence, sizeof rs.place_presence);
   mix(&rs.place_ground, sizeof rs.place_ground);
+  mix(&rs.place_gradient, sizeof rs.place_gradient);
+  mix(&rs.place_mode, sizeof rs.place_mode);
   mix(&rs.terrain_shape, sizeof rs.terrain_shape);
   mix(&rs.terrain_aspect, sizeof rs.terrain_aspect);
   return h;
@@ -104,9 +106,17 @@ static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> 
                                   std::shared_ptr<const gpx::TextureRGBA> albedo) {
   const auto &rs = render_settings();
   g_place_key = placement_key();
-  g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(),
-      {rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence, rs.place_ground,
-       rs.terrain_shape, rs.terrain_aspect},
+  PlaceSettings ps{rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence,
+                   rs.place_ground, rs.terrain_shape, rs.terrain_aspect};
+  ps.gradient = rs.place_gradient;
+  ps.mode = rs.place_mode;
+  // the blend mask, when the graph feeds one into Terrain output: copied,
+  // because the placement runs on a worker after the graph buffers move on
+  for (auto &n : a.graph.nodes)
+    if (n->type == "TerrainOutput")
+      if (const gpx::Heightmap *m = n->in_hmap("blend mask"))
+        if (!m->empty()) ps.mask = std::make_shared<gpx::Heightmap>(*m);
+  g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(), ps,
       g_last_features, a.eval_serial, g_place_key};
 }
 

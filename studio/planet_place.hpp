@@ -24,6 +24,7 @@
 #pragma once
 #include "gpx/heightmap.hpp"
 #include "gpx/planet_math.hpp"
+#include <memory>
 #include <vector>
 
 namespace studio {
@@ -44,6 +45,18 @@ struct PlaceSettings {
   // outline, so a round terrain fades into the planet round.
   int shape = 0;
   float aspect = 1.f;
+  // The blend itself. `edge` above is how far it reaches; `gradient` is
+  // the curve it takes across that distance (1 the plain S-curve, below 1
+  // the tile holds its ground and drops near the rim, above 1 it gives way
+  // from well inside - the same meaning as the TerrainShape node's blend
+  // gradient); `mode` 0 blends the tile's features only and lets the
+  // planet through where the tile is flat, 1 blends the whole tile, flat
+  // ground included, so what the graph made is what stands there; `mask`,
+  // when set, multiplies the blend - 1 the tile, 0 the planet - so any
+  // heightmap the graph produces can decide where the join is.
+  float gradient = 1.f;
+  int mode = 0;
+  std::shared_ptr<const gpx::Heightmap> mask;
 };
 
 // What the compositing decided, for the Properties panel and for tests.

@@ -39,6 +39,11 @@ bool take_f(const json &j, const char *key, float &dst, float lo, float hi) {
   dst = std::clamp(j[key].get<float>(), lo, hi);
   return true;
 }
+bool take_i(const json &j, const char *key, int &dst, int lo, int hi) {
+  if (!j.contains(key) || !j[key].is_number()) return false;
+  dst = std::clamp(j[key].get<int>(), lo, hi);
+  return true;
+}
 bool take_b(const json &j, const char *key, bool &dst) {
   if (!j.contains(key) || !j[key].is_boolean()) return false;
   dst = j[key].get<bool>();
@@ -306,6 +311,8 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_f(act, "place_flatten", rs.place_flatten, 0.f, 1.f);
   n += take_f(act, "place_presence", rs.place_presence, 0.001f, 1.f);
   n += take_f(act, "place_ground", rs.place_ground, -1.f, 2.f);
+  n += take_f(act, "place_gradient", rs.place_gradient, 0.05f, 8.f);
+  n += take_i(act, "place_mode", rs.place_mode, 0, 1);
   n += take_f(act, "fractal_detail", rs.fractal_detail, 0.f, 1.f);
   n += take_f(act, "fractal_scale", rs.fractal_scale, 0.1f, 4096.f);
   n += take_f(act, "field_displacement", rs.field_displacement, -8.f, 8.f);

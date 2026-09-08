@@ -175,14 +175,18 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   gpx::Heightmap outm(w, h);
   const float edge = std::max(s.edge, 1e-4f);
   const float flat = std::clamp(s.flatten, 0.f, 1.f);
+  const float grad = std::clamp(s.gradient, 0.05f, 8.f);
+  const bool whole = s.mode == 1;
+  const gpx::Heightmap *mask = s.mask && !s.mask->empty() ? s.mask.get() : nullptr;
   gpx::parallel_rows(h, [&](int y0, int y1) {
     for (int y = y0; y < y1; ++y) {
       const float v = h > 1 ? (float)y / (float)(h - 1) : 0.f;
       for (int x = 0; x < w; ++x) {
         const float u = w > 1 ? (float)x / (float)(w - 1) : 0.f;
         const size_t i = (size_t)y * w + x;
-        // a blurred blob is 0.5 at its own outline: 1 inside, a halo outside
-        float wgt = smoothstep01(0.f, 0.5f, pres[i]);
+        // a blurred blob is 0.5 at its own outline: 1 inside, a halo outside;
+        // the whole-tile mode has no blob - the tile is the tile
+        float wgt = whole ? 1.f : smoothstep01(0.f, 0.5f, pres[i]);
         // the tile has nothing to say past its outline: the border of the
         // square, the rim of a disc, or the sides of a centred rectangle
         float b;
@@ -198,7 +202,14 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
         } else {
           b = std::min(std::min(u, 1.f - u), std::min(v, 1.f - v));
         }
-        wgt *= smoothstep01(0.f, edge, b);
+        // the border feather over `edge`, bent by the gradient: above 1 the
+        // tile gives way from further in, below 1 it holds until the rim
+        wgt *= smoothstep01(0.f, 1.f, std::pow(std::clamp(b / edge, 0.f, 1.f), grad));
+        if (mask) {
+          const int mx = std::clamp((int)(u * (float)(mask->w - 1) + 0.5f), 0, mask->w - 1);
+          const int my = std::clamp((int)(v * (float)(mask->h - 1) + 0.5f), 0, mask->h - 1);
+          wgt *= std::clamp(mask->at(mx, my), 0.f, 1.f);
+        }
         const float pb = ground + relief[i];
         const float pbs = ground + smooth[i];
         const float seat = pb + (pbs - pb) * flat;

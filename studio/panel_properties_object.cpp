@@ -500,11 +500,41 @@ void object_properties_ui(App &a) {
                             "feathered so nothing steps. Off: the tile is\n"
                             "shown exactly as the graph made it.");
         if (rs.place_on_planet) {
+          ImGui::TextUnformatted("Blend");
+          ImGui::SetNextItemWidth(-1);
+          ImGui::Combo("##pmode", &rs.place_mode, "Features only\0Whole tile\0");
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Features only: the planet shows through wherever the\n"
+                              "tile is flat at its own ground level, and each feature\n"
+                              "is blended in with a halo. Whole tile: everything the\n"
+                              "graph made stands, flat ground included, and only the\n"
+                              "border blends into the planet.");
           drag_length("Edge blend", &rs.place_edge, 1.f, 0.f,
                       0.5f * rs.terrain_size_m);
           if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("How far a feature's footprint, and the tile's\n"
-                              "own border, fade into the planet.");
+            ImGui::SetTooltip("How far in from the border (and around each feature)\n"
+                              "the join reaches. Up to half the tile.");
+          labeled_scalar("Edge gradient", "pg", &rs.place_gradient, 0.05f, 8.f);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("The curve of the join across that distance. 1 is the\n"
+                              "plain S-curve; below 1 the tile holds its ground and\n"
+                              "drops near the rim - a plateau; above 1 it gives way\n"
+                              "from well inside - a beach.");
+          {
+            std::unique_lock<App::GraphMutex> glk(a.graph_mtx, std::try_to_lock);
+            bool has_mask = false;
+            if (glk.owns_lock())
+              for (auto &n : a.graph.nodes)
+                if (n->type == "TerrainOutput")
+                  if (const gpx::Heightmap *m = n->in_hmap("blend mask")) has_mask = !m->empty();
+            ImGui::TextDisabled(has_mask ? "Blend mask: from the graph (Terrain output's\n"
+                                           "'blend mask' input): 1 keeps the tile, 0 shows\n"
+                                           "the planet."
+                                         : "Blend mask: none. Connect any heightmap to\n"
+                                           "Terrain output's 'blend mask' input - a Shape\n"
+                                           "node's mask, a slope mask, a painted one - to\n"
+                                           "decide where the join is.");
+          }
           labeled_scalar("Flatten beneath", "pf", &rs.place_flatten, 0.f, 1.f);
           if (ImGui::IsItemHovered())
             ImGui::SetTooltip("1: the planet is levelled under a feature, so\n"

@@ -127,6 +127,8 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"place_flatten", 'f', &rs.place_flatten},
       {"place_presence", 'f', &rs.place_presence},
       {"place_ground", 'f', &rs.place_ground},
+      {"place_gradient", 'f', &rs.place_gradient},
+      {"place_mode", 'i', &rs.place_mode},
       {"terrain_shape", 'i', &rs.terrain_shape},
       {"terrain_aspect", 'f', &rs.terrain_aspect},
       // global
