@@ -15,6 +15,11 @@ enum class SculptTool {
   Terrace,   // quantize altitudes under the brush
   Noise,     // stamp fractal detail
   Erase,     // remove sculpted strokes only
+  // Paint a chosen value, the way a heightfield is painted in an image
+  // editor: mid grey is the layer doing nothing, black is the deepest
+  // carve, white the highest rise. Appended last so saved tool indices
+  // keep meaning what they meant.
+  Shade,
 };
 
 struct SculptState {
@@ -27,6 +32,11 @@ struct SculptState {
   bool stroking = false;      // mouse currently down on the terrain
   float flatten_target = 0.f; // captured on stroke start
   bool have_target = false;
+  // Shade: the grey being painted, 0 black .. 1 white, with 0.5 the value
+  // that leaves the terrain alone. It is stored as a fraction of the field's
+  // own range rather than in field units, so the same swatch means the same
+  // thing whether the layer runs -1..1 (a sculpt) or 0..1 (a mask).
+  float shade = 0.75f;
 };
 
 SculptState &sculpt_state();

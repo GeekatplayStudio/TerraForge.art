@@ -116,6 +116,8 @@ struct App {
   // materials, the library, the asset index).
   bool show_material_studio = false;
   bool show_material_browser = false;
+  // The height painter: a sculpt layer drawn flat, as a greyscale picture.
+  bool show_paint_canvas = false;
   // animation transport
   float anim_start = 0.f, anim_end = 10.f;
   bool anim_playing = false, anim_loop = true;
@@ -237,6 +239,7 @@ void draw_statusbar(App &a);      // the health bar along the bottom (panel_stat
 float statusbar_height();
 void settings_open();
 void draw_panel_material_studio(App &a);  // panel_material_studio.cpp
+void draw_panel_paint_canvas(App &a);     // paint_canvas.cpp
 void draw_panel_material_browser(App &a); // panel_material_browser.cpp
 // Every workspace keeps its own window arrangement (layout_workspace.cpp).
 void workspace_layout_switch(App &a, int from, int to);

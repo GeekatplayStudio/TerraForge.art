@@ -89,8 +89,11 @@ bool sculpt_apply(App &a, float tx, float tz, float dt) {
     // one undo step per stroke, named for the tool
     static const char *names[] = {"Sculpt raise", "Sculpt flatten",
                                   "Sculpt smooth", "Sculpt terrace",
-                                  "Sculpt noise",  "Sculpt erase"};
-    undo_push_locked(a, names[(int)S.tool]);
+                                  "Sculpt noise",  "Sculpt erase",
+                                  "Paint height"};
+    const int ti = std::clamp((int)S.tool, 0,
+                              (int)(sizeof names / sizeof *names) - 1);
+    undo_push_locked(a, names[ti]);
     S.stroking = true;
     S.have_target = false;
   }
@@ -199,6 +202,14 @@ bool sculpt_apply(App &a, float tx, float tz, float dt) {
         case SculptTool::Erase:
           d *= 1.f - std::min(w * 2.f, 1.f);
           break;
+        case SculptTool::Shade: {
+          // Toward the chosen grey, never past it, so going over the same
+          // ground twice deepens the stroke up to that value and then stops
+          // - which is how a paint tool behaves and is what makes a flat
+          // plateau paintable at all.
+          const float target = lo + S.shade * (hi - lo);
+          d += (target - d) * std::min(w * 2.f, 1.f);
+        } break;
       }
       d = std::clamp(d, lo, hi);
     }

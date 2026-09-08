@@ -204,6 +204,7 @@ void run_main() {
     draw_panel_material_editor(a);
     draw_panel_mesh(a);
     draw_panel_material_studio(a);
+    draw_panel_paint_canvas(a); // the height painter, when it is open
     draw_panel_material_browser(a);
     perf_mark("panels.mid");
     draw_panel_settings(a);

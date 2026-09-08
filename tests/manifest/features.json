@@ -1529,6 +1529,22 @@
       "description": "A stone's profile blends from a weathered dome to an angular shard, with the silhouette wobble rising with it; sharpness 0 is exactly the dome the node always drew, so no saved project moves",
       "test_file": "test_fake_stones.cpp",
       "test_symbol": "test_sharpness_makes_a_thinner_stone"
+    },
+    {
+      "id": "paint.height_canvas",
+      "area": "studio",
+      "phase": "41",
+      "description": "The Height Paint window draws a TerrainSculpt layer flat as a greyscale picture and paints it with the viewport's own brushes: mid grey does nothing, darker carves, lighter raises. Strokes are interpolated between frames so a fast hand leaves a line rather than a row of dabs, the layer is a node so everything downstream (erosion included) recomputes as the stroke lands, and a greyscale image can be loaded straight into it",
+      "test_file": "test_imprint.cpp",
+      "test_symbol": "test_imprint_run"
+    },
+    {
+      "id": "paint.shade_tool",
+      "area": "studio",
+      "phase": "41",
+      "description": "SculptTool::Shade paints toward a chosen value rather than accumulating: going over the same ground deepens the stroke up to that grey and then stops, which is what makes a level riverbed or a flat plateau paintable. The value is a fraction of the field's own range, so one swatch means the same thing on a -1..1 sculpt and a 0..1 mask",
+      "test_file": "test_imprint.cpp",
+      "test_symbol": "test_imprint_run"
     }
   ]
 }

@@ -281,6 +281,12 @@ static void menu_view(App &a) {
   ImGui::MenuItem("Gizmos", shortcut_chord("view.gizmos").c_str(), &gizmo_visible());
   ImGui::MenuItem("Preview", nullptr, &a.show_preview);
   ImGui::MenuItem("Material Editor", nullptr, &a.show_material_editor);
+  ImGui::MenuItem("Height Paint", nullptr, &a.show_paint_canvas);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Paint the terrain as a greyscale picture: mid grey does\n"
+                      "nothing, darker carves a valley, lighter raises ground.\n"
+                      "The strokes are a layer in the graph, so erosion and\n"
+                      "everything else downstream follow as you draw.");
   ImGui::Separator();
   if (ImGui::BeginMenu("New node editor")) {
     // Another graph window, pinned to one domain, with its own canvas and

@@ -468,6 +468,7 @@ set(STUDIO_SOURCES
     studio/scene_nodes.cpp
     studio/graph_lease.cpp
     studio/material_source.cpp
+    studio/paint_canvas.cpp
     studio/panel_properties_widgets.cpp
     studio/scene_nodes_material.cpp
     studio/scene_nodes_objects.cpp

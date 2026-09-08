@@ -138,6 +138,11 @@ int ai_view_op(App &a, const std::string &op, const json &act,
         {"toolbar", &a.show_toolbar},   {"console", &a.show_console},
         {"timeline", &a.show_timeline}, {"preview", &a.show_preview},
         {"material editor", &a.show_material_editor},
+        {"material studio", &a.show_material_studio},
+        {"material browser", &a.show_material_browser},
+        {"height paint", &a.show_paint_canvas},
+        {"paint", &a.show_paint_canvas},
+        {"curves", &a.show_curve_editor},
         {"mesh tools", &a.show_mesh_tools}, {"mesh", &a.show_mesh_tools},
     };
     for (const Row &r : rows)
