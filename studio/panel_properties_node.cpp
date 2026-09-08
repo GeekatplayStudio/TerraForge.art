@@ -214,7 +214,7 @@ void node_properties_ui(App &a) { node_properties_ui(a, a.selected_node, false);
 
 void node_properties_ui(App &a, uint64_t node_id, bool any_workspace) {
   NodeMirror &g_mirror = g_mirrors[node_id];
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (lk.owns_lock()) {
     gpx::Node *live = a.graph.find_node(node_id);
     if (live) {
@@ -269,7 +269,7 @@ void node_properties_ui(App &a, uint64_t node_id, bool any_workspace) {
     bool on = n->enabled;
     if (studio::Checkbox("##enabled", &on)) {
       undo_push(a, on ? "Enable " + n->type : "Bypass " + n->type);
-      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
       if (gpx::Node *live = a.graph.find_node(n->id)) {
         live->enabled = on;
         n->enabled = on;
@@ -307,7 +307,7 @@ void node_properties_ui(App &a, uint64_t node_id, bool any_workspace) {
     ImGui::TextDisabled("%d nodes inside", inner_count);
     if (ImGui::SmallButton("expand")) {
       undo_push(a, "Expand MetaNode");
-      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
       std::string err;
       std::vector<uint64_t> back = gpx::metanode_ungroup(a.graph, n->id, err);
       a.status = back.empty() ? "expand failed: " + err : "expanded";

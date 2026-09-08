@@ -214,7 +214,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         any = any || (o.type == SceneObject::Mesh && !o.inst.empty());
       if (!any) {
         {
-          std::lock_guard<std::mutex> lk(a.graph_mtx);
+          std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
           a.graph.evaluate();
         }
         scene_rebuild_scatter_instances(a);
@@ -299,7 +299,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (act.contains("spec")) {
         std::string spec = act["spec"].dump();
         std::string gerr;
-        std::lock_guard<std::mutex> lk(a.graph_mtx);
+        std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
         // replace:true clears first, so a script can author a whole scene
         // rather than only ever bolting more onto what is already there
         bool merge = !act.value("replace", false);
@@ -326,7 +326,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (r < 0) {
         // node-level graph editing lives in ai_ops_graph.cpp; -1 means it did
         // not recognise the op either, and it falls through to "unsupported"
-        std::lock_guard<std::mutex> lk(a.graph_mtx);
+        std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
         r = ai_graph_op(a, op, act, err);
       }
       if (r > 0) ++applied;

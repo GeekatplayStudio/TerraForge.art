@@ -141,7 +141,7 @@ static void menu_file(App &a) {
       std::string p = dialog_open_file(
           "Heightfield\0*.png;*.tif;*.jpg;*.raw\0", nullptr);
       if (!p.empty()) {
-        std::lock_guard<std::mutex> lk(a.graph_mtx);
+        std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
         gpx::Node *n = a.graph.add_node("HeightmapFile", 0, 400);
         if (n) {
           if (gpx::Attribute *at = n->attrs.find("path")) at->s = p;
@@ -165,7 +165,7 @@ static void menu_file(App &a) {
   if (ImGui::BeginMenu(tr("menu.file.export"))) {
     auto add_export = [&](const char *label, const char *type) {
       if (!ImGui::MenuItem(label)) return;
-      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
       gpx::Node *n = a.graph.add_node(type, 1200, 400);
       if (n) {
         if (gpx::Attribute *at = n->attrs.find("auto_export")) at->b = true;
@@ -226,14 +226,14 @@ static void menu_edit(App &a) {
   bool has_sel = a.selected_node != 0;
   if (ImGui::MenuItem(tr("menu.edit.delete"), "Del", false, has_sel)) {
     undo_push(a, "Delete node");
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     a.graph.remove_node(a.selected_node);
     a.selected_node = 0;
     a.request_eval();
   }
   if (ImGui::MenuItem(tr("menu.edit.duplicate"), "Ctrl+D", false, has_sel)) {
     undo_push(a, "Duplicate node");
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     gpx::Node *src = a.graph.find_node(a.selected_node);
     if (src) {
       gpx::Node *dup = a.graph.add_node(src->type, src->pos_x + 40, src->pos_y + 40);
@@ -247,7 +247,7 @@ static void menu_edit(App &a) {
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Recompute all", "F5")) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     a.graph.mark_all_dirty();
     a.request_eval();
   }
@@ -409,7 +409,7 @@ void draw_toolbar(App &a) {
     if (!p.empty()) project_load(a, p);
   }
   if (shortcut_pressed("graph.recompute")) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     a.graph.mark_all_dirty();
     a.request_eval();
   }

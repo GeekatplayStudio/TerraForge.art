@@ -118,7 +118,7 @@ std::string footprints_text(const SceneState &sc, float hs, bool &any) {
 } // namespace
 
 unsigned long long imprint_node(App &a) {
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock()) return 0;
   for (auto &n : a.graph.nodes)
     if (n->type == "TerrainImprint") return n->id;
@@ -133,7 +133,7 @@ void app_service_imprint(App &a) {
   static std::string last;
   if (text == last && !any) return;
 
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock()) return; // next frame, then
   gpx::Node *node = nullptr;
   for (auto &n : a.graph.nodes)

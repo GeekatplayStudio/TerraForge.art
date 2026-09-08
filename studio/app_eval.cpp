@@ -103,7 +103,7 @@ void eval_worker(App &a) {
     }
     size_t node_count = 0;
     {
-      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
       a.graph.cancel.store(false);
       a.graph.on_progress = [&a](int done, int total, const std::string &t) {
         a.eval.progress_done.store(done);

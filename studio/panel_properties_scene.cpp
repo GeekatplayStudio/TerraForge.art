@@ -17,7 +17,7 @@ void scene_properties_ui(App &a) {
     ImGui::SetNextItemWidth(-1);
     if (ImGui::InputInt("##res", &res, 64, 256,
                         ImGuiInputTextFlags_EnterReturnsTrue)) {
-      std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+      std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
       if (lk.owns_lock()) {
         a.graph.resolution = std::clamp(res, 64, 8192);
         a.graph.mark_all_dirty();
@@ -40,7 +40,7 @@ void scene_properties_ui(App &a) {
   }
   if (prop_filter_match("Statistics")) {
     ImGui::SeparatorText("Statistics");
-    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+    std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
     if (lk.owns_lock()) {
       double ms = 0;
       for (auto &n : a.graph.nodes) ms += n->last_compute_ms;

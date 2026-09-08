@@ -6,6 +6,8 @@
 // selected. The graph stays the truth - every control here edits a node -
 // which is why the node editor sits directly below this window.
 #include "app.hpp"
+#include "graph_lease.hpp"
+#include "console.hpp"
 #include "gpx/serialization.hpp"
 #include "material_channel_ops.hpp"
 #include "material_library.hpp"
@@ -284,7 +286,7 @@ void draw_panel_material_studio(App &a) {
   }
   panel_float_controls(a, "Material Studio");
   MaterialStudioState &st = material_studio();
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  GraphLease lk(a);
   if (!lk.owns_lock()) {
     ImGui::TextDisabled("computing...");
     ImGui::End();

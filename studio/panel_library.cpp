@@ -45,7 +45,7 @@ void draw_panel_library(App &a) {
           undo_push(a, "Add " + m.name);
           float x = 40, y = 40;
           {
-            std::lock_guard<std::mutex> lk(a.graph_mtx);
+            std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
             if (!a.graph.nodes.empty()) {
               x = a.graph.nodes.back()->pos_x + 220;
               y = a.graph.nodes.back()->pos_y;
@@ -87,7 +87,7 @@ void draw_panel_library(App &a) {
   // Adding a node, wherever the click came from.
   auto add_node = [&](const std::string &type) {
     undo_push(a, "Add " + type);
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     float x = 40, y = 40;
     if (!a.graph.nodes.empty()) {
       x = a.graph.nodes.back()->pos_x + 220;

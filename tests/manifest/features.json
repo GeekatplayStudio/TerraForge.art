@@ -1505,6 +1505,14 @@
       "description": "Every object's material binding is written to the project, not only a mesh's: assigning a material to the terrain used to survive the session and be gone on reload, because material_node was serialized inside the Mesh branch",
       "test_file": "test_material_source_scene.cpp",
       "test_symbol": "test_a_material_assignment_survives_a_save"
+    },
+    {
+      "id": "ui.menus_survive_evaluation",
+      "area": "studio",
+      "phase": "41",
+      "description": "Material panels take the graph through GraphLease: a bounded wait while a menu is open, no wait otherwise. Skipping the panel body on a missed lock submitted no combo, so ImGui closed every open dropdown - one missed frame in six hundred made the Material Studio's menus shut the instant they were opened, in every tab. graph_mtx is a timed_mutex for it",
+      "test_file": "test_material_channel_ops.cpp",
+      "test_symbol": "test_material_channel_ops_run"
     }
   ]
 }

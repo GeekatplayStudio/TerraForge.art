@@ -113,7 +113,7 @@ void graph_editors_set(App &a, const std::vector<int> &domains) {
 // switch to the workspace that holds its category, select it and pan to it.
 // The panning itself happens in the editor that draws it next frame.
 void graph_focus_node(App &a, uint64_t node) {
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (lk.owns_lock()) {
     gpx::Node *n = a.graph.find_node(node);
     if (!n) return;
@@ -203,7 +203,7 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
   // The graph is always drawn from App::node_views, so it never blinks out
   // while evaluation holds the lock. Editing needs the real graph, so those
   // paths are simply skipped for the frames where the lock is busy.
-  std::unique_lock<std::mutex> graph_lock(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> graph_lock(a.graph_mtx, std::try_to_lock);
   bool can_edit = graph_lock.owns_lock();
   editor_toolbar(a, e, can_edit);
 

@@ -942,7 +942,7 @@ static void test_autosave() {
   App a;
   reset_all(a);
   {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<studio::App::GraphMutex> lk(a.graph_mtx);
     a.graph.add_node("Noise", 0, 0);
   }
   a.status = "user status";
@@ -1001,7 +1001,7 @@ static void test_autosave() {
     CHECK(project_load(b, path), "the offered autosave loads");
     bool has_noise = false;
     {
-      std::lock_guard<std::mutex> lk(b.graph_mtx);
+      std::lock_guard<studio::App::GraphMutex> lk(b.graph_mtx);
       for (auto &n : b.graph.nodes)
         if (n->type == "Noise") has_noise = true;
     }

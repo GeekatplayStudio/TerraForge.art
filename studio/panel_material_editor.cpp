@@ -12,6 +12,7 @@
 // environment settings travel with the layer, which is what a user means by
 // "move this one up".
 #include "app.hpp"
+#include "graph_lease.hpp"
 #include "material_stack_ops.hpp"
 #include "i18n.hpp"
 #include "render_settings.hpp"
@@ -33,7 +34,7 @@ void draw_panel_material_editor(App &a) {
     ImGui::End();
     return;
   }
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  GraphLease lk(a);
   if (!lk.owns_lock()) {
     ImGui::TextDisabled("computing...");
     ImGui::End();

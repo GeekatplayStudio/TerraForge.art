@@ -82,7 +82,7 @@ static inline float brush_w(float d_norm, float falloff) {
 
 bool sculpt_apply(App &a, float tx, float tz, float dt) {
   SculptState &S = sculpt_state();
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock()) return false; // busy frame: skip, the stroke continues
 
   if (!S.stroking) {
@@ -224,7 +224,7 @@ void sculpt_set_active(App &a, bool on) {
   S.active = on;
   if (!on) return;
   // make sure the layer exists so the first stroke lands instantly
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (lk.owns_lock() && !a.graph.nodes.empty()) {
     bool had = false;
     for (auto &n : a.graph.nodes)

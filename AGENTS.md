@@ -54,6 +54,25 @@ each one was a bug we already paid for. Do not regress them.
     soon as a fifth viewport existed - two features resizing one FBO every
     frame.
 
+## Panels and the graph lock
+
+1. **A panel that skips its body takes the user's menus down with it.** ImGui
+   keeps a dropdown open only while the window that opened it submits the combo
+   again next frame. `if (!lk.owns_lock()) { ...; return; }` submits nothing,
+   so every open popup in that panel dies. One missed frame in six hundred is
+   enough — that was "the menus close as soon as I open them, in every tab of
+   the Material Studio", and it was measured: the popup closed on the first
+   frame the panel failed to take the lock, and stayed open indefinitely once
+   the panel stopped skipping.
+2. **Take the graph through `GraphLease` (studio/graph_lease.hpp), not
+   `try_to_lock` directly.** It waits a bounded time when a menu is open and
+   not at all when none is, so normal frames cost exactly what they did before
+   and an open dropdown survives any interactive evaluation. `graph_mtx` is a
+   `std::timed_mutex` (`App::GraphMutex`) for that reason.
+3. **Never block on `graph_mtx` from the UI thread.** Evaluation holds it for
+   its whole run; an erosion bake is seconds. The choice is the lease's bounded
+   wait or a mirror (`panel_properties_node.cpp`), never an unbounded one.
+
 ## Workspaces and materials
 
 1. **Every workspace owns its arrangement.** `workspace_layout_switch`

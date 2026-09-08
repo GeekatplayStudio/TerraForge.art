@@ -134,7 +134,7 @@ void app_service_population(App &a) {
   };
   std::vector<Job> jobs;
   {
-    std::unique_lock<std::mutex> lock(a.graph_mtx, std::try_to_lock);
+    std::unique_lock<App::GraphMutex> lock(a.graph_mtx, std::try_to_lock);
     if (!lock.owns_lock()) return; // evaluation has it; next frame will do
     for (auto &np : a.graph.nodes) {
       gpx::Node &n = *np;

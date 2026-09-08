@@ -170,7 +170,7 @@ void apply_result(App &a, AiJob &job) {
   std::string err;
   asset_add_root(root, root_kind, err);
   if (job.kind == JOB_TEXTURE && job.apply.material) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     gpx::Node *mat = a.graph.find_node(job.apply.material);
     if (mat) {
       undo_push_locked(a, "AI texture");

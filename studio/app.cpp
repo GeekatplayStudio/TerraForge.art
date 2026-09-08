@@ -181,7 +181,7 @@ void run_main() {
                      snap_nodes != a.graph.nodes.size() ||
                      snow - snap_t > 0.25;
       if (changed) {
-        std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+        std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
         if (lk.owns_lock()) {
           a.refresh_snapshot();
           snap_eval = a.eval_serial;
@@ -212,7 +212,7 @@ void run_main() {
     ai_jobs_service(a);
     // apply material maps from the graph to the renderer
     {
-      std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+      std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
       if (lk.owns_lock()) {
         RenderSettings &rs = render_settings();
         auto tex_of = [&](uint64_t id) -> const gpx::TextureRGBA * {

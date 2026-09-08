@@ -30,7 +30,7 @@ void resolution_tools(App &a) {
   for (int res : {256, 512, 1024, 2048}) {
     const char *label = res == 1024 ? "1k" : res == 2048 ? "2k" : res == 256 ? "256" : "512";
     if (tool_text(label, tr("Terrain resolution"), a.graph.resolution == res)) {
-      std::lock_guard<std::mutex> lk(a.graph_mtx);
+      std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
       a.graph.resolution = res;
       a.graph.mark_all_dirty();
       a.request_eval();
@@ -46,7 +46,7 @@ void resolution_tools(App &a) {
   ImGui::PopStyleVar();
   if (typed) {
     custom_res = std::clamp(custom_res, 64, 8192);
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     a.graph.resolution = custom_res;
     a.graph.mark_all_dirty();
     a.request_eval();

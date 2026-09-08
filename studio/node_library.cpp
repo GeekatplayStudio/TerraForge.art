@@ -68,7 +68,7 @@ bool node_library_save(App &a, unsigned long long metanode_id,
     err = "give it a name";
     return false;
   }
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   gpx::Node *meta = a.graph.find_node(metanode_id);
   if (!meta || meta->type != "MetaNode") {
     err = "select a MetaNode first";
@@ -156,7 +156,7 @@ unsigned long long node_library_load(App &a, const std::string &path, float x,
     err = e.what();
     return 0;
   }
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   gpx::Node *meta = a.graph.add_node("MetaNode", x, y);
   if (!meta) {
     err = "MetaNode type unavailable";

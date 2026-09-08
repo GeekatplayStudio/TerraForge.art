@@ -17,7 +17,7 @@ std::string renderer_backdrop_status();
 namespace {
 
 bool node_present(App &a, const char *type) {
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock()) return false;
   for (auto &n : a.graph.nodes)
     if (n->type == type) return true;

@@ -184,7 +184,7 @@ void draw_workspace_bar(App &a) {
     if (ImGui::Button(workspace_name(w)) && a.workspace != w) {
       a.workspace = w;
       // a node from another domain must not linger in the inspector
-      std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+      std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
       if (lk.owns_lock()) {
         gpx::Node *n = a.graph.find_node(a.selected_node);
         if (!n || domain_of_category(n->category) != w) {
@@ -220,7 +220,7 @@ void draw_global_tools(App &a) {
   }
   tool_sep();
   if (tool_icon(Icon::Refresh, "##eval", tr("Recompute the whole graph  (F5)"))) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     a.graph.mark_all_dirty();
     a.request_eval();
   }
@@ -254,7 +254,7 @@ void draw_tool_bar(App &a) {
     static double total_ms = 0;
     static size_t mem = 0, count = 0;
     {
-      std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+      std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
       if (lk.owns_lock()) {
         mem = graph_memory_bytes(a);
         total_ms = 0;

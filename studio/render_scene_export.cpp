@@ -33,7 +33,7 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
   std::vector<uint8_t> albedo_u8;
   int alb_w = 0;
   {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     gpx::Node *best = nullptr;
     for (auto &n : a.graph.nodes) {
       if (n->type == "TerrainOutput") best = n.get();

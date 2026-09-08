@@ -141,7 +141,7 @@ void autosave_tick(App &a, double now_seconds, double interval_s) {
   history_state(count, pos);
   if (count == g_saved_history_count && pos == g_saved_history_pos)
     return; // nothing has happened since the last autosave
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock()) return; // evaluation never makes autosave stall the UI
   std::string document;
   try { document = project_snapshot(a); }

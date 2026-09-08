@@ -73,8 +73,8 @@ static Snapshot capture(App &a, const std::string &label, bool graph_held) {
 
   // The evaluation thread may hold the graph; a snapshot of the scene alone is
   // still better than dropping the step entirely.
-  std::unique_lock<std::mutex> lk;
-  if (!graph_held) lk = std::unique_lock<std::mutex>(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk;
+  if (!graph_held) lk = std::unique_lock<App::GraphMutex>(a.graph_mtx, std::try_to_lock);
   if (graph_held || lk.owns_lock()) {
     s.graph_json = gpx::graph_to_json(a.graph);
     s.has_graph = true;
@@ -100,7 +100,7 @@ static void restore(App &a, const Snapshot &s) {
   scene_last_used_camera() = s.last_camera;
 
   if (s.has_graph) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     std::string err;
     if (gpx::graph_from_json(a.graph, s.graph_json, err)) {
       a.graph.resolution = s.graph_resolution;

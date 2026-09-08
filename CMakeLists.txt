@@ -465,6 +465,7 @@ set(STUDIO_SOURCES
     studio/render_settings.cpp
     studio/cloud_noise.cpp
     studio/scene_nodes.cpp
+    studio/graph_lease.cpp
     studio/material_source.cpp
     studio/panel_properties_widgets.cpp
     studio/scene_nodes_material.cpp

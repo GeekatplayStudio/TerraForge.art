@@ -130,7 +130,7 @@ void app_service_camera_anim(App &a) {
 }
 
 void app_service_points_overlay(App &a) {
-    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+    std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
     if (!lk.owns_lock() || a.eval.running.load() || a.uploaded_serial != a.eval_serial) return;
     // points overlay: whenever the selection or the evaluation moves, hand
     // the renderer the selected node's point cloud (if it has one) with
@@ -179,7 +179,7 @@ void app_service_points_overlay(App &a) {
 
 void app_service_scatter(App &a) {
   static uint64_t last_serial = ~0ull, last_terrain = ~0ull;
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock() || a.eval.running.load() || a.uploaded_serial != a.eval_serial) return;
   if (last_serial == a.uploaded_serial && last_terrain == g_overlay_revision) return;
   scene_rebuild_scatter_instances(a);

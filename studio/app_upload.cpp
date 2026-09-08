@@ -159,7 +159,7 @@ static void service_placement(App &a) {
 // Commit completed evaluations on the context owner before views draw.
 void app_service_upload(App &a) {
     service_placement(a);
-    std::unique_lock<std::mutex> upload_lock(a.graph_mtx, std::try_to_lock);
+    std::unique_lock<App::GraphMutex> upload_lock(a.graph_mtx, std::try_to_lock);
     if (!upload_lock.owns_lock()) return;
     // upload fresh eval results to GPU (main thread only)
     if (g_prepared_serial != a.eval_serial && !a.eval.running.load()) {

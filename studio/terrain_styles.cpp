@@ -28,7 +28,7 @@ struct StyleNode {
 static void apply_terrain_style(App &a, const char *name,
                                 const std::vector<StyleNode> &chain) {
   undo_push(a, std::string("Terrain style: ") + name);
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   // fresh seed on every click, the way Vue randomizes the fractal origin
   static uint32_t style_serial = 1;
   uint32_t seed = style_serial++ * 2654435761u;

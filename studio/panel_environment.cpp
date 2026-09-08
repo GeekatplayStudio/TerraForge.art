@@ -243,7 +243,7 @@ void world_properties_ui(App &a) {
   RenderSettings &rs = render_settings();
   bool driven = false;
   {
-    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+    std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
     if (lk.owns_lock())
       for (auto &n : a.graph.nodes)
         if (n->type == "SunLight" || n->type == "AtmosphereSettings" ||

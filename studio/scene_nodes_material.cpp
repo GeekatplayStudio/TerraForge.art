@@ -18,7 +18,7 @@
 namespace studio {
 
 void app_service_material_sources(App &a) {
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   if (!lk.owns_lock()) return; // next frame, then
   const int changed = material_sources_resolve(
       a.graph, scene(), render_settings().terrain_material_node);

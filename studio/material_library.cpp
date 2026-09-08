@@ -89,7 +89,7 @@ std::string material_library_save(App &a, unsigned long long mat_node_id,
   std::string jtext;
   std::string name = "Material";
   {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     gpx::Node *n = a.graph.find_node(mat_node_id);
     if (!n || n->type != "MaterialOutput") {
       err = "no MaterialOutput selected";
@@ -137,7 +137,7 @@ unsigned long long material_library_load(App &a, const LibraryMaterial &m,
   }
   std::string text((std::istreambuf_iterator<char>(f)),
                    std::istreambuf_iterator<char>());
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   float x = 200, y = 500;
   for (auto &n : a.graph.nodes) y = std::max(y, n->pos_y + 320);
   uint64_t id = gpx::material_from_json(a.graph, text, err, x, y);
@@ -224,7 +224,7 @@ unsigned long long material_import_texture_set(App &a, const std::string &any_fi
     return 0;
   }
 
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   float x0 = 200, y0 = 500;
   for (auto &n : a.graph.nodes) y0 = std::max(y0, n->pos_y + 320);
   gpx::Node *mat = a.graph.add_node("MaterialOutput", x0 + 300, y0 + 60);

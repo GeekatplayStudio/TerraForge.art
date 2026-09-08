@@ -8,6 +8,7 @@
 // from the library moves the files to a trash folder rather than deleting
 // them - a browser that can lose work in one mis-click is not a browser.
 #include "app.hpp"
+#include "graph_lease.hpp"
 #include "asset_store.hpp"
 #include "material_library.hpp"
 #include "material_ui.hpp"
@@ -222,7 +223,7 @@ void draw_panel_material_browser(App &a) {
     return;
   }
   panel_float_controls(a, "Material Browser");
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  GraphLease lk(a);
   if (!lk.owns_lock()) {
     ImGui::TextDisabled("computing...");
     ImGui::End();

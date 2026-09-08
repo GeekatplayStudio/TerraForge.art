@@ -137,7 +137,7 @@ void new_terrain_dialog(App &a) {
                                  4.f);
     project_new(a);
     {
-      std::unique_lock<std::mutex> lk(a.graph_mtx);
+      std::unique_lock<App::GraphMutex> lk(a.graph_mtx);
       a.graph.resolution = std::clamp(g_res, 64, 8192);
     }
     project_default_graph(a);

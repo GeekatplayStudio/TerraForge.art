@@ -176,7 +176,7 @@ void draw_panel_ai(App &a) {
       std::string spec = std::move(ai_result);
       ai_result.clear();
       std::string err, env;
-      std::lock_guard<std::mutex> glk(a.graph_mtx);
+      std::lock_guard<App::GraphMutex> glk(a.graph_mtx);
       gpx::Graph fresh;
       fresh.resolution = a.graph.resolution;
       if (gpx::graph_from_ai_spec(fresh, spec, err, &env)) {

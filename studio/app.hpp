@@ -28,7 +28,13 @@ struct EvalState {
 struct App {
   GLFWwindow *window = nullptr;
   gpx::Graph graph;
-  std::mutex graph_mtx; // hold while touching graph from UI or eval thread
+  // Hold while touching the graph from the UI or the eval thread.
+  //
+  // Timed rather than plain: a panel showing an open menu waits a bounded
+  // time for the graph instead of skipping its frame, because a skipped frame
+  // takes the menu down with it. studio/graph_lease.hpp has the reasoning.
+  using GraphMutex = std::timed_mutex;
+  GraphMutex graph_mtx;
 
   uint64_t selected_node = 0;
   uint64_t view_node = 0; // node shown in 3D viewport (0 = selected)

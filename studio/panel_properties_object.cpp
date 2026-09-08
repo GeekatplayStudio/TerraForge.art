@@ -290,7 +290,7 @@ void ground_ui(App &a, SceneObject &o) {
   }
   ImGui::Separator();
   // the node's settings, right here where the object is
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   gpx::Node *node = nullptr;
   if (lk.owns_lock())
     for (auto &n : a.graph.nodes)

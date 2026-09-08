@@ -66,7 +66,7 @@ void column_terrain(App &a) {
   tool_sep();
   if (tool_icon(Icon::Bake, "##bake4k",
                 tr("Bake 4k exports\n\nRe-evaluate at 4096 with every export node enabled."))) {
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     for (auto &n : a.graph.nodes)
       if (auto *e = n->attrs.find("auto_export")) e->b = true;
     a.graph.resolution = 4096;

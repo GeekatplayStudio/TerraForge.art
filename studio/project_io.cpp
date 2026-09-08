@@ -19,7 +19,7 @@ using json = nlohmann::json;
 namespace studio {
 
 void project_new(App &a) {
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   a.graph.clear();
   a.selected_node = a.view_node = 0;
   a.project_path.clear();
@@ -133,7 +133,7 @@ std::string project_snapshot(App &a) {
 }
 
 bool project_save(App &a, const std::string &path) {
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   bool ok = false;
   try {
     std::string document = project_snapshot(a);
@@ -151,7 +151,7 @@ bool project_save(App &a, const std::string &path) {
 }
 
 bool project_load(App &a, const std::string &path) {
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   std::ifstream f(path, std::ios::binary);
   if (!f) {
     a.status = "LOAD FAILED: cannot open " + path;
@@ -205,7 +205,7 @@ bool project_load(App &a, const std::string &path) {
 // surface. The Terrain menu drops a complete editable chain - Mountain,
 // Ridged peaks, Eroded mountain, Canyon, Dunes, Iceberg, Lunar - in one click.
 void project_default_graph(App &a) {
-  std::lock_guard<std::mutex> lk(a.graph_mtx);
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
   a.graph.clear();
   a.graph.resolution = 512;
   gpx::Node *base = a.graph.add_node("Constant", 0, 120);

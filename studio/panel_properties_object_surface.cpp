@@ -24,7 +24,7 @@ namespace {
 void open_surface_graph(App &a, unsigned long long *assign, bool create_new) {
   uint64_t focus = 0;
   {
-    std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+    std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
     if (!lk.owns_lock()) {
       a.status = "the graph is evaluating - try again in a moment";
       return;
@@ -56,7 +56,7 @@ void open_surface_graph(App &a, unsigned long long *assign, bool create_new) {
 // The picker: which SurfaceDisplacement node shapes this surface. Listed by
 // id with what feeds them, so two graphs can be told apart.
 void surface_graph_picker(App &a, unsigned long long *node) {
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
   std::vector<std::pair<unsigned long long, std::string>> sinks;
   if (lk.owns_lock())
     for (auto &n : a.graph.nodes)

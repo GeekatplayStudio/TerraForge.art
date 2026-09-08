@@ -8,6 +8,7 @@
 // every save and loading always creates an independent copy.
 #include "ai_services.hpp"
 #include "app.hpp"
+#include "graph_lease.hpp"
 #include "material_library.hpp"
 #include "material_ui.hpp"
 #include "ollama.hpp"
@@ -116,7 +117,7 @@ static void material_ai_ui(App &a, SceneObject &obj) {
     std::string spec = std::move(matai_result);
     matai_result.clear();
     std::string err;
-    std::lock_guard<std::mutex> glk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> glk(a.graph_mtx);
     size_t before = a.graph.nodes.size();
     if (gpx::graph_from_ai_spec(a.graph, spec, err, nullptr, /*merge=*/true)) {
       // assign the freshly created MaterialOutput to this object
@@ -236,7 +237,7 @@ static void library_ui(App &a, SceneObject &obj, gpx::Node *mat) {
 }
 
 static void material_editor(App &a, SceneObject &obj) {
-  std::unique_lock<std::mutex> lk(a.graph_mtx, std::try_to_lock);
+  GraphLease lk(a);
   if (!lk.owns_lock()) {
     ImGui::TextDisabled("computing...");
     return;

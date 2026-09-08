@@ -103,7 +103,7 @@ static void draw_row(App &a, uint64_t id, int depth, std::set<uint64_t> &seen,
   bool on = n->enabled;
   if (studio::Checkbox("##en", &on)) {
     undo_push(a, on ? "Enable " + n->type : "Bypass " + n->type);
-    std::lock_guard<std::mutex> lk(a.graph_mtx);
+    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     if (gpx::Node *live = a.graph.find_node(id)) {
       live->enabled = on;
       a.graph.mark_dirty(id);
