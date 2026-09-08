@@ -1513,6 +1513,22 @@
       "description": "Material panels take the graph through GraphLease: a bounded wait while a menu is open, no wait otherwise. Skipping the panel body on a missed lock submitted no combo, so ImGui closed every open dropdown - one missed frame in six hundred made the Material Studio's menus shut the instant they were opened, in every tab. graph_mtx is a timed_mutex for it",
       "test_file": "test_material_channel_ops.cpp",
       "test_symbol": "test_material_channel_ops_run"
+    },
+    {
+      "id": "stones.layers",
+      "area": "engine",
+      "phase": "41",
+      "description": "FakeStones generates up to four generations of stone, each smaller, denser and sharper than the one before, and each placed on the apron around the previous generation's stones rather than on open ground or on top of them - big boulders with debris gathered at their feet. Clustering samples a separably-dilated parent mask, so a generation costs one extra pass rather than a neighbourhood search per candidate. One layer is bit-identical to what the node always produced",
+      "test_file": "test_fake_stones.cpp",
+      "test_symbol": "test_clustering_keeps_the_small_stones_near_the_big_ones"
+    },
+    {
+      "id": "stones.sharpness",
+      "area": "engine",
+      "phase": "41",
+      "description": "A stone's profile blends from a weathered dome to an angular shard, with the silhouette wobble rising with it; sharpness 0 is exactly the dome the node always drew, so no saved project moves",
+      "test_file": "test_fake_stones.cpp",
+      "test_symbol": "test_sharpness_makes_a_thinner_stone"
     }
   ]
 }

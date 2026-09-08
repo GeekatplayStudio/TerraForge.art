@@ -191,6 +191,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_modeling.cpp
     engine/nodes/nodes_surface.cpp
     engine/nodes/nodes_surface_forms.cpp
+    engine/nodes/nodes_fake_stones.cpp
     engine/nodes/nodes_atmosphere.cpp
     engine/nodes/nodes_material_graph.cpp
     engine/nodes/nodes_material_source.cpp
@@ -592,7 +593,8 @@ target_link_libraries(nodeterrain_tests PRIVATE geekatplay_nodeterrain)
 
 add_executable(engine_tests
     tests/cpp/test_engine.cpp
-    tests/cpp/test_material_source.cpp)
+    tests/cpp/test_material_source.cpp
+    tests/cpp/test_fake_stones.cpp)
 target_link_libraries(engine_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 

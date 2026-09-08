@@ -11170,11 +11170,59 @@
         "tooltip": "Squashes stones flat into slabs while keeping their\nfootprint — 0 round boulders, 1 flat plates."
       },
       {
+        "key": "sharpness",
+        "label": "Sharpness",
+        "type": "float",
+        "group": "Stones",
+        "min": 0, "max": 1, "default": 0,
+        "tooltip": "Weathered or broken. 0 is a rounded boulder; 1 is an\nangular shard with a faceted silhouette. Rockfall\nclose to the cliff it came off is sharp; the same\nstone at the bottom of a valley is not."
+      },
+      {
         "key": "seed",
         "label": "Seed",
         "type": "seed",
         "group": "Stones",
         "tooltip": ""
+      },
+      {
+        "key": "layers",
+        "label": "Stone layers",
+        "type": "int",
+        "group": "Layers",
+        "min": 1, "max": 4, "default": 1,
+        "tooltip": "Generations of stones, each smaller than the one\nbefore and gathered around it. One is a plain\nscatter; two or three give big boulders with debris\ncollected at their feet, which is what real scree\nlooks like.\n\nLeave it at 1 and the node behaves\nexactly as it always did."
+      },
+      {
+        "key": "layer_scale",
+        "label": "Size per layer",
+        "type": "float",
+        "group": "Layers",
+        "min": 0.15, "max": 0.9, "default": 0.45,
+        "tooltip": "How big each generation is next to the one before.\n0.45 makes every layer a little under half the size\nof its parent, which reads as a natural size range;\nnear 1 the layers are all the same and the effect is\njust more stones."
+      },
+      {
+        "key": "layer_density",
+        "label": "Density per layer",
+        "type": "float",
+        "group": "Layers",
+        "min": 0.5, "max": 3, "default": 1.4,
+        "tooltip": "How much denser each generation is than the one\nbefore. Small stones are more numerous than large\nones, so above 1 is the usual choice."
+      },
+      {
+        "key": "cluster",
+        "label": "Cluster on parents",
+        "type": "float",
+        "group": "Layers",
+        "min": 0, "max": 1, "default": 0.75,
+        "tooltip": "How strongly each generation gathers around the\nstones of the one before. 0 scatters it\nindependently - just more stones; 1 puts it only\naround the skirts of the larger ones, never on top\nof them."
+      },
+      {
+        "key": "layer_sharpness",
+        "label": "Sharper per layer",
+        "type": "float",
+        "group": "Layers",
+        "min": 0, "max": 1, "default": 0.5,
+        "tooltip": "How much more angular each generation is than the\none before. The small pieces are the broken ones, so\nraising this is what gives you sharp gravel around\nweathered boulders."
       },
       {
         "key": "vary_density",

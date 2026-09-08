@@ -23,6 +23,8 @@
 static void test_parallel_pool();
 // tests/cpp/test_material_source.cpp — returns its own failure count.
 int test_material_source_suite();
+// tests/cpp/test_fake_stones.cpp — returns its own failure count.
+int test_fake_stones_suite();
 
 static int g_failures = 0;
 // Overloaded rather than a bare printf: passing a std::string to "%s" is
@@ -5293,6 +5295,7 @@ int main() {
   // long past the size anybody can read, and its subject is order rather
   // than arithmetic.
   g_failures += test_material_source_suite();
+  g_failures += test_fake_stones_suite();
   if (g_failures == 0) {
     std::printf("ALL ENGINE TESTS PASSED\n");
     return 0;

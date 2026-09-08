@@ -3765,7 +3765,13 @@ Terragen-style fake stones: boulders/rocks as displacement
 | Stone density | float, 0.02 to 1, default 0.5 | The share of lattice cells that hold a stone. This node writes into the heightmap, so its smallest possible stone is a couple of texels - about 14 m on a 5 km tile. For stones you can stand next to, use Stone field, which is a function and has no resolution. |
 | Stone tallness | float, 0.05 to 2, default 0.6 | A stone's height as a fraction of its radius. Every stone here gets the same one, which is this node's most visible tell. |
 | Pancake effect | float, 0 to 1, default 0.3 | Squashes stones flat into slabs while keeping their footprint — 0 round boulders, 1 flat plates. |
+| Sharpness | float, 0 to 1, default 0 | Weathered or broken. 0 is a rounded boulder; 1 is an angular shard with a faceted silhouette. Rockfall close to the cliff it came off is sharp; the same stone at the bottom of a valley is not. |
 | Seed | seed |  |
+| Stone layers | int, 1 to 4, default 1 | Generations of stones, each smaller than the one before and gathered around it. One is a plain scatter; two or three give big boulders with debris collected at their feet, which is what real scree looks like.  Leave it at 1 and the node behaves exactly as it always did. |
+| Size per layer | float, 0.15 to 0.9, default 0.45 | How big each generation is next to the one before. 0.45 makes every layer a little under half the size of its parent, which reads as a natural size range; near 1 the layers are all the same and the effect is just more stones. |
+| Density per layer | float, 0.5 to 3, default 1.4 | How much denser each generation is than the one before. Small stones are more numerous than large ones, so above 1 is the usual choice. |
+| Cluster on parents | float, 0 to 1, default 0.75 | How strongly each generation gathers around the stones of the one before. 0 scatters it independently - just more stones; 1 puts it only around the skirts of the larger ones, never on top of them. |
+| Sharper per layer | float, 0 to 1, default 0.5 | How much more angular each generation is than the one before. The small pieces are the broken ones, so raising this is what gives you sharp gravel around weathered boulders. |
 | Vary density | float, 0 to 1, default 0.6 | Large-scale patchiness: clusters of stones with clear ground between. |
 | Density variation scale | float, 1 to 16, default 4 | How large the patches of more and fewer stones are. Low gives a couple of broad drifts across the map; high breaks it into many small clusters. |
 | Size variation | float, 0 to 1, default 0.5 | How much stones differ in size from one another. 0 makes every stone identical, which nothing in nature is. |

@@ -299,9 +299,15 @@ ExportPoints.path|filename
 ExportTexture.auto_export|bool
 ExportTexture.path|filename
 FakeStones.blend_invert|bool
+FakeStones.cluster|float
 FakeStones.density|float
+FakeStones.layer_density|float
+FakeStones.layer_scale|float
+FakeStones.layer_sharpness|float
+FakeStones.layers|int
 FakeStones.pancake|float
 FakeStones.seed|seed
+FakeStones.sharpness|float
 FakeStones.size_jitter|float
 FakeStones.slope_band|range
 FakeStones.stone_scale|float
