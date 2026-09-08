@@ -280,7 +280,53 @@ static void test_mixed_distribution() {
   check(half == 0, "cover blends nothing: material 2 covers material 1");
 }
 
+// The mapping modes, and the one thing about them that can break in silence.
+//
+// A Choice attribute serialises as its *index*, so inserting or reordering a
+// label rewrites the meaning of every project already saved: a material set
+// to Spherical would open as something else, with nothing to say it had
+// changed. The order is therefore pinned here, and new modes may only be
+// appended.
+static void test_mapping_modes() {
+  std::printf("mapping modes...\n");
+  gpx::Graph g;
+  gpx::Node *m = g.add_node("MaterialOutput");
+  const gpx::Attribute *a = m->attrs.find("mapping");
+  check(a != nullptr, "MaterialOutput has a mapping attribute");
+  if (!a) return;
+
+  static const char *const WANT[] = {"Automatic", "Flat",       "Faces",
+                                     "Cylindrical", "Spherical", "Parametric",
+                                     "Standard",  "Fill"};
+  const int n = (int)(sizeof WANT / sizeof WANT[0]);
+  check((int)a->labels.size() == n, "eight mapping modes");
+  for (int i = 0; i < n && i < (int)a->labels.size(); ++i) {
+    char msg[96];
+    std::snprintf(msg, sizeof msg, "mapping index %d is still '%s'", i, WANT[i]);
+    check(a->labels[i] == WANT[i], msg);
+  }
+  check(a->i == 0, "the default is Automatic");
+
+  // And it reaches MaterialParams, which is what the renderers read. Before
+  // this the choice was stored and consumed by nothing at all, so picking
+  // Cylindrical did exactly what Automatic did.
+  for (int i = 0; i < n; ++i) {
+    if (gpx::Attribute *w = m->attrs.find("mapping")) w->i = i;
+    const gpx::MaterialParams p = gpx::material_params_from(m->attrs);
+    char msg[80];
+    std::snprintf(msg, sizeof msg, "mapping %d survives into MaterialParams", i);
+    check(p.mapping == i, msg);
+  }
+  // Out of range is clamped rather than passed to the shader as a branch
+  // nothing handles.
+  if (gpx::Attribute *w = m->attrs.find("mapping")) w->i = 99;
+  check(gpx::material_params_from(m->attrs).mapping <= 7, "clamped above");
+  if (gpx::Attribute *w = m->attrs.find("mapping")) w->i = -3;
+  check(gpx::material_params_from(m->attrs).mapping >= 0, "clamped below");
+}
+
 int main() {
+  test_mapping_modes();
   test_tab_groups();
   test_natural_grain();
   test_texture_file_controls();

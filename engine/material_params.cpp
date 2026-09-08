@@ -220,10 +220,26 @@ void material_params_declare(AttrSet &a) {
                  "where a hard pixel boundary is the point, such as an index\n"
                  "or ID pass.";
   // Transform
+  // Appended, never reordered: a Choice serialises as its index, so moving
+  // one of these would silently change the mapping of every saved project.
   add_choice(a, "mapping", "Mapping",
-             {"Automatic", "Flat", "Faces", "Cylindrical", "Spherical"}, 0, "Transform")
-      .tooltip = "How the 2D maps wrap a 3D object. Terrain is always Flat "
-                 "(projected from above); the others are for objects.";
+             {"Automatic", "Flat", "Faces", "Cylindrical", "Spherical",
+              "Parametric", "Standard", "Fill"},
+             0, "Transform")
+      .tooltip =
+      "Where the maps are read from, before scale, offset and rotation.\n\n"
+      "Automatic    the surface's own coordinates, or flat if it has none\n"
+      "Flat         projected straight down, which is what terrain wants\n"
+      "Faces        each face gets the axis it most faces\n"
+      "Cylindrical  wrapped around the up axis\n"
+      "Spherical    longitude and latitude\n"
+      "Parametric   exactly the UVs the model was unwrapped with — the only\n"
+      "             one a painted or baked texture can use\n"
+      "Standard     a solid the object is carved from, in its own space, so\n"
+      "             there is no stretching and no seam and the material\n"
+      "             travels with the object\n"
+      "Fill         the same solid, but fixed in the world: the object\n"
+      "             slides through the material instead of carrying it";
   f(a, "map_scale", "Scale of the maps", 1.f, 0.05f, 20.f, "Transform", true)
       .tooltip = "Scales every texture map together.";
   add_vec2(a, "origin", "Origin", 0.f, 0.f, -10.f, 10.f, "Transform").tooltip =
@@ -324,6 +340,7 @@ MaterialParams material_params_from(const AttrSet &a) {
   p.ignore_atmosphere = bb("ignore_atmosphere", false);
   p.only_shadows = bb("only_shadows", false);
   p.disable_aa = bb("disable_aa", false);
+  p.mapping = std::clamp(a.get_choice("mapping"), 0, 7);
   p.map_scale = f("map_scale", 1.f, 0.05f, 20.f);
   a.get_vec2("origin", p.origin[0], p.origin[1]);
   p.rotation = f("rotation", 0.f, -180.f, 180.f);

@@ -202,15 +202,19 @@ void main(){
     vec3 north = normalize(cross(east, up));
     N = normalize(east * N.x + up * N.y + north * N.z);
   }
+  // The material's mapping mode, once for the whole pass. The tile spans
+  // 0..1 in v_uv, so that is both its parameterisation and its local
+  // position; v_world is what the world-fixed Fill mode reads.
+  float h = texture(u_height, v_uv).r;
+  vec2 muv = mat_uv3(v_uv, vec3(v_uv.x, h, v_uv.y), v_world, N);
   if (u_has_normal == 1){
-    vec3 nm = texture(u_normal_map, mat_uv(v_uv)).xyz * 2.0 - 1.0;
+    vec3 nm = texture(u_normal_map, muv).xyz * 2.0 - 1.0;
     nm.xy *= u_normal_strength;
     // terrain tangent frame: +X tangent, +Z bitangent
     vec3 T = normalize(vec3(1.0, 0.0, 0.0) - N * N.x);
     vec3 B = cross(N, T);
     N = normalize(T * nm.x + B * nm.y + N * max(nm.z, 0.05));
   }
-  float h = texture(u_height, v_uv).r;
   vec3 albedo;
   if (u_textured == 0) {
     // Solid: one neutral surface, so the form is readable without any
@@ -225,7 +229,7 @@ void main(){
     albedo = gpx_terrain_surface(v_world, N, v_world.y, sl, orient, 0.0,
                                  gp_octavesf(length(u_cam - v_world), 11.0)).rgb;
   } else if (u_has_albedo == 1) {
-    albedo = pow(texture(u_albedo, mat_uv(v_uv)).rgb, vec3(2.2));
+    albedo = pow(texture(u_albedo, muv).rgb, vec3(2.2));
   } else {
     // No material: the landscape palette the horizon surround uses, on the
     // same altitude scale, so the tile and the ground beyond it are one
@@ -236,7 +240,7 @@ void main(){
   }
   albedo = mat_albedo(albedo);
   float rough = clamp(u_roughness * (u_has_rough == 1 ?
-                      texture(u_rough_map, mat_uv(v_uv)).r * 2.0 : 1.0), 0.03, 1.0);
+                      texture(u_rough_map, muv).r * 2.0 : 1.0), 0.03, 1.0);
   if (u_surf_rough_on == 1){
     float lodr = gp_octavesf(length(u_cam - v_world), 11.0);
     rough = clamp(gpx_terrain_rough(v_world, N, v_world.y, N.y,

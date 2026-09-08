@@ -21,6 +21,7 @@ uniform float u_m_diffuse, u_m_ambient, u_m_contrast, u_m_backlight;
 uniform int u_m_color_reflected, u_m_phong, u_m_ignore_light, u_m_ignore_atmo;
 uniform float u_m_alpha, u_m_map_scale, u_m_rotation, u_m_cycling;
 uniform vec2 u_m_origin;
+uniform int u_m_mapping;
 uniform int u_m_turb_on, u_m_turb_complexity;
 uniform float u_m_turb_amp, u_m_turb_scale, u_m_turb_harm;
 uniform vec3 u_m_blend_color, u_m_cc_tint;
@@ -56,6 +57,59 @@ vec2 mat_uv(vec2 uv) {
     }
   }
   return uv;
+}
+
+// Where the maps are read FROM: the projection, before mat_uv's scale,
+// offset, rotation and turbulence are applied to the result.
+//
+// `uv`    the surface's own parameterisation (mesh UVs, or the terrain's)
+// `local` position inside the object's bounding box, 0..1 on each axis
+// `world` position in world units, already divided by the terrain's width so
+//         one unit is one tile either way
+// `nrm`   the shading normal
+//
+// The distinction that matters between the three solid modes: Standard is
+// object space, so the material travels with the object; Fill is world space,
+// so the object slides through a material that stays where it is. Parametric
+// is the surface's own coordinates and is the only one a painted or unwrapped
+// texture can use.
+vec3 mat_tri_weights(vec3 n) {
+  vec3 w = abs(n);
+  w = max(w - 0.25, 0.0);          // sharpen, so a face is mostly one plane
+  return w / max(w.x + w.y + w.z, 1e-5);
+}
+vec2 mat_triplanar(vec3 p, vec3 n) {
+  vec3 w = mat_tri_weights(n);
+  // sign-corrected so the two halves of an axis do not mirror into a seam
+  vec2 x = vec2(p.z * sign(n.x), p.y);
+  vec2 y = vec2(p.x, p.z * sign(n.y));
+  vec2 z = vec2(p.x * -sign(n.z), p.y);
+  return x * w.x + y * w.y + z * w.z;
+}
+vec2 mat_project(vec2 uv, vec3 local, vec3 world, vec3 nrm) {
+  vec3 n = normalize(nrm);
+  vec3 c = local - 0.5;            // object space about its own centre
+  if (u_m_mapping == 1) return local.xz;              // Flat: from above
+  if (u_m_mapping == 2) {                             // Faces: one plane each
+    vec3 aw = abs(n);
+    if (aw.x >= aw.y && aw.x >= aw.z) return vec2(local.z * sign(n.x), local.y);
+    if (aw.y >= aw.z) return vec2(local.x, local.z * sign(n.y));
+    return vec2(local.x * -sign(n.z), local.y);
+  }
+  if (u_m_mapping == 3)                               // Cylindrical
+    return vec2(atan(c.z, c.x) / 6.2831853 + 0.5, local.y);
+  if (u_m_mapping == 4) {                             // Spherical
+    vec3 d = normalize(c + vec3(1e-6));
+    return vec2(atan(d.z, d.x) / 6.2831853 + 0.5, acos(clamp(d.y, -1.0, 1.0)) / 3.14159265);
+  }
+  if (u_m_mapping == 5) return uv;                    // Parametric: as authored
+  if (u_m_mapping == 6) return mat_triplanar(c, n);   // Standard: object solid
+  if (u_m_mapping == 7) return mat_triplanar(world, n); // Fill: world solid
+  return uv;                                          // Automatic
+}
+// The whole chain, which is what a shader calls: project, then transform.
+vec2 mat_uv3(vec2 uv, vec3 local, vec3 world, vec3 nrm) {
+  return mat_uv(mat_project(uv, local, world, nrm));
 }
 // Color tab: overall colour, brightness, saturation, colour blend
 vec3 mat_albedo(vec3 a) {
@@ -144,6 +198,7 @@ void renderer_material_uniforms(unsigned prog, const gpx::MaterialParams &m) {
   unii(prog, "u_m_ignore_light", m.ignore_lighting ? 1 : 0);
   unii(prog, "u_m_ignore_atmo", m.ignore_atmosphere ? 1 : 0);
   uni1(prog, "u_m_alpha", m.alpha * (1.f - m.transparency));
+  unii(prog, "u_m_mapping", m.mapping);
   uni1(prog, "u_m_map_scale", 1.f / std::max(m.map_scale, 1e-3f));
   uni1(prog, "u_m_rotation", m.rotation);
   uni1(prog, "u_m_cycling", m.cycling);

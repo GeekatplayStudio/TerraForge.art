@@ -85,6 +85,12 @@ struct MaterialParams {
   bool only_shadows = false;
   bool disable_aa = false;
   // Global transformation of the maps
+  // Where the maps are read from, before scale/origin/rotation:
+  //   0 Automatic  1 Flat  2 Faces  3 Cylindrical  4 Spherical
+  //   5 Parametric 6 Standard      7 Fill
+  // Appended in that order and never reordered: a choice serialises as its
+  // index, so moving one silently changes every saved project.
+  int mapping = 0;
   float map_scale = 1.f;           // every map scaled together
   float origin[2] = {0.f, 0.f};    // map offset
   float rotation = 0.f;            // degrees, about the surface normal

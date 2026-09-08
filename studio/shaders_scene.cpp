@@ -185,10 +185,15 @@ out vec3 v_nrm;
 out float v_tint;
 out vec3 v_world;
 out vec2 v_uv;
+// Where this point sits inside the model's own bounding box, 0..1 per axis.
+// The object-space mapping modes need a position that does not move when the
+// object does, and that means the same thing on a pebble and on a mountain.
+out vec3 v_local;
 void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
   v_tint = 1.0;
+  v_local = (in_pos - u_bmin) / max(u_bmax - u_bmin, vec3(1e-6));
   v_uv = in_uv; // for every path below: an unwritten varying is what flickered textured meshes
   if (u_def_on == 1) {
     // the normal follows two deformed tangents, like the CPU twin
@@ -229,6 +234,7 @@ in vec3 v_nrm;
 in float v_tint;
 in vec3 v_world;
 in vec2 v_uv;
+in vec3 v_local;
 out vec4 frag;
 uniform sampler2D u_albedo_tex; // the part's picture, when u_has_tex
 uniform int u_has_tex;
@@ -279,7 +285,10 @@ void main(){
   vec3 N = normalize(v_nrm);
   vec3 base = u_color * v_tint;
   if (u_has_tex == 1) {
-    vec4 t = texture(u_albedo_tex, v_uv);
+    // The material's mapping mode and its scale/offset/rotation, which the
+    // part's own picture used to ignore entirely - it sampled raw model UVs,
+    // so every Transform setting on the material did nothing here.
+    vec4 t = texture(u_albedo_tex, mat_uv3(v_uv, v_local, v_world, N));
     if (t.a < 0.5) discard; // a leaf card: the picture's alpha is the leaf's edge
     base *= pow(t.rgb, vec3(2.2));
   }
@@ -375,16 +384,27 @@ layout(location=2) in vec2 in_uv;
 uniform mat3 u_rot;
 out vec3 v_nrm;
 out vec2 v_uv;
+// The preview shape is built about the origin at unit size, so its own
+// bounding box is -1..1: this is the same 0..1 local position the mesh
+// shader hands the mapping modes, so a material previews as it will look.
+out vec3 v_local;
+// and the normal before the turntable turns it: the projection has to be
+// fixed to the shape, or the material would swim across a spinning preview
+out vec3 v_lnrm;
 void main(){
   vec3 p = u_rot * in_pos;
   v_nrm = normalize(u_rot * in_nrm);
   v_uv = in_uv;
+  v_local = in_pos * 0.5 + 0.5;
+  v_lnrm = normalize(in_nrm);
   gl_Position = vec4(p.xy * 0.82, p.z * 0.35 + 0.5, 1.0);
 })GLSL";
 
 const char *const FS_MATPREV = R"GLSL(#version 430 core
 in vec3 v_nrm;
 in vec2 v_uv;
+in vec3 v_local;
+in vec3 v_lnrm;
 out vec4 frag;
 uniform sampler2D u_albedo;
 uniform sampler2D u_normal_map;
@@ -405,10 +425,13 @@ vec3 aces(vec3 x){
 }
 void main(){
   vec3 N = normalize(v_nrm);
-  vec3 albedo = (u_has_albedo == 1) ? pow(texture(u_albedo, mat_uv(v_uv)).rgb, vec3(2.2))
+  // The preview shape stands in for an object, so the mapping is computed in
+  // the shape's own space (v_local, v_lnrm) - unturned by the turntable.
+  vec2 muv = mat_uv3(v_uv, v_local, v_local - 0.5, normalize(v_lnrm));
+  vec3 albedo = (u_has_albedo == 1) ? pow(texture(u_albedo, muv).rgb, vec3(2.2))
                                     : vec3(0.55,0.53,0.5);
   if (u_has_normal == 1){
-    vec3 nm = texture(u_normal_map, mat_uv(v_uv)).xyz * 2.0 - 1.0;
+    vec3 nm = texture(u_normal_map, muv).xyz * 2.0 - 1.0;
     vec3 T = normalize(cross(vec3(0,1,0), N) + vec3(1e-4));
     vec3 B = cross(N, T);
     nm.xy *= u_normal_strength;
@@ -416,7 +439,7 @@ void main(){
   }
   albedo = mat_albedo(albedo);
   float rough = clamp(u_roughness * ((u_has_rough == 1) ?
-                      texture(u_rough_map, mat_uv(v_uv)).r*2.0 : 1.0), 0.03, 1.0);
+                      texture(u_rough_map, muv).r*2.0 : 1.0), 0.03, 1.0);
   vec3 V = vec3(0,0,1);
   vec3 L = normalize(u_sun);
   vec3 H = normalize(L+V);
