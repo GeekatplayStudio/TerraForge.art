@@ -24,6 +24,13 @@ void scene_init_builtins() {
     s.objects.push_back(o);
   };
   add(SceneObject::Terrain, "Terrain");
+  {
+    // the tile's transform starts at identity: no offset (its centre is the
+    // world's), no turn, its natural size (terrain_xform.hpp)
+    SceneObject &t = s.objects.back();
+    t.pos[0] = t.pos[1] = t.pos[2] = 0.f;
+    t.scale = 1.f;
+  }
   add(SceneObject::Water, "Water");
   add(SceneObject::Sun, "Sun");
   add(SceneObject::Atmosphere, "Atmosphere");

@@ -73,6 +73,12 @@ void draw_box_outline(const float *mvp, float x0, float y0, float z0,
                              float x1, float y1, float z1, const float *rgba) {
   float c[8][3] = {{x0,y0,z0},{x1,y0,z0},{x1,y0,z1},{x0,y0,z1},
                    {x0,y1,z0},{x1,y1,z0},{x1,y1,z1},{x0,y1,z1}};
+  draw_box_corners(mvp, c, rgba);
+}
+
+// The same twelve edges through eight corners the caller placed: the
+// terrain's box after its transform is no longer axis-aligned.
+void draw_box_corners(const float *mvp, const float c[8][3], const float *rgba) {
   static const int E[12][2] = {{0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},
                                {0,4},{1,5},{2,6},{3,7}};
   std::vector<float> v;

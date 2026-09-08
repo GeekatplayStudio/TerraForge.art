@@ -10,6 +10,8 @@
 #include "scene.hpp"
 #include "gpu_timer.hpp"
 #include "terrain_cull.hpp"
+#include "terrain_xform.hpp"
+#include "planet_place.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/field_glsl.hpp"
 #include <algorithm>
@@ -18,6 +20,40 @@
 #include <vector>
 
 namespace studio {
+
+TerrainXform terrain_xform_current() {
+  for (const SceneObject &o : scene().objects)
+    if (o.type == SceneObject::Terrain)
+      return terrain_xform_of(o, render_settings().height_scale);
+  return TerrainXform();
+}
+
+// The tile's transform and outline into a terrain program (terrain_xform.hpp):
+// the colour pass, the tessellated pass and the shadow pass all take it, so
+// a moved tile shadows where it stands.
+static void upload_terrain_xform(GLuint prog) {
+  const TerrainXform t = terrain_xform_current();
+  const RenderSettings &RS = render_settings();
+  unii(prog, "u_tx_on", t.on ? 1 : 0);
+  if (t.on) {
+    uni3(prog, "u_tx_pos", t.pos);
+    uni3(prog, "u_tx_scl", t.scl);
+    glUniformMatrix3fv(uniform_location(prog, "u_tx_rot"), 1, GL_TRUE, t.rot);
+    unii(prog, "u_def_on", t.deform.identity() ? 0 : 1);
+    uni3(prog, "u_def_twist", t.deform.twist);
+    uni3(prog, "u_def_shear", t.deform.shear);
+    uni1(prog, "u_def_bend", t.deform.bend);
+    unii(prog, "u_def_bend_axis", t.deform.bend_axis);
+    uni1(prog, "u_def_taper", t.deform.taper);
+    uni3(prog, "u_bmin", t.bmin);
+    uni3(prog, "u_bmax", t.bmax);
+  }
+  // the outline is a hard cut only when the placement is not doing it
+  const bool placed = RS.place_on_planet && planet_place_last().placed;
+  unii(prog, "u_tx_cut", (RS.terrain_shape != 0 && !placed) ? 1 : 0);
+  unii(prog, "u_tx_shape", RS.terrain_shape);
+  uni1(prog, "u_tx_aspect", RS.terrain_aspect);
+}
 
 void pass_shadow(const FrameCtx &F) {
   RenderSettings &RS = F.RS;
@@ -48,6 +84,7 @@ void pass_shadow(const FrameCtx &F) {
     glUniformMatrix4fv(uniform_location(prog_depth, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);
     uni1(prog_depth, "u_hscale", RS.height_scale);
+    upload_terrain_xform(prog_depth);
     // the same relief level the view reads, so the shadow lies on the
     // surface the viewer sees
     uni3(prog_depth, "u_lod_cam", F.view_eye);
@@ -204,6 +241,7 @@ void pass_terrain(const FrameCtx &F) {
     glUniformMatrix4fv(uniform_location(PT, "u_light_mvp"), 1, GL_FALSE,
                        light_mvp);
     uni1(PT, "u_hscale", RS.height_scale);
+    upload_terrain_xform(PT);
     uni3(PT, "u_sun", sun);
     uni3(PT, "u_sun_color", RS.sun_color);
     uni1(PT, "u_sun_intensity", sun_intensity);
@@ -457,7 +495,13 @@ void pass_outlines(const FrameCtx &F) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (sel_type == SceneObject::Terrain) {
-      draw_box_outline(mvp, 0.f, 0.f, 0.f, 1.f, RS.height_scale, 1.f, orange);
+      // the tile's box through its own transform (terrain_xform.hpp), so
+      // the outline is the tile the viewer sees
+      const TerrainXform tx = terrain_xform_current();
+      const float hs = RS.height_scale;
+      float c[8][3] = {{0,0,0},{1,0,0},{1,0,1},{0,0,1},{0,hs,0},{1,hs,0},{1,hs,1},{0,hs,1}};
+      for (auto &k : c) terrain_xform_apply(tx, k);
+      draw_box_corners(mvp, c, orange);
     } else if (sel_type == SceneObject::Water) {
       float lv = RS.water_level * RS.height_scale;
       draw_box_outline(mvp, 0.f, lv - 0.001f, 0.f, 1.f, lv + 0.001f, 1.f, orange);

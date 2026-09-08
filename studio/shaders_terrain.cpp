@@ -26,6 +26,7 @@ uniform float u_height_lod_k;
 uniform vec3 u_lod_cam;
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
+TILE_XFORM_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
 out float v_detail;
@@ -76,8 +77,11 @@ void terrain_place(vec2 uv){
       p.y += f * u_frac_amount;
     }
   }
-  // planetary curvature: the tile lies on the sphere
-  p = gpx_sphere_place(uv, p.y);
+  // the tile's own transform (terrain_xform.hpp): offset, heading, pitch,
+  // bank, size per axis, deformers - then the planetary curvature, so a
+  // moved tile lies on the sphere where it was moved to
+  p = tile_xform(p);
+  p = gpx_sphere_place(p.xz, p.y);
   v_uv = uv; v_world = p;
   gl_Position = u_mvp * vec4(p,1.0);
 }
@@ -119,8 +123,9 @@ uniform float u_cull_pad;         // world units the bound may be wrong by
 uniform vec3 u_cull_cam;          // camera, for the planetary curvature term
 uniform float u_cull_radius;      // planet radius, 0 = flat
 uniform int u_cull_on;
+TILE_XFORM_PLACEHOLDER
 vec2 screen_of(vec2 uv){
-  vec3 p = vec3(uv.x, texture(u_height, uv).r * u_hscale, uv.y);
+  vec3 p = tile_xform(vec3(uv.x, texture(u_height, uv).r * u_hscale, uv.y));
   vec4 c = u_mvp * vec4(p, 1.0);
   // a point behind the camera has a tiny or negative w; clamp rather than
   // divide by it, or one such vertex tessellates the whole patch to death
@@ -172,6 +177,16 @@ bool patch_visible(vec2 c0, vec2 c2){
   }
   vec3 lo = vec3(lo_uv.x, ylo, lo_uv.y);
   vec3 hi = vec3(hi_uv.x, yhi, hi_uv.y);
+  if (u_tx_on == 1){
+    // the box's eight corners through the transform, and the box of those
+    vec3 nlo = vec3(1e30), nhi = vec3(-1e30);
+    for (int k = 0; k < 8; ++k){
+      vec3 q = tile_xform(vec3((k & 1) != 0 ? hi.x : lo.x, (k & 2) != 0 ? hi.y : lo.y,
+                               (k & 4) != 0 ? hi.z : lo.z));
+      nlo = min(nlo, q); nhi = max(nhi, q);
+    }
+    lo = nlo; hi = nhi;
+  }
   for (int i = 0; i < 6; ++i){
     vec3 n = u_frustum[i].xyz;
     vec3 p = mix(lo, hi, step(0.0, n)); // corner furthest along the normal

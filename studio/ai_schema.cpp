@@ -197,7 +197,9 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"place_object","name":"rock","position":[x,y,z],"scale":0.1,"heading_deg":30,
    "pitch_deg":0,"bank_deg":0,"squeeze":[1,0.5,1],"twist":[0,90,0],"bend":30,"bend_axis":0,
    "skew":[0.2,0,0],"taper":-0.5,"show_gizmo":true}
-   (the whole transform and the deformers of a scene object, by name)
+   (the whole transform and the deformers of a scene object, by name; "Terrain" is one:
+   its position is an offset in tile units, squeeze [2,1,1] doubles its width, heading turns
+   it, pitch/bank tilt it, twist/bend/skew/taper deform the whole tile)
 - {"op":"import_mesh","path":"C:/models/part.stl"}
    (OBJ, STL, PLY or OFF; the file's own coordinates are kept and the object
    is sized by its transform, then analysed straight away)

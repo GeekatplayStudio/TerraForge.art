@@ -11,6 +11,7 @@
 #include "scene.hpp"
 #include "gpu_timer.hpp"
 #include "terrain_cull.hpp"
+#include "terrain_xform.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/field_glsl.hpp"
 #include "glsl_version.hpp"
@@ -39,6 +40,13 @@ std::string inject_sky(const char *src) {
     if (p != std::string::npos) s.replace(p, strlen(tag), body);
   };
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
+  {
+    // the terrain tile's transform: the deformers first, then the tile's
+    // own offset/rotation/scale on top of them (terrain_xform.hpp)
+    static const std::string tile_vs = std::string(DEFORM_FN_GLSL) + TERRAIN_XFORM_GLSL;
+    sub("TILE_XFORM_PLACEHOLDER", tile_vs.c_str());
+    sub("TILE_XFORM_FS_PLACEHOLDER", TERRAIN_XFORM_FS_GLSL);
+  }
   {
     extern const char *const MATERIAL_UNIFORMS_GLSL; // renderer_matparams.cpp
     extern const char *const MATERIAL_FN_GLSL;
@@ -182,7 +190,7 @@ bool rebuild_terrain_program(std::string &err) {
   // The shadow pass carries the same displacement, so the terrain does not
   // cast a shadow from where it used to be.
   std::string derr;
-  if (GLuint d = link_checked(inject_sky(VS_DEPTH_SRC), FS_DEPTH, derr)) {
+  if (GLuint d = link_checked(inject_sky(VS_DEPTH_SRC), inject_sky(FS_DEPTH_TERRAIN), derr)) {
     if (prog_depth) delete_program(prog_depth);
     prog_depth = d;
   } else {
@@ -200,7 +208,7 @@ bool rebuild_terrain_program(std::string &err) {
   // not build we keep the fixed grid and say so, rather than losing the
   // terrain entirely. Everything below this point is allowed to fail.
   std::string terr;
-  GLuint t = link_checked_tess(VS_TERRAIN_PASS, TCS_TERRAIN,
+  GLuint t = link_checked_tess(VS_TERRAIN_PASS, inject_sky(TCS_TERRAIN).c_str(),
                                inject_sky(terrain_tes_source().c_str()), fs,
                                terr);
   if (t) {

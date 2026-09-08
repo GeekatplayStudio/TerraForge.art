@@ -36,7 +36,9 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
     } else if (op == "place_object") {
       std::string want = act.value("name", std::string());
       for (auto &o : sc.objects) {
-        if (o.type != SceneObject::Mesh) continue;
+        // meshes, and the terrain tile - which is placed, turned, sized and
+        // deformed through the same fields (terrain_xform.hpp)
+        if (o.type != SceneObject::Mesh && o.type != SceneObject::Terrain) continue;
         if (!want.empty() && o.name != want) continue;
         read_vec3(act, "position", o.pos);
         if (act.contains("scale")) o.scale = act["scale"].get<float>();

@@ -30,6 +30,48 @@ namespace studio {
 namespace {
 
 // ------------------------------------------------------------- transform
+// The terrain's surface. These used to be two sliders on the render
+// settings that the assigned material overwrote every frame - a control
+// that snapped back, and had no effect when it did not. Now they edit the
+// material that shades the tile (its MaterialOutput's roughness and
+// reflection), and say so; with no material there is nothing to edit, and
+// they say that too.
+static void terrain_surface_ui(App &a, SceneObject &o) {
+  if (!prop_filter_match("Surface")) return;
+  ImGui::SeparatorText("Surface");
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
+  gpx::Node *mat = lk.owns_lock() && o.material_node ? a.graph.find_node(o.material_node) : nullptr;
+  if (mat && mat->type != "MaterialOutput") mat = nullptr;
+  if (!mat) {
+    ImGui::BeginDisabled();
+    float dummy_r = 0.5f, dummy_f = 0.f;
+    labeled_scalar("Roughness", "ro", &dummy_r, 0.02f, 1.f);
+    labeled_scalar("Reflection", "rf", &dummy_f, 0.f, 1.f);
+    ImGui::EndDisabled();
+    ImGui::TextDisabled(lk.owns_lock()
+                            ? "No material on the terrain: the surface is the\n"
+                              "material's, so assign one (Material tab, or a base\n"
+                              "material from the Library) to change it."
+                            : "computing...");
+    return;
+  }
+  auto slider = [&](const char *label, const char *id, const char *key, float lo, float hi) {
+    float v = mat->attrs.get_f(key, 0.5f);
+    const float before = v;
+    labeled_scalar(label, id, &v, lo, hi);
+    if (v != before) {
+      if (gpx::Attribute *at = mat->attrs.find(key)) {
+        at->f = v;
+        a.request_eval();
+      }
+    }
+  };
+  slider("Roughness", "ro", "roughness", 0.02f, 1.f);
+  slider("Reflection", "rf", "reflection", 0.f, 1.f);
+  ImGui::TextDisabled("From the material '%s' - the same numbers\nas its Highlights and Reflection tabs.",
+                      mat->attrs.get_s("name").c_str());
+}
+
 // Position, rotation and size, in the same block for every object that has
 // one. Rotation is HPB (heading about Y, pitch about X, bank about Z) - the
 // Cinema 4D convention, and the reason "tilt" is a number here rather than
@@ -74,7 +116,7 @@ void transform_ui(App &a, SceneObject &o) {
                         "nose up and down, bank rolls it - applied in that\n"
                         "order (HPB).");
   }
-  if (prop_filter_match("Size")) {
+  if (o.type != SceneObject::Terrain && prop_filter_match("Size")) {
     ImGui::SeparatorText("Size");
     circ("scale", -1); drag_length("Size", &o.scale, 1.f, 0.0005f, 1e6f); autokey("scale", -1);
     if (ImGui::IsItemHovered())
@@ -91,7 +133,7 @@ void transform_ui(App &a, SceneObject &o) {
                         u.decimals, ht * u.per_m, u.decimals, d * u.per_m,
                         u.suffix);
   }
-  if (o.type == SceneObject::Mesh && prop_filter_match("Deform")) {
+  if ((o.type == SceneObject::Mesh || o.type == SceneObject::Terrain) && prop_filter_match("Deform")) {
     // Vue's Twist in the Numerics tab, and the bend, skew and taper the
     // gizmos drag: the same numbers, typed
     ImGui::SeparatorText("Deform");
@@ -366,29 +408,62 @@ void object_properties_ui(App &a) {
   switch (o.type) {
     case SceneObject::Terrain:
       if (prop_filter_match("Size")) {
+        // The tile's size, as three lengths a person can type: width and
+        // depth stretch the tile (its scl, terrain_xform.hpp); height is
+        // the height scale. The world unit - how many metres one tile
+        // stands for - is below them, because changing it rescales every
+        // readout in the interface and nothing on screen, and that is not
+        // what "size" means.
         ImGui::SeparatorText("Size");
-        ImGui::TextUnformatted("Across");
+        const float unit = std::max(rs.terrain_size_m, 1.f);
+        float w = o.scl[0] * unit, d = o.scl[2] * unit;
+        ImGui::TextUnformatted("Width");
         ImGui::SetNextItemWidth(-1);
-        ImGui::DragFloat("##across", &rs.terrain_size_m, 50.f, 10.f, 1e7f,
-                         "%.0f m");
+        if (ImGui::DragFloat("##twidth", &w, 25.f, unit * 0.01f, unit * 50.f, "%.0f m"))
+          o.scl[0] = std::clamp(w / unit, 0.01f, 50.f);
         if (ImGui::IsItemHovered())
-          ImGui::SetTooltip("How much ground the terrain tile covers. Every\n"
-                            "other length in the interface is measured\n"
-                            "against this.");
-        text_length("Highest possible point",
-                    rs.height_scale * rs.terrain_size_m);
+          ImGui::SetTooltip("The tile across, X. The heightmap is stretched to\n"
+                            "fit; the Scale gizmo's X handle drags the same.");
+        ImGui::TextUnformatted("Depth");
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::DragFloat("##tdepth2", &d, 25.f, unit * 0.01f, unit * 50.f, "%.0f m"))
+          o.scl[2] = std::clamp(d / unit, 0.01f, 50.f);
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("The tile across, Z.");
+        float hm = rs.height_scale * o.scl[1] * unit;
+        ImGui::TextUnformatted("Height");
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::DragFloat("##theight", &hm, 5.f, unit * 0.001f, unit * 2.f, "%.0f m"))
+          rs.height_scale = std::clamp(hm / (unit * std::max(o.scl[1], 0.01f)), 0.005f, 2.f);
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("The highest the tile can reach: a heightmap value of\n"
+                            "1 stands this far above 0. Vertical squeeze (Y) in\n"
+                            "the Squeeze row multiplies it.");
+        ImGui::DragFloat3("Squeeze", o.scl, 0.005f, 0.01f, 50.f, "%.3f");
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("X, Y, Z as factors of the natural size: the same\n"
+                            "three numbers as the lengths above.");
+        ImGui::TextUnformatted("World unit");
+        ImGui::SetNextItemWidth(-1);
+        ImGui::DragFloat("##across", &rs.terrain_size_m, 50.f, 10.f, 1e7f, "%.0f m per tile");
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("How many metres one tile stands for. Every length in\n"
+                            "the interface is measured against this - object\n"
+                            "sizes, camera distances, the scale bar - so changing\n"
+                            "it relabels the world rather than resizing the tile.\n"
+                            "Width, Depth and Height above resize the tile.");
         // The outline. The tile is always computed as a square; this is the
-        // shape its feature is cut to when it is placed on the planet, with
-        // the feather running along the outline.
+        // shape it is cut to - by the placement's feather on a planet, by a
+        // hard cut off one.
         ImGui::TextUnformatted("Shape");
         ImGui::SetNextItemWidth(-1);
         ImGui::Combo("##tshape", &rs.terrain_shape, "Square\0Round\0Rectangle\0");
         if (ImGui::IsItemHovered())
           ImGui::SetTooltip("Square is the whole tile. Round cuts a disc out of\n"
-                            "it; Rectangle a centred box of the depth below. The\n"
-                            "edge feather follows the outline, so the feature\n"
-                            "fades into the planet along it. Needs 'Place on\n"
-                            "planet surface'.");
+                            "it; Rectangle a centred box of the depth below. On\n"
+                            "a planet the feather follows the outline and the\n"
+                            "planet shows through outside it; off a planet the\n"
+                            "tile ends at the outline.");
         if (rs.terrain_shape == 2) {
           const float depth_m = rs.terrain_size_m * std::min(rs.terrain_aspect, 1.f);
           const float width_m = rs.terrain_size_m * std::min(1.f / std::max(rs.terrain_aspect, 0.05f), 1.f);
@@ -403,14 +478,14 @@ void object_properties_ui(App &a) {
                               "the tile is the planet showing through.", width_m, depth_m);
         }
       }
-      ImGui::SeparatorText("Shape");
+      // position, heading/pitch/bank and the deformers: the shared block,
+      // the same one a mesh shows (Size is the terrain's own, above)
+      transform_ui(a, o);
+      ImGui::SeparatorText("Relief");
       labeled_scalar("Height scale", "hs", &rs.height_scale, 0.02f, 0.8f);
-      ImGui::TextDisabled("Terrain shape is built in the node graph\n"
-                          "(Terrain workspace). Material lives in the\n"
-                          "Material tab.");
-      ImGui::SeparatorText("Surface");
-      labeled_scalar("Roughness", "ro", &rs.mat_roughness, 0.02f, 1.f);
-      labeled_scalar("Reflection", "rf", &rs.mat_reflection, 0.f, 1.f);
+      ImGui::TextDisabled("The relief itself is built in the node graph\n"
+                          "(Terrain workspace).");
+      terrain_surface_ui(a, o);
       if (prop_filter_match("Placement")) {
         // How the tile sits on the planet (studio/planet_place.cpp). The
         // numbers here are what a user can reason about: a length for the

@@ -6,6 +6,7 @@
 // chain, the lock that holds the base on the surface, and the footprints
 // text the node reads.
 #include "imprint.hpp"
+#include "terrain_xform.hpp"
 #include "app.hpp"
 #include "gizmo.hpp"
 #include "imprint_footprint.hpp"
@@ -161,9 +162,13 @@ void app_service_imprint(App &a) {
       // published so the panel can say how deep "touches everywhere" is.
       float hi = -1e30f, lo = 1e30f;
       const size_t n = f.xz.size() / 2;
+      // through the tile's transform (terrain_xform.hpp): the object stands
+      // where the moved, turned or stretched ground actually is
+      const TerrainXform tx = terrain_xform_current();
       auto note = [&](float u, float v) {
-        const float g = ground->sample(std::clamp(u, 0.f, 1.f),
-                                       std::clamp(v, 0.f, 1.f));
+        const float g = terrain_xform_ground(tx, u, v, [&](float x, float z) {
+          return ground->sample(std::clamp(x, 0.f, 1.f), std::clamp(z, 0.f, 1.f));
+        });
         hi = std::max(hi, g);
         lo = std::min(lo, g);
       };

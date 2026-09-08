@@ -32,6 +32,10 @@ void object_transform_to_json(json &jo, const SceneObject &o) {
   jo["show_gizmo"] = o.show_gizmo;
   jo["ground_lock"] = o.ground_lock;
   jo["ground_offset"] = o.ground_offset;
+  // the terrain's pos/rot/scl mean its transform (terrain_xform.hpp) from
+  // this version on; a file without the mark carries the old default
+  // position, which is not a transform and is reset on load
+  if (o.type == SceneObject::Terrain) jo["terrain_transform"] = true;
   if (o.ground_margin != 0.f) jo["ground_margin"] = o.ground_margin;
   if (o.ground_blend != 0.f) jo["ground_blend"] = o.ground_blend;
   if (o.ground_sink != 0.f) jo["ground_sink"] = o.ground_sink;
@@ -57,6 +61,20 @@ void object_transform_to_json(json &jo, const SceneObject &o) {
 }
 
 void object_transform_from_json(const json &jo, SceneObject &o) {
+  if (o.type == SceneObject::Terrain && !jo.value("terrain_transform", false)) {
+    o.pos[0] = o.pos[1] = o.pos[2] = 0.f;
+    o.scale = 1.f;
+    o.scl[0] = o.scl[1] = o.scl[2] = 1.f;
+    o.yaw = o.pitch = o.roll = 0.f;
+    o.deform = gpx::Deform();
+    // colour, visibility and the rest still read below; the transform
+    // fields are skipped by feeding an object without them
+    json rest = jo;
+    for (const char *k : {"pos", "scale", "scl", "yaw", "pitch", "roll", "twist", "bend",
+                          "bend_axis", "shear", "taper"})
+      rest.erase(k);
+    return object_transform_from_json(rest, o);
+  }
   if (jo.contains("pos")) v3_from(jo["pos"], o.pos);
   o.scale = jo.value("scale", o.scale);
   if (jo.contains("scl")) v3_from(jo["scl"], o.scl);

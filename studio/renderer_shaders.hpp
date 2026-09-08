@@ -40,6 +40,7 @@ extern const char *const DEFORM_FN_GLSL;
 extern const char *const INSTANCE_FN; // one scattered copy's placement, shared by both mesh passes
 
 extern const char *const FS_DEPTH;
+extern const char *const FS_DEPTH_TERRAIN;
 
 extern const char *const VS_WATER;
 

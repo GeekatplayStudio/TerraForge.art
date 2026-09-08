@@ -516,6 +516,18 @@ wanted his students to have.
   without changing the buffer size.
 
 ### Terrain
+- **The terrain is an object.** It has a position, heading, pitch and bank,
+  a width, depth and height typed in metres (or as per-axis squeeze), and
+  the four deformers - twist, bend, skew, taper - through the same fields,
+  gizmo, undo, animation tracks and `place_object` op as any mesh. The
+  transform runs in every terrain pass (colour, tessellated, shadow), the
+  selection box follows it, grounded objects stand on the moved ground. The
+  *world unit* (metres per tile) is a separate control, because changing it
+  relabels every length rather than resizing the tile. **Shape** cuts the
+  tile round or to a rectangle: on a planet the feather follows the outline
+  and the planet shows through outside; off a planet the tile ends there.
+  The **Surface** sliders edit the assigned material's roughness and
+  reflection, and say so; with no material they are disabled and say why.
 - **Node graph engine** with dirty-tracking evaluation, multithreaded solvers,
   per-node previews and timings, and any resolution from 64 to 8192.
 - **Erosion that models the physics:** particle-droplet hydraulic erosion, a
@@ -951,8 +963,8 @@ only that a diff exists).
 plus per-area suites (ecosystem, shapes/lake, scene tree/undo of the studio
 UI, i18n, layout, mesh pipeline, material editor, config, icons, AI
 services, assets, node names and search, points previews, terrain cracks,
-horizon, animation, CSG, the crash ledger) and a performance guard — 26
-suites in all, which is what CI runs.
+horizon, animation, CSG, the crash ledger, the terrain transform) and a
+performance guard — 27 suites in all, which is what CI runs.
 
 ---
 

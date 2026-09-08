@@ -11,6 +11,7 @@ in vec2 v_uv;
 in vec3 v_world;
 out vec4 frag;
 uniform sampler2D u_height;
+TILE_XFORM_FS_PLACEHOLDER
 uniform sampler2D u_albedo;
 uniform sampler2D u_normal_map;
 uniform sampler2D u_rough_map;
@@ -185,7 +186,8 @@ float cloud_shadow(vec3 world){
 
 MATERIAL_FN_PLACEHOLDER
 void main(){
-  vec3 N = get_normal(v_uv);
+  if (tile_cut(v_uv)) discard; // the outline, when not placed on a planet
+  vec3 N = tile_xform_normal(get_normal(v_uv));
   if (u_id_mode != 0 && u_aov == 0) {
     vec3 c = id_colour(u_id_mode == 2 ? u_id_key : float(u_object_id));
     frag = vec4(c * (0.7 + 0.3 * max(N.y, 0.0)), 1.0);

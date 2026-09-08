@@ -154,6 +154,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w, int h,
                 float time_acc, const float *view_eye, const float *mvp,
                 const float *inv_vp);
 void build_light_mvp(const float *sun, float hscale, float *out);
+void draw_box_corners(const float *mvp, const float c[8][3], const float *rgba);
 void draw_box_outline(const float *mvp, float x0, float y0, float z0, float x1,
                       float y1, float z1, const float *color);
 

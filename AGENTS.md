@@ -319,6 +319,36 @@ size; and a status line proves an op ran, a log line does not.
 4. **The UI snapshot is rebuilt on change, not per frame** (eval serial,
    layout serial, node count, a pointer button, or a quarter second).
 
+## The terrain is an object with a transform
+
+studio/terrain_xform.cpp: the Terrain SceneObject's pos (an offset; pos[1]
+in height units like every object), yaw/pitch/roll, scl and deform are the
+tile's transform, applied in the tile's own frame before the planet
+placement - `tile_xform()` in every terrain vertex stage (TERRAIN_VERT_COMMON,
+the TCS's culling corners, VS_DEPTH_SRC), `tile_xform_normal()` in the
+fragment stage, `terrain_xform_apply()` on the CPU for the selection box and
+`terrain_xform_ground()` for grounding. Rules:
+
+1. A new terrain pass, or a new reader of the tile's geometry, goes through
+   the transform or it draws the old tile. `upload_terrain_xform` in
+   renderer_passes.cpp is the one upload; the placeholders are
+   TILE_XFORM_PLACEHOLDER (vertex/control stages, after DEFORM_FN's
+   uniforms) and TILE_XFORM_FS_PLACEHOLDER (fragment), spliced by inject_sky -
+   which the TCS did not go through until this landed.
+2. The world unit (`terrain_size_m`) is not the tile's size. It says how many
+   metres one tile stands for; Width/Depth/Height in the panel are the
+   object's scl and the height scale. Do not make either stand in for the
+   other again.
+3. A project without `"terrain_transform": true` on its Terrain object is
+   from before this: the loader resets its transform to identity, because
+   the old default pos was (0.5, 0.05, 0.5) and was never a transform.
+4. The outline (`terrain_shape`) is a hard fragment cut (`tile_cut`) only
+   when the tile is not placed on a planet; placed, planet_place's feather
+   does it and the planet shows through - the same picture by two means.
+5. The Surface sliders write the material's attributes; `rs.mat_roughness`
+   and friends are overwritten from the material every upload and are not a
+   control (they still drive the water and the export defaults).
+
 ## Objects, gizmos and deformers
 
 1. **One deformation function, two twins.** `gpx::deform_point` (engine/gpx/

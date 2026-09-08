@@ -106,9 +106,10 @@ bool anchor_of(const SceneObject &o, float out[3]) {
     // sits at the tile's centre: Scale resizes the tile (X and Z the width,
     // Y the height), the other tools show the axes and nothing more.
     case SceneObject::Terrain:
-      out[0] = 0.5f;
-      out[1] = rs.height_scale * 0.5f;
-      out[2] = 0.5f;
+      // the tile's centre, carried by its own offset (terrain_xform.hpp)
+      out[0] = 0.5f + o.pos[0];
+      out[1] = rs.height_scale * (0.5f + o.pos[1]);
+      out[2] = 0.5f + o.pos[2];
       return true;
     case SceneObject::InfiniteSurface:
       out[0] = 0.5f;
@@ -142,7 +143,11 @@ int axis_mask(const SceneObject &o, GizmoMode m) {
     case SceneObject::Sun:
       return m == GizmoMode::Move ? 0x7 : 0;
     case SceneObject::Terrain:
-      return m == GizmoMode::Scale ? 0xF : 0;
+      // an object like any other: move, turn, size per axis, and the four
+      // deformers (terrain_xform.hpp)
+      if (m == GizmoMode::Scale) return 0xF;
+      if (m == GizmoMode::Taper) return 0x8;
+      return 0x7;
     default:
       return 0;
   }
@@ -170,6 +175,7 @@ void apply_move(SceneObject &o, const float d[3]) {
   switch (o.type) {
     case SceneObject::Mesh:
     case SceneObject::Light:
+    case SceneObject::Terrain:
       o.pos[0] = g_drag.start_pos[0] + d[0];
       o.pos[1] = g_drag.start_pos[1] +
                  d[1] / std::max(rs.height_scale, 1e-5f);
@@ -453,12 +459,12 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
                   (m.y - g_drag.start_mouse.y) * g_drag.dir_screen.y;
       float k = std::max(0.02f, 1.f + dpx / 120.f);
       if (o.type == SceneObject::Terrain) {
-        // the tile: width on X and Z (or the centre), height on Y
-        RenderSettings &rs = render_settings();
-        if (g_drag.axis == 1)
-          rs.height_scale = std::clamp(g_drag.start_extra * k, 0.005f, 2.f);
+        // the tile: its width and depth per axis, its height on Y, all
+        // three from the centre handle (terrain_xform.hpp)
+        if (g_drag.axis == 3)
+          for (int i = 0; i < 3; ++i) o.scl[i] = std::clamp(g_drag.start_scl[i] * k, 0.01f, 50.f);
         else
-          rs.terrain_size_m = std::clamp(g_drag.start_scale * k, 100.f, 100000.f);
+          o.scl[g_drag.axis] = std::clamp(g_drag.start_scl[g_drag.axis] * k, 0.01f, 50.f);
       } else if (g_drag.axis == 3) {
         if (o.type == SceneObject::Planet)
           o.planet.radius = std::max(0.001f, g_drag.start_extra * k);
@@ -507,7 +513,6 @@ bool gizmo_update(App &a, int slot, const RenderSettings::ViewConfig &vc,
                                                         : o.planet.radius)
                        : o.type == SceneObject::Terrain ? render_settings().height_scale
                                                         : 0.f;
-  if (o.type == SceneObject::Terrain) g_drag.start_scale = render_settings().terrain_size_m;
   if (hot.axis < 3) {
     // the screen direction of the frame axis, and how many pixels a world
     // unit along it covers, from a short probe

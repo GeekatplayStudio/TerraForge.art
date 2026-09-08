@@ -19,17 +19,27 @@ uniform float u_hscale;
 uniform float u_field_strength;
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
+TILE_XFORM_PLACEHOLDER
+out vec2 v_uv;
 void main(){
   float h = texture(u_height, in_uv).r * u_hscale;
   vec3 p = vec3(in_uv.x, h, in_uv.y);
   if (u_field_strength != 0.0)
     p.y += gpx_terrain_field(p, vec3(0.0,1.0,0.0), h, 1.0, 0.0, 0.0, 7.0).x *
            u_field_strength;
+  p = tile_xform(p); // the same transform the view draws (terrain_xform.hpp)
+  v_uv = in_uv;
   gl_Position = u_light_mvp * vec4(p, 1.0);
 })GLSL";
 
 const char *const FS_DEPTH = R"GLSL(#version 430 core
 void main(){})GLSL";
+
+// The terrain's shadow: a tile cut to an outline casts the outline's shadow.
+const char *const FS_DEPTH_TERRAIN = R"GLSL(#version 430 core
+in vec2 v_uv;
+TILE_XFORM_FS_PLACEHOLDER
+void main(){ if (tile_cut(v_uv)) discard; })GLSL";
 
 // The water lies on the same sphere as the tile (PL_SPHERE_PLACEHOLDER is
 // spliced by inject_sky): on an Earth-size planet it curves with the

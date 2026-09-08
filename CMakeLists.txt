@@ -327,6 +327,7 @@ set(STUDIO_SOURCES
     studio/perf_watch.cpp
     studio/hang_watch.cpp
     studio/crash_ledger.cpp
+    studio/terrain_xform.cpp
     studio/imprint.cpp
     studio/updater.cpp
     studio/mesh_thumbnail.cpp
@@ -765,6 +766,12 @@ add_executable(crash_ledger_tests tests/cpp/test_crash_ledger.cpp studio/crash_l
 target_include_directories(crash_ledger_tests PRIVATE studio)
 target_link_libraries(crash_ledger_tests PRIVATE third_party_headers)
 
+# The terrain tile's transform: identity, the ground-plane inverse, pitch
+# and the deformers, the grounding query.
+add_executable(terrain_xform_tests tests/cpp/test_terrain_xform.cpp studio/terrain_xform.cpp)
+target_include_directories(terrain_xform_tests PRIVATE studio engine)
+target_link_libraries(terrain_xform_tests PRIVATE third_party_headers)
+
 # The icon set: every id paints something, stays inside its box at each
 # step of the 18 / 26 / 36 ladder, and draws the same vertices twice.
 add_executable(icon_tests tests/cpp/test_icons.cpp studio/icons.cpp
@@ -834,6 +841,7 @@ add_test(NAME MeshCsgTests COMMAND mesh_csg_tests)
 add_test(NAME MaterialEditorTests COMMAND material_editor_tests)
 add_test(NAME ConfigTests COMMAND config_tests)
 add_test(NAME CrashLedgerTests COMMAND crash_ledger_tests)
+add_test(NAME TerrainXformTests COMMAND terrain_xform_tests)
 add_test(NAME IconTests COMMAND icon_tests)
 add_test(NAME AiServiceTests COMMAND ai_services_tests)
 add_test(NAME AssetTests COMMAND asset_tests)
