@@ -73,5 +73,8 @@ extern const char *const TERRAIN_XFORM_INV_GLSL;
 // Uploads for the two (renderer_passes.cpp; GL lives there, not here).
 void upload_terrain_xform(unsigned prog);
 void upload_terrain_xform_inverse(unsigned prog);
+struct RenderSettings;
+// The water's look (WATER_FN_GLSL) into a program; renderer_passes.cpp.
+void upload_water_uniforms(unsigned prog, const RenderSettings &rs, float time);
 
 } // namespace studio

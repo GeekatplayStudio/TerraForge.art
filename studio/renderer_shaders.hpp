@@ -29,6 +29,7 @@ extern const char *const VS_TERRAIN_PASS;
 extern const char *const FRACTAL_FN;
 
 extern const char *const SKY_FN;
+extern const char *const WATER_FN_GLSL;
 extern const char *const FOG_FN;
 
 extern const char *const FS_TERRAIN_SRC;

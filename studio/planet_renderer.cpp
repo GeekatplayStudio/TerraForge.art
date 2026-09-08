@@ -108,6 +108,9 @@ static std::string pl_inject(const char *src, const std::string &glsl) {
   sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);
   sub("PL_SPHERE_PLACEHOLDER", PL_SPHERE_FN);
   sub("TILE_XFORM_INV_PLACEHOLDER", TERRAIN_XFORM_INV_GLSL);
+  sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
+  sub("SKY_FN_PLACEHOLDER", SKY_FN);
+  sub("WATER_FN_PLACEHOLDER", WATER_FN_GLSL);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
   return s;
 }
@@ -457,6 +460,10 @@ void infinite_draw(const InfiniteFrame &f) {
   puni1(prog_inf, "u_sat", f.saturation);
   puni1(prog_inf, "u_hscale", f.height_scale);
   upload_terrain_xform_inverse(prog_inf); // the hole and the border blend follow the tile
+  puni1(prog_inf, "u_frac_amount", f.frac_amount);
+  puni1(prog_inf, "u_frac_scale", f.frac_scale);
+  puni1(prog_inf, "u_tile_octf", f.tile_octf);
+  upload_water_uniforms(prog_inf, render_settings(), f.time); // the tile's water, continued
   puni1(prog_inf, "u_curve", f.planet_radius);
   upload_fog_uniforms(prog_inf, render_settings(), f.atmosphere);
   punii(prog_inf, "u_object_id", 1);

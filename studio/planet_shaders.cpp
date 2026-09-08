@@ -314,6 +314,8 @@ uniform float u_hscale, u_curve, u_amp, u_base, u_wl;
 PL_FN_PLACEHOLDER
 PL_SPHERE_PLACEHOLDER
 TILE_XFORM_INV_PLACEHOLDER
+FRACTAL_FN_PLACEHOLDER
+uniform float u_frac_amount, u_frac_scale, u_tile_octf;
 out vec3 v_world;
 out vec2 v_uv;
 out float v_out;   // distance outside the tile, tile widths
@@ -331,7 +333,12 @@ void main(){
   vec2 uvc = clamp(tl, 0.0, 1.0);
   float dout = length(tl - uvc);
   float cam_d = max(length(u_cam.xz - uv) * 0.15, 0.02);
+  float s = smoothstep(0.0, 0.35, dout);
+  // the tile's relief was baked at its heightmap's resolution: at the join
+  // the surround runs at that same octave count, and only away from the
+  // tile does it resolve further - otherwise the seam is a change of grain
   float octf = clamp(9.0 - log2(cam_d) * 1.2, 2.0, 10.0);
+  octf = mix(min(octf, u_tile_octf), octf, s);
   // The surround has to meet the tile at the tile's own level, or a step
   // appears all the way round it. u_base is the level the tile was placed
   // at (studio/planet_place.cpp), the same one the tile's relief is built
@@ -339,8 +346,13 @@ void main(){
   vec2 hw = pl_height_w(vec3(uv.x, 0.37, uv.y), octf);
   float proc = hw.x * u_amp + u_base;
   float tile = texture(u_height, uvc).r * u_hscale * u_txi_y.x + u_txi_y.y;
-  float s = smoothstep(0.0, 0.35, dout);
   float h = mix(tile, proc, s);
+  // the tile's own fractal micro-relief, the same function in the same
+  // units, so the grit runs straight across the border
+  if (u_frac_amount > 0.0){
+    int oct = gp_octaves(length(u_cam - vec3(uv.x, h, uv.y)), 9.0);
+    if (oct > 0) h += (gp_detail(uv, u_frac_scale, oct, 0.5) - 0.5) * u_frac_amount;
+  }
   v_proc = h;
   v_wet = hw.y * s;
   // the sea and the lakes: the ground never shows below the water level,
@@ -369,11 +381,15 @@ uniform vec3 u_grade;
 PL_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
 TILE_XFORM_INV_PLACEHOLDER
+FRACTAL_FN_PLACEHOLDER
+uniform float u_frac_amount, u_frac_scale, u_tile_octf;
 // the same height fog and pass outputs as the terrain tile (u_aov and
 // u_object_id are declared in here), so the ground beyond the tile
 // disappears into the same air the tile does - a distance fog of its own
 // used to paint the surround pale right up to the tile's border
 FOG_FN_PLACEHOLDER
+SKY_FN_PLACEHOLDER
+WATER_FN_PLACEHOLDER
 vec3 aces(vec3 x){
   x *= u_grade;
   float lum = dot(x, vec3(0.299, 0.587, 0.114));
@@ -388,13 +404,39 @@ void main(){
       all(greaterThan(tl, vec2(0.001))) && all(lessThan(tl, vec2(0.999))))
     discard;
   float cam_d = max(length(u_cam - v_world), 0.02);
+  float s_join = smoothstep(0.0, 0.35, v_out);
   float octf = clamp(10.0 - log2(cam_d * 7.0) * 1.3, 2.0, 11.0);
+  octf = mix(min(octf, u_tile_octf), octf, s_join); // the tile's grain at the join
   float e = max(0.5 / exp2(octf), 0.0004);
   vec2 hw0 = pl_height_w(vec3(v_uv.x, 0.37, v_uv.y), octf);
   float h0 = hw0.x;
   float hx = pl_height(vec3(v_uv.x + e, 0.37, v_uv.y), octf);
   float hz = pl_height(vec3(v_uv.x, 0.37, v_uv.y + e), octf);
   vec3 N = normalize(vec3((h0-hx)*u_amp, e, (h0-hz)*u_amp));
+  // at the join the surface *is* the tile's heightmap (the vertex stage
+  // mixed to it), so the normal comes from the heightmap there too, and
+  // gives way to the procedural normal with the same ramp
+  if (s_join < 1.0){
+    vec2 tuv = clamp(tl, 0.0, 1.0);
+    float te = 0.5 / exp2(u_tile_octf);
+    float hs = u_hscale * u_txi_y.x;
+    float hl = texture(u_height, tuv - vec2(te, 0.0)).r, hr = texture(u_height, tuv + vec2(te, 0.0)).r;
+    float hd = texture(u_height, tuv - vec2(0.0, te)).r, hu = texture(u_height, tuv + vec2(0.0, te)).r;
+    vec3 Nt = normalize(vec3((hl - hr) * hs, 2.0 * te, (hd - hu) * hs));
+    N = normalize(mix(Nt, N, s_join));
+  }
+  // the tile's fractal micro-relief, differenced the way the tile does it
+  if (u_frac_amount > 0.0){
+    int oct = gp_octaves(cam_d, 12.0);
+    if (oct > 0){
+      float e2 = clamp(cam_d * 0.02, 2.0e-7, 0.35 / exp2(u_tile_octf));
+      float c  = gp_detail(v_uv, u_frac_scale, oct, 0.5);
+      float dx = gp_detail(v_uv + vec2(e2, 0.0), u_frac_scale, oct, 0.5) - c;
+      float dy = gp_detail(v_uv + vec2(0.0, e2), u_frac_scale, oct, 0.5) - c;
+      float k = u_frac_amount / max(e2, 1e-5) * 0.25;
+      N = normalize(N + vec3(-dx * k, 0.0, -dy * k));
+    }
+  }
   // water where the ground is below the water level; the vertex stage
   // already flattened the surface to it
   bool water = v_proc < u_wl - 1e-4;
@@ -409,22 +451,13 @@ void main(){
   if (u_has_albedo == 1){
     // near the tile, borrow the tile's own texture so a textured tile does
     // not end in a colour seam
-    vec3 edge = pow(texture(u_albedo, clamp(v_uv, 0.0, 1.0)).rgb, vec3(2.2));
-    alb = mix(edge, alb, smoothstep(0.0, 0.35, v_out));
+    vec3 edge = pow(texture(u_albedo, clamp(tl, 0.0, 1.0)).rgb, vec3(2.2));
+    alb = mix(edge, alb, s_join);
   }
   // the surround has to answer the shading mode the same way the tile does,
   // or turning the texture off leaves a coloured horizon around a grey tile
   if (u_textured == 0) alb = vec3(0.58, 0.57, 0.55);
   vec3 V = normalize(u_cam - v_world);
-  if (water){
-    N = vec3(0.0, 1.0, 0.0);
-    // the tile's water shader, without its waves: same colours, same depth law
-    float fresnel = pow(1.0 - max(dot(N, V), 0.0), 5.0) * 0.9 + 0.06;
-    vec3 wc = mix(u_wshallow, u_wdeep, clamp(depth * u_wclarity, 0.0, 1.0));
-    vec3 skyr = mix(u_sky_horizon, u_sky_zenith, 0.4);
-    alb = mix(wc, skyr, fresnel * 0.6);
-  }
-
   float NdL = max(dot(N, u_sun), 0.0);
   // the ambient half is skylight, so it fades with the same nightfall
   // factor the sky uses - otherwise the surround glows all night
@@ -434,8 +467,14 @@ void main(){
                      * (0.45 + 0.55*N.y) * day_f;
   vec3 col = direct + ambient;
   if (water){
-    float spec = pow(max(dot(reflect(-u_sun, N), V), 0.0), 600.0);
-    col += u_sun_color * spec * 1.5 * u_sun_i * 0.3;
+    // the tile's own water shader - waves, foam, the translucent shore -
+    // over the bed shaded above, so a lake crossing the tile's border is
+    // one lake (WATER_FN_GLSL)
+    WaterShade ws = water_shade(v_uv, v_world, depth, u_hscale, u_cam, u_sun, u_sun_color,
+                                u_sky_zenith, u_sky_horizon);
+    col = mix(col, ws.col, ws.alpha);
+    N = ws.n;
+    alb = ws.water;
   }
   float fog_f; vec3 fog_c;
   fog_terms(v_world, u_cam, cam_d, u_hscale, u_sun, u_sun_color, fog_f, fog_c);

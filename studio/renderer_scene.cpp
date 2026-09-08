@@ -254,6 +254,11 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.latitude = std::fabs(RS.latitude) / 90.f;
     inf.atmosphere = atmosphere;
     inf.textured = textured;
+    inf.frac_amount = RS.planet_radius > 0.f ? std::min(RS.fractal_detail, RS.planet_radius * 0.05f)
+                                             : RS.fractal_detail;
+    inf.frac_scale = RS.fractal_scale;
+    inf.tile_octf = std::clamp(std::log2((float)std::max(hm_w, 16)), 4.f, 11.f);
+    inf.time = time_acc;
     infinite_draw(inf);
   }
 

@@ -55,6 +55,28 @@ void upload_terrain_xform(unsigned prog) {
   uni1(prog, "u_tx_aspect", RS.terrain_aspect);
 }
 
+// The water's look, into any program carrying WATER_FN_GLSL: the tile's
+// water pass and the planet surround, so a lake crossing the tile's border
+// is one lake.
+void upload_water_uniforms(unsigned prog, const RenderSettings &RS, float time) {
+  uni1(prog, "u_w_time", time);
+  uni1(prog, "u_w_wave_amp", RS.water_wave_amp);
+  uni1(prog, "u_w_wave_scale", RS.water_wave_scale);
+  uni1(prog, "u_w_wave_speed", RS.water_wave_speed);
+  uni1(prog, "u_w_clarity", RS.water_clarity);
+  uni1(prog, "u_w_opacity", RS.water_opacity);
+  uni1(prog, "u_w_roughness", RS.mat_roughness * 0.2f);
+  uni1(prog, "u_w_reflection", RS.mat_reflection + 0.4f);
+  uni1(prog, "u_w_atmo", RS.atmosphere_density);
+  uni3(prog, "u_w_deep", RS.water_deep_color);
+  uni3(prog, "u_w_shallow", RS.water_shallow_color);
+  unii(prog, "u_w_foam_on", RS.water_foam ? 1 : 0);
+  uni3(prog, "u_w_foam_color", RS.foam_color);
+  uni1(prog, "u_w_foam_amount", RS.foam_amount);
+  uni1(prog, "u_w_foam_scale", RS.foam_scale);
+  uni1(prog, "u_w_foam_crests", RS.foam_crests);
+}
+
 void upload_terrain_xform_inverse(unsigned prog) {
   const TerrainXform t = terrain_xform_current();
   unii(prog, "u_tx_on", t.on ? 1 : 0);
@@ -462,27 +484,12 @@ void pass_water(const FrameCtx &F) {
     uni3(prog_water, "u_sun", sun);
     uni3(prog_water, "u_sun_color", RS.sun_color);
     uni3(prog_water, "u_cam", view_eye);
-    uni1(prog_water, "u_time", time_acc);
     uni1(prog_water, "u_exposure", (RS.exposure) * g_exposure_mult);
     uni3(prog_water, "u_grade", g_grade);
     uni1(prog_water, "u_sat", g_saturation);
-    uni3(prog_water, "u_deep", RS.water_deep_color);
-    uni3(prog_water, "u_shallow", RS.water_shallow_color);
-    uni1(prog_water, "u_wave_amp", RS.water_wave_amp);
-    uni1(prog_water, "u_wave_scale", RS.water_wave_scale);
-    uni1(prog_water, "u_wave_speed", RS.water_wave_speed);
-    uni1(prog_water, "u_clarity", RS.water_clarity);
-    uni1(prog_water, "u_opacity", RS.water_opacity);
     uni3(prog_water, "u_sky_zenith", RS.sky_zenith);
     uni3(prog_water, "u_sky_horizon", RS.sky_horizon);
-    uni1(prog_water, "u_atmo", RS.atmosphere_density);
-    unii(prog_water, "u_foam_on", RS.water_foam ? 1 : 0);
-    uni3(prog_water, "u_foam_color", RS.foam_color);
-    uni1(prog_water, "u_foam_amount", RS.foam_amount);
-    uni1(prog_water, "u_foam_scale", RS.foam_scale);
-    uni1(prog_water, "u_foam_crests", RS.foam_crests);
-    uni1(prog_water, "u_roughness", RS.mat_roughness * 0.2f);
-    uni1(prog_water, "u_reflection", RS.mat_reflection + 0.4f);
+    upload_water_uniforms(prog_water, RS, time_acc);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_height);
     unii(prog_water, "u_height", 0);

@@ -76,6 +76,17 @@ struct InfiniteFrame {
   float latitude;         // |latitude| / 90, for the snow line
   bool atmosphere;        // the view's atmosphere toggle: fog on or off
   bool textured = true; // the view's shading mode, as for the terrain tile
+  // Matching the tile's grain at the join. The tile's fractal micro-relief
+  // (the same gp_detail, the same amount and scale) runs across the
+  // surround too, so the grit does not stop at the border; and near the
+  // tile the surround's own octaves are capped at what the tile's
+  // heightmap could hold (log2 of its resolution), rising to the full
+  // count away from it - the relief on both sides of the seam is then the
+  // same function at the same resolution.
+  float frac_amount = 0.f;
+  float frac_scale = 1.f;
+  float tile_octf = 9.f;
+  float time = 0.f; // the animation clock, for the water's waves
 };
 void infinite_draw(const InfiniteFrame &f);
 bool infinite_layers_present(); // any visible root-level InfiniteSurface?

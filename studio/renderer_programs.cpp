@@ -67,6 +67,7 @@ std::string inject_sky(const char *src) {
   }
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
+  sub("WATER_FN_PLACEHOLDER", WATER_FN_GLSL);
   // The vertex and fragment stages are separate translation units, so each
   // gets its own copy of the prelude; duplicate definitions only collide
   // within one stage. But a stage may hold two generated functions, and then

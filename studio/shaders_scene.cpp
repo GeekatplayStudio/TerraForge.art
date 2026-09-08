@@ -63,23 +63,78 @@ void main(){
   gl_Position = u_mvp * vec4(p,1.0);
 })GLSL";
 
+
+// One water, wherever it is. The tile's water plane and the planet surround
+// used to shade water differently - waves, foam and a translucent shore on
+// the tile, a flat palette tint on the surround - so a lake crossing the
+// tile's border changed character on a straight line. Both now call this;
+// the uniforms carry a u_w_ prefix so the function can live in any program.
+const char *const WATER_FN_GLSL = R"GLSL(
+uniform float u_w_time, u_w_wave_amp, u_w_wave_scale, u_w_wave_speed;
+uniform float u_w_clarity, u_w_opacity, u_w_roughness, u_w_reflection, u_w_atmo;
+uniform vec3 u_w_deep, u_w_shallow, u_w_foam_color;
+uniform int u_w_foam_on;
+uniform float u_w_foam_amount, u_w_foam_scale, u_w_foam_crests;
+float wat_hash(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
+float wat_vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(wat_hash(i),wat_hash(i+vec2(1,0)),f.x),
+             mix(wat_hash(i+vec2(0,1)),wat_hash(i+vec2(1,1)),f.x), f.y);
+}
+struct WaterShade { vec3 col; vec3 n; float alpha; vec3 water; vec3 refl; vec3 spec; };
+// uv: the water's own parameterisation (tile units, so the pattern runs
+// straight across the tile's border); depth: how far the bed is below the
+// surface, world units; hscale: the tile's height scale (the shore width).
+WaterShade water_shade(vec2 uv, vec3 world, float depth, float hscale, vec3 cam,
+                       vec3 sun, vec3 sun_color, vec3 zenith, vec3 horizon){
+  WaterShade o;
+  float t = u_w_time * u_w_wave_speed;
+  float k = u_w_wave_scale;
+  float w1 = sin(uv.x*140.0*k + t*1.3)*0.5 + sin(uv.y*120.0*k - t*1.7)*0.5;
+  float w2 = sin((uv.x*90.0 - uv.y*70.0)*k + t*0.9);
+  float w3 = sin((uv.x*47.0 + uv.y*61.0)*k - t*0.6);
+  vec3 n = normalize(vec3((w1+w3*0.5)*0.02*u_w_wave_amp, 1.0, (w2+w3*0.5)*0.02*u_w_wave_amp));
+  vec3 vdir = normalize(cam - world);
+  float fresnel = pow(1.0 - max(dot(n, vdir),0.0), 5.0)*0.9 + 0.06;
+  vec3 water = mix(u_w_shallow, u_w_deep, clamp(depth*u_w_clarity,0.0,1.0));
+  vec3 R = reflect(-vdir, n);
+  vec3 skyr = sky_color(R, zenith, horizon, sun, sun_color, u_w_atmo);
+  vec3 col = mix(water, skyr, fresnel * (0.5 + 0.5*u_w_reflection));
+  float spec = pow(max(dot(reflect(-sun, n), vdir),0.0), mix(900.0, 120.0, u_w_roughness));
+  col += sun_color * spec * 2.0;
+  float alpha = clamp(0.55 + depth*10.0, 0.0, u_w_opacity);
+  if (u_w_foam_on == 1) {
+    float fn = wat_vnoise(uv*60.0*u_w_foam_scale + vec2(t*0.15, -t*0.1));
+    fn = fn*0.6 + 0.4*wat_vnoise(uv*140.0*u_w_foam_scale - vec2(t*0.22, t*0.13));
+    float shore_w = 0.012 * u_w_foam_amount * hscale;
+    float pulse = 0.6 + 0.4*sin(t*1.8 + uv.x*30.0 + uv.y*24.0);
+    float shore = (1.0 - smoothstep(0.0, shore_w * (0.6+pulse), depth));
+    shore *= smoothstep(0.35, 0.75, fn) * u_w_foam_amount * 1.6;
+    float crest = smoothstep(1.05, 1.45, w1 + w2*0.5) * u_w_foam_crests;
+    crest *= smoothstep(0.45, 0.8, fn);
+    float foam = clamp(shore + crest, 0.0, 1.0);
+    col = mix(col, u_w_foam_color, foam);
+    alpha = max(alpha, foam * 0.95);
+  }
+  o.col = col; o.n = n; o.alpha = alpha; o.water = water;
+  o.refl = skyr * fresnel * (0.5 + 0.5*u_w_reflection);
+  o.spec = sun_color * spec * 2.0;
+  return o;
+}
+)GLSL";
+
 const char *const FS_WATER = R"GLSL(#version 430 core
 in vec2 v_uv;
 in vec3 v_world;
 out vec4 frag;
 uniform sampler2D u_height;
-uniform float u_hscale, u_level, u_time, u_exposure;
+uniform float u_hscale, u_level, u_exposure;
 uniform vec3 u_sun, u_sun_color, u_cam;
-uniform vec3 u_deep, u_shallow;
-uniform float u_wave_amp, u_wave_scale, u_wave_speed, u_clarity, u_opacity;
 uniform vec3 u_sky_zenith, u_sky_horizon;
-uniform float u_atmo;
-uniform int u_foam_on;
-uniform vec3 u_foam_color;
-uniform float u_foam_amount, u_foam_scale, u_foam_crests;
-uniform float u_roughness, u_reflection;
 SKY_FN_PLACEHOLDER
 FOG_FN_PLACEHOLDER
+WATER_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -88,60 +143,26 @@ vec3 aces(vec3 x){
   x = mix(vec3(lum), x, u_sat);
   return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
 }
-float hash21(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
-float vnoise(vec2 p){
-  vec2 i = floor(p), f = fract(p);
-  f = f*f*(3.0-2.0*f);
-  return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),
-             mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x), f.y);
-}
 void main(){
   float bed = texture(u_height, v_uv).r * u_hscale;
   float depth = u_level - bed;
   if (depth <= 0.0) discard;
-  float t = u_time * u_wave_speed;
-  float k = u_wave_scale;
-  float w1 = sin(v_uv.x*140.0*k + t*1.3)*0.5 + sin(v_uv.y*120.0*k - t*1.7)*0.5;
-  float w2 = sin((v_uv.x*90.0 - v_uv.y*70.0)*k + t*0.9);
-  float w3 = sin((v_uv.x*47.0 + v_uv.y*61.0)*k - t*0.6);
-  vec3 n = normalize(vec3((w1+w3*0.5)*0.02*u_wave_amp, 1.0, (w2+w3*0.5)*0.02*u_wave_amp));
-  vec3 vdir = normalize(u_cam - v_world);
-  float fresnel = pow(1.0 - max(dot(n, vdir),0.0), 5.0)*0.9 + 0.06;
-  vec3 water = mix(u_shallow, u_deep, clamp(depth*u_clarity,0.0,1.0));
-  vec3 R = reflect(-vdir, n);
-  vec3 skyr = sky_color(R, u_sky_zenith, u_sky_horizon, u_sun, u_sun_color, u_atmo);
-  vec3 col = mix(water, skyr, fresnel * (0.5 + 0.5*u_reflection));
-  float spec = pow(max(dot(reflect(-u_sun, n), vdir),0.0), mix(900.0, 120.0, u_roughness));
-  col += u_sun_color * spec * 2.0;
-  float alpha = clamp(0.55 + depth*10.0, 0.0, u_opacity);
-  if (u_foam_on == 1) {
-    float fn = vnoise(v_uv*60.0*u_foam_scale + vec2(t*0.15, -t*0.1));
-    fn = fn*0.6 + 0.4*vnoise(v_uv*140.0*u_foam_scale - vec2(t*0.22, t*0.13));
-    float shore_w = 0.012 * u_foam_amount * u_hscale;
-    float pulse = 0.6 + 0.4*sin(t*1.8 + v_uv.x*30.0 + v_uv.y*24.0);
-    float shore = (1.0 - smoothstep(0.0, shore_w * (0.6+pulse), depth));
-    shore *= smoothstep(0.35, 0.75, fn) * u_foam_amount * 1.6;
-    float crest = smoothstep(1.05, 1.45, w1 + w2*0.5) * u_foam_crests;
-    crest *= smoothstep(0.45, 0.8, fn);
-    float foam = clamp(shore + crest, 0.0, 1.0);
-    col = mix(col, u_foam_color, foam);
-    alpha = max(alpha, foam * 0.95);
-  }
+  WaterShade ws = water_shade(v_uv, v_world, depth, u_hscale, u_cam, u_sun, u_sun_color,
+                              u_sky_zenith, u_sky_horizon);
+  vec3 col = ws.col;
   // the same air the terrain disappears into: distant water was never fogged
   float dist = length(v_world - u_cam);
   float fog_f; vec3 fog_c;
   fog_terms(v_world, u_cam, dist, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
   if (u_aov != 0) {
-    vec3 refl_c = skyr * fresnel * (0.5 + 0.5*u_reflection);
-    vec3 spec_c = u_sun_color * spec * 2.0;
-    frag = aov_out(u_aov, dist, n, water, v_world, float(u_object_id), spec_c, 1.0,
-                   refl_c, spec_c + refl_c, fog_f, fog_c, 1.0, col);
-    if (u_aov == 13) frag.a = alpha;
+    frag = aov_out(u_aov, dist, ws.n, ws.water, v_world, float(u_object_id), ws.spec, 1.0,
+                   ws.refl, ws.spec + ws.refl, fog_f, fog_c, 1.0, col);
+    if (u_aov == 13) frag.a = ws.alpha;
     return;
   }
   col = apply_fog_terms(col, fog_f, fog_c);
   col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));
-  frag = vec4(col, alpha);
+  frag = vec4(col, ws.alpha);
 })GLSL";
 
 // The model matrix is built on the CPU (scene_object_matrix) so that the
