@@ -158,7 +158,11 @@ void draw_box_outline(const float *mvp, float x0, float y0, float z0, float x1,
                       float y1, float z1, const float *color);
 
 // cameras and rays (renderer_camera.cpp)
-float perspective_eye_target(float *eye, float *target);
+// Where the perspective view is looking from and at, and its up axis.
+// `up_out` may be null; when given it is the camera's own up - analytic for
+// the orbit camera, reconstructed for a scene camera - and is what stops the
+// view rolling over as it passes vertical.
+float perspective_eye_target(float *eye, float *target, float *up_out = nullptr);
 void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp);
 void ortho_matrices(const RenderSettings::ViewConfig &vc, int w, int h,
                     float hscale, float *eye, float *mvp, float *inv_vp);

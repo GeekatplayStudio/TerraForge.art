@@ -100,6 +100,21 @@ const std::vector<std::vector<std::string>> &concept_rows() {
       {"point", "points", "instance", "instances", "placement", "scatter",
        "distribute", "distribution", "population"},
 
+      // --- doing it by hand -------------------------------------------------
+      // The whole vocabulary of hand work was missing, so "paint" found the
+      // mask painter and ranked the node that actually paints terrain height
+      // fourth, at a score of 0.04 - invisible. "draw" found nothing at all.
+      // Someone reaching for a brush does not care whether the thing they are
+      // about to paint is called a sculpt, a mask or a layer.
+      {"paint", "painting", "painted", "painter", "draw", "drawing", "drawn",
+       "brush", "brushes", "brushed", "sculpt", "sculpting", "sculpted",
+       "stroke", "strokes", "canvas", "freehand", "handmade", "manual",
+       "retouch", "touchup", "erase", "eraser"},
+      // What a hand-painted layer *is*, so "greyscale height map" reaches it
+      // as well as the file readers.
+      {"heightmap", "heightfield", "greyscale", "grayscale", "bitmap",
+       "picture", "image", "photo"},
+
       // --- how much / how strong -------------------------------------------
       {"height", "elevation", "altitude", "tall", "depth", "relief"},
       {"rough", "roughness", "bumpy", "coarse", "jagged"},

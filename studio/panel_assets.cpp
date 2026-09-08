@@ -197,6 +197,9 @@ void draw_assets_tab(App &a, float cell) {
   }
   ImGui::SameLine();
   ImGui::TextDisabled("%zu", g_ui.hits.size());
+  ImGui::Separator();
+  // The search row stays put; only the tiles scroll under it.
+  ImGui::BeginChild("##assetgrid", ImVec2(0, 0));
   float avail = ImGui::GetContentRegionAvail().x;
   int cols = std::max(1, (int)(avail / (cell + 10)));
   int i = 0;
@@ -234,6 +237,7 @@ void draw_assets_tab(App &a, float cell) {
     ImGui::PopID();
     ++i;
   }
+  ImGui::EndChild();
 }
 
 } // namespace studio

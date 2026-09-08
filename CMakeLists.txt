@@ -829,3 +829,8 @@ add_test(NAME AssetTests COMMAND asset_tests)
 
 
 
+
+# What does the node catalogue answer for a phrase? See the file for why.
+add_executable(query_search tools/query_search.cpp)
+target_link_libraries(query_search PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)

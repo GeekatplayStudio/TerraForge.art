@@ -43,7 +43,7 @@ bool camera_object_input(float dx, float dy, float wheel, bool rotating,
   float pitch = std::asin(std::clamp(d[1] / dist, -1.f, 1.f));
   if (rotating) {
     yaw += dx * 0.01f;
-    pitch = std::clamp(pitch + dy * 0.01f, -1.55f, 1.55f);
+    pitch = std::clamp(pitch + dy * 0.01f, -1.5707963f, 1.5707963f);
   }
   if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.12f), 1e-8f, 400.f);
   if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 1e-8f, 400.f);
@@ -133,7 +133,12 @@ void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
                            bool panning) {
   if (rotating) {
     CAM.yaw += dx * 0.01f; // unbounded: full 360° orbit
-    CAM.pitch = std::fmin(std::fmax(CAM.pitch + dy * 0.01f, -1.55f), 1.55f);
+    // Straight down and straight up are both reachable now. The limit used to
+    // stop 1.2 degrees short of each, because the up vector was guessed from
+    // world up and went singular there; it comes from the camera's own angles
+    // instead, so the pole is an ordinary place to be.
+    CAM.pitch = std::fmin(std::fmax(CAM.pitch + dy * 0.01f, -1.5707963f),
+                          1.5707963f);
   }
   if (panning) {
     float s = CAM.dist * 0.0015f;
@@ -205,11 +210,12 @@ int &renderer_camera_override() {
   return v;
 }
 
-float perspective_eye_target(float *eye, float *target) {
+float perspective_eye_target(float *eye, float *target, float *up_out) {
   float fovy_rad = 0.9f;
   SceneState &sc = scene();
   int ov = renderer_camera_override();
   int active = ov != -2 ? ov : scene_active_camera();
+  bool have_up = false;
   if (active >= 0 && active < (int)sc.objects.size() &&
       sc.objects[active].type == SceneObject::Camera) {
     const CameraData &cd = sc.objects[active].cam;
@@ -228,6 +234,46 @@ float perspective_eye_target(float *eye, float *target) {
     eye[1] = CAM.target[1] + CAM.dist * sp;
     eye[2] = CAM.target[2] + CAM.dist * cp * cy;
     for (int i = 0; i < 3; ++i) target[i] = CAM.target[i];
+    // The orbit camera's own up axis, exactly: the derivative of the eye
+    // position with respect to pitch. It never needs guessing at, it is
+    // continuous straight through looking-vertically-down, and at the pole it
+    // points the way the camera is facing - which is what "up on screen"
+    // should mean when you are directly overhead.
+    if (up_out) {
+      up_out[0] = -sp * sy;
+      up_out[1] = cp;
+      up_out[2] = -sp * cy;
+      have_up = true;
+    }
+  }
+  if (up_out && !have_up) {
+    // A scene camera stores only an eye and a target, so the up has to be
+    // reconstructed. World up does it everywhere except near vertical, where
+    // crossed with a vertical forward it vanishes.
+    //
+    // The old code answered that by *snapping* the reference sideways the
+    // moment the view came within 2.6 degrees of straight down, which rotates
+    // the picture in a single frame - the terrain appearing to flip as the
+    // camera passed over the top. Instead the reference eases into the
+    // camera's own heading over those last degrees, which is where the orbit
+    // camera's up tends analytically, so the two agree rather than fight.
+    float fz[3] = {target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]};
+    const float fl = std::sqrt(fz[0]*fz[0] + fz[1]*fz[1] + fz[2]*fz[2]);
+    if (fl > 1e-9f) for (float &v : fz) v /= fl;
+    up_out[0] = 0.f; up_out[1] = 1.f; up_out[2] = 0.f;
+    const float ay = std::fabs(fz[1]);
+    const float hl = std::sqrt(fz[0]*fz[0] + fz[2]*fz[2]);
+    if (ay > 0.985f && hl > 1e-6f) {
+      const float s = fz[1] > 0.f ? -1.f : 1.f; // looking up flips the heading
+      const float t = std::min((ay - 0.985f) / (0.9999f - 0.985f), 1.f);
+      up_out[0] = up_out[0] * (1.f - t) + (s * fz[0] / hl) * t;
+      up_out[1] = up_out[1] * (1.f - t);
+      up_out[2] = up_out[2] * (1.f - t) + (s * fz[2] / hl) * t;
+      const float ul = std::sqrt(up_out[0]*up_out[0] + up_out[1]*up_out[1] +
+                                 up_out[2]*up_out[2]);
+      if (ul > 1e-9f) for (int i = 0; i < 3; ++i) up_out[i] /= ul;
+      else { up_out[0] = 1.f; up_out[1] = 0.f; up_out[2] = 0.f; }
+    }
   }
   return fovy_rad;
 }
@@ -242,14 +288,14 @@ void renderer_view_basis(const RenderSettings::ViewConfig &vc, float *right,
   if (vc.camera == 1) { set(right,1,0,0); set(up,0,0,-1); set(fwd,0,-1,0); return; }
   if (vc.camera == 2) { set(right,1,0,0); set(up,0,1,0);  set(fwd,0,0,1);  return; }
   if (vc.camera == 3) { set(right,0,0,1); set(up,0,1,0);  set(fwd,-1,0,0); return; }
-  float eye[3], target[3];
-  perspective_eye_target(eye, target);
+  float eye[3], target[3], u0[3];
+  perspective_eye_target(eye, target, u0);
   float fz[3] = {target[0]-eye[0], target[1]-eye[1], target[2]-eye[2]};
   float fl = std::sqrt(fz[0]*fz[0] + fz[1]*fz[1] + fz[2]*fz[2]);
   if (fl < 1e-8f) { set(right,1,0,0); set(up,0,1,0); set(fwd,0,0,-1); return; }
   for (float &v : fz) v /= fl;
-  float u0[3] = {0, 1, 0};
-  if (std::fabs(fz[1]) > 0.999f) { u0[0] = 1; u0[1] = 0; }
+  // the same up the view matrix uses, so the corner gizmo can never disagree
+  // with what is on screen
   float sx[3] = {fz[1]*u0[2]-fz[2]*u0[1], fz[2]*u0[0]-fz[0]*u0[2],
                  fz[0]*u0[1]-fz[1]*u0[0]};
   float sl = std::sqrt(sx[0]*sx[0] + sx[1]*sx[1] + sx[2]*sx[2]);
@@ -274,8 +320,8 @@ void renderer_camera_snap_axis(int axis, bool negative) {
 
 
 void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
-  float target[3];
-  float fovy_rad = perspective_eye_target(eye, target);
+  float target[3], up[3];
+  float fovy_rad = perspective_eye_target(eye, target, up);
   float fz[3] = {target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]};
   float fl = std::sqrt(fz[0] * fz[0] + fz[1] * fz[1] + fz[2] * fz[2]);
   // A zoom that reaches the distance floor puts the eye on the pivot, and
@@ -287,8 +333,9 @@ void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
     fl = 1.f;
   }
   for (float &v : fz) v /= fl;
-  float up[3] = {0, 1, 0};
-  if (std::fabs(fz[1]) > 0.999f) { up[0] = 1; up[1] = 0; }
+  // `up` comes from the camera itself (see perspective_eye_target); this used
+  // to guess at it from world up and snap near vertical, which is what made
+  // the view flip as it passed over the top.
   float sx[3] = {fz[1] * up[2] - fz[2] * up[1], fz[2] * up[0] - fz[0] * up[2],
                  fz[0] * up[1] - fz[1] * up[0]};
   float sl = std::sqrt(sx[0] * sx[0] + sx[1] * sx[1] + sx[2] * sx[2]);

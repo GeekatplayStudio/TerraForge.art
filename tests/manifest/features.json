@@ -1569,6 +1569,30 @@
       "description": "Adding a component builds the whole thing: the scene object, the node in the editor that drives it (bound by driver_node), and a material assigned to it - App::last_material if there is one, else a plain grey FlatColor into a MaterialOutput, created once and shared by everything added afterwards. A new project's terrain gets the same treatment, so the Material Studio always has something to open. The toolbar and the add_primitive op share the one path",
       "test_file": "test_scene_tree.cpp",
       "test_symbol": "test_scene_tree_run"
+    },
+    {
+      "id": "search.hand_painting",
+      "area": "engine",
+      "phase": "41",
+      "description": "The concept table covers hand work - paint, draw, brush, sculpt, stroke, erase - so every word for the act reaches both the terrain painter and the mask painter. Before it, \"paint\" ranked TerrainSculpt fourth at 0.04, below Snow, and \"draw\" found nothing relevant at all. tools/query_search prints the ranking for any phrase, so widening the vocabulary is measurable rather than hopeful",
+      "test_file": "test_node_search.cpp",
+      "test_symbol": "test_hand_painting_words"
+    },
+    {
+      "id": "camera.no_roll_at_the_pole",
+      "area": "studio",
+      "phase": "41",
+      "description": "The view's up axis comes from the camera itself - analytic from the orbit camera's own yaw and pitch, reconstructed with a blended reference for a scene camera - instead of world up snapped sideways the instant the view came within 2.6 degrees of vertical, which rotated the picture in one frame and read as the terrain flipping. The old clamp of 88.79 degrees put |forward.y| at 0.99977, past the 0.999 threshold, so it was reachable by ordinary orbiting; pitch now reaches vertical because the pole is no longer singular. camera_matrices and renderer_view_basis share the one up, so the corner gizmo cannot disagree with the picture",
+      "test_file": "test_render.cpp",
+      "test_symbol": "test_frustum_extraction"
+    },
+    {
+      "id": "ui.pinned_search",
+      "area": "studio",
+      "phase": "41",
+      "description": "The node library's filter and the asset browser's search row stay put while their lists scroll under them; drawn straight into the window they scrolled together, so the box you were typing into left the screen as soon as you looked past the first screenful",
+      "test_file": "test_layout.cpp",
+      "test_symbol": "test_round_trip"
     }
   ]
 }

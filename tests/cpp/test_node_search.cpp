@@ -162,6 +162,29 @@ static void test_cloud_is_not_a_point_cloud() {
           "\"clouds\" does not reach " + x.type);
 }
 
+// Reaching for a brush.
+//
+// "paint" used to find the mask painter and rank the node that actually
+// paints terrain height fourth, at 0.04 - below Snow. "draw" found nothing
+// relevant at all. Someone reaching for a brush does not care whether the
+// thing they are about to paint is called a sculpt, a mask or a layer, so
+// every word for the act has to reach both.
+static void test_hand_painting_words() {
+  std::printf("search: reaching for a brush...\n");
+  for (const char *q : {"paint", "draw", "brush", "sculpt", "paint on terrain"}) {
+    auto h = search::find_nodes(q);
+    show(q, h);
+    check(has(h, "TerrainSculpt"),
+          std::string("\"") + q + "\" finds the terrain painter");
+    check(has(h, "MaskPaint"),
+          std::string("\"") + q + "\" finds the mask painter");
+    // and near the top, not buried under whatever happens to share a word
+    check(rank_of(h, "TerrainSculpt") < 3,
+          std::string("\"") + q + "\" ranks the terrain painter in the top three");
+  }
+}
+
+
 int main() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   std::printf("Geekatplay TerraForge - node search\n\n");
@@ -172,6 +195,7 @@ int main() {
   test_deterministic();
   test_expansion_is_visible();
   test_cloud_is_not_a_point_cloud();
+  test_hand_painting_words();
   std::printf("\n%d checks, %s\n", g_checks, g_fail ? "FAILED" : "all passed");
   return g_fail ? 1 : 0;
 }

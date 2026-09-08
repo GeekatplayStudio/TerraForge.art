@@ -65,6 +65,18 @@ void column_terrain(App &a) {
       if (tool_icon(b.icon, b.id, tr(b.tip), s.tool == b.tool)) s.tool = b.tool;
   }
   tool_sep();
+  // The painter, beside the brushes rather than buried in the View menu: it
+  // is the same layer and the same brushes, seen flat, and somebody reaching
+  // for a brush is exactly the person who wants it.
+  if (tool_icon(Icon::Textured, "##heightpaint",
+                tr("Height Paint\n\nThe terrain as a greyscale picture: mid grey does\n"
+                   "nothing, darker carves a valley, lighter raises ground.\n"
+                   "The same layer and brushes as Sculpt, drawn flat - which\n"
+                   "is the only sane way to draw a river's course.\n\n"
+                   "[ and ] resize the brush."),
+                a.show_paint_canvas))
+    a.show_paint_canvas = !a.show_paint_canvas;
+  tool_sep();
   if (tool_icon(Icon::Bake, "##bake4k",
                 tr("Bake 4k exports\n\nRe-evaluate at 4096 with every export node enabled."))) {
     std::lock_guard<App::GraphMutex> lk(a.graph_mtx);

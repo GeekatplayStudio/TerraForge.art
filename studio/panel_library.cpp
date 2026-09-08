@@ -18,6 +18,10 @@ void draw_panel_library(App &a) {
   ImGui::SetNextItemWidth(-1);
   ImGui::InputTextWithHint("##libfilter", "filter...", filter, sizeof filter);
   ImGui::Separator();
+  // The box stays put and the list scrolls under it. Drawn straight into the
+  // window they scroll together, so the moment you look past the first
+  // screenful the thing you are typing into is gone.
+  ImGui::BeginChild("##liblist", ImVec2(0, 0));
 
   auto matches = [&](const std::string &s) {
     if (!filter[0]) return true;
@@ -140,6 +144,7 @@ void draw_panel_library(App &a) {
         }
       }
     }
+    ImGui::EndChild();
     ImGui::End();
     return;
   }
@@ -158,6 +163,7 @@ void draw_panel_library(App &a) {
     row(d, gpx::node_display_name(d->type));
     ImGui::Unindent(8);
   }
+  ImGui::EndChild();
   ImGui::End();
 }
 
