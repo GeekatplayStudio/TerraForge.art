@@ -11,6 +11,7 @@
 #include "console.hpp"
 #include "undo.hpp"
 #include "gpx/node_graph.hpp"
+#include "render_settings.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -64,7 +65,7 @@ const Preset PRESETS[] = {
      {0.95f, 0.95f, 0.97f}, 1.00f, 0.f, 0.05f, 0.f, 0.f, 1.00f, 0.f, 0.f, 0.f, 0, {}, {}, 6.0f},
     {{"Dust", "Volume", "Thin, warm and forward-scattering: the haze in a shaft of light."},
      {0.80f, 0.72f, 0.58f}, 1.00f, 0.f, 0.05f, 0.f, 0.f, 1.00f, 0.f, 0.f, 0.f, 0, {}, {}, 0.8f},
-    {{"Glow", "Glass & liquid", "A surface that lights itself - warm white, no reflection."},
+    {{"Glow", "Basic", "A surface that lights itself - warm white, no reflection."},
      {1.00f, 0.92f, 0.78f}, 0.90f, 0.f, 0.10f, 0.f, 0.f, 1.5f, 0.f, 2.0f, 0.f, 0, {}, {}},
 
     {{"Ground", "Ground", "Bare earth, matte and brown, with a little mottling."},
@@ -103,20 +104,60 @@ const std::vector<MaterialPresetInfo> &material_presets() {
   return v;
 }
 
-uint64_t material_preset_create(App &a, const std::string &name, std::string &err) {
-  const Preset *p = nullptr;
+namespace {
+const Preset *find_preset(const std::string &name) {
   for (const Preset &q : PRESETS)
-    if (name == q.info.name) p = &q;
-  if (!p) {
+    if (name == q.info.name) return &q;
+  return nullptr;
+}
+} // namespace
+
+MaterialPreviewSpec material_preset_preview_spec(const std::string &name) {
+  MaterialPreviewSpec s;
+  const Preset *p = find_preset(name);
+  if (!p) return s;
+  // a stable key per preset, so the thumbnail cache can tell them apart
+  for (const char *c = p->info.name; *c; ++c) s.key = s.key * 131u + (unsigned char)*c;
+  s.version = 1;
+  gpx::MaterialParams &m = s.params;
+  // no albedo texture: the preview shader's base grey times the tint IS the
+  // colour, so the colour goes in as the tint (a fractal's two colours as
+  // their mean - the thumbnail is a swatch, the material has the pattern)
+  for (int k = 0; k < 3; ++k)
+    m.tint[k] = p->fractal ? 0.5f * (p->g0[k] + p->g1[k]) / 0.53f : p->rgb[k] / 0.53f;
+  auto pick = [](float v, float def) { return v < 0.f ? def : v; };
+  s.roughness = m.roughness = pick(p->roughness, 0.85f);
+  s.metallic = m.metallic = pick(p->metallic, 0.f);
+  s.specular = m.specular = pick(p->specular, 0.35f);
+  s.reflection = m.reflection = pick(p->reflection, 0.25f);
+  m.transparency = pick(p->transparency, 0.f);
+  m.ior = pick(p->ior, 1.5f);
+  m.translucency = pick(p->translucency, 0.f);
+  m.luminous = pick(p->luminous, 0.f);
+  s.background = 0;
+  return s;
+}
+
+uint64_t material_preset_create(App &a, const std::string &name, std::string &err) {
+  if (!find_preset(name)) {
     err = "no base material named '" + name + "'";
     return 0;
   }
-  undo_push(a, std::string("Base material: ") + name);
   std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::defer_lock);
   if (!lk.try_lock_for(std::chrono::milliseconds(500))) {
     err = "the graph is busy";
     return 0;
   }
+  return material_preset_create_locked(a, name, err);
+}
+
+uint64_t material_preset_create_locked(App &a, const std::string &name, std::string &err) {
+  const Preset *p = find_preset(name);
+  if (!p) {
+    err = "no base material named '" + name + "'";
+    return 0;
+  }
+  undo_push_locked(a, std::string("Base material: ") + name);
   gpx::Graph &g = a.graph;
   // below everything already there, so nothing overlaps
   float x = 200.f, y = 500.f;

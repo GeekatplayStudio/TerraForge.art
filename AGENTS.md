@@ -208,6 +208,18 @@ optimising anything: it says where the time went.
    have no `vol_*` keys and must not change; the defaults make sure of it, and
    `test_material_editor.cpp` pins them.
 
+## Clicks under a lease act after it
+
+A panel that draws under `GraphLease` must not, from a click handler, call
+anything that takes `graph_mtx` itself - `material_library_load`,
+`material_preset_create`, `undo_push`, project loading. A `std::timed_mutex`
+taken twice on one thread does not fail; it waits forever, and the window
+stops pumping messages. "Click on a library material does nothing" was that
+hang. The pattern (panel_material_browser.cpp `run_pending`): the click
+records what it wants, the panel ends, `lk.unlock()`, then the action runs
+with the lock-taking functions and nothing held. The paint canvas learned the
+same lesson first (studio/paint_canvas.cpp).
+
 ## Workspaces and materials
 
 1. **Every workspace owns its arrangement.** `workspace_layout_switch`

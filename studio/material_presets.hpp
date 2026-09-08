@@ -26,5 +26,14 @@ const std::vector<MaterialPresetInfo> &material_presets();
 // Build the named preset in the graph and return its MaterialOutput id, or 0
 // with `err` set. Takes the graph lock itself; pushes one undo step.
 uint64_t material_preset_create(App &a, const std::string &name, std::string &err);
+// The same for a caller that already holds the graph lock (a panel drawing
+// under a GraphLease). Taking the lock again on the same thread only times
+// out, which is how "click does nothing" happened in the browser.
+uint64_t material_preset_create_locked(App &a, const std::string &name, std::string &err);
+
+// What the preset looks like, for a thumbnail, without making it: the
+// surface parameters and the colour as a tint. No graph, no lock.
+struct MaterialPreviewSpec;
+MaterialPreviewSpec material_preset_preview_spec(const std::string &name);
 
 } // namespace studio

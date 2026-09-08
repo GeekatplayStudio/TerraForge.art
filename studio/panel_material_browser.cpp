@@ -70,17 +70,63 @@ std::string project_detail(App &a, gpx::Node *mat) {
   return s;
 }
 
-void assign_to_selected(App &a, uint64_t mat_id) {
+void assign_to_selected(App &a, uint64_t mat_id, bool lock_held = true) {
   SceneState &sc = scene();
   if (sc.selected < 0 || sc.selected >= (int)sc.objects.size()) {
     a.status = "select an object to assign the material to";
     return;
   }
-  undo_push_locked(a, "assign material");
+  if (lock_held) undo_push_locked(a, "assign material");
+  else undo_push(a, "assign material");
   sc.objects[(size_t)sc.selected].material_node = mat_id;
   app().last_material = mat_id;
   a.uploaded_serial = 0;
   a.status = "assigned to " + sc.objects[(size_t)sc.selected].name;
+}
+
+// What a click asked for, done after the panel has let go of the graph.
+//
+// The panel draws under the graph lease. Making a material, loading one
+// from the library and the undo push all take the graph lock themselves, and
+// a std::timed_mutex taken twice on the same thread does not fail - it waits
+// forever. A click on a library material hung the whole application; a
+// click on a base material did too. So a click only records what it wants,
+// and the panel acts on it once its lease is released, with the lock-taking
+// functions and nothing held.
+struct PendingAction {
+  int kind = 0;        // 1 preset+open, 2 preset+assign, 3 library+open, 4 library+assign
+  std::string preset;
+  std::string library; // the saved material's name
+};
+PendingAction g_pending;
+
+void run_pending(App &a) {
+  PendingAction act = g_pending;
+  g_pending = PendingAction{};
+  if (!act.kind) return;
+  std::string err;
+  uint64_t id = 0;
+  if (act.kind <= 2) {
+    id = material_preset_create(a, act.preset, err);
+    if (!id) { a.status = "base material: " + err; return; }
+    a.status = "base material: " + act.preset;
+  } else {
+    LibraryMaterial *hit = nullptr;
+    for (LibraryMaterial &m : material_library())
+      if (m.name == act.library) hit = &m;
+    if (!hit) { a.status = "library: '" + act.library + "' is gone"; return; }
+    id = material_library_load(a, *hit, err);
+    if (!id) { a.status = "LOAD FAILED: " + err; return; }
+    a.status = "loaded " + act.library;
+  }
+  a.graph_layout_serial++;
+  a.request_eval();
+  if (act.kind == 1 || act.kind == 3) {
+    material_studio_open(a, id);
+    a.show_material_studio = true;
+  } else {
+    assign_to_selected(a, id, false);
+  }
 }
 
 void project_tab(App &a, float cell) {
@@ -140,49 +186,89 @@ void trash_library_material(LibraryMaterial &m) {
   material_library_rescan();
 }
 
-// The base materials: made, not loaded, so they are always here. Click makes
-// one and opens it; right-click makes one and puts it on the selected object.
-void base_materials_strip(App &a) {
-  ImGui::TextDisabled("Base materials");
-  const char *last_group = nullptr;
-  for (const MaterialPresetInfo &p : material_presets()) {
-    if (!last_group || std::strcmp(p.group, last_group) != 0) {
-      if (last_group) ImGui::NewLine();
-      ImGui::TextDisabled("%s:", p.group);
-      last_group = p.group;
-    }
-    ImGui::SameLine();
-    if (ImGui::SmallButton(p.name)) {
-      std::string err;
-      if (uint64_t id = material_preset_create(a, p.name, err)) {
-        material_studio_open(a, id);
-        a.status = std::string("base material: ") + p.name;
-      } else {
-        a.status = "base material: " + err;
+// The base materials: made, not loaded, so they are always here. Drawn as
+// the saved library is - a thumbnail per material, grouped, searchable -
+// because a strip of words was not a library. Click makes one and opens it;
+// right-click makes one and puts it on the selected object.
+std::unordered_map<std::string, unsigned> g_preset_thumbs;
+
+unsigned preset_thumb(const std::string &name, int size) {
+  unsigned &tex = g_preset_thumbs[name];
+  if (!tex) tex = renderer_material_thumbnail(material_preset_preview_spec(name), size, 0);
+  return tex;
+}
+
+bool matches(const std::string &hay, const std::string &needle) {
+  if (needle.empty()) return true;
+  std::string h = hay, n = needle;
+  for (auto &c : h) c = (char)tolower(c);
+  for (auto &c : n) c = (char)tolower(c);
+  return h.find(n) != std::string::npos;
+}
+
+void base_materials_grid(App &a, float cell, const std::string &filter) {
+  // groups in the order they first appear, each entry once
+  std::vector<std::string> groups;
+  for (const MaterialPresetInfo &p : material_presets())
+    if (std::find(groups.begin(), groups.end(), p.group) == groups.end()) groups.push_back(p.group);
+  const float avail = ImGui::GetContentRegionAvail().x;
+  const int cols = std::max(1, (int)(avail / (cell + 10)));
+  for (const std::string &g : groups) {
+    std::vector<const MaterialPresetInfo *> in;
+    for (const MaterialPresetInfo &p : material_presets())
+      if (p.group == g && (matches(p.name, filter) || matches(p.group, filter) || matches(p.blurb, filter)))
+        in.push_back(&p);
+    if (in.empty()) continue;
+    ImGui::SeparatorText(g.c_str());
+    int i = 0;
+    for (const MaterialPresetInfo *p : in) {
+      if (i % cols != 0) ImGui::SameLine();
+      ImGui::PushID(p->name);
+      ImGui::BeginGroup();
+      unsigned tex = preset_thumb(p->name, (int)cell);
+      if (tex)
+        ImGui::ImageButton("##t", (ImTextureID)(intptr_t)tex, ImVec2(cell, cell), ImVec2(0, 1), ImVec2(1, 0));
+      else
+        ImGui::Button(p->name, ImVec2(cell, cell));
+      const bool clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+      if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(p->name);
+        if (tex) ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(160, 160), ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::TextDisabled("%s", p->blurb);
+        ImGui::TextDisabled("click: make it and open it in the studio\nright-click: make it and assign to the selection");
+        ImGui::EndTooltip();
       }
-    }
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("%s\n\nClick: make it and open it in the studio.\n"
-                        "Right-click: make it and assign it to the selected object.",
-                        p.blurb);
-    if (ImGui::BeginPopupContextItem()) {
-      if (ImGui::MenuItem("Make and assign to the selected object")) {
-        std::string err;
-        if (uint64_t id = material_preset_create(a, p.name, err)) assign_to_selected(a, id);
-        else a.status = "base material: " + err;
+      if (clicked) g_pending = {1, p->name, ""};
+      if (ImGui::BeginPopupContextItem("##pctx")) {
+        if (ImGui::MenuItem("Make and assign to the selected object")) g_pending = {2, p->name, ""};
+        if (ImGui::MenuItem("Make and open in the studio")) g_pending = {1, p->name, ""};
+        ImGui::EndPopup();
       }
-      ImGui::EndPopup();
+      ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + cell);
+      ImGui::TextUnformatted(p->name);
+      ImGui::PopTextWrapPos();
+      ImGui::EndGroup();
+      ImGui::PopID();
+      ++i;
     }
   }
-  ImGui::Separator();
 }
 
 void library_tab(App &a, float cell) {
-  base_materials_strip(a);
-  auto &lib = material_library();
+  // one search over both halves: what you type narrows the base materials
+  // and the saved ones alike, by name, group or description
+  static char filter[64] = "";
+  ImGui::SetNextItemWidth(220);
+  ImGui::InputTextWithHint("##libsearch", "search materials...", filter, sizeof filter);
+  ImGui::SameLine();
   if (ImGui::SmallButton("Rescan")) material_library_rescan();
+  auto &lib = material_library();
   ImGui::SameLine();
   ImGui::TextDisabled("%zu saved in %s", lib.size(), material_library_dir().c_str());
+  const std::string f = filter;
+  base_materials_grid(a, cell, f);
+  ImGui::SeparatorText("Saved");
   if (lib.empty()) {
     ImGui::TextDisabled("Nothing saved yet - Save in the studio starts it.");
     return;
@@ -192,6 +278,7 @@ void library_tab(App &a, float cell) {
   int i = 0;
   int trash_idx = -1;
   for (auto &m : lib) {
+    if (!matches(m.name, f)) continue;
     if (i % cols != 0) ImGui::SameLine();
     ImGui::PushID(i);
     ImGui::BeginGroup();
@@ -202,40 +289,11 @@ void library_tab(App &a, float cell) {
       ImGui::Button(m.name.c_str(), ImVec2(cell, cell));
     if (ImGui::IsItemHovered()) {
       hover_card(m.name.c_str(), tex, "library");
-      if (ImGui::IsMouseDoubleClicked(0)) {
-        std::string err;
-        unsigned long long id = material_library_load(a, m, err);
-        if (id) {
-          a.graph_layout_serial++;
-          a.request_eval();
-          material_studio_open(a, id);
-          a.status = "loaded " + m.name;
-        } else {
-          a.status = "LOAD FAILED: " + err;
-        }
-      }
+      if (ImGui::IsMouseDoubleClicked(0)) g_pending = {3, "", m.name};
     }
     if (ImGui::BeginPopupContextItem("##ctx")) {
-      if (ImGui::MenuItem("Load into the project and open")) {
-        std::string err;
-        unsigned long long id = material_library_load(a, m, err);
-        if (id) {
-          a.graph_layout_serial++;
-          a.request_eval();
-          material_studio_open(a, id);
-        } else {
-          a.status = "LOAD FAILED: " + err;
-        }
-      }
-      if (ImGui::MenuItem("Load and assign to the selected object")) {
-        std::string err;
-        unsigned long long id = material_library_load(a, m, err);
-        if (id) {
-          a.graph_layout_serial++;
-          a.request_eval();
-          assign_to_selected(a, id);
-        }
-      }
+      if (ImGui::MenuItem("Load into the project and open")) g_pending = {3, "", m.name};
+      if (ImGui::MenuItem("Load and assign to the selected object")) g_pending = {4, "", m.name};
       ImGui::Separator();
       if (ImGui::MenuItem("Move to trash")) trash_idx = i;
       ImGui::EndPopup();
@@ -294,6 +352,8 @@ void draw_panel_material_browser(App &a) {
     ImGui::EndTabBar();
   }
   ImGui::End();
+  lk.unlock();      // the lease is over: now the click can take the lock
+  run_pending(a);
 }
 
 } // namespace studio
