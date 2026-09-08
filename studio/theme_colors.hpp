@@ -56,6 +56,20 @@ inline ImU32 text_on_header() { return IM_COL32(0xf2, 0xf0, 0xec, 0xff); }
 inline ImU32 accent()      { return LEAD_ACCENT; }
 inline ImU32 error()       { return IM_COL32(0xd8, 0x50, 0x3c, 0xff); }
 
+// On and off, wherever a thing is either doing something or not: a ticked
+// checkbox, a visible object, an enabled layer. Green reads as "yes" across
+// the whole application at a glance, which a grey square never did - a filled
+// grey box and an empty grey box are the same shape and nearly the same
+// value, and telling them apart meant looking twice.
+//
+// Not derived from the leads: these two carry meaning rather than style, and
+// a re-tint of the interface must not turn "on" into something that is not
+// recognisably green.
+inline ImU32 on()          { return IM_COL32(0x5c, 0xb8, 0x4c, 0xff); }
+inline ImU32 off()         { return IM_COL32(0xd4, 0x4a, 0x3c, 0xff); }
+// The same green, quietened, for the frame around a ticked box.
+inline ImU32 on_dim()      { return IM_COL32(0x3c, 0x6e, 0x34, 0xff); }
+
 // ------------------------------------------------------- node header colours
 // One colour per node category, the way Cinema 4D and Cycles 4D colour node
 // headers: the header is the category, so a graph is readable at a glance and

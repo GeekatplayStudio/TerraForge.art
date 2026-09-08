@@ -176,7 +176,7 @@ void draw_assets_tab(App &a, float cell) {
   ImGui::SetNextItemWidth(90);
   ImGui::Combo("##kind", &g_ui.kind, tr_combo(KINDS, (int)(sizeof KINDS / sizeof *KINDS)).c_str());
   ImGui::SameLine();
-  ImGui::Checkbox(tr("trash"), &g_ui.show_trash);
+  Checkbox(tr("trash"), &g_ui.show_trash);
   ImGui::SameLine();
   if (ImGui::SmallButton(tr("Rescan"))) {
     asset_rescan();

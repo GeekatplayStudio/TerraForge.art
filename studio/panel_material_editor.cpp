@@ -143,7 +143,7 @@ void draw_panel_material_editor(App &a) {
       ImGui::PushID((int)l->id);
       gpx::Attribute *en = l->attrs.find("enabled");
       bool vis = en ? en->b : true;
-      if (ImGui::Checkbox("##vis", &vis)) {
+      if (Checkbox("##vis", &vis)) {
         undo_push_locked(a, "layer visibility");
         if (en) en->b = vis;
         l->dirty = true;

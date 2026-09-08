@@ -1,12 +1,23 @@
 // Geekatplay Studio — flat dark-gray theme, dim orange accent, zero rounding
 #include "app.hpp"
+#include "theme_colors.hpp"
+#include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
 
 namespace studio {
 
-// Flat toggle replacing ImGui::Checkbox: a small square, dark gray with a
-// frame when off, brighter gray fill when on. No check mark.
+// The app-wide toggle, replacing ImGui::Checkbox.
+//
+// Off is an empty dark square with a frame. On is a green tick - the same
+// green the Objects tree uses for a visible object, so "yes" looks the same
+// everywhere.
+//
+// It used to fill the square with a lighter grey and draw no tick at all,
+// which was the whole problem: a filled grey box and an empty grey box are
+// the same shape at nearly the same value, so telling a checked box from an
+// unchecked one meant looking twice and comparing. A tick is read, not
+// compared, and the colour carries it on its own at a glance.
 bool Checkbox(const char *label, bool *v) {
   ImGuiWindow *window = ImGui::GetCurrentWindow();
   if (window->SkipItems) return false;
@@ -36,10 +47,19 @@ bool Checkbox(const char *label, bool *v) {
   const ImU32 frame = ImGui::GetColorU32(hovered ? ImVec4(0.48f, 0.46f, 0.44f, 1.f)
                                                  : ImVec4(0.33f, 0.32f, 0.31f, 1.f));
   if (*v) {
-    // on: brighter gray fill, slightly warmer when hovered
-    const ImU32 fill = ImGui::GetColorU32(
-        hovered ? ImVec4(0.72f, 0.69f, 0.65f, 1.f) : ImVec4(0.62f, 0.60f, 0.57f, 1.f));
-    dl->AddRectFilled(box.Min, box.Max, fill);
+    // on: a green tick on the dark square, with a green frame so the state
+    // still carries at sizes where the tick is only a few pixels
+    dl->AddRectFilled(box.Min, box.Max,
+                      ImGui::GetColorU32(ImVec4(0.145f, 0.145f, 0.145f, 1.f)));
+    dl->AddRect(box.Min, box.Max, hovered ? theme::on() : theme::on_dim());
+    const ImVec2 c((box.Min.x + box.Max.x) * 0.5f, (box.Min.y + box.Max.y) * 0.5f);
+    const float s = sz * 0.5f;
+    const float w = std::max(1.5f, sz * 0.16f); // stays a tick when scaled up
+    const ImU32 mark = theme::on();
+    dl->AddLine(ImVec2(c.x - s * 0.62f, c.y + s * 0.05f),
+                ImVec2(c.x - s * 0.14f, c.y + s * 0.52f), mark, w);
+    dl->AddLine(ImVec2(c.x - s * 0.14f, c.y + s * 0.52f),
+                ImVec2(c.x + s * 0.66f, c.y - s * 0.50f), mark, w);
   } else {
     // off: dark gray with a frame
     dl->AddRectFilled(box.Min, box.Max, ImGui::GetColorU32(ImVec4(0.145f, 0.145f, 0.145f, 1.f)));
