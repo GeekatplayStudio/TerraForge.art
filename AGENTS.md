@@ -220,6 +220,38 @@ records what it wants, the panel ends, `lk.unlock()`, then the action runs
 with the lock-taking functions and nothing held. The paint canvas learned the
 same lesson first (studio/paint_canvas.cpp).
 
+Saving is the same trap: `material_library_save` takes the lock, and the
+Material Studio's Save button, its unsaved-changes dialog, the browser's
+context menu and the Materials panel all draw under a lease - "the app
+locked when I saved a material". Where the action cannot be deferred, the
+function has a `_locked` twin that assumes the lock is held
+(`material_library_save_locked`, `material_preset_create_locked`); a panel
+under a lease calls that one. Adding a function that takes `graph_mtx`
+means adding its `_locked` twin and checking every panel that calls it.
+
+## Hangs leave a report; a session starts by reading it
+
+studio/hang_watch.cpp watches the frame loop from a second thread. Six
+seconds without a finished frame (config `perf.hang_seconds`) and it
+suspends the main thread, walks its stack, and writes
+`logs/hang_<stamp>.txt` - the same module+RVA form as a crash report, so
+scripts/resolve_crash.py resolves it. If the frame comes back the file says
+"recovered after N s". Native file dialogs bracket themselves with
+`hang_watch_pause`; the Windows move/size loop is detected and ignored.
+
+studio/crash_ledger.cpp lists crash reports, hang reports and logs with no
+"=== clean exit" line (a killed session, which is what a person does after
+a hang). The console's first line at startup counts the open ones;
+`crash_reports` lists them, `crash_mark_fixed` closes one with a note
+(logs/crash_ledger.json). Do this at the start of every development
+session, and kill the application only through the harness that then marks
+the killed session as such - an unexplained unclean log is a finding.
+
+Two things the log cannot tell you: consecutive identical lines are
+collapsed into one entry with a repeat count (console.cpp `log_add`), so a
+probe that waits for "actions applied (62 bytes)" must vary the document
+size; and a status line proves an op ran, a log line does not.
+
 ## Workspaces and materials
 
 1. **Every workspace owns its arrangement.** `workspace_layout_switch`

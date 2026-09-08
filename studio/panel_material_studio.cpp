@@ -50,7 +50,7 @@ void save_prompt(App &a, MaterialStudioState &st) {
   };
   if (ImGui::Button("Save", ImVec2(110, 0))) {
     std::string err;
-    std::string path = material_library_save(a, st.material, err);
+    std::string path = material_library_save_locked(a, st.material, err);
     a.status = path.empty() ? "SAVE FAILED: " + err : "saved " + path;
     if (!path.empty()) material_studio_mark_saved(a);
     finish(true);
@@ -145,7 +145,7 @@ void header(App &a, MaterialStudioState &st, gpx::Node *&mat) {
   ImGui::BeginDisabled(!mat);
   if (ImGui::Button("Save")) {
     std::string err;
-    std::string path = material_library_save(a, mat->id, err);
+    std::string path = material_library_save_locked(a, mat->id, err);
     a.status = path.empty() ? "SAVE FAILED: " + err : "saved " + path;
     if (!path.empty()) material_studio_mark_saved(a);
   }

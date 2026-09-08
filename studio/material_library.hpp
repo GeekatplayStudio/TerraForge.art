@@ -17,7 +17,12 @@ struct LibraryMaterial {
 std::string material_library_dir();
 std::vector<LibraryMaterial> &material_library(); // cached listing
 void material_library_rescan();
-// save the material subgraph + a rendered thumbnail; returns saved path
+// save the material subgraph + a rendered thumbnail; returns saved path.
+// Takes the graph lock itself - a panel drawing under a GraphLease must
+// call the _locked form, or the same thread waits on itself forever (that
+// was "the app locked when I saved a material").
+std::string material_library_save_locked(App &a, unsigned long long mat_node_id,
+                                        std::string &err);
 std::string material_library_save(App &a, unsigned long long mat_node_id,
                                   std::string &err);
 // instantiate a saved material into the graph; returns new MaterialOutput id

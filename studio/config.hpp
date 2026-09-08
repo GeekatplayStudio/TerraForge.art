@@ -55,6 +55,10 @@ struct PerfConfig {
   // The watcher (perf_watch.hpp): every ten seconds, where the frame went
   // and what ran for nothing, to the log and logs/perf_watch.json.
   bool watch = true;
+  // The hang watchdog (hang_watch.hpp): a frame that takes longer than this
+  // many seconds writes logs/hang_<stamp>.txt with the main thread's stack.
+  // 0 turns it off.
+  int hang_seconds = 6;
 };
 
 // Checking GitHub for a newer version (updater.hpp).

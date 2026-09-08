@@ -5,6 +5,9 @@
 #include "i18n.hpp"
 #include "console.hpp"
 #include "crash_log.hpp"
+#include "crash_ledger.hpp"
+#include "hang_watch.hpp"
+#include "config.hpp"
 #include "paths.hpp"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -26,6 +29,12 @@ int main(int argc, char **argv) {
   // First: the file log and the crash handlers, so whatever fails from here
   // on leaves a report in <project>/logs.
   studio::crash_log_init(argc, argv);
+  // What earlier sessions left behind: crashes, hangs, and logs with no
+  // clean exit. One warning line, so it is the first thing in the console.
+  if (std::string s = studio::crash_reports_summary(
+          studio::crash_reports(studio::log_dir(), studio::crash_log_stamp()));
+      !s.empty())
+    studio::log_warn("crashlog", s);
   // Hints must come *after* glfwInit(). An identical block used to sit above
   // this call doing nothing at all: glfwWindowHint opens with
   // _GLFW_REQUIRE_INIT() (external/glfw/src/window.c), so before init it
@@ -113,7 +122,9 @@ int main(int argc, char **argv) {
   ImGui_ImplOpenGL3_Init(imgui_glsl_version);
 
   studio::app().window = win;
+  studio::hang_watch_start(studio::config().perf.hang_seconds);
   studio::run_main();
+  studio::hang_watch_stop();
   studio::log_info("app", "shutdown: main loop left, saving prefs");
   studio::prefs_save();
 

@@ -3,6 +3,7 @@
 #include "toolbar_internal.hpp"
 #include "perf.hpp"
 #include "perf_watch.hpp"
+#include "hang_watch.hpp"
 #include "ai_describe.hpp"
 #include "ai_jobs.hpp"
 #include "console.hpp"
@@ -307,6 +308,7 @@ void run_main() {
     perf_mark("ui.submit");
     perf_frame_end();
     glfwSwapBuffers(a.window);
+    hang_watch_beat(); // after the swap: vsync's wait is not a hang
   }
 
   // Every step of the way out is logged: the crash reports on record all

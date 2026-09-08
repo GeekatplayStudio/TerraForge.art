@@ -13,6 +13,8 @@
 #include "ai_assist.hpp"
 #include "app.hpp"
 #include "perf_watch.hpp"
+#include "crash_ledger.hpp"
+#include "crash_log.hpp"
 #include "scene_io.hpp"
 #include "prefs.hpp"
 #include "graph_lease.hpp"
@@ -256,6 +258,24 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     }
     err = "set_setting: no setting called '" + key + "' (list_settings names them)";
     return 0;
+  }
+
+  if (op == "crash_reports") {
+    // Every crash report, hang report and killed session in logs/, newest
+    // first, with whether it has been dealt with - in "reply" as JSON, the
+    // open count in the status line.
+    auto reps = crash_reports(log_dir(), crash_log_stamp());
+    a.api_reply = crash_reports_json(reps);
+    std::string s = crash_reports_summary(reps);
+    a.status = s.empty() ? "no open crash or hang reports" : s;
+    return 1;
+  }
+  if (op == "crash_mark_fixed") {
+    // Close one report: {"file":"hang_20260908_120000.txt","note":"..."}.
+    std::string file = act.value("file", "");
+    if (!crash_mark_fixed(log_dir(), file, act.value("note", ""), err)) return 0;
+    a.status = "marked fixed: " + file;
+    return 1;
   }
 
   if (op == "perf_report") {

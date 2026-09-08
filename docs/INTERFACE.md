@@ -124,6 +124,14 @@ textured, ID colours), the overlay group (sky, water, grid, outlines) and
 the gear for that view's settings. When the viewport is too narrow the
 groups collapse to two combos, then to the gear alone.
 
+**Navigating.** Left drag orbits. Shift+left drag, middle drag or right
+drag pans. Ctrl+left drag, Alt+right drag or the wheel dollies. The Maya
+set — Alt+left orbit, Alt+middle pan, Alt+right dolly — works as well. A
+right click that did not travel opens the view menu; a left click that did
+not travel selects what is under it. Every drag is logged at trace level
+(`[viewport] view N drag: ...`) so a navigation report can be read from
+the console.
+
 **ID colours** paints every object (or every material — the gear chooses)
 in one flat bright colour, for reading masks and distributions.
 

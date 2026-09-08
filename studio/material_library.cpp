@@ -84,12 +84,11 @@ static std::string sanitize(std::string s) {
   return s.empty() ? "Material" : s;
 }
 
-std::string material_library_save(App &a, unsigned long long mat_node_id,
-                                 std::string &err) {
+std::string material_library_save_locked(App &a, unsigned long long mat_node_id,
+                                        std::string &err) {
   std::string jtext;
   std::string name = "Material";
   {
-    std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     gpx::Node *n = a.graph.find_node(mat_node_id);
     if (!n || n->type != "MaterialOutput") {
       err = "no MaterialOutput selected";
@@ -126,6 +125,12 @@ std::string material_library_save(App &a, unsigned long long mat_node_id,
   }
   material_library_rescan();
   return file.string();
+}
+
+std::string material_library_save(App &a, unsigned long long mat_node_id,
+                                 std::string &err) {
+  std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
+  return material_library_save_locked(a, mat_node_id, err);
 }
 
 unsigned long long material_library_load(App &a, const LibraryMaterial &m,

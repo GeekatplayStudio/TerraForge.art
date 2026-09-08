@@ -142,7 +142,7 @@ static void library_ui(App &a, SceneObject &obj, gpx::Node *mat) {
     ImGui::BeginDisabled(mat == nullptr);
     if (ImGui::Button("Save to library", ImVec2(-1, 0))) {
       std::string err;
-      std::string path = material_library_save(a, mat->id, err);
+      std::string path = material_library_save_locked(a, mat->id, err);
       a.status = path.empty() ? ("SAVE FAILED: " + err)
                               : ("material saved: " + path);
     }

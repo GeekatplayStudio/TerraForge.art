@@ -56,6 +56,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"render"}   (starts the render immediately)
 - {"op":"list_settings"}  (every saved render/world setting by name with its value, in "reply")
 - {"op":"set_setting","key":"cloud_coverage","value":0.7}  (any of those settings by its name; colours as [r,g,b])
+- {"op":"crash_reports"}   (every crash report, hang report and session killed without a clean exit in logs/, newest first, with whether each was dealt with, in "reply")
+- {"op":"crash_mark_fixed","file":"hang_20260908_120000.txt","note":"double lock in the browser"}  (closes one report; it leaves the startup warning)
 - {"op":"perf_report"}   (the performance watcher: frame phases, event rates, memory and findings about work done for nothing, in "reply"; also logs/perf_watch.json every 10 s)
 - {"op":"render_passes","path":"shot.png","width":1920,"height":1080,
    "format":0|1|2,"passes":["depth","normal","albedo","object_id","direct",

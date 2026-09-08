@@ -160,7 +160,7 @@ void project_tab(App &a, float cell) {
       if (ImGui::MenuItem("Assign to the selected object")) assign_to_selected(a, m.id);
       if (ImGui::MenuItem("Save to the library")) {
         std::string err;
-        std::string path = material_library_save(a, m.id, err);
+        std::string path = material_library_save_locked(a, m.id, err);
         a.status = path.empty() ? "SAVE FAILED: " + err : "saved " + path;
       }
       if (ImGui::MenuItem("Show its node")) graph_focus_node(a, m.id);

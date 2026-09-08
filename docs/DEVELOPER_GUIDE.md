@@ -218,6 +218,12 @@ one step per document, so an agent's whole batch reverts as one edit.
 
 ### The loop for a feature
 
+0. Read what the last session left: the console's first line counts the
+   open crash reports, hang reports and killed sessions in `logs/`;
+   `{"op":"crash_reports"}` lists them. Fix what it names, then
+   `crash_mark_fixed` with a note. A hang report with no *recovered* line
+   is a deadlock, and the graph mutex taken twice on one thread is the
+   usual one (see AGENTS.md "Clicks under a lease act after it").
 1. Read the reference material for it, if any. Note the gap it closes.
 2. Implement in the engine (a node) or the studio (a panel/op), keeping the
    file under 500 lines.
@@ -253,6 +259,7 @@ afterwards, where they cannot regress.
 | `build/param_audit` | Does moving each slider change anything? It builds every node with real upstream nodes, moves one parameter, and looks. When nothing moves it retries under each mode switch, toggle and zeroed amount on the node before reporting, because most of what looks dead is merely switched off. |
 | `python scripts/mutate.py` | Would the tests notice if the code were wrong? It breaks the source on purpose, one plausible mistake at a time, and reports the mutants that survive. |
 | `python docs_private/mark_refs.py` | Does the reference ledger still match the registry? It reported ten gaps we had filled months earlier. |
+| The hang watchdog (`studio/hang_watch.cpp`) and the ledger (`studio/crash_ledger.cpp`) | Did the application ever stop? A frame that takes longer than `perf.hang_seconds` gets the main thread's stack written to `logs/hang_<stamp>.txt`; the ledger lists it beside the crash reports and the sessions killed without a clean exit, until someone marks it fixed. |
 | The performance watcher (`studio/perf_watch.cpp`) | Did the last ten seconds do work for nothing? Counts lease misses, evaluations, uploads and redraws per frame, and writes findings in words to `logs/perf_watch.json` — "56 of 149 idle frames did over 4 ms of work". `perf_report` returns the same to a script. |
 
 `param_audit` earns its place by having found what a green suite cannot: three

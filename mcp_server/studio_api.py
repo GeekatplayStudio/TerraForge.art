@@ -65,7 +65,17 @@ class Studio:
         tmp = self.inbox_path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(doc, f, indent=2)
-        os.replace(tmp, self.inbox_path)
+        # The app opens the inbox on its own frame; a replace that lands in
+        # that window is refused by Windows (sharing violation). It lasts a
+        # millisecond, so wait it out rather than fail the send.
+        for attempt in range(50):
+            try:
+                os.replace(tmp, self.inbox_path)
+                break
+            except PermissionError:
+                if attempt == 49:
+                    raise
+                time.sleep(0.02)
         return doc
 
     # cameras

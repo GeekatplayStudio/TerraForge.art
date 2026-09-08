@@ -406,6 +406,8 @@ void crash_log_init(int argc, char **argv) {
   log_info("app", "log file: " + dir + "/terraforge_" + g_stamp + ".log");
 }
 
+std::string crash_log_stamp() { return g_stamp; }
+
 void crash_log_line(const std::string &line) {
   std::lock_guard<std::mutex> lk(g_file_mtx);
   if (!g_file) return;

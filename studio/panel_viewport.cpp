@@ -473,10 +473,20 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
         SC.radius = std::min(SC.radius * 1.15f, 0.4f);
     }
 
-    bool rot = !sculpting && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+    // The bindings, and where they come from. Left drag orbits and middle
+    // or right drag pans, as before; Shift+left drag also pans, because
+    // that is the hand a person arrives with from Cinema 4D's viewport
+    // (1/2/3 + left, or Alt+left/middle/right) and Maya's (Alt+left
+    // orbit, Alt+middle pan, Alt+right dolly) - both Alt sets work here
+    // too. Ctrl+left, or Alt+right, dollies.
+    const bool shift_pan = io.KeyShift && !io.KeyCtrl && !io.KeyAlt &&
+                           ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const bool alt_dolly = io.KeyAlt && ImGui::IsMouseDown(ImGuiMouseButton_Right);
+    bool rot = !sculpting && !shift_pan && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
                ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f);
     bool pan = ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
-               ImGui::IsMouseDown(ImGuiMouseButton_Right);
+               (ImGui::IsMouseDown(ImGuiMouseButton_Right) && !alt_dolly) ||
+               (shift_pan && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f));
     // One line per drag, at trace level, saying what this view saw: which
     // button, how far, and whether anything else had claimed the mouse. "I
     // cannot pan" is a report about input that never reached here or was
@@ -489,7 +499,11 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
         char line[200];
         std::snprintf(line, sizeof line,
                       "view %d drag: %s, camera %s, scene camera %d, gizmo owns %d, sculpt %d",
-                      slot + 1, pan ? (ImGui::IsMouseDown(ImGuiMouseButton_Right) ? "pan (right)" : "pan (middle)") : "orbit (left)",
+                      slot + 1,
+                      pan ? (shift_pan ? "pan (shift+left)"
+                                       : ImGui::IsMouseDown(ImGuiMouseButton_Right) ? "pan (right)"
+                                                                                     : "pan (middle)")
+                          : "orbit (left)",
                       vc.camera == 0 ? "perspective" : "ortho", scene_active_camera(),
                       (int)xform_owns, (int)sculpting);
         log_trace("viewport", line);
@@ -497,7 +511,7 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
       was_dragging = dragging;
     }
     // Ctrl+drag dollies (moves the camera along its view axis)
-    bool dolly = io.KeyCtrl && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    bool dolly = (io.KeyCtrl && ImGui::IsMouseDown(ImGuiMouseButton_Left)) || alt_dolly;
     float wheel = sculpting ? 0.f : io.MouseWheel;
     if (vc.camera == 0)
       renderer_camera_input(io.MouseDelta.x, io.MouseDelta.y, wheel,

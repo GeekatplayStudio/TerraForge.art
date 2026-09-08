@@ -26,9 +26,7 @@ Cycles and LuxCore. Everything the interface can change is reachable from
 the Python API, the MCP tools and the assistant, and two audit tests keep
 that true. Twenty-five test suites pass.
 
-Open at the moment: one report of panning not working in the main viewport
-that we cannot reproduce (the viewport now logs every drag at trace level so
-the console line will tell); planet-wrapped atmosphere shells are designed in
+Open at the moment: planet-wrapped atmosphere shells are designed in
 [docs/VOLUMETRICS.md](docs/VOLUMETRICS.md) but not built; 21 component nodes
 are still `[Planned]` placeholders; and the performance watcher has found
 frames in the Materials workspace that work while nothing changes, not yet
@@ -953,8 +951,8 @@ only that a diff exists).
 plus per-area suites (ecosystem, shapes/lake, scene tree/undo of the studio
 UI, i18n, layout, mesh pipeline, material editor, config, icons, AI
 services, assets, node names and search, points previews, terrain cracks,
-horizon, animation, CSG) and a performance guard — 25 suites in all, which
-is what CI runs.
+horizon, animation, CSG, the crash ledger) and a performance guard — 26
+suites in all, which is what CI runs.
 
 ---
 
@@ -970,6 +968,23 @@ included) and a stack as `module+RVA`. The build carries `-g`, so
 `python scripts/dump_stack.py <file.dmp>` reads a Windows minidump the same
 way. `{"op":"debug_crash"}` on the actions API exercises the whole pipeline.
 The `logs/` folder is local and never committed.
+
+**Hangs leave a report too.** A watchdog thread watches the frame loop; when
+no frame has finished for six seconds (Settings ▸ `perf.hang_seconds`, 0
+turns it off) it suspends the main thread for a moment, walks its stack and
+writes `logs/hang_<stamp>.txt` in the same module+RVA form. If the frame
+later completes, the file gains a *recovered after N s* line, so a slow
+evaluation reads differently from a deadlock. A window being moved or
+resized, and a native file dialog, are not hangs.
+
+**And every session starts by reading them.** The first line the console
+logs is a count of the crash reports, hang reports and sessions that were
+killed without a clean exit, each with a one-line summary.
+`{"op":"crash_reports"}` lists them (MCP: `studio_crash_reports`);
+`{"op":"crash_mark_fixed","file":"hang_20260908_120000.txt","note":"..."}`
+closes one with a note saying what fixed it, and it leaves the count. The
+ledger is `logs/crash_ledger.json`. Read the list at the start of a
+development session, fix what it names, mark it.
 
 ## Project layout
 
@@ -992,6 +1007,10 @@ The `logs/` folder is local and never committed.
   Objects, Atmosphere, Lighting, Cameras, Animation and Render.
 - **Properties** is a tabbed editor (Render, Scene, World, Object, Material,
   Node) that follows what you select and has a search box.
+- **Navigating a viewport:** left drag orbits; Shift+left, middle or right
+  drag pans; Ctrl+left or Alt+right drag dollies, as does the wheel. Maya's
+  Alt+left / Alt+middle / Alt+right do the same three. `[` and `]` resize a
+  sculpt brush.
 - **Right-click a viewport** for view options; the same menu sets how many
   view windows you want. Layouts persist between sessions.
 - **In the node graph:** `Ctrl+E` bypasses the selected nodes, `Ctrl+G` groups

@@ -6,6 +6,7 @@
 // Cocoa panel without dragging Objective-C into the build), and a Linux
 // desktop ships whichever of zenity or kdialog its toolkit came with.
 #include "app.hpp"
+#include "hang_watch.hpp"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -174,7 +175,15 @@ std::string posix_save(const char *filter, const char *suggested) {
 } // namespace
 #endif // !_WIN32
 
+// A native dialog blocks the frame loop for as long as the person takes:
+// the watchdog is told so it does not write a hang report.
+struct DialogPause {
+  DialogPause() { hang_watch_pause(true); }
+  ~DialogPause() { hang_watch_pause(false); }
+};
+
 std::string dialog_open_file(const char *filter, const char *def_ext) {
+  DialogPause pause;
 #ifdef _WIN32
   char buf[MAX_PATH] = "";
   OPENFILENAMEA ofn{};
@@ -198,6 +207,7 @@ std::string dialog_open_file(const char *filter, const char *def_ext) {
 
 std::string dialog_save_file(const char *filter, const char *def_ext,
                              const char *suggested) {
+  DialogPause pause;
 #ifdef _WIN32
   char buf[MAX_PATH] = "";
   if (suggested) {

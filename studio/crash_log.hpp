@@ -31,6 +31,10 @@ void crash_log_line(const std::string &line);
 // Flush and close cleanly; the last line says the exit was orderly.
 void crash_log_shutdown();
 
+// This run's stamp, "YYYYMMDD_HHMMSS": the log and any crash report carry
+// it in their names.
+std::string crash_log_stamp();
+
 // The current thread's stack as text, one "module+0xRVA" per line. Used by
 // the handlers and available to any suspicious code path.
 std::string crash_log_backtrace(int skip = 0);

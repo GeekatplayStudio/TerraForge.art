@@ -100,6 +100,20 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
                        "status. Also written to logs/perf_watch.json every 10 s.",
         "params": {},
     },
+    "studio_crash_reports": {
+        "description": "Every crash report, hang report (the watchdog caught the "
+                       "main thread standing still) and session killed without a "
+                       "clean exit in logs/, newest first, each with a one-line "
+                       "summary and whether it has been dealt with. JSON in the "
+                       "state's reply. Check this first in a development session.",
+        "params": {},
+    },
+    "studio_crash_mark_fixed": {
+        "description": "Close one crash/hang report by its file name, with a note "
+                       "saying what fixed it; it leaves the startup warning and "
+                       "the open count.",
+        "params": {"file": "str", "note": "str"},
+    },
     "studio_ai_generate_texture": {
         "description": "Generate a seamless tileable texture from a prompt with "
                        "the configured image provider (ComfyUI, OpenAI Images, "
@@ -239,6 +253,8 @@ ASSET_SIMPLE = {
     "studio_paint_load": "paint_load",
     "studio_paint_clear": "paint_clear",
     "studio_perf_report": "perf_report",
+    "studio_crash_reports": "crash_reports",
+    "studio_crash_mark_fixed": "crash_mark_fixed",
     "studio_list_settings": "list_settings",
     "studio_set_setting": "set_setting",
     "studio_ai_generate_texture": "ai_generate_texture",
