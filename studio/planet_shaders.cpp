@@ -390,6 +390,17 @@ uniform float u_frac_amount, u_frac_scale, u_tile_octf;
 FOG_FN_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 WATER_FN_PLACEHOLDER
+// the surface's height at a world point, the way the vertex stage builds
+// it: the tile's heightmap (through the tile's transform) blending into
+// the planet's relief `proc` over the 0.35-tile ring
+float join_h(vec2 uv, float proc_raw, float octf){
+  vec2 tl = tile_unapply_xz(uv);
+  vec2 uvc = clamp(tl, 0.0, 1.0);
+  float s = smoothstep(0.0, 0.35, length(tl - uvc));
+  float tile = texture(u_height, uvc).r * u_hscale * u_txi_y.x + u_txi_y.y;
+  float proc = proc_raw * u_amp + u_base;
+  return mix(tile, proc, s);
+}
 vec3 aces(vec3 x){
   x *= u_grade;
   float lum = dot(x, vec3(0.299, 0.587, 0.114));
@@ -408,23 +419,16 @@ void main(){
   float octf = clamp(10.0 - log2(cam_d * 7.0) * 1.3, 2.0, 11.0);
   octf = mix(min(octf, u_tile_octf), octf, s_join); // the tile's grain at the join
   float e = max(0.5 / exp2(octf), 0.0004);
+  // The normal is differenced from the very height function the vertex
+  // stage built the surface from - the tile's heightmap blending into the
+  // planet's relief over the ring - so the shading is the geometry's. A
+  // normal taken from the heightmap alone, clamped at the tile's edge,
+  // extruded the edge row outward as stripes.
   vec2 hw0 = pl_height_w(vec3(v_uv.x, 0.37, v_uv.y), octf);
-  float h0 = hw0.x;
-  float hx = pl_height(vec3(v_uv.x + e, 0.37, v_uv.y), octf);
-  float hz = pl_height(vec3(v_uv.x, 0.37, v_uv.y + e), octf);
-  vec3 N = normalize(vec3((h0-hx)*u_amp, e, (h0-hz)*u_amp));
-  // at the join the surface *is* the tile's heightmap (the vertex stage
-  // mixed to it), so the normal comes from the heightmap there too, and
-  // gives way to the procedural normal with the same ramp
-  if (s_join < 1.0){
-    vec2 tuv = clamp(tl, 0.0, 1.0);
-    float te = 0.5 / exp2(u_tile_octf);
-    float hs = u_hscale * u_txi_y.x;
-    float hl = texture(u_height, tuv - vec2(te, 0.0)).r, hr = texture(u_height, tuv + vec2(te, 0.0)).r;
-    float hd = texture(u_height, tuv - vec2(0.0, te)).r, hu = texture(u_height, tuv + vec2(0.0, te)).r;
-    vec3 Nt = normalize(vec3((hl - hr) * hs, 2.0 * te, (hd - hu) * hs));
-    N = normalize(mix(Nt, N, s_join));
-  }
+  float h0 = join_h(v_uv, hw0.x, octf);
+  float hx = join_h(v_uv + vec2(e, 0.0), pl_height(vec3(v_uv.x + e, 0.37, v_uv.y), octf), octf);
+  float hz = join_h(v_uv + vec2(0.0, e), pl_height(vec3(v_uv.x, 0.37, v_uv.y + e), octf), octf);
+  vec3 N = normalize(vec3(h0 - hx, e, h0 - hz));
   // the tile's fractal micro-relief, differenced the way the tile does it
   if (u_frac_amount > 0.0){
     int oct = gp_octaves(cam_d, 12.0);
@@ -444,7 +448,10 @@ void main(){
 
   // the shared landscape palette on the same altitude scale as the tile:
   // 0 at the water, 1 at the top of the tile's height range
-  float t = (v_proc - u_wl) / max(u_hscale - u_wl, 0.02);
+  // water off sends u_wl far below everything (the surface must not
+  // flatten); the palette still wants sea level as its zero
+  float wl_pal = u_wl < -1.0e8 ? 0.0 : u_wl;
+  float t = (v_proc - wl_pal) / max(u_hscale - wl_pal, 0.02);
   float slope = 1.0 - N.y;
   float var = pl_vnoise(vec3(v_uv.x, 0.37, v_uv.y) * 37.0, 0x5a17u);
   vec3 alb = pl_palette(t, slope, u_lat, hw0.y, u_snow_line, var);

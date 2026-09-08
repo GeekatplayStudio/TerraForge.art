@@ -31,7 +31,7 @@ namespace studio {
 
 struct PlaceSettings {
   bool enabled = true;
-  float edge = 0.10f;      // feather width, fraction of the tile side
+  float edge = 0.20f;      // feather width, fraction of the tile side
   float flatten = 1.f;     // 1 levels the planet under a feature, 0 adds on top
   float presence = 0.04f;  // relief (heightmap units) at which a feature counts
   // The planet's ground level, heightmap units: the level its relief is

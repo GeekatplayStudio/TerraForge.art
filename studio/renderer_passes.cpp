@@ -80,7 +80,16 @@ void upload_water_uniforms(unsigned prog, const RenderSettings &RS, float time) 
 void upload_terrain_xform_inverse(unsigned prog) {
   const TerrainXform t = terrain_xform_current();
   unii(prog, "u_tx_on", t.on ? 1 : 0);
-  if (!t.on) return;
+  // The identity is uploaded too: the surround multiplies the tile's edge
+  // height by u_txi_y.x whether or not the transform is on, and a uniform
+  // never set reads as zero - which put the tile's rim at height nought,
+  // flooded it, and dragged the surround down to meet it.
+  if (!t.on) {
+    glUniform2f(uniform_location(prog, "u_txi_pos"), 0.f, 0.f);
+    glUniform4f(uniform_location(prog, "u_txi"), 1.f, 0.f, 1.f, 1.f);
+    glUniform2f(uniform_location(prog, "u_txi_y"), 1.f, 0.f);
+    return;
+  }
   const float rad = t.yaw * 3.14159265f / 180.f;
   glUniform2f(uniform_location(prog, "u_txi_pos"), t.pos[0], t.pos[2]);
   glUniform4f(uniform_location(prog, "u_txi"), std::cos(rad), std::sin(rad),

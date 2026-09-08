@@ -129,6 +129,19 @@ static void zoom_toward_ground(float before) {
   CAM.target[1] = g + (CAM.target[1] - g) * k;
 }
 
+void renderer_pan_screen(float dx, float dy) {
+  if (camera_object_input(dx, dy, 0.f, false, true, false)) return; // a scene camera pans its own plane
+  const float s = CAM.dist * 0.0015f;
+  const float cp = std::cos(CAM.pitch), sp = std::sin(CAM.pitch);
+  const float cy = std::cos(CAM.yaw), sy = std::sin(CAM.yaw);
+  // screen right, and the camera's own up (the eye's derivative in pitch -
+  // the same axis the view matrix uses), so the ground slides under the
+  // pointer whichever way the camera is tipped
+  const float R[3] = {cy, 0.f, -sy};
+  const float U[3] = {-sp * sy, cp, -sp * cy};
+  for (int i = 0; i < 3; ++i) CAM.target[i] += (-dx * R[i] + dy * U[i]) * s;
+}
+
 void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
                            bool panning) {
   if (rotating) {

@@ -70,9 +70,14 @@ void box_blur(std::vector<float> &m, int w, int h, int r) {
   });
 }
 
-// The level the tile's terrain meets its own border at: the median of the
-// border ring. A normalised mountain fades to its rim, a stamped feature sits
-// on a flat pad, and a fully-random tile has no better ground than this.
+// The level the tile's terrain meets its own border at: a low percentile of
+// the border ring. A normalised mountain fades to its rim, a stamped feature
+// sits on a flat pad, and a fully-random tile has no better ground than
+// this. It used to be the median, which put half of a noise tile's border
+// below the planet's ground - a moat of water round every such tile once
+// the feather let the planet in. The 15th percentile settles the tile so
+// its valleys meet the ground and its relief stands above it; a hole dug
+// on purpose is still far below.
 float border_median(const gpx::Heightmap &t) {
   std::vector<float> ring;
   ring.reserve((size_t)(t.w + t.h) * 2);
@@ -85,9 +90,9 @@ float border_median(const gpx::Heightmap &t) {
     ring.push_back(t.at(t.w - 1, y));
   }
   if (ring.empty()) return 0.f;
-  size_t mid = ring.size() / 2;
-  std::nth_element(ring.begin(), ring.begin() + mid, ring.end());
-  return ring[mid];
+  size_t k = ring.size() * 15 / 100;
+  std::nth_element(ring.begin(), ring.begin() + k, ring.end());
+  return ring[k];
 }
 
 PlaceResult g_last;

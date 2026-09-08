@@ -245,7 +245,7 @@ struct RenderSettings {
   // planet's relief shows through where the tile is flat, is levelled under
   // the tile's features, and everything is feathered so nothing steps.
   bool place_on_planet = true;
-  float place_edge = 0.10f;     // feather width, fraction of the tile side
+  float place_edge = 0.20f;     // feather width, fraction of the tile side
   float place_flatten = 1.f;    // 1 levels the planet under a feature, 0 adds
   float place_presence = 0.04f; // relief (heightmap units) that counts as one
   float place_ground = 0.14f;   // the planet's ground level, heightmap units
@@ -385,6 +385,9 @@ void renderer_view_size(int &w, int &h);
 // camera navigation for the active camera (scene camera or free viewport)
 void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
                            bool panning, bool dolly);
+// Pan in the view plane - up, down, left, right on the screen - as opposed
+// to across the ground. Shift+left drag; Cinema 4D's and Maya's hand.
+void renderer_pan_screen(float dx, float dy);
 void renderer_camera_look_at(const float target[3], float distance);
 
 // The height the ground outside the tile settles to, in world units - what

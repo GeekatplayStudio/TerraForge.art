@@ -484,9 +484,11 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
     const bool alt_dolly = io.KeyAlt && ImGui::IsMouseDown(ImGuiMouseButton_Right);
     bool rot = !sculpting && !shift_pan && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
                ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f);
+    // Shift+left pans the view plane (up/down/left/right on screen);
+    // middle and right drag pan across the ground, as before
+    const bool pan_view = shift_pan && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f);
     bool pan = ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
-               (ImGui::IsMouseDown(ImGuiMouseButton_Right) && !alt_dolly) ||
-               (shift_pan && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f));
+               (ImGui::IsMouseDown(ImGuiMouseButton_Right) && !alt_dolly) || pan_view;
     // One line per drag, at trace level, saying what this view saw: which
     // button, how far, and whether anything else had claimed the mouse. "I
     // cannot pan" is a report about input that never reached here or was
@@ -513,7 +515,9 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
     // Ctrl+drag dollies (moves the camera along its view axis)
     bool dolly = (io.KeyCtrl && ImGui::IsMouseDown(ImGuiMouseButton_Left)) || alt_dolly;
     float wheel = sculpting ? 0.f : io.MouseWheel;
-    if (vc.camera == 0)
+    if (vc.camera == 0 && pan_view)
+      renderer_pan_screen(io.MouseDelta.x, io.MouseDelta.y);
+    else if (vc.camera == 0)
       renderer_camera_input(io.MouseDelta.x, io.MouseDelta.y, wheel,
                             rot && !dolly, pan, dolly);
     else
