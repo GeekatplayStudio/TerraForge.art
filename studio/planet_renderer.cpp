@@ -4,6 +4,7 @@
 #include "render_settings.hpp"
 #include "renderer_shaders.hpp"
 #include "scene.hpp"
+#include "terrain_xform.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/planet_math.hpp"
 #include "glsl_version.hpp"
@@ -106,6 +107,7 @@ static std::string pl_inject(const char *src, const std::string &glsl) {
   sub("PL_FN_PLACEHOLDER", body);
   sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);
   sub("PL_SPHERE_PLACEHOLDER", PL_SPHERE_FN);
+  sub("TILE_XFORM_INV_PLACEHOLDER", TERRAIN_XFORM_INV_GLSL);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
   return s;
 }
@@ -454,6 +456,7 @@ void infinite_draw(const InfiniteFrame &f) {
   puni3(prog_inf, "u_grade", f.grade);
   puni1(prog_inf, "u_sat", f.saturation);
   puni1(prog_inf, "u_hscale", f.height_scale);
+  upload_terrain_xform_inverse(prog_inf); // the hole and the border blend follow the tile
   puni1(prog_inf, "u_curve", f.planet_radius);
   upload_fog_uniforms(prog_inf, render_settings(), f.atmosphere);
   punii(prog_inf, "u_object_id", 1);

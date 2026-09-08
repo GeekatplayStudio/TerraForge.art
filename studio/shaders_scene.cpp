@@ -51,10 +51,14 @@ uniform mat4 u_mvp;
 uniform float u_level;
 uniform float u_planet_radius;
 PL_SPHERE_PLACEHOLDER
+TILE_XFORM_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
 void main(){
-  vec3 p = pl_sphere_place(in_uv, u_level, u_planet_radius);
+  // the plane covers the tile's footprint, wherever the tile's transform
+  // put it (terrain_xform.hpp); its level stays a level
+  vec2 xz = tile_xform(vec3(in_uv.x, 0.0, in_uv.y)).xz;
+  vec3 p = pl_sphere_place(xz, u_level, u_planet_radius);
   v_uv = in_uv; v_world = p;
   gl_Position = u_mvp * vec4(p,1.0);
 })GLSL";

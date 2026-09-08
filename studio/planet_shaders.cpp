@@ -313,6 +313,7 @@ uniform vec3 u_cam;
 uniform float u_hscale, u_curve, u_amp, u_base, u_wl;
 PL_FN_PLACEHOLDER
 PL_SPHERE_PLACEHOLDER
+TILE_XFORM_INV_PLACEHOLDER
 out vec3 v_world;
 out vec2 v_uv;
 out float v_out;   // distance outside the tile, tile widths
@@ -323,8 +324,12 @@ void main(){
   // blend must be exact, the far ring reaches ~30 tiles = the horizon
   vec2 off = in_p * (0.5 + 30.0 * in_p*in_p*in_p*in_p);
   vec2 uv = vec2(0.5) + off;
-  vec2 uvc = clamp(uv, 0.0, 1.0);
-  float dout = length(uv - uvc);
+  // where the tile is: the world point back through the tile's transform
+  // (terrain_xform.hpp), so the hole and the border blend follow a tile
+  // that was moved, turned or stretched
+  vec2 tl = tile_unapply_xz(uv);
+  vec2 uvc = clamp(tl, 0.0, 1.0);
+  float dout = length(tl - uvc);
   float cam_d = max(length(u_cam.xz - uv) * 0.15, 0.02);
   float octf = clamp(9.0 - log2(cam_d) * 1.2, 2.0, 10.0);
   // The surround has to meet the tile at the tile's own level, or a step
@@ -333,7 +338,7 @@ void main(){
   // on, so the two are one function of position at the border.
   vec2 hw = pl_height_w(vec3(uv.x, 0.37, uv.y), octf);
   float proc = hw.x * u_amp + u_base;
-  float tile = texture(u_height, uvc).r * u_hscale;
+  float tile = texture(u_height, uvc).r * u_hscale * u_txi_y.x + u_txi_y.y;
   float s = smoothstep(0.0, 0.35, dout);
   float h = mix(tile, proc, s);
   v_proc = h;
@@ -363,6 +368,7 @@ uniform vec3 u_wdeep, u_wshallow;
 uniform vec3 u_grade;
 PL_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
+TILE_XFORM_INV_PLACEHOLDER
 // the same height fog and pass outputs as the terrain tile (u_aov and
 // u_object_id are declared in here), so the ground beyond the tile
 // disappears into the same air the tile does - a distance fog of its own
@@ -375,9 +381,11 @@ vec3 aces(vec3 x){
   return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
 }
 void main(){
-  // the tile itself is drawn by the terrain shader - never fight it
+  // the tile itself is drawn by the terrain shader - never fight it; the
+  // tile is wherever its transform put it
+  vec2 tl = tile_unapply_xz(v_uv);
   if (v_out <= 0.0 &&
-      all(greaterThan(v_uv, vec2(0.001))) && all(lessThan(v_uv, vec2(0.999))))
+      all(greaterThan(tl, vec2(0.001))) && all(lessThan(tl, vec2(0.999))))
     discard;
   float cam_d = max(length(u_cam - v_world), 0.02);
   float octf = clamp(10.0 - log2(cam_d * 7.0) * 1.3, 2.0, 11.0);

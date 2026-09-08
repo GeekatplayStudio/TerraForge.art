@@ -64,5 +64,14 @@ float terrain_xform_ground(const TerrainXform &t, float x, float z, Sampler samp
 // and tile_cut(vec2) for the outline.
 extern const char *const TERRAIN_XFORM_GLSL;
 extern const char *const TERRAIN_XFORM_FS_GLSL;
+// The ground-plane inverse for a pass that works in world tile units and
+// needs to know where the tile *is* - the planet surround's hole and its
+// border blend: tile_unapply_xz(vec2) is the GLSL twin of
+// terrain_xform_unapply_xz, and u_txi_y carries the tile's vertical scale
+// and offset for meeting its border level.
+extern const char *const TERRAIN_XFORM_INV_GLSL;
+// Uploads for the two (renderer_passes.cpp; GL lives there, not here).
+void upload_terrain_xform(unsigned prog);
+void upload_terrain_xform_inverse(unsigned prog);
 
 } // namespace studio

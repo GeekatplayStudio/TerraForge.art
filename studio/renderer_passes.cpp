@@ -31,7 +31,7 @@ TerrainXform terrain_xform_current() {
 // The tile's transform and outline into a terrain program (terrain_xform.hpp):
 // the colour pass, the tessellated pass and the shadow pass all take it, so
 // a moved tile shadows where it stands.
-static void upload_terrain_xform(GLuint prog) {
+void upload_terrain_xform(unsigned prog) {
   const TerrainXform t = terrain_xform_current();
   const RenderSettings &RS = render_settings();
   unii(prog, "u_tx_on", t.on ? 1 : 0);
@@ -53,6 +53,17 @@ static void upload_terrain_xform(GLuint prog) {
   unii(prog, "u_tx_cut", (RS.terrain_shape != 0 && !placed) ? 1 : 0);
   unii(prog, "u_tx_shape", RS.terrain_shape);
   uni1(prog, "u_tx_aspect", RS.terrain_aspect);
+}
+
+void upload_terrain_xform_inverse(unsigned prog) {
+  const TerrainXform t = terrain_xform_current();
+  unii(prog, "u_tx_on", t.on ? 1 : 0);
+  if (!t.on) return;
+  const float rad = t.yaw * 3.14159265f / 180.f;
+  glUniform2f(uniform_location(prog, "u_txi_pos"), t.pos[0], t.pos[2]);
+  glUniform4f(uniform_location(prog, "u_txi"), std::cos(rad), std::sin(rad),
+              1.f / std::max(std::fabs(t.scl[0]), 1e-4f), 1.f / std::max(std::fabs(t.scl[2]), 1e-4f));
+  glUniform2f(uniform_location(prog, "u_txi_y"), t.scl[1], t.pos[1]);
 }
 
 void pass_shadow(const FrameCtx &F) {
@@ -434,6 +445,7 @@ void pass_water(const FrameCtx &F) {
   // water
   if (RS.show_water && vc.show_water_view && show_water_obj) {
     glUseProgram(prog_water);
+    upload_terrain_xform(prog_water); // the plane is the tile's: it goes where the tile goes
     // A geometry pass wants the water surface, not a blend of it with the
     // bed underneath; only the picture and the linear beauty are translucent.
     const bool blend = g_aov == 0 || g_aov == AOV_BEAUTY_LINEAR;

@@ -122,4 +122,17 @@ bool tile_cut(vec2 uv){
 }
 )GLSL";
 
+const char *const TERRAIN_XFORM_INV_GLSL = R"GLSL(
+uniform int u_tx_on;
+uniform vec2 u_txi_pos; // offset x, z (tile units)
+uniform vec4 u_txi;     // cos heading, sin heading, 1/scale x, 1/scale z
+uniform vec2 u_txi_y;   // scale y, offset y (world units)
+vec2 tile_unapply_xz(vec2 xz){
+  if (u_tx_on == 0) return xz;
+  vec2 q = xz - 0.5 - u_txi_pos;
+  vec2 l = vec2(u_txi.x * q.x - u_txi.y * q.y, u_txi.y * q.x + u_txi.x * q.y);
+  return l * u_txi.zw + 0.5;
+}
+)GLSL";
+
 } // namespace studio
