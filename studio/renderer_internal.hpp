@@ -49,6 +49,8 @@ extern GLuint vao_sphere, vbo_sphere;
 extern int sphere_verts;
 extern int line_vert_count;
 extern GLuint tex_height, tex_albedo;
+extern GLuint tex_place_w;
+extern bool has_place_w;
 extern GLuint tex_normal, tex_rough, tex_disp;
 extern GLuint tex_cloud_shape, tex_cloud_detail;
 extern bool has_normal_map, has_rough_map, has_disp_map;

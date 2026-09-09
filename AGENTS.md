@@ -359,6 +359,14 @@ inverse transform; and water is WATER_FN_GLSL in both the water pass and
 the surround, uploaded by `upload_water_uniforms`. Change the tile's look
 and the surround must change with it, or the border comes back.
 
+The colour join is the tile's, not the surround's: planet_place.cpp
+publishes its blend weight (`PlaceResult::weight`, uploaded as
+`tex_place_w`, unit 12) and the terrain fragment shader mixes the material
+toward the planet palette by it across the skirt. The surround borrows
+nothing from the tile - its ring is 0.06 tile widths, for the last float of
+mismatch only. A wide ring that extruded the tile's edge row (height or
+colour, even from a coarse mip) painted stripes; do not bring it back.
+
 ## The terrain is an object with a transform
 
 studio/terrain_xform.cpp: the Terrain SceneObject's pos (an offset; pos[1]

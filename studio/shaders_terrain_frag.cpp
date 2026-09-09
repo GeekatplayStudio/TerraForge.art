@@ -12,6 +12,8 @@ in vec3 v_world;
 out vec4 frag;
 uniform sampler2D u_height;
 TILE_XFORM_FS_PLACEHOLDER
+uniform sampler2D u_place_w; // the placement's blend weight, 1 tile .. 0 planet
+uniform int u_place_on;
 uniform sampler2D u_albedo;
 uniform sampler2D u_normal_map;
 uniform sampler2D u_rough_map;
@@ -223,6 +225,15 @@ void main(){
     N = normalize(T * nm.x + B * nm.y + N * max(nm.z, 0.05));
   }
   vec3 albedo;
+  // The planet's own palette at this height, the one the surround paints:
+  // what the tile shows where it has no material, and what its material
+  // gives way to across the placement's skirt.
+  vec3 pal;
+  {
+    float t = (h * u_hscale - u_water_level) / max(u_hscale - u_water_level, 0.02);
+    float var = gp_detail(v_uv, 5.0, 2, 0.5);
+    pal = pl_palette(t, slope_local, u_lat, 0.0, u_snow_line, var);
+  }
   if (u_textured == 0) {
     // Solid: one neutral surface, so the form is readable without any
     // material arguing with it.
@@ -241,11 +252,15 @@ void main(){
     // No material: the landscape palette the horizon surround uses, on the
     // same altitude scale, so the tile and the ground beyond it are one
     // surface. Altitude is measured from the water, not from zero.
-    float t = (h * u_hscale - u_water_level) / max(u_hscale - u_water_level, 0.02);
-    float var = gp_detail(v_uv, 5.0, 2, 0.5);
-    albedo = pl_palette(t, slope_local, u_lat, 0.0, u_snow_line, var);
+    albedo = pal;
   }
   albedo = mat_albedo(albedo);
+  // Across the skirt the tile's material gives way to the planet's palette
+  // with the same weight the relief gave way, so the join is the planet's
+  // colour on both sides of the border and nothing has to be dragged
+  // across it from outside.
+  if (u_place_on == 1 && u_textured == 1)
+    albedo = mix(pal, albedo, texture(u_place_w, v_uv).r);
   float rough = clamp(u_roughness * (u_has_rough == 1 ?
                       texture(u_rough_map, muv).r * 2.0 : 1.0), 0.03, 1.0);
   if (u_surf_rough_on == 1){

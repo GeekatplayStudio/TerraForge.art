@@ -278,6 +278,7 @@ bool renderer_init() {
   };
   mktex(tex_height, true); // mipmapped: the far ground reads a calmer level (docs/LOD.md)
   mktex(tex_albedo, true);
+  mktex(tex_place_w, false);
   mktex(tex_normal, true);
   mktex(tex_rough, true);
   mktex(tex_disp, false);
@@ -359,6 +360,14 @@ void renderer_set_terrain_prepared(TerrainUpload &upload) {
     glBindTexture(GL_TEXTURE_2D, tex_patch_bounds);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, patch_n - 1, patch_n - 1, 0, GL_RG,
                  GL_FLOAT, cpu_patch_bounds.data());
+  }
+  // the placement's blend weight, for the shader's skirt colouring
+  has_place_w = upload.placement.placed && !upload.placement.weight.empty() &&
+                upload.placement.weight.w == norm.w && upload.placement.weight.h == norm.h;
+  if (has_place_w) {
+    glBindTexture(GL_TEXTURE_2D, tex_place_w);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, norm.w, norm.h, 0, GL_RED, GL_FLOAT,
+                 upload.placement.weight.v.data());
   }
   has_albedo = albedo && !albedo->empty();
   if (has_albedo) {

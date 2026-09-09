@@ -65,6 +65,11 @@ struct PlaceResult {
   float tile_ground = 0.f; // the tile's own ground level, settled to `ground`
   float coverage = 0.f;    // fraction of the tile that is feature (0..1)
   bool placed = false;     // false: the tile was passed through untouched
+  // How much of each texel is the tile (1) and how much the planet (0):
+  // the blend weight the composite used. The terrain shader mixes the
+  // tile's material toward the planet's own palette by it, so the skirt
+  // where the tile gives way to the planet looks like the planet.
+  gpx::Heightmap weight;
 };
 
 // The planet relief under the tile, in heightmap units relative to `ground`

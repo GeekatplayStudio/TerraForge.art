@@ -61,6 +61,8 @@ GLuint vao_sphere = 0, vbo_sphere = 0; // sun gizmo
 int sphere_verts = 0;
 int line_vert_count = 0;
 GLuint tex_height = 0, tex_albedo = 0;
+GLuint tex_place_w = 0;   // the placement's blend weight (planet_place.hpp)
+bool has_place_w = false;
 GLuint tex_normal = 0, tex_rough = 0, tex_disp = 0;
 GLuint tex_cloud_shape = 0, tex_cloud_detail = 0;
 bool has_normal_map = false, has_rough_map = false, has_disp_map = false;

@@ -333,7 +333,11 @@ void main(){
   vec2 uvc = clamp(tl, 0.0, 1.0);
   float dout = length(tl - uvc);
   float cam_d = max(length(u_cam.xz - uv) * 0.15, 0.02);
-  float s = smoothstep(0.0, 0.35, dout);
+  // A short ring. The placement already feathers the tile's own relief and
+  // colour to the planet inside its border (planet_place.cpp), so the tile
+  // edge *is* the planet there; this ring only smooths the last float of
+  // mismatch. A wide one dragged the tile's edge row outward as stripes.
+  float s = smoothstep(0.0, 0.06, dout);
   // the tile's relief was baked at its heightmap's resolution: at the join
   // the surround runs at that same octave count, and only away from the
   // tile does it resolve further - otherwise the seam is a change of grain
@@ -401,7 +405,7 @@ float join_h(vec2 uv, float proc_raw, float octf){
   vec2 tl = tile_unapply_xz(uv);
   vec2 uvc = clamp(tl, 0.0, 1.0);
   float dout = length(tl - uvc);
-  float s = smoothstep(0.0, 0.35, dout);
+  float s = smoothstep(0.0, 0.06, dout);
   // the edge row from a coarser mip the further out (see the vertex stage)
   float tile = textureLod(u_height, uvc, min(dout * 14.0, 6.0)).r * u_hscale * u_txi_y.x + u_txi_y.y;
   float proc = proc_raw * u_amp + u_base;
@@ -421,7 +425,7 @@ void main(){
       all(greaterThan(tl, vec2(0.001))) && all(lessThan(tl, vec2(0.999))))
     discard;
   float cam_d = max(length(u_cam - v_world), 0.02);
-  float s_join = smoothstep(0.0, 0.35, v_out);
+  float s_join = smoothstep(0.0, 0.06, v_out);
   float octf = clamp(10.0 - log2(cam_d * 7.0) * 1.3, 2.0, 11.0);
   octf = mix(min(octf, u_tile_octf), octf, s_join); // the tile's grain at the join
   float e = max(0.5 / exp2(octf), 0.0004);
@@ -461,15 +465,11 @@ void main(){
   float slope = 1.0 - N.y;
   float var = pl_vnoise(vec3(v_uv.x, 0.37, v_uv.y) * 37.0, 0x5a17u);
   vec3 alb = pl_palette(t, slope, u_lat, hw0.y, u_snow_line, var);
-  if (u_has_albedo == 1){
-    // near the tile, borrow the tile's own texture so a textured tile does
-    // not end in a colour seam
-    // the same for the colour: the tile's edge row would otherwise be
-    // dragged out across the ring as stripes; a coarser mip the further
-    // out carries its local average instead
-    vec3 edge = pow(textureLod(u_albedo, clamp(tl, 0.0, 1.0), min(v_out * 14.0, 6.0)).rgb, vec3(2.2));
-    alb = mix(edge, alb, s_join);
-  }
+  // No colour is borrowed from the tile any more: across the placement's
+  // skirt the tile's own shader gives its material way to this same
+  // palette (shaders_terrain_frag.cpp, u_place_w), so the border is the
+  // palette on both sides and borrowing the raw material colour here only
+  // painted a band of it outside the tile.
   // the surround has to answer the shading mode the same way the tile does,
   // or turning the texture off leaves a coloured horizon around a grey tile
   if (u_textured == 0) alb = vec3(0.58, 0.57, 0.55);

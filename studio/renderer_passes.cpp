@@ -320,6 +320,12 @@ void pass_terrain(const FrameCtx &F) {
     // button and the "textured" checkbox entirely - the reported symptom was
     // that the texture could not be turned off at all.
     unii(PT, "u_textured", textured ? 1 : 0);
+    // the placement's blend weight: where the tile gives way to the planet
+    // its colour gives way to the planet's palette (planet_place.hpp)
+    glActiveTexture(GL_TEXTURE12);
+    glBindTexture(GL_TEXTURE_2D, tex_place_w);
+    unii(PT, "u_place_w", 12);
+    unii(PT, "u_place_on", has_place_w ? 1 : 0);
     // ID colours: one flat bright colour per object or per material, so a
     // layer or an object is found by eye. The terrain's key is its material.
     {

@@ -557,8 +557,11 @@ wanted his students to have.
   ignored. At the join the surround matches the tile's grain: its relief
   runs at the tile's heightmap resolution there and resolves further only
   away from it, its normal comes from the tile's heightmap at the border,
-  the tile's fractal micro-relief runs straight across, and the water is
-  one shader on both sides, so a lake crossing the border is one lake.
+  the tile's fractal micro-relief runs straight across, the water is one
+  shader on both sides, and across the placement's skirt the tile's own
+  material gives way to the planet's palette by the same weight its relief
+  does - so the join is the planet's colour on both sides of the border and
+  nothing is dragged across it.
 - **Node graph engine** with dirty-tracking evaluation, multithreaded solvers,
   per-node previews and timings, and any resolution from 64 to 8192.
 - **Erosion that models the physics:** particle-droplet hydraulic erosion, a

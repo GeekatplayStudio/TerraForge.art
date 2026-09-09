@@ -178,6 +178,7 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   box_blur(pres, w, h, std::max(1, r / 2));
 
   gpx::Heightmap outm(w, h);
+  res.weight = gpx::Heightmap(w, h);
   const float edge = std::max(s.edge, 1e-4f);
   const float flat = std::clamp(s.flatten, 0.f, 1.f);
   const float grad = std::clamp(s.gradient, 0.05f, 8.f);
@@ -220,6 +221,7 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
         const float seat = pb + (pbs - pb) * flat;
         const float feature = seat + (tile.v[i] - tile_ground);
         outm.v[i] = pb + (feature - pb) * wgt;
+        res.weight.v[i] = wgt;
       }
     }
   });
