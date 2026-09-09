@@ -167,6 +167,7 @@ void pass_shadow(const FrameCtx &F) {
     glBindVertexArray(vao_grid);
     for (int k = 0; k < terrain_tile_count(); ++k) {
       if (k > 0 && !terrain_tile_visible(k)) continue;
+      if (k == 0 && terrain_tile_object(0) < 0) continue;
       TileSwap swap(k);
       upload_terrain_xform(prog_depth);
       glActiveTexture(GL_TEXTURE0);
@@ -363,6 +364,16 @@ static void draw_terrain_tile(const FrameCtx &F) {
     glBindTexture(GL_TEXTURE_2D, tex_place_w);
     unii(PT, "u_place_w", 12);
     unii(PT, "u_place_on", has_place_w ? 1 : 0);
+    {
+      // the Objects tree's "colour by layer": this tile in its layer's colour
+      float tint[3] = {1.f, 1.f, 1.f};
+      const int obj = terrain_tile_object(terrain_tile_current() < 0 ? 0 : terrain_tile_current());
+      if (scene().color_by_layer && obj >= 0 && obj < (int)scene().objects.size()) {
+        const std::array<float, 3> c = scene_display_color(scene().objects[(size_t)obj]);
+        tint[0] = c[0]; tint[1] = c[1]; tint[2] = c[2];
+      }
+      uni3(PT, "u_layer_tint", tint);
+    }
     // ID colours: one flat bright colour per object or per material, so a
     // layer or an object is found by eye. The terrain's key is its material.
     {
@@ -381,7 +392,7 @@ static void draw_terrain_tile(const FrameCtx &F) {
     uni1(PT, "u_surf_bump_scale", g_surf_bump_scale);
     glUniform4f(uniform_location(PT, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
-    uni1(PT, "u_planet_radius", RS.planet_radius);
+    uni1(PT, "u_planet_radius", view_planet_radius(RS, vc));
     uni1(PT, "u_water_level", RS.show_water ? RS.water_level * RS.height_scale
                                             : 0.f);
     uni1(PT, "u_lat", std::fabs(RS.latitude) / 90.f);
@@ -461,7 +472,7 @@ static void draw_terrain_tile(const FrameCtx &F) {
                              g_field_glsl.empty() ? 0.f : RS.field_displacement);
         uni1(PT, "u_cull_pad", pad);
         uni3(PT, "u_cull_cam", view_eye);
-        uni1(PT, "u_cull_radius", RS.planet_radius);
+        uni1(PT, "u_cull_radius", view_planet_radius(RS, vc));
         // The same test on the CPU, for the status readout: no readback, so
         // the number shown is the one the shader arrived at rather than an
         // estimate. Every tenth frame, because a readout does not need to be
@@ -471,7 +482,7 @@ static void draw_terrain_tile(const FrameCtx &F) {
         if (slot == 0 && (stat_tick++ % 10) == 0)
           g_patches_visible = patches_visible(fr, cpu_patch_bounds, patch_n - 1,
                                               RS.height_scale, pad, view_eye,
-                                              RS.planet_radius);
+                                              view_planet_radius(RS, vc));
       } else if (slot == 0) {
         g_patches_visible = -1;
       }
@@ -511,7 +522,7 @@ static void draw_terrain_tile(const FrameCtx &F) {
 // Every tile: the first with the renderer's own set, each further one with
 // its set swapped in for the draw.
 void pass_terrain(const FrameCtx &F) {
-  {
+  if (terrain_tile_object(0) >= 0) { // no Terrain object at all: nothing to draw as tile 0
     TileSwap swap(0);
     draw_terrain_tile(F);
   }
@@ -546,7 +557,7 @@ void pass_water(const FrameCtx &F) {
     glUniformMatrix4fv(uniform_location(prog_water, "u_mvp"), 1, GL_FALSE, mvp);
     uni1(prog_water, "u_hscale", RS.height_scale);
     uni1(prog_water, "u_level", RS.water_level * RS.height_scale);
-    uni1(prog_water, "u_planet_radius", RS.planet_radius);
+    uni1(prog_water, "u_planet_radius", view_planet_radius(RS, vc));
     uni3(prog_water, "u_sun", sun);
     uni3(prog_water, "u_sun_color", RS.sun_color);
     uni3(prog_water, "u_cam", view_eye);
@@ -559,6 +570,7 @@ void pass_water(const FrameCtx &F) {
     glBindVertexArray(vao_grid);
     for (int k = 0; k < terrain_tile_count(); ++k) {
       if (k > 0 && !terrain_tile_visible(k)) continue;
+      if (k == 0 && terrain_tile_object(0) < 0) continue;
       TileSwap swap(k);
       upload_terrain_xform(prog_water);
       glActiveTexture(GL_TEXTURE0);

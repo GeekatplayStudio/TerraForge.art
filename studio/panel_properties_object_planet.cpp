@@ -19,6 +19,24 @@ void object_properties_planet_ui(App &a, SceneObject &o) {
   PlanetData &P = o.planet;
   RenderSettings &rsn = render_settings();
   float km = rsn.terrain_size_m / 1000.f; // world unit -> km
+  if (P.home) {
+    // The world. Its curvature is the render setting every pass reads; its
+    // ground is its surface-layer children; its terrain tiles, water and
+    // atmosphere are its children too.
+    ImGui::SeparatorText("The world");
+    ImGui::TextDisabled("The planet the scene stands on. Terrain tiles, the\n"
+                        "water, the atmosphere and the surface layers are\n"
+                        "its children; add more with the + tile. A second\n"
+                        "planet is a globe in the sky.");
+    drag_length("Radius", &rsn.planet_radius, 1.f, 0.f, 1e12f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The world's curvature. 0 is a flat world. Free\n"
+                        "perspective views draw it flat regardless; camera\n"
+                        "views (and views with Planet curvature on) curve.");
+    text_length("Circumference", rsn.planet_radius * 6.2831853f * rsn.terrain_size_m);
+    P.radius = rsn.planet_radius;
+    return;
+  }
   ImGui::SeparatorText("Body");
   (void)km;
   drag_length("Radius", &P.radius, 1.f, 1e-4f, 1e12f);

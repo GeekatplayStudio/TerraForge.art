@@ -13,6 +13,8 @@
 #include "ai_assist.hpp"
 #include "app.hpp"
 #include "component_add.hpp"
+#include "scene.hpp"
+#include "undo.hpp"
 #include "render_settings.hpp"
 #include "sculpt.hpp"
 #include "terrain_editor.hpp"
@@ -89,6 +91,23 @@ int ai_terrain_op(App &a, const std::string &op, const json &act, std::string &e
                                          act.value("proportion", 1.f), err)
                ? 1
                : 0;
+  }
+  if (op == "delete_object") {
+    // any asset, with everything under it: a tile, a light, the home planet
+    const std::string name = act.value("name", std::string());
+    SceneState &sc = scene();
+    int idx = -1;
+    for (int i = 0; i < (int)sc.objects.size(); ++i)
+      if (sc.objects[(size_t)i].name == name) idx = i;
+    if (idx < 0) {
+      err = "delete_object: no object called '" + name + "'";
+      return 0;
+    }
+    undo_push(a, "Delete " + name);
+    const int n = scene_delete_subtree(idx);
+    a.scene_selection_serial++;
+    a.status = "deleted " + name + (n > 1 ? " and " + std::to_string(n - 1) + " under it" : "");
+    return 1;
   }
   if (op == "add_component") {
     const std::string kind = act.value("kind", act.value("type", std::string()));

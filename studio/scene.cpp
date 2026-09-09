@@ -1,4 +1,6 @@
 #include "scene.hpp"
+#include "render_settings.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -13,6 +15,15 @@ SceneState &scene() {
   return s;
 }
 
+std::array<float, 3> scene_display_color(const SceneObject &o) {
+  const SceneState &s = scene();
+  if (s.color_by_layer && o.layer >= 0 && o.layer < (int)s.layers.size()) {
+    const float *c = s.layers[(size_t)o.layer].color;
+    return {c[0] * 1.5f, c[1] * 1.5f, c[2] * 1.5f};
+  }
+  return {o.color[0], o.color[1], o.color[2]};
+}
+
 void scene_init_builtins() {
   SceneState &s = scene();
   if (!s.objects.empty()) return;
@@ -23,6 +34,17 @@ void scene_init_builtins() {
     o.builtin = true;
     s.objects.push_back(o);
   };
+  // the world first, so everything on it can be its child
+  {
+    SceneObject h;
+    h.type = SceneObject::Planet;
+    h.name = "Home planet";
+    h.builtin = true;
+    h.planet.home = true;
+    h.planet.radius = render_settings().planet_radius;
+    h.pos[0] = h.pos[1] = h.pos[2] = 0.f;
+    s.objects.push_back(h);
+  }
   add(SceneObject::Terrain, "Terrain");
   {
     // the tile's transform starts at identity: no offset (its centre is the
@@ -36,6 +58,12 @@ void scene_init_builtins() {
   add(SceneObject::Atmosphere, "Atmosphere");
   add(SceneObject::Group, "Cameras"); // parent for every camera
   scene_add_camera("Camera 1");
+  // the terrain, the water and the atmosphere belong to the world; the sun
+  // and the cameras are independent
+  for (SceneObject &o : s.objects)
+    if (o.type == SceneObject::Terrain || o.type == SceneObject::Water ||
+        o.type == SceneObject::Atmosphere)
+      o.parent = 0;
 
   // Terragen's central premise, and the thing we had all the machinery for but
   // never switched on: "every scene is built in the context of an entire
@@ -51,6 +79,7 @@ void scene_init_builtins() {
   // (studio/planet_place.cpp): flat where the graph says nothing, so the
   // landscape shows through, and levelled under whatever the graph builds.
   int gnd = scene_add_infinite_surface(-1, "Planet surface");
+  s.objects.back().parent = 0; // the world's ground is the home planet's child
   if (gnd >= 0 && gnd < (int)s.objects.size()) {
     InfiniteSurfaceData &d = s.objects[gnd].surf;
     d.layer.type = 3;
@@ -94,8 +123,74 @@ std::vector<int> scene_planet_indices() {
   SceneState &s = scene();
   std::vector<int> out;
   for (int i = 0; i < (int)s.objects.size(); ++i)
-    if (s.objects[i].type == SceneObject::Planet) out.push_back(i);
+    if (s.objects[i].type == SceneObject::Planet && !s.objects[i].planet.home) out.push_back(i);
   return out;
+}
+
+int scene_home_planet() {
+  SceneState &s = scene();
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (s.objects[i].type == SceneObject::Planet && s.objects[i].planet.home) return i;
+  return -1;
+}
+
+int scene_planet_of(int object) {
+  SceneState &s = scene();
+  int guard = 0;
+  while (object >= 0 && object < (int)s.objects.size() && guard++ < 64) {
+    if (s.objects[(size_t)object].type == SceneObject::Planet) return object;
+    object = s.objects[(size_t)object].parent;
+  }
+  return -1;
+}
+
+int scene_delete_subtree(int object) {
+  SceneState &s = scene();
+  if (object < 0 || object >= (int)s.objects.size()) return 0;
+  std::vector<int> del;
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (scene_is_descendant(s, i, object)) del.push_back(i);
+  std::sort(del.rbegin(), del.rend());
+  for (int d : del) {
+    auto fix = [&](int &v) {
+      if (v > d) v--;
+      else if (v == d) v = -1;
+    };
+    for (auto &o : s.objects) {
+      if (o.parent > d) o.parent--;
+      else if (o.parent == d) o.parent = -1;
+    }
+    fix(scene_active_camera());
+    fix(scene_last_used_camera());
+    s.objects.erase(s.objects.begin() + d);
+  }
+  if (s.selected >= (int)s.objects.size()) s.selected = s.objects.empty() ? -1 : 0;
+  s.selection = {s.selected};
+  return (int)del.size();
+}
+
+void scene_ensure_home_planet() {
+  SceneState &s = scene();
+  if (scene_home_planet() >= 0) return;
+  SceneObject h;
+  h.type = SceneObject::Planet;
+  h.name = "Home planet";
+  h.builtin = true;
+  h.planet.home = true;
+  h.planet.radius = render_settings().planet_radius;
+  h.pos[0] = h.pos[1] = h.pos[2] = 0.f;
+  s.objects.push_back(h);
+  const int home = (int)s.objects.size() - 1;
+  // the world's pieces that stood at the root move under it: terrain tiles,
+  // the water, the atmosphere and the surface layers (the ones that were the
+  // home ground by standing at the root)
+  for (int i = 0; i < home; ++i) {
+    SceneObject &o = s.objects[(size_t)i];
+    if (o.parent != -1) continue;
+    if (o.type == SceneObject::Terrain || o.type == SceneObject::Water ||
+        o.type == SceneObject::Atmosphere || o.type == SceneObject::InfiniteSurface)
+      o.parent = home;
+  }
 }
 
 int scene_add_planet(const std::string &name) {
@@ -147,6 +242,9 @@ std::vector<int> scene_surface_layers(int planet_idx) {
     if (o.type != SceneObject::InfiniteSurface) continue;
     bool root = o.parent < 0 || o.parent >= (int)s.objects.size() ||
                 s.objects[o.parent].type != SceneObject::Planet;
+    // the home planet's surfaces are the world's ground: asked for by its
+    // index, or by -1 the way the root-level ones always were
+    if (planet_idx < 0 && !root && s.objects[o.parent].planet.home) root = true;
     if ((planet_idx < 0 && root) || (planet_idx >= 0 && o.parent == planet_idx))
       if (s.object_visible(o)) out.push_back(i);
   }
@@ -156,6 +254,10 @@ std::vector<int> scene_surface_layers(int planet_idx) {
 std::vector<gpx::planet::Layer> planet_home_layers() {
   std::vector<gpx::planet::Layer> out;
   SceneState &sc = scene();
+  // the surface layers under the home planet; a scene with no home planet
+  // (none should remain) reads the root-level ones as it used to
+  // (-1 lists the root-level surfaces and the home planet's children alike;
+  // an older project's surfaces stand at the root until scene_ensure_home_planet)
   for (int idx : scene_surface_layers(-1)) {
     if ((int)out.size() >= gpx::planet::MAX_LAYERS) break;
     gpx::planet::Layer L = sc.objects[idx].surf.layer;

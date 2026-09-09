@@ -45,7 +45,7 @@ void tree_context_menu(App &a, SceneState &sc, int i) {
   ImGui::Separator();
   if (IconMenuItem(Icon::Object, tr("om.menu.rename"))) tree_begin_rename(sc, i);
   if (ImGui::MenuItem(tr("om.menu.duplicate"))) g.req_duplicate = i;
-  ImGui::BeginDisabled(o.builtin && o.type != SceneObject::Camera);
+  ImGui::BeginDisabled(false); // any asset can be deleted
   if (IconMenuItem(Icon::Trash, tr("om.menu.delete"))) {
     g.req_delete.clear();
     for (int k = 0; k < (int)sc.objects.size(); ++k)

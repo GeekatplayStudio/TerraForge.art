@@ -38,6 +38,7 @@ LayoutRecord layout_capture(App &a, const std::string &name) {
     v.water = rs.views[i].show_water_view;
     v.grid = rs.views[i].grid;
     v.outlines = rs.views[i].outlines;
+    v.curved = rs.views[i].curved;
     r.views.push_back(v);
   }
   r.editor_domains = prefs().editor_domains;
@@ -64,6 +65,7 @@ void layout_apply(App &a, const LayoutRecord &r) {
     rs.views[i].show_water_view = r.views[i].water;
     rs.views[i].grid = r.views[i].grid;
     rs.views[i].outlines = r.views[i].outlines;
+    rs.views[i].curved = r.views[i].curved;
   }
   a.show_library = r.library;
   a.show_nodelist = r.nodelist;

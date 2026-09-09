@@ -57,7 +57,7 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
     }
     // vertices no part claims are drawn plain
     if (covered < o.vert_count) {
-      uni3(prog_mesh, "u_color", o.color);
+      uni3(prog_mesh, "u_color", scene_display_color(o).data());
       unii(prog_mesh, "u_has_tex", 0);
       draw(covered, o.vert_count - covered);
     }
@@ -135,7 +135,7 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
     }
     glUniformMatrix3fv(uniform_location(prog_mesh, "u_nrm"), 1, GL_FALSE,
                        nrm);
-    uni3(prog_mesh, "u_color", o.color);
+    uni3(prog_mesh, "u_color", scene_display_color(o).data());
     renderer_material_uniforms(prog_mesh, mp);
     unii(prog_mesh, "u_id_mode", vc.display == 3 ? RS.id_mode + 1 : 0);
     uni1(prog_mesh, "u_id_key", (float)(o.material_node % 1024));
@@ -189,7 +189,7 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
       }
       instances_count(drawn, o.inst_count(), cards);
       draw_mesh_parts(o, true);
-      uni3(prog_mesh, "u_color", o.color);
+      uni3(prog_mesh, "u_color", scene_display_color(o).data());
       unii(prog_mesh, "u_has_tex", 0);
       instances_draw_lods(prog_mesh, o, runs);
       uni1(prog_mesh, "u_inst_grow", 1.f);

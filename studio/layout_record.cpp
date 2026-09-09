@@ -49,7 +49,8 @@ std::string layout_to_json(const LayoutRecord &r) {
                      {"atmosphere", v.atmosphere},
                      {"water", v.water},
                      {"grid", v.grid},
-                     {"outlines", v.outlines}});
+                     {"outlines", v.outlines},
+                     {"curved", v.curved}});
   j["views"] = std::move(views);
   j["editor_domains"] = r.editor_domains;
   j["panels"] = {{"library", r.library},
@@ -87,6 +88,7 @@ bool layout_from_json(const std::string &text, LayoutRecord &r,
     out.water = v.value("water", out.water);
     out.grid = v.value("grid", out.grid);
     out.outlines = v.value("outlines", out.outlines);
+    out.curved = v.value("curved", out.curved);
     r.views.push_back(out);
   }
   r.editor_domains.clear();

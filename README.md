@@ -519,6 +519,20 @@ wanted his students to have.
   without changing the buffer size.
 
 ### Terrain
+- **The world is a planet, and everything on it is its child.** The scene
+  opens with a **Home planet** at the root of the Objects tree: the terrain
+  tiles, the water, the atmosphere and the surface layers are its children,
+  and the + tile adds new ones there. Its radius is the world's curvature.
+  The sun and the cameras stand outside it, in the global frame, and so
+  can anything else; a second planet is a globe in the sky with its own
+  surface. Any asset can be deleted, the home planet included, and put
+  back with the + tile (`delete_object` from a script). A free perspective
+  view draws the world flat - a modelling view wants no distortion - and
+  a camera view curves it; *Planet curvature* in the view options turns it
+  on for a free view. The Objects tree's layer swatch, clicked, paints
+  every object in its layer's colour; right-click sets the layer's colour
+  and the object's layer. The window comes back where it was and the
+  panel arrangement comes back as it was left.
 - **As many terrains as you like, and one Add tile for everything.** The
   **+** tile at the head of every tool row (and Objects ▸ Add component)
   lists every component the scene can take, grouped: heightfield terrain,

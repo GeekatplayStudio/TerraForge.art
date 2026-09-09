@@ -143,6 +143,13 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
       if (ImGui::SmallButton("Free orbit")) vc.scene_camera = -2;
     }
   }
+  if (vc.scene_camera < 0) {
+    ImGui::Checkbox("Planet curvature", &vc.curved);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Draw the world's curvature in this free view. Off,\n"
+                        "a modelling view is flat and undistorted; a camera\n"
+                        "view always curves, because that is the picture.");
+  }
   ImGui::TextDisabled("Each view is a normal window: drag its tab to\n"
                       "move, split, float or re-dock it. The\n"
                       "arrangement is remembered; View > Layouts\n"

@@ -100,6 +100,11 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
                        "status. Also written to logs/perf_watch.json every 10 s.",
         "params": {},
     },
+    "studio_delete_object": {
+        "description": "Delete any scene object by name, with everything under it - a terrain "
+                       "tile, a light, the home planet and all it carries.",
+        "params": {"name": "str"},
+    },
     "studio_add_component": {
         "description": "Add a whole component: terrain (a further heightfield tile with "
                        "its own chain, beside the ones there are), infinite_terrain, planet, "
@@ -307,6 +312,7 @@ ASSET_SIMPLE = {
     "studio_perf_report": "perf_report",
     "studio_crash_reports": "crash_reports",
     "studio_add_component": "add_component",
+    "studio_delete_object": "delete_object",
     "studio_terrain_clip": "terrain_clip",
     "studio_terrain_effect": "terrain_effect",
     "studio_terrain_style": "terrain_style",

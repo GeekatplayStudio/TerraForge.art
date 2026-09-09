@@ -4,6 +4,7 @@
 #include "gpx/planet_math.hpp"
 #include "gpx/deform.hpp"
 #include "scatter_lod.hpp"
+#include <array>
 #include <map>
 #include <cstdint>
 #include <string>
@@ -27,6 +28,12 @@ struct PlanetData {
   float atmo_color[3] = {0.45f, 0.62f, 0.90f};
   float atmo_density = 0.6f; // 0 = airless rim
   float spin_deg = 0.f;      // static rotation about Y, for variety
+  // The world the scene stands on. One Planet object is the home: the
+  // terrain tiles, the water, the atmosphere and the surface layers are its
+  // children, its curvature is render_settings().planet_radius, and it is
+  // not drawn as a globe in the sky. Everything else on it is placed against
+  // its surface; an object outside it is in the global frame.
+  bool home = false;
   // The SurfaceDisplacement node whose field graph shapes this planet, the
   // way a Terragen planet has its own terrain network. 0 = the first such
   // node in the graph (what every planet used before this existed), so
@@ -297,6 +304,9 @@ struct SceneLayer {
   float color[3] = {0.55f, 0.55f, 0.55f};
 };
 void scene_layer_default_color(int index, float *rgb);
+// The colour an object is drawn in: its own, or its layer's when the
+// Objects tree's "colour by layer" is on (renderer_meshes.cpp, the tile).
+std::array<float, 3> scene_display_color(const SceneObject &o);
 
 struct SceneState {
   std::vector<SceneObject> objects;
@@ -305,6 +315,10 @@ struct SceneState {
   gpx::Timeline timeline;
   std::map<std::string, gpx::Track> world_anim;
   std::vector<SceneLayer> layers{{"Default", true}};
+  // The Objects tree's swatch, clicked: every object drawn in its layer's
+  // colour, so a layer can be told apart on screen. Off, the swatch is a
+  // label only.
+  bool color_by_layer = false;
   int selected = 0;
   // Multi-selection: every selected index. `selected` stays the primary
   // (last-selected) object and is always treated as part of the selection,
@@ -354,7 +368,16 @@ int scene_add_planet(const std::string &name = "");
 // creates an infinite terrain layer; parent = planet object index, or -1 for
 // the home ground plane. Returns its index.
 int scene_add_infinite_surface(int parent = -1, const std::string &name = "");
-std::vector<int> scene_planet_indices();
+std::vector<int> scene_planet_indices(); // the planets in the sky (the home planet excluded)
+int scene_home_planet();                  // the world's index, or -1
+// The nearest Planet above an object in the tree, or -1.
+int scene_planet_of(int object);
+// Makes the home planet and puts the world's root-level pieces under it when
+// a scene has none (an older project, or the builtins).
+void scene_ensure_home_planet();
+// Removes an object and everything under it, fixing every index that
+// pointed past it (parents, cameras, selection). Returns how many went.
+int scene_delete_subtree(int object);
 // the infinite layers that apply to `planet_idx` (-1 = home ground plane),
 // visible ones only, outliner order
 std::vector<int> scene_surface_layers(int planet_idx);

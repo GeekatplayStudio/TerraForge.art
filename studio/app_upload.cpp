@@ -146,6 +146,12 @@ PlaceSettings app_place_settings(App &a, gpx::Node *out, int object) {
   ps.mode = rs.place_mode;
   // where this tile stands, so the relief it blends to is the relief there
   if (object < 0) object = terrain_tile_object(0);
+  // a tile under a planet in the sky (not the home planet) has no surface
+  // to be placed against yet: shown as the graph made it
+  {
+    const int p = scene_planet_of(object);
+    if (p >= 0 && !scene().objects[(size_t)p].planet.home) ps.enabled = false;
+  }
   if (object >= 0 && object < (int)scene().objects.size()) {
     const TerrainXform tx = terrain_xform_of(scene().objects[(size_t)object], rs.height_scale);
     ps.tx_on = tx.on;

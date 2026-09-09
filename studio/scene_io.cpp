@@ -305,6 +305,7 @@ json scene_to_json() {
           {"seed", P.seed},           {"sea_level", P.sea_level},
           {"snow_line", P.snow_line}, {"spin_deg", P.spin_deg},
           {"atmo_density", P.atmo_density},
+          {"home", P.home},
           {"surface_node", P.surface_node},
           {"rock_low", vec3_to_json(P.rock_low)},
           {"rock_high", vec3_to_json(P.rock_high)},
@@ -432,6 +433,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       const json &jp = jo["planet"];
       PlanetData &P = o.planet;
       P.radius = jp.value("radius", P.radius);
+      P.home = jp.value("home", P.home);
       P.relief = jp.value("relief", P.relief);
       P.seed = jp.value("seed", P.seed);
       P.sea_level = jp.value("sea_level", P.sea_level);
@@ -464,6 +466,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
   // If the file somehow carried nothing, fall back to a working scene rather
   // than an empty one nothing can be done with.
   if (sc.objects.empty()) scene_init_builtins();
+  scene_ensure_home_planet(); // an older project: the world gets its planet
 
   auto clamp_idx = [&](int v) {
     return (v >= 0 && v < (int)sc.objects.size()) ? v : -1;

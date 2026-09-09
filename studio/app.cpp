@@ -4,6 +4,7 @@
 #include "perf.hpp"
 #include "perf_watch.hpp"
 #include "hang_watch.hpp"
+#include "layout_record.hpp"
 #include "ai_describe.hpp"
 #include "ai_jobs.hpp"
 #include "console.hpp"
@@ -44,6 +45,9 @@ void app_service_upload_shutdown();
 void app_service_scatter(App &a);
 void app_service_population(App &a); // eco_dynamic.cpp
 
+
+LayoutRecord layout_capture(App &a, const std::string &name); // layout_store.cpp
+std::string workspace_layout_file(int ws);                    // layout_workspace.cpp
 
 void run_main() {
   // Before anything else can write to it: GLFW, the drivers and the shader
@@ -313,6 +317,16 @@ void run_main() {
 
   // Every step of the way out is logged: the crash reports on record all
   // came from abort() with no message, and most of them at closing time.
+  {
+    // The arrangement of the workspace being left. Switching workspaces
+    // captured the one you left; closing the application did not, so the
+    // last thing you did to the panels was the one thing that never came
+    // back. (layout_workspace.cpp)
+    std::string err;
+    LayoutRecord r = layout_capture(a, workspace_layout_file(a.workspace));
+    layout_write(r, err);
+    if (!err.empty()) log_warn("layout", err);
+  }
   log_info("app", "shutdown: window closed, stopping the evaluation worker");
   a.graph.cancel.store(true);
   {

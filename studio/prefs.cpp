@@ -51,6 +51,11 @@ void prefs_load() {
       if (d.is_number_integer()) p.editor_domains.push_back(d.get<int>());
     p.viewport_fps = j.value("viewport_fps", p.viewport_fps);
     p.idle_fps = j.value("idle_fps", p.idle_fps);
+    p.win_x = j.value("win_x", p.win_x);
+    p.win_y = j.value("win_y", p.win_y);
+    p.win_w = j.value("win_w", p.win_w);
+    p.win_h = j.value("win_h", p.win_h);
+    p.win_max = j.value("win_max", p.win_max);
     p.preview_fps = j.value("preview_fps", p.preview_fps);
     p.preview_quality = j.value("preview_quality", p.preview_quality);
     p.icon_size = std::clamp(j.value("icon_size", p.icon_size), 0, 2);
@@ -74,6 +79,11 @@ void prefs_save() {
   j["editor_domains"] = p.editor_domains;
   j["viewport_fps"] = p.viewport_fps;
   j["idle_fps"] = p.idle_fps;
+  j["win_x"] = p.win_x;
+  j["win_y"] = p.win_y;
+  j["win_w"] = p.win_w;
+  j["win_h"] = p.win_h;
+  j["win_max"] = p.win_max;
   j["preview_fps"] = p.preview_fps;
   j["preview_quality"] = p.preview_quality;
   j["icon_size"] = p.icon_size;

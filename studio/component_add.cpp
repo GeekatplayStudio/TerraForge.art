@@ -109,6 +109,7 @@ int scene_add_terrain_tile(App &a, const std::string &name) {
   a.graph.add_link(noise->id, noise->first_out(gpx::DataType::Heightmap)->name, out->id, "heightmap");
   o.driver_node = out->id;
   o.material_node = component_material(a);
+  o.parent = scene_home_planet(); // a tile stands on the world
   sc.objects.push_back(o);
   const int idx = (int)sc.objects.size() - 1;
   a.selected_node = out->id;
@@ -139,8 +140,10 @@ bool component_add(App &a, const std::string &kind, const std::string &name,
     return select(idx);
   }
   if (kind == "infinite_terrain") {
+    // a surface layer of the world (scene_ensure_home_planet puts the
+    // root-level ones there too)
     undo_push(a, "Add infinite terrain");
-    return select(scene_add_infinite_surface(-1, name));
+    return select(scene_add_infinite_surface(scene_home_planet(), name));
   }
   if (kind == "planet") {
     undo_push(a, "Add planet");

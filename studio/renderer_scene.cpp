@@ -248,7 +248,7 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.tex_albedo = (has_albedo && RS.use_albedo && textured) ? tex_albedo : 0;
     inf.height_scale = RS.height_scale;
     inf.base_height = renderer_ground_base();
-    inf.planet_radius = RS.planet_radius;
+    inf.planet_radius = view_planet_radius(RS, vc);
     inf.water_level = (RS.show_water && show_water_obj)
                           ? RS.water_level * RS.height_scale
                           : -1e9f;

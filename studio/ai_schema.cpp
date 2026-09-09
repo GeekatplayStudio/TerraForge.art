@@ -64,6 +64,7 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    (one pass of a Vue terrain-editor effect in front of the output: erosion diffusive, thermal, glaciation, wind, dissolve, alluvium, fluvial, river valley; global grit, gravel, pebbles, stones, peaks, fir trees, plateaus, terraces, stairs, craters, sharpen, cracks; hardness is Vue's Rock hardness 0..1)
 - {"op":"add_component","kind":"terrain"|"infinite_terrain"|"planet"|"atmosphere"|"cloud_layer"|"sun"|"water"|"light"|"camera"|"cube"|"sphere"|"plane"|"cylinder"|"cone"|"scatter"|"ecosystem"|"material","name":"...","path":"C:/mesh.obj"}
    (the whole component: object, driving node and material; "terrain" is a further heightfield tile with its own Noise -> Terrain Output chain, standing beside the ones there are - move it with place_object; import_mesh takes a path)
+- {"op":"delete_object","name":"Terrain 2"}   (any asset and everything under it; the Add tile puts one back)
 - {"op":"terrain_style","name":"Canyon"}   (Mountain, Ridged peaks, Eroded mountain, Canyon, Mounds, Dunes, Iceberg, Lunar, Realistic mountain range: a fresh chain wired to the output)
 - {"op":"terrain_global","action":"invert"|"zero_edges"|"smooth_all"|"halve"|"double"|"reset_sculpt"|"remove_effects"}
 - {"op":"terrain_import_picture","path":"C:/dem.png","mode":"blend"|"add"|"subtract"|"multiply"|"min"|"max","proportion":0.6}   (Vue's Picture button)

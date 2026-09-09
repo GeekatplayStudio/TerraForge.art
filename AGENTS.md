@@ -357,6 +357,31 @@ buffers move on. `place_gradient`/`place_mode` are render settings (saved,
 the join must be mixed into `placement_key()` or the tile is not re-placed
 until the next evaluation. tests/cpp/test_planet_place.cpp pins the three.
 
+## The home planet is the parent
+
+scene.cpp: one Planet object carries `planet.home`; scene_init_builtins
+makes it first (index 0) and parents the terrain, the water, the atmosphere
+and the surface layers under it; scene_ensure_home_planet does the same for
+a project saved before it existed. `scene_planet_indices()` lists the
+planets in the sky *without* the home one (the planet renderer and picking
+must never draw the world as a globe); `scene_home_planet()` finds it;
+`scene_planet_of(object)` walks up to the nearest planet. The world's ground
+is `scene_surface_layers(-1)`, which includes the home planet's children as
+well as root-level surfaces. A tile under a planet in the sky is not placed
+(nothing draws it there yet) - app_place_settings switches placement off.
+The home planet's radius is render_settings().planet_radius, mirrored into
+its PlanetData.
+
+Curvature is per view: `view_planet_radius(rs, vc)` is the radius every
+pass draws with - the setting for a camera view or a view with `curved` on,
+0 for a free view. A new pass that reads rs.planet_radius for geometry
+reads that instead; the sky and the fog keep the setting (they are not
+distortion).
+
+Any object can be deleted (`scene_delete_subtree`, the tree's Delete, the
+delete_object op): the passes skip tile 0 when no Terrain object exists,
+and nothing else may assume a builtin is there.
+
 ## More than one terrain tile
 
 studio/terrain_tiles.cpp. The renderer's terrain state (tex_height,

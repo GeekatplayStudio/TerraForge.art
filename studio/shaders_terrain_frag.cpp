@@ -14,6 +14,7 @@ uniform sampler2D u_height;
 TILE_XFORM_FS_PLACEHOLDER
 uniform sampler2D u_place_w; // the placement's blend weight, 1 tile .. 0 planet
 uniform int u_place_on;
+uniform vec3 u_layer_tint;   // 1: as it is; the layer's colour when the tree paints by layer
 uniform sampler2D u_albedo;
 uniform sampler2D u_normal_map;
 uniform sampler2D u_rough_map;
@@ -261,6 +262,7 @@ void main(){
   // across it from outside.
   if (u_place_on == 1 && u_textured == 1)
     albedo = mix(pal, albedo, texture(u_place_w, v_uv).r);
+  albedo *= u_layer_tint;
   float rough = clamp(u_roughness * (u_has_rough == 1 ?
                       texture(u_rough_map, muv).r * 2.0 : 1.0), 0.03, 1.0);
   if (u_surf_rough_on == 1){

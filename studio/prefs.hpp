@@ -44,6 +44,10 @@ struct Prefs {
   // Toolbar icon size as an index into the palette ladder (0 small 18 px,
   // 1 medium 26 px, 2 large 36 px) — Cinema 4D's three palette sizes.
   int icon_size = 0;
+  // The main window's place and size at the last exit (-1: not yet known),
+  // and whether it was maximised - restored at the next start.
+  int win_x = -1, win_y = -1, win_w = 0, win_h = 0;
+  bool win_max = false;
   // Interface language: "en" (built in) or the code of a file in
   // resources/lang ("de", "fr"). Applied at startup and from Settings.
   std::string language = "en";

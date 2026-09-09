@@ -349,7 +349,7 @@ void tree_row_draw(App &a, SceneState &sc, const TreeRow &r, int row_no) {
     };
     switch (z) {
       case Z_EXPANDER: set_expanded(sc, r.idx, !o.expanded, io.KeyCtrl); break;
-      case Z_SWATCH: ImGui::OpenPopup("##layerpick"); break;
+      case Z_SWATCH: sc.color_by_layer = !sc.color_by_layer; break; // right-click picks and paints
       case Z_DOT_VP: cycle(0, o.vis_viewport); break;
       case Z_DOT_RN: cycle(1, o.vis_render); break;
       case Z_TICK:
@@ -386,6 +386,8 @@ void tree_row_draw(App &a, SceneState &sc, const TreeRow &r, int row_no) {
   if (ImGui::IsItemClicked(ImGuiMouseButton_Middle)) tree_select_subtree(a, sc, r.idx);
   if (ImGui::IsItemClicked(ImGuiMouseButton_Right) && !selected)
     tree_select(a, sc, r.idx, false, false);
+  if (ImGui::IsItemClicked(ImGuiMouseButton_Right) && hz == Z_SWATCH)
+    ImGui::OpenPopup("##layerpick");
 
   // paint-to-inherit: the brush crosses rows that are not the active item
   if (g.paint_kind >= 0 && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
@@ -394,6 +396,18 @@ void tree_row_draw(App &a, SceneState &sc, const TreeRow &r, int row_no) {
 
   // layer picker popup
   if (ImGui::BeginPopup("##layerpick")) {
+    // the object's layer, that layer's colour, and the switch that paints
+    // every object in its layer's colour (also the swatch's left click)
+    if (o.layer >= 0 && o.layer < (int)sc.layers.size()) {
+      ImGui::TextDisabled("Layer colour");
+      ImGui::ColorEdit3("##layercol", sc.layers[(size_t)o.layer].color,
+                        ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+      ImGui::SameLine();
+      ImGui::TextUnformatted(sc.layers[(size_t)o.layer].name.c_str());
+    }
+    ImGui::MenuItem("Colour objects by layer", nullptr, &sc.color_by_layer);
+    ImGui::Separator();
+    ImGui::TextDisabled("Move to layer");
     for (int li = 0; li < (int)sc.layers.size(); ++li) {
       ImGui::PushID(li);
       const SceneLayer &L = sc.layers[li];

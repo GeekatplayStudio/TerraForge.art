@@ -36,6 +36,7 @@ struct LayoutRecord {
     bool water = true;
     bool grid = false;
     bool outlines = true;
+    bool curved = false; // the world's curvature drawn in a free view
   };
   std::vector<View> views;
 

@@ -167,11 +167,10 @@ void apply_delete(App &a, SceneState &sc) {
   TreeState &g = tree_state();
   std::vector<int> want = g.req_delete;
   g.req_delete.clear();
-  // the whole subtree of each, builtins other than cameras excluded
+  // the whole subtree of each; nothing is exempt, a deleted builtin is
+  // simply gone (the Add tile makes another)
   std::vector<int> del;
   for (int i = 0; i < (int)sc.objects.size(); ++i) {
-    const SceneObject &o = sc.objects[i];
-    if (o.builtin && o.type != SceneObject::Camera) continue;
     for (int w : want)
       if (scene_is_descendant(sc, i, w)) { del.push_back(i); break; }
   }

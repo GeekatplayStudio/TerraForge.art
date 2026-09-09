@@ -223,9 +223,9 @@ void add_bar(App &a, SceneState &sc) {
       }
     }
   }
-  bool can_delete = sc.selected >= 0 && sc.selected < (int)sc.objects.size() &&
-                    (!sc.objects[sc.selected].builtin ||
-                     sc.objects[sc.selected].type == SceneObject::Camera);
+  // any asset can be deleted - the terrain, the water, the sun, the home
+  // planet with everything on it; the Add tile puts any of them back
+  bool can_delete = sc.selected >= 0 && sc.selected < (int)sc.objects.size();
   float bw = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.f + 6.f;
   ImGui::SameLine();
   ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - bw);

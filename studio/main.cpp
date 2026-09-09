@@ -70,9 +70,17 @@ int main(int argc, char **argv) {
   // which is already antialiased. Asking for 4x here bought a larger
   // swapchain and a resolve pass that cannot improve anything.
   glfwWindowHint(GLFW_SAMPLES, 0);
-  GLFWwindow *win = glfwCreateWindow(1760, 1000,
+  // The window where it was last time: the preferences are read before
+  // the window exists, so its size is known before it is made.
+  studio::prefs_load();
+  const studio::Prefs &wp = studio::prefs();
+  const int win_w = wp.win_w > 200 ? wp.win_w : 1760, win_h = wp.win_h > 150 ? wp.win_h : 1000;
+  GLFWwindow *win = glfwCreateWindow(win_w, win_h,
                                      "Geekatplay TerraForge \xC2\xB7 Vladimir Shopine",
                                      nullptr, nullptr);
+  if (win && wp.win_x > -30000 && wp.win_y > -30000 && wp.win_w > 200)
+    glfwSetWindowPos(win, wp.win_x, wp.win_y);
+  if (win && wp.win_max) glfwMaximizeWindow(win);
   if (!win) {
     std::fprintf(stderr,
                  "window creation failed (OpenGL %d.%d core profile required)\n",
@@ -125,6 +133,17 @@ int main(int argc, char **argv) {
   studio::hang_watch_start(studio::config().perf.hang_seconds);
   studio::run_main();
   studio::hang_watch_stop();
+  {
+    // where the window is, for next time; a maximised window's restored
+    // size is what glfw reports after un-maximising, so keep the last
+    // normal size instead
+    studio::Prefs &p = studio::prefs();
+    p.win_max = glfwGetWindowAttrib(win, GLFW_MAXIMIZED) != 0;
+    if (!p.win_max) {
+      glfwGetWindowPos(win, &p.win_x, &p.win_y);
+      glfwGetWindowSize(win, &p.win_w, &p.win_h);
+    }
+  }
   studio::log_info("app", "shutdown: main loop left, saving prefs");
   studio::prefs_save();
 

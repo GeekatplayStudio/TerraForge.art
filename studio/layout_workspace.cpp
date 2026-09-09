@@ -74,4 +74,8 @@ void build_workspace_default_layout(App &a, unsigned dockspace_id) {
   build_workspace_layout(a.workspace, dockspace_id, prefs().view_mask);
 }
 
+// The record a workspace's arrangement is kept under, for app.cpp's exit
+// capture (workspace_layout_name itself is this file's own).
+std::string workspace_layout_file(int ws) { return workspace_layout_name(ws); }
+
 } // namespace studio
