@@ -345,6 +345,35 @@ buffers move on. `place_gradient`/`place_mode` are render settings (saved,
 the join must be mixed into `placement_key()` or the tile is not re-placed
 until the next evaluation. tests/cpp/test_planet_place.cpp pins the three.
 
+## More than one terrain tile
+
+studio/terrain_tiles.cpp. The renderer's terrain state (tex_height,
+tex_albedo, tex_place_w, tex_patch_bounds, cpu_height, cpu_patch_bounds,
+hm_w, has_albedo, has_place_w, g_terrain_mean, RS.matp and the eight
+material scalars) is tile 0's - the first Terrain object in the scene. Every
+further Terrain object keeps the same set in a TerrainTileGpu, and a pass
+draws it by `TileSwap swap(k)` around the draw it always made (pass_terrain,
+pass_shadow, pass_water, renderer_pick all loop this way). Rules:
+
+1. A new pass that draws "the terrain" loops `terrain_tile_count()` with a
+   TileSwap, or it draws tile 0 only. A new global that the terrain draw
+   reads goes into TerrainTileGpu and both halves of TileSwap, or every
+   tile draws with tile 0's value.
+2. A tile is a Terrain object whose driver_node is its own TerrainOutput
+   (component_add.cpp `scene_add_terrain_tile`). Tile 0 takes its driver or
+   else the first TerrainOutput; `terrain_tiles_bind` runs on every upload.
+3. app_upload_tiles.cpp places the extra tiles: same PlaceSettings
+   (`app_place_settings`), their own material, no object imprint. Grounding,
+   imprint and probe_height read tile 0 only - by design for now.
+4. The surround cuts a hole under every visible tile (tiles_dout /
+   tiles_inside, arrays of up to 8 inverse transforms) but blends its height
+   against tile 0's heightmap only; the others meet it through their own
+   placement feather.
+5. `terrain_xform_current()` is the tile being drawn (TileSwap sets it) and
+   tile 0 between draws; anything about "the terrain's transform" outside a
+   draw means tile 0, and a selected tile's own transform is
+   `terrain_xform_of(sc.objects[sel], hs)`.
+
 ## The join between the tile and the surround
 
 The planet surround (studio/planet_shaders.cpp VS_INF/FS_INF) is the tile's

@@ -331,7 +331,9 @@ void main(){
   // that was moved, turned or stretched
   vec2 tl = tile_unapply_xz(uv);
   vec2 uvc = clamp(tl, 0.0, 1.0);
-  float dout = length(tl - uvc);
+  // outside every tile: the nearest one's distance cuts the hole and
+  // holds the ring; the height blend below reads tile 0
+  float dout = tiles_dout(uv);
   float cam_d = max(length(u_cam.xz - uv) * 0.15, 0.02);
   // A short ring. The placement already feathers the tile's own relief and
   // colour to the planet inside its border (planet_place.cpp), so the tile
@@ -421,9 +423,7 @@ void main(){
   // the tile itself is drawn by the terrain shader - never fight it; the
   // tile is wherever its transform put it
   vec2 tl = tile_unapply_xz(v_uv);
-  if (v_out <= 0.0 &&
-      all(greaterThan(tl, vec2(0.001))) && all(lessThan(tl, vec2(0.999))))
-    discard;
+  if (v_out <= 0.0 && tiles_inside(v_uv)) discard;
   float cam_d = max(length(u_cam - v_world), 0.02);
   float s_join = smoothstep(0.0, 0.06, v_out);
   float octf = clamp(10.0 - log2(cam_d * 7.0) * 1.3, 2.0, 11.0);

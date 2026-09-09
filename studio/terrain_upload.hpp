@@ -4,6 +4,7 @@
 #include <memory>
 #include <cstdint>
 
+namespace gpx { struct Node; }
 namespace studio {
 // An owned CPU result; no graph pointers and no GL handles cross threads.
 struct TerrainUpload {
@@ -19,4 +20,16 @@ struct TerrainUpload {
   uint64_t serial = 0, key = 0;
 };
 void renderer_set_terrain_prepared(TerrainUpload &upload);
+
+// The placement settings the tiles share (app_upload.cpp): the render
+// settings, plus the blend mask fed into `out` (or the first Terrain
+// Output when null). And the key that says they changed.
+struct App;
+PlaceSettings app_place_settings(App &a, gpx::Node *out);
+uint64_t app_placement_key();
+
+// Every tile after the first (app_upload_tiles.cpp).
+void extra_tiles_prepare(App &a);   // under the graph lock, after terrain_tiles_bind
+void extra_tiles_service(App &a);   // main thread, every frame
+void extra_tiles_shutdown();
 } // namespace studio

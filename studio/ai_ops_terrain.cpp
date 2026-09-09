@@ -12,6 +12,7 @@
 //    "invert":false,"altitude_m":300,"constrain_clip":true}
 #include "ai_assist.hpp"
 #include "app.hpp"
+#include "component_add.hpp"
 #include "render_settings.hpp"
 #include "sculpt.hpp"
 #include "terrain_editor.hpp"
@@ -88,6 +89,20 @@ int ai_terrain_op(App &a, const std::string &op, const json &act, std::string &e
                                          act.value("proportion", 1.f), err)
                ? 1
                : 0;
+  }
+  if (op == "add_component") {
+    const std::string kind = act.value("kind", act.value("type", std::string()));
+    if (kind.empty()) {
+      err = "add_component needs 'kind': terrain, infinite_terrain, planet, atmosphere, cloud_layer, "
+            "sun, water, light, camera, cube, sphere, plane, cylinder, cone, import_mesh (with path), "
+            "scatter, ecosystem, material";
+      return 0;
+    }
+    NewComponent nc;
+    if (!component_add(a, kind, act.value("name", std::string()), act.value("path", std::string()), nc, err))
+      return 0;
+    a.status = "added " + kind;
+    return 1;
   }
   if (op == "set_sculpt") {
     SculptState &s = sculpt_state();

@@ -332,6 +332,9 @@ set(STUDIO_SOURCES
     studio/terrain_editor.cpp
     studio/panel_terrain_editor.cpp
     studio/ai_ops_terrain.cpp
+    studio/terrain_tiles.cpp
+    studio/app_upload_tiles.cpp
+    studio/component_add.cpp
     studio/imprint.cpp
     studio/updater.cpp
     studio/mesh_thumbnail.cpp

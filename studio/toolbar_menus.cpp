@@ -22,6 +22,7 @@
 #include "anim_widgets.hpp"
 #include "app.hpp"
 #include "component_new.hpp"
+#include "component_add.hpp"
 #include "console.hpp"
 #include "i18n.hpp"
 #include "icons.hpp"
@@ -55,10 +56,46 @@ void item_help(const char *tip) {
 
 } // namespace
 
+void component_menu_items(App &a) {
+  const char *group = "";
+  for (const ComponentKind &k : component_kinds()) {
+    if (std::string(group) != k.group) {
+      if (*group) ImGui::Separator();
+      ImGui::TextDisabled("%s", k.group);
+      group = k.group;
+    }
+    if (ImGui::MenuItem(k.label)) {
+      std::string path, err;
+      if (std::string(k.kind) == "import_mesh") {
+        path = dialog_open_file(
+            "Meshes (*.obj;*.stl;*.ply;*.off;*.gltf;*.glb;*.fbx)\0"
+            "*.obj;*.stl;*.ply;*.off;*.gltf;*.glb;*.fbx\0All files\0*.*\0",
+            "obj");
+        if (path.empty()) continue;
+      }
+      NewComponent nc;
+      if (!component_add(a, k.kind, "", path, nc, err)) {
+        log_error("scene", err);
+        a.status = err;
+      } else {
+        a.status = std::string("added ") + k.label;
+      }
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", k.tip);
+  }
+}
+
 // ------------------------------------------------------------------ Objects
 void menu_objects(App &a) {
   if (!ImGui::BeginMenu("Objects")) return;
   SceneState &sc = scene();
+  if (ImGui::BeginMenu("Add component")) {
+    component_menu_items(a);
+    ImGui::EndMenu();
+  }
+  item_help("Every component the scene can take, grouped: the same list as\n"
+            "the + tile in the tool row.");
+  ImGui::Separator();
   struct P { const char *kind, *label; Icon icon; };
   static const P prims[] = {{"cube", "Cube", Icon::Object},
                             {"sphere", "Sphere", Icon::Sphere},

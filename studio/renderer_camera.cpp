@@ -3,6 +3,8 @@
 // and every pick that casts a ray through them. Split from renderer.cpp for
 // the 500-line module rule; state lives in renderer_internal.hpp.
 #include "renderer_internal.hpp"
+#include "terrain_tiles.hpp"
+#include "terrain_xform.hpp"
 #include "app.hpp"
 #include "console.hpp"
 #include "cloud_noise.hpp"
@@ -581,7 +583,15 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
           }
         }
       }
-    } else if (o.type == SceneObject::Terrain && !cpu_height.empty()) {
+    } else if (o.type == SceneObject::Terrain) {
+      // this object's tile (terrain_tiles.hpp), through its transform: the
+      // ray is walked in world units and the heightmap read where the
+      // tile's inverse says it lies
+      const int tile = terrain_tile_for_object((int)i);
+      if (tile < 0) continue;
+      TileSwap swap(tile);
+      if (cpu_height.empty()) continue;
+      const TerrainXform tx = terrain_xform_of(o, RS.height_scale);
       // march the heightfield
       float t0 = 0.f, t1 = 12.f;
       float prev_diff = 0;
@@ -589,13 +599,16 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
       float step = 0.004f;
       for (float tt = t0; tt < t1; tt += step) {
         float x = pn[0] + rd[0] * tt, y = pn[1] + rd[1] * tt, z = pn[2] + rd[2] * tt;
-        if (x < -0.05f || x > 1.05f || z < -0.05f || z > 1.05f) {
+        float u = x, v = z;
+        terrain_xform_unapply_xz(tx, x, z, u, v);
+        if (u < -0.05f || u > 1.05f || v < -0.05f || v > 1.05f) {
           have_prev = false;
           if (y < -0.5f) break;
           continue;
         }
-        float terr = cpu_height.sample(std::clamp(x, 0.f, 1.f),
-                                       std::clamp(z, 0.f, 1.f)) * RS.height_scale;
+        float terr = cpu_height.sample(std::clamp(u, 0.f, 1.f),
+                                       std::clamp(v, 0.f, 1.f)) * RS.height_scale * tx.scl[1] +
+                     (tx.on ? tx.pos[1] : 0.f);
         float diff = y - terr;
         if (have_prev && prev_diff > 0 && diff <= 0) {
           float hit_t = tt - step * (diff / (diff - prev_diff + 1e-9f));

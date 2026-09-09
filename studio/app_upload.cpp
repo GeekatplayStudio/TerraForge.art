@@ -11,6 +11,7 @@
 #include "surface_features.hpp"
 #include "terrain_upload.hpp"
 #include "terrain_cull.hpp"
+#include "terrain_tiles.hpp"
 #include <future>
 #include <optional>
 #include <GLFW/glfw3.h>
@@ -65,6 +66,8 @@ static SurfaceFeatures collect_features(App &a) {
 static std::optional<PlacementRequest> g_placement_next;
 static std::future<TerrainUpload> g_placement_work;
 
+static uint64_t placement_key();
+uint64_t app_placement_key() { return placement_key(); }
 static uint64_t placement_key() {
   const RenderSettings &rs = render_settings();
   uint64_t h = 1469598103934665603ull;
@@ -104,20 +107,28 @@ static uint64_t placement_key() {
 // see. Caller holds graph_mtx.
 static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> &hm,
                                   std::shared_ptr<const gpx::TextureRGBA> albedo) {
-  const auto &rs = render_settings();
   g_place_key = placement_key();
+  PlaceSettings ps = app_place_settings(a, nullptr);
+  g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(), ps,
+      g_last_features, a.eval_serial, g_place_key};
+}
+
+PlaceSettings app_place_settings(App &a, gpx::Node *out) {
+  const auto &rs = render_settings();
   PlaceSettings ps{rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence,
                    rs.place_ground, rs.terrain_shape, rs.terrain_aspect};
   ps.gradient = rs.place_gradient;
   ps.mode = rs.place_mode;
-  // the blend mask, when the graph feeds one into Terrain output: copied,
-  // because the placement runs on a worker after the graph buffers move on
-  for (auto &n : a.graph.nodes)
-    if (n->type == "TerrainOutput")
-      if (const gpx::Heightmap *m = n->in_hmap("blend mask"))
-        if (!m->empty()) ps.mask = std::make_shared<gpx::Heightmap>(*m);
-  g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(), ps,
-      g_last_features, a.eval_serial, g_place_key};
+  // the blend mask, when the graph feeds one into the Terrain Output:
+  // copied, because the placement runs on a worker after the graph
+  // buffers move on
+  if (!out)
+    for (auto &n : a.graph.nodes)
+      if (n->type == "TerrainOutput") { out = n.get(); break; }
+  if (out)
+    if (const gpx::Heightmap *m = out->in_hmap("blend mask"))
+      if (!m->empty()) ps.mask = std::make_shared<gpx::Heightmap>(*m);
+  return ps;
 }
 
 static void service_placement(App &a) {
@@ -174,6 +185,7 @@ static void service_placement(App &a) {
 // Commit completed evaluations on the context owner before views draw.
 void app_service_upload(App &a) {
     service_placement(a);
+    extra_tiles_service(a);
     std::unique_lock<App::GraphMutex> upload_lock(a.graph_mtx, std::try_to_lock);
     if (!upload_lock.owns_lock()) return;
     // upload fresh eval results to GPU (main thread only)
@@ -368,6 +380,9 @@ void app_service_upload(App &a) {
           // texture-only node: keep last heightmap, update albedo
         }
       }
+      // every further Terrain object, each with its own chain
+      terrain_tiles_bind(a);
+      extra_tiles_prepare(a);
       g_prepared_serial = a.eval_serial;
       if (!g_placement_next && !g_placement_work.valid()) a.uploaded_serial = a.eval_serial;
     }
@@ -387,6 +402,7 @@ void app_service_upload(App &a) {
 }
 
 void app_service_upload_shutdown() {
+  extra_tiles_shutdown();
   g_placement_next.reset();
   if (g_placement_work.valid()) {
     try { g_placement_work.get(); } catch (const std::exception &) {}

@@ -149,11 +149,15 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
 
   SceneState &sc = scene();
   bool show_terrain_obj = true, show_water_obj = true, sun_on = true;
+  bool seen_terrain = false; // tile 0 is the first Terrain object; the rest draw on their own
   int sel_type = -1;
   for (size_t i = 0; i < sc.objects.size(); ++i) {
     const SceneObject &o = sc.objects[i];
     bool vis = sc.object_visible(o);
-    if (o.type == SceneObject::Terrain) show_terrain_obj = vis;
+    if (o.type == SceneObject::Terrain) {
+      if (!seen_terrain) show_terrain_obj = vis;
+      seen_terrain = true;
+    }
     else if (o.type == SceneObject::Water) show_water_obj = vis;
     else if (o.type == SceneObject::Sun) sun_on = vis;
     else if (o.type == SceneObject::Atmosphere) atmosphere = atmosphere && vis;

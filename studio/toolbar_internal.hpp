@@ -23,6 +23,12 @@ void tool_pad(float px = 8.f);
 bool tool_icon(Icon ic, const char *id, const char *tip, bool active = false,
                bool expandable = false);
 
+// The catalogue of components as menu items (toolbar_menus.cpp): every
+// terrain, atmosphere, light, camera, object, population and material the
+// scene can take, grouped. Used by the tool row's Add tile and the Objects
+// menu, so both make the same things the same way (component_add.hpp).
+void component_menu_items(App &a);
+
 // A text button drawn as the same tile as an icon button (the resolution
 // presets: a number is its own icon). Same height, width to fit.
 bool tool_text(const char *label, const char *tip, bool active = false);

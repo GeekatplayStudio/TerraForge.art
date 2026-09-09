@@ -516,6 +516,17 @@ wanted his students to have.
   without changing the buffer size.
 
 ### Terrain
+- **As many terrains as you like, and one Add tile for everything.** The
+  **+** tile at the head of every tool row (and Objects ▸ Add component)
+  lists every component the scene can take, grouped: heightfield terrain,
+  infinite terrain, planet; atmosphere, cloud layer, sun, water; light,
+  camera; cube, sphere, plane, cylinder, cone, a mesh from disk; scatter
+  points, ecosystem layer; material. Each arrives whole - the object, the
+  node that drives it, its material. A further **heightfield terrain** is a
+  tile of its own: its own Noise ▸ Terrain Output chain, its own material
+  and placement, standing beside the tiles already there, moved, turned and
+  sized like any object, blending into the planet on every side. The
+  scripting op is `add_component`.
 - **Vue's Terrain Editor, on the Terrain object's tab.** The styles down
   its left edge (Mountain, Ridged peaks, Eroded mountain, Canyon, Mounds,
   Dunes, Iceberg, Lunar, and a realistic range), the Paint tab's brushes

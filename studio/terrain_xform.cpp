@@ -133,6 +133,36 @@ vec2 tile_unapply_xz(vec2 xz){
   vec2 l = vec2(u_txi.x * q.x - u_txi.y * q.y, u_txi.y * q.x + u_txi.x * q.y);
   return l * u_txi.zw + 0.5;
 }
+// every tile after the first (terrain_tiles.hpp): where each one is, for
+// the surround's hole under it and its distance to the nearest tile
+uniform int u_tile_n;
+uniform int u_txn_on[8];
+uniform vec2 u_txn_pos[8];
+uniform vec4 u_txn[8];
+vec2 tile_unapply_xz_n(vec2 xz, int i){
+  if (u_txn_on[i] == 0) return xz;
+  vec2 q = xz - 0.5 - u_txn_pos[i];
+  vec2 l = vec2(u_txn[i].x * q.x - u_txn[i].y * q.y, u_txn[i].y * q.x + u_txn[i].x * q.y);
+  return l * u_txn[i].zw + 0.5;
+}
+float tiles_dout(vec2 uv){
+  vec2 tl = tile_unapply_xz(uv);
+  float d = length(tl - clamp(tl, 0.0, 1.0));
+  for (int i = 0; i < u_tile_n; ++i){
+    vec2 t2 = tile_unapply_xz_n(uv, i);
+    d = min(d, length(t2 - clamp(t2, 0.0, 1.0)));
+  }
+  return d;
+}
+bool tiles_inside(vec2 uv){
+  vec2 tl = tile_unapply_xz(uv);
+  if (all(greaterThan(tl, vec2(0.001))) && all(lessThan(tl, vec2(0.999)))) return true;
+  for (int i = 0; i < u_tile_n; ++i){
+    vec2 t2 = tile_unapply_xz_n(uv, i);
+    if (all(greaterThan(t2, vec2(0.001))) && all(lessThan(t2, vec2(0.999)))) return true;
+  }
+  return false;
+}
 )GLSL";
 
 } // namespace studio

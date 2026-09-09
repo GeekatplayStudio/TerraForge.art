@@ -11,6 +11,7 @@
 #include "gpu_timer.hpp"
 #include "terrain_cull.hpp"
 #include "terrain_xform.hpp"
+#include "terrain_tiles.hpp"
 #include "planet_place.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/field_glsl.hpp"
@@ -22,9 +23,11 @@
 namespace studio {
 
 TerrainXform terrain_xform_current() {
-  for (const SceneObject &o : scene().objects)
-    if (o.type == SceneObject::Terrain)
-      return terrain_xform_of(o, render_settings().height_scale);
+  // the tile being drawn (terrain_tiles.hpp), tile 0 between draws
+  const int cur = terrain_tile_current();
+  const int obj = terrain_tile_object(cur < 0 ? 0 : cur);
+  if (obj >= 0 && obj < (int)scene().objects.size())
+    return terrain_xform_of(scene().objects[(size_t)obj], render_settings().height_scale);
   return TerrainXform();
 }
 
@@ -78,6 +81,33 @@ void upload_water_uniforms(unsigned prog, const RenderSettings &RS, float time) 
 }
 
 void upload_terrain_xform_inverse(unsigned prog) {
+  // the further tiles, for the surround's holes (planet_shaders.cpp)
+  {
+    const std::vector<TerrainTileGpu> &extra = terrain_tiles_extra();
+    int n = 0;
+    int on[8] = {};
+    float pos[16] = {}, inv[32] = {};
+    for (size_t k = 0; k < extra.size() && n < 8; ++k) {
+      if (!terrain_tile_visible((int)k + 1)) continue;
+      const SceneObject &o = scene().objects[(size_t)extra[k].object];
+      const TerrainXform tk = terrain_xform_of(o, render_settings().height_scale);
+      const float rad = tk.yaw * 3.14159265f / 180.f;
+      on[n] = 1;
+      pos[n * 2] = tk.pos[0];
+      pos[n * 2 + 1] = tk.pos[2];
+      inv[n * 4] = std::cos(rad);
+      inv[n * 4 + 1] = std::sin(rad);
+      inv[n * 4 + 2] = 1.f / std::max(std::fabs(tk.scl[0]), 1e-4f);
+      inv[n * 4 + 3] = 1.f / std::max(std::fabs(tk.scl[2]), 1e-4f);
+      ++n;
+    }
+    unii(prog, "u_tile_n", n);
+    if (n) {
+      glUniform1iv(uniform_location(prog, "u_txn_on"), n, on);
+      glUniform2fv(uniform_location(prog, "u_txn_pos"), n, pos);
+      glUniform4fv(uniform_location(prog, "u_txn"), n, inv);
+    }
+  }
   const TerrainXform t = terrain_xform_current();
   unii(prog, "u_tx_on", t.on ? 1 : 0);
   // The identity is uploaded too: the surround multiplies the tile's edge
@@ -134,11 +164,16 @@ void pass_shadow(const FrameCtx &F) {
     uni1(prog_depth, "u_field_strength",
          g_field_glsl.empty() ? 0.f : RS.field_displacement);
     bind_field_textures(prog_depth);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex_height);
-    unii(prog_depth, "u_height", 0);
     glBindVertexArray(vao_grid);
-    glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+    for (int k = 0; k < terrain_tile_count(); ++k) {
+      if (k > 0 && !terrain_tile_visible(k)) continue;
+      TileSwap swap(k);
+      upload_terrain_xform(prog_depth);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, tex_height);
+      unii(prog_depth, "u_height", 0);
+      glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+    }
     pass_shadow_meshes(F); // rocks, trees and their copies cast too
   }
 }
@@ -255,7 +290,7 @@ void pass_sky(const FrameCtx &F) {
   }
 }
 
-void pass_terrain(const FrameCtx &F) {
+static void draw_terrain_tile(const FrameCtx &F) {
   RenderSettings &RS = F.RS;
   const RenderSettings::ViewConfig &vc = F.vc;
   int slot = F.slot, w = F.w, h = F.h;
@@ -269,7 +304,9 @@ void pass_terrain(const FrameCtx &F) {
   bool wireframe = F.wireframe, cinematic = F.cinematic;
   bool clouds_ok = F.clouds_ok, shadows_ok = F.shadows_ok;
   bool heavy_maps = F.heavy_maps;
-  bool show_terrain_obj = F.show_terrain_obj;
+  // tile 0 follows its object's visibility; a further tile was checked by
+  // the caller before its swap (terrain_tiles.hpp)
+  bool show_terrain_obj = terrain_tile_current() > 0 ? true : F.show_terrain_obj;
   // terrain
   if (show_terrain_obj) {
     // Adaptive subdivision when the driver took the tessellated program and
@@ -471,6 +508,20 @@ void pass_terrain(const FrameCtx &F) {
   }
 }
 
+// Every tile: the first with the renderer's own set, each further one with
+// its set swapped in for the draw.
+void pass_terrain(const FrameCtx &F) {
+  {
+    TileSwap swap(0);
+    draw_terrain_tile(F);
+  }
+  for (int k = 1; k < terrain_tile_count(); ++k) {
+    if (!terrain_tile_visible(k)) continue;
+    TileSwap swap(k);
+    draw_terrain_tile(F);
+  }
+}
+
 void pass_water(const FrameCtx &F) {
   RenderSettings &RS = F.RS;
   const RenderSettings::ViewConfig &vc = F.vc;
@@ -505,11 +556,16 @@ void pass_water(const FrameCtx &F) {
     uni3(prog_water, "u_sky_zenith", RS.sky_zenith);
     uni3(prog_water, "u_sky_horizon", RS.sky_horizon);
     upload_water_uniforms(prog_water, RS, time_acc);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex_height);
-    unii(prog_water, "u_height", 0);
     glBindVertexArray(vao_grid);
-    glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+    for (int k = 0; k < terrain_tile_count(); ++k) {
+      if (k > 0 && !terrain_tile_visible(k)) continue;
+      TileSwap swap(k);
+      upload_terrain_xform(prog_water);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, tex_height);
+      unii(prog_water, "u_height", 0);
+      glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+    }
     if (blend) glDisable(GL_BLEND);
   }
 }
@@ -531,7 +587,7 @@ void pass_outlines(const FrameCtx &F) {
     if (sel_type == SceneObject::Terrain) {
       // the tile's box through its own transform (terrain_xform.hpp), so
       // the outline is the tile the viewer sees
-      const TerrainXform tx = terrain_xform_current();
+      const TerrainXform tx = terrain_xform_of(sc.objects[(size_t)sc.selected], RS.height_scale);
       const float hs = RS.height_scale;
       float c[8][3] = {{0,0,0},{1,0,0},{1,0,1},{0,0,1},{0,hs,0},{1,hs,0},{1,hs,1},{0,hs,1}};
       for (auto &k : c) terrain_xform_apply(tx, k);

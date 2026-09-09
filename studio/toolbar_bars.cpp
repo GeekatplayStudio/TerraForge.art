@@ -228,6 +228,19 @@ void draw_global_tools(App &a) {
                 tr("Render the active camera\n\nRender through the active camera with its own\n"
                    "engine, resolution and sample settings.")))
     a.request_camera_render = scene_active_camera();
+  tool_sep();
+  // Add: every component the scene can take, in every workspace, one tile.
+  if (tool_icon(Icon::Plus, "##addcomp",
+                tr("Add a component\n\nTerrains (as many as you like), infinite terrains and\n"
+                   "planets; atmosphere, cloud layers, sun and water; lights,\n"
+                   "cameras, objects, populations, materials. Each arrives\n"
+                   "whole: the object, its node and its material."),
+                false, true))
+    ImGui::OpenPopup("##addcomp_menu");
+  if (ImGui::BeginPopup("##addcomp_menu")) {
+    component_menu_items(a);
+    ImGui::EndPopup();
+  }
 }
 
 void draw_tool_bar(App &a) {

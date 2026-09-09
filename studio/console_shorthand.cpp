@@ -77,7 +77,7 @@ const char *const COMMON_OPS[] = {
     "paint_save",    "paint_load",    "paint_clear",    "probe_height",
     "perf_report",   "list_settings", "set_setting",  "crash_reports",
     "crash_mark_fixed", "terrain_clip", "terrain_effect", "terrain_style",
-    "terrain_global", "terrain_import_picture", "set_sculpt",
+    "terrain_global", "terrain_import_picture", "set_sculpt", "add_component",
     "undo",          "redo",          nullptr};
 
 } // namespace

@@ -100,6 +100,14 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
                        "status. Also written to logs/perf_watch.json every 10 s.",
         "params": {},
     },
+    "studio_add_component": {
+        "description": "Add a whole component: terrain (a further heightfield tile with "
+                       "its own chain, beside the ones there are), infinite_terrain, planet, "
+                       "atmosphere, cloud_layer, sun, water, light, camera, cube, sphere, "
+                       "plane, cylinder, cone, import_mesh (with path), scatter, ecosystem, "
+                       "material. The object, its driving node and its material together.",
+        "params": {"kind": "str", "name": "str", "path": "str"},
+    },
     "studio_terrain_clip": {
         "description": "Vue's clipping altitudes on the terrain: ground below the low "
                        "mark becomes a hole (or a flat), ground above the high mark a "
@@ -298,6 +306,7 @@ ASSET_SIMPLE = {
     "studio_paint_clear": "paint_clear",
     "studio_perf_report": "perf_report",
     "studio_crash_reports": "crash_reports",
+    "studio_add_component": "add_component",
     "studio_terrain_clip": "terrain_clip",
     "studio_terrain_effect": "terrain_effect",
     "studio_terrain_style": "terrain_style",
