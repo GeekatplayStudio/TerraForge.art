@@ -345,7 +345,11 @@ void main(){
   // on, so the two are one function of position at the border.
   vec2 hw = pl_height_w(vec3(uv.x, 0.37, uv.y), octf);
   float proc = hw.x * u_amp + u_base;
-  float tile = texture(u_height, uvc).r * u_hscale * u_txi_y.x + u_txi_y.y;
+  // Outside the tile the sample is clamped to its edge row; read that row
+  // from a coarser mip the further out we are, so what is carried into
+  // the ring is the tile's local average and not its edge texels dragged
+  // out as stripes.
+  float tile = textureLod(u_height, uvc, min(dout * 14.0, 6.0)).r * u_hscale * u_txi_y.x + u_txi_y.y;
   float h = mix(tile, proc, s);
   // the tile's own fractal micro-relief, the same function in the same
   // units, so the grit runs straight across the border
@@ -396,8 +400,10 @@ WATER_FN_PLACEHOLDER
 float join_h(vec2 uv, float proc_raw, float octf){
   vec2 tl = tile_unapply_xz(uv);
   vec2 uvc = clamp(tl, 0.0, 1.0);
-  float s = smoothstep(0.0, 0.35, length(tl - uvc));
-  float tile = texture(u_height, uvc).r * u_hscale * u_txi_y.x + u_txi_y.y;
+  float dout = length(tl - uvc);
+  float s = smoothstep(0.0, 0.35, dout);
+  // the edge row from a coarser mip the further out (see the vertex stage)
+  float tile = textureLod(u_height, uvc, min(dout * 14.0, 6.0)).r * u_hscale * u_txi_y.x + u_txi_y.y;
   float proc = proc_raw * u_amp + u_base;
   return mix(tile, proc, s);
 }
@@ -458,7 +464,10 @@ void main(){
   if (u_has_albedo == 1){
     // near the tile, borrow the tile's own texture so a textured tile does
     // not end in a colour seam
-    vec3 edge = pow(texture(u_albedo, clamp(tl, 0.0, 1.0)).rgb, vec3(2.2));
+    // the same for the colour: the tile's edge row would otherwise be
+    // dragged out across the ring as stripes; a coarser mip the further
+    // out carries its local average instead
+    vec3 edge = pow(textureLod(u_albedo, clamp(tl, 0.0, 1.0), min(v_out * 14.0, 6.0)).rgb, vec3(2.2));
     alb = mix(edge, alb, s_join);
   }
   // the surround has to answer the shading mode the same way the tile does,
