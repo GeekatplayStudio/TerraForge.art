@@ -48,6 +48,10 @@ struct Prefs {
   // and whether it was maximised - restored at the next start.
   int win_x = -1, win_y = -1, win_w = 0, win_h = 0;
   bool win_max = false;
+  // The dockspace's size the arrangement was last laid out in, so a window
+  // that opens at another size scales every panel rather than squashing
+  // the viewport (ImGui gives the central node every pixel of a resize).
+  float dock_w = 0.f, dock_h = 0.f;
   // Interface language: "en" (built in) or the code of a file in
   // resources/lang ("de", "fr"). Applied at startup and from Settings.
   std::string language = "en";

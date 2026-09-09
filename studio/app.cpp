@@ -46,6 +46,20 @@ void app_service_scatter(App &a);
 void app_service_population(App &a); // eco_dynamic.cpp
 
 
+// ImGui's docking hands every pixel of a host resize to the central node:
+// shrink the window by 800 px and the viewport loses 800 px while the graph
+// editor keeps its 640. Cinema 4D scales the arrangement instead. So on a
+// resize (and on the first frame, against the size the arrangement was
+// saved in) every split's size reference is scaled by the same ratio.
+static void scale_dock_tree(ImGuiDockNode *n, float sx, float sy) {
+  if (!n) return;
+  n->SizeRef.x *= sx;
+  n->SizeRef.y *= sy;
+  scale_dock_tree(n->ChildNodes[0], sx, sy);
+  scale_dock_tree(n->ChildNodes[1], sx, sy);
+}
+static ImVec2 g_dock_size;
+
 LayoutRecord layout_capture(App &a, const std::string &name); // layout_store.cpp
 std::string workspace_layout_file(int ws);                    // layout_workspace.cpp
 
@@ -173,6 +187,20 @@ void run_main() {
         build_workspace_default_layout(a, dockspace_id);
       a.request_layout_reset = false;
       first_frame = false;
+    }
+    {
+      ImVec2 avail = ImGui::GetContentRegionAvail();
+      avail.y -= statusbar_height();
+      if (avail.x > 50.f && avail.y > 50.f) {
+        ImVec2 from = g_dock_size;
+        if (from.x <= 0.f && prefs().dock_w > 50.f && prefs().dock_h > 50.f)
+          from = ImVec2(prefs().dock_w, prefs().dock_h); // the size the saved arrangement is for
+        if (from.x > 0.f && (std::fabs(from.x - avail.x) > 0.5f || std::fabs(from.y - avail.y) > 0.5f))
+          scale_dock_tree(ImGui::DockBuilderGetNode(dockspace_id), avail.x / from.x, avail.y / from.y);
+        g_dock_size = avail;
+        prefs().dock_w = avail.x;
+        prefs().dock_h = avail.y;
+      }
     }
     ImGui::DockSpace(dockspace_id, ImVec2(0, -statusbar_height()), ImGuiDockNodeFlags_None);
     a.dockspace_id = dockspace_id;

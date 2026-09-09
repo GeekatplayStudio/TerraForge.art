@@ -56,6 +56,8 @@ void prefs_load() {
     p.win_w = j.value("win_w", p.win_w);
     p.win_h = j.value("win_h", p.win_h);
     p.win_max = j.value("win_max", p.win_max);
+    p.dock_w = j.value("dock_w", p.dock_w);
+    p.dock_h = j.value("dock_h", p.dock_h);
     p.preview_fps = j.value("preview_fps", p.preview_fps);
     p.preview_quality = j.value("preview_quality", p.preview_quality);
     p.icon_size = std::clamp(j.value("icon_size", p.icon_size), 0, 2);
@@ -84,6 +86,8 @@ void prefs_save() {
   j["win_w"] = p.win_w;
   j["win_h"] = p.win_h;
   j["win_max"] = p.win_max;
+  j["dock_w"] = p.dock_w;
+  j["dock_h"] = p.dock_h;
   j["preview_fps"] = p.preview_fps;
   j["preview_quality"] = p.preview_quality;
   j["icon_size"] = p.icon_size;

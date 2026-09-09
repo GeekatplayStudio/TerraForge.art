@@ -357,6 +357,17 @@ buffers move on. `place_gradient`/`place_mode` are render settings (saved,
 the join must be mixed into `placement_key()` or the tile is not re-placed
 until the next evaluation. tests/cpp/test_planet_place.cpp pins the three.
 
+## The arrangement scales with the window
+
+ImGui's docking gives every pixel of a host resize to the central node:
+shrink the window by 800 px and the viewport loses 800 px while a 640 px
+graph editor keeps its 640 - "resizing from the corner scrambles the
+panels". app.cpp scales every dock node's SizeRef by the resize ratio each
+frame the dockspace changes size, and on the first frame against the size
+the arrangement was saved in (prefs dock_w/dock_h), so the panels keep
+their proportions. Do not set a docked window's size with ImGuiCond_Always
+per frame; it fights this.
+
 ## The home planet is the parent
 
 scene.cpp: one Planet object carries `planet.home`; scene_init_builtins
