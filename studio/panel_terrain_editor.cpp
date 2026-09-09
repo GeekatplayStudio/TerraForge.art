@@ -7,6 +7,7 @@
 // control is a graph operation (terrain_editor.hpp): a node in front of the
 // Terrain Output, undoable, and reachable by the same name from a script.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 
 #include "toolbar_internal.hpp"
 #include "icons.hpp"
@@ -107,7 +108,7 @@ void sculpt_ui(App &a) {
     float m = s.altitude * rs.height_scale * rs.terrain_size_m;
     ImGui::TextUnformatted("Target altitude");
     ImGui::SetNextItemWidth(-1);
-    if (ImGui::DragFloat("##salt", &m, 5.f, 0.f, rs.height_scale * rs.terrain_size_m, "%.0f m"))
+    if (studio::DragFloatW("##salt", &m, 5.f, 0.f, rs.height_scale * rs.terrain_size_m, "%.0f m"))
       s.altitude = std::clamp(m / std::max(rs.height_scale * rs.terrain_size_m, 1.f), 0.f, 1.f);
   }
   if (s.tool == SculptTool::Shade) labeled_scalar("Shade", "ssh", &s.shade, 0.f, 1.f);

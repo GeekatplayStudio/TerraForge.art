@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstdio>
 #include <imgui.h>
+#include "wheel_widgets.hpp"
 
 namespace studio {
 
@@ -49,7 +50,7 @@ inline bool drag_length(const char *label, float *v, float world_scale = 1.f,
   char fmt[24];
   std::snprintf(fmt, sizeof fmt, "%%.%df %s", u.decimals, u.suffix);
   float speed = std::fmax(std::fabs(shown) * 0.01f, 0.01f);
-  bool ch = ImGui::DragFloat(label, &shown, speed, lo_m * u.per_m,
+  bool ch = studio::DragFloatW(label, &shown, speed, lo_m * u.per_m,
                              hi_m * u.per_m, fmt);
   if (ch && k != 0.f) *v = (shown / u.per_m) / k;
   return ch;

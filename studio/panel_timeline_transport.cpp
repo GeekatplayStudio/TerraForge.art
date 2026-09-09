@@ -3,6 +3,7 @@
 // end, the frame field, range and fps, loop mode, Autokey, the time
 // display, and the ruler with its ticks, preview band, markers and scrub.
 #include "anim_widgets.hpp"
+#include "wheel_widgets.hpp"
 #include "app.hpp"
 #include "icons.hpp"
 #include "i18n.hpp"
@@ -71,10 +72,10 @@ void tl_draw_transport(App &a) {
   {
     float fs = tl.frame_of(tl.start), fe = tl.frame_of(tl.end);
     ImGui::SetNextItemWidth(60);
-    if (ImGui::DragFloat("##rs", &fs, 1.f, -1e6f, 1e6f, "%.0f")) { tl.start = tl.time_of(std::round(fs)); if (tl.end <= tl.start) tl.end = tl.start + tl.time_of(1); }
+    if (studio::DragFloatW("##rs", &fs, 1.f, -1e6f, 1e6f, "%.0f")) { tl.start = tl.time_of(std::round(fs)); if (tl.end <= tl.start) tl.end = tl.start + tl.time_of(1); }
     ImGui::SameLine(0.f, 2.f);
     ImGui::SetNextItemWidth(60);
-    if (ImGui::DragFloat("##re", &fe, 1.f, -1e6f, 1e6f, "%.0f")) tl.end = std::max(tl.time_of(std::round(fe)), tl.start + tl.time_of(1));
+    if (studio::DragFloatW("##re", &fe, 1.f, -1e6f, 1e6f, "%.0f")) tl.end = std::max(tl.time_of(std::round(fe)), tl.start + tl.time_of(1));
   }
   ImGui::SameLine();
   {

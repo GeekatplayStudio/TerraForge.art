@@ -19,6 +19,7 @@
 //    another one, because a command that needs its workspace should switch to
 //    it rather than quietly do nothing.
 #include "ai_describe.hpp"
+#include "wheel_widgets.hpp"
 #include "anim_widgets.hpp"
 #include "app.hpp"
 #include "component_new.hpp"
@@ -215,11 +216,11 @@ void menu_atmosphere(App &a) {
   ImGui::Separator();
   ImGui::TextDisabled("Sun");
   ImGui::SetNextItemWidth(150);
-  ImGui::SliderFloat("Altitude", &rs.sun_altitude, 1.f, 89.f, "%.0f\xC2\xB0");
+  studio::SliderFloatW("Altitude", &rs.sun_altitude, 1.f, 89.f, "%.0f\xC2\xB0");
   ImGui::SetNextItemWidth(150);
-  ImGui::SliderFloat("Azimuth", &rs.sun_azimuth, 0.f, 360.f, "%.0f\xC2\xB0");
+  studio::SliderFloatW("Azimuth", &rs.sun_azimuth, 0.f, 360.f, "%.0f\xC2\xB0");
   ImGui::SetNextItemWidth(150);
-  ImGui::SliderFloat("Intensity", &rs.sun_intensity, 0.f, 10.f, "x%.1f");
+  studio::SliderFloatW("Intensity", &rs.sun_intensity, 0.f, 10.f, "x%.1f");
   ImGui::Separator();
   if (ImGui::MenuItem("Describe the atmosphere...")) {
     ai_describe_open(DESCRIBE_ATMOSPHERE);

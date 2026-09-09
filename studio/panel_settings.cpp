@@ -9,6 +9,7 @@
 // panel_settings_services.cpp; this file is the frame, General and
 // Shortcuts, Applications and Asset folders.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "updater.hpp"
 #include "asset_store.hpp"
 #include "config.hpp"
@@ -39,12 +40,12 @@ void tab_general(App &a) {
   Prefs &p = prefs();
   ImGui::SeparatorText("Interface");
   ImGui::SetNextItemWidth(220);
-  if (ImGui::SliderFloat("Font size", &p.font_size, 12.f, 30.f, "%.0f px")) {
+  if (studio::SliderFloatW("Font size", &p.font_size, 12.f, 30.f, "%.0f px")) {
     ImGui::GetStyle().FontSizeBase = p.font_size;
     apply_theme();
   }
   ImGui::SetNextItemWidth(220);
-  if (ImGui::SliderFloat("UI scale", &p.ui_scale, 0.7f, 2.f, "%.2f")) {
+  if (studio::SliderFloatW("UI scale", &p.ui_scale, 0.7f, 2.f, "%.2f")) {
     ImGui::GetStyle().FontScaleMain = p.ui_scale;
     apply_theme();
   }
@@ -75,17 +76,17 @@ void tab_general(App &a) {
   }
   ImGui::SeparatorText("Performance");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Viewport rate", &p.viewport_fps, 10, 120, "%d fps");
+  studio::SliderIntW("Viewport rate", &p.viewport_fps, 10, 120, "%d fps");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Idle rate", &p.idle_fps, 2, 60, "%d fps");
+  studio::SliderIntW("Idle rate", &p.idle_fps, 2, 60, "%d fps");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Preview panel rate", &p.preview_fps, 1, 60, "%d fps");
+  studio::SliderIntW("Preview panel rate", &p.preview_fps, 1, 60, "%d fps");
   ImGui::SetNextItemWidth(220);
   ImGui::Combo("Preview panel quality", &p.preview_quality, "25%\0" "50%\0" "100%\0");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Preview res while dragging", &p.interactive_res, 64, 512);
+  studio::SliderIntW("Preview res while dragging", &p.interactive_res, 64, 512);
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Graph memory ceiling", &p.graph_memory_mb, 0, 16384,
+  studio::SliderIntW("Graph memory ceiling", &p.graph_memory_mb, 0, 16384,
                    p.graph_memory_mb ? "%d MB" : "no limit");
   {
     double held = a.snapshot_bytes / (1024.0 * 1024.0);
@@ -101,9 +102,9 @@ void tab_general(App &a) {
                       "lightened a step at a time, and given back once the frame is comfortable.\n"
                       "Nothing it changes is written to the project.");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Main view threshold", &c.perf.fps_primary, 5, 120, "%d fps");
+  studio::SliderIntW("Main view threshold", &c.perf.fps_primary, 5, 120, "%d fps");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Secondary views threshold", &c.perf.fps_secondary, 1, 120, "%d fps");
+  studio::SliderIntW("Secondary views threshold", &c.perf.fps_secondary, 1, 120, "%d fps");
   ImGui::TextDisabled("now: %.0f fps possible, governor %s", perf_stats().potential_fps,
                       perf_stats().governor_note.empty() ? "full" : perf_stats().governor_note.c_str());
   ImGui::SeparatorText("Generated assets");

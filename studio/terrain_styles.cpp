@@ -6,6 +6,7 @@
 // that made it are sitting in the editor, wired up and retunable. A preset
 // that cannot be taken apart is a dead end.
 #include "ai_describe.hpp"
+#include "wheel_widgets.hpp"
 #include "app.hpp"
 #include "icons.hpp"
 #include "sculpt.hpp"
@@ -270,15 +271,15 @@ void menu_terrain(App &a) {
     if (s.tool == SculptTool::Shade) {
       ImGui::Separator();
       ImGui::SetNextItemWidth(160);
-      ImGui::SliderFloat("Shade", &s.shade, 0.f, 1.f, "%.2f");
+      studio::SliderFloatW("Shade", &s.shade, 0.f, 1.f, "%.2f");
     }
     ImGui::Separator();
     ImGui::SetNextItemWidth(160);
-    ImGui::SliderFloat("Size", &s.radius, 0.005f, 0.4f, "%.3f");
+    studio::SliderFloatW("Size", &s.radius, 0.005f, 0.4f, "%.3f");
     ImGui::SetNextItemWidth(160);
-    ImGui::SliderFloat("Strength", &s.flow, 0.f, 2.f, "%.2f");
+    studio::SliderFloatW("Strength", &s.flow, 0.f, 2.f, "%.2f");
     ImGui::SetNextItemWidth(160);
-    ImGui::SliderFloat("Edge", &s.falloff, 0.2f, 8.f, "%.2f");
+    studio::SliderFloatW("Edge", &s.falloff, 0.2f, 8.f, "%.2f");
     ImGui::EndMenu();
   }
   if (IconMenuItem(Icon::Textured, "Height Paint", a.show_paint_canvas))

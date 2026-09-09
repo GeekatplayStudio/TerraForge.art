@@ -225,6 +225,9 @@ wanted his students to have.
   camera; **Free orbit** lets it go.
 - **ID colours** as a fourth shading mode: one flat bright colour per
   object, or per material, so masks and distributions read at a glance.
+- **The wheel over a number changes the number**, in every panel: a notch
+  is a hundredth of the range; the panel scrolls only over something that
+  is not a value.
 - **The performance watcher** (View > Performance watcher, on by default in
   developer builds) counts what each frame did — lease misses, evaluations,
   uploads, redraws — and every ten seconds writes `logs/perf_watch.json`
@@ -558,7 +561,11 @@ wanted his students to have.
   reflection, and say so; with no material they are disabled and say why.
 - **How the tile joins the planet is yours to set.** *Blend* chooses
   between the tile's features only (the planet shows through wherever the
-  tile is flat) and the whole tile; *Edge blend* is how far the join
+  tile is flat), the whole tile, and **Zero edge**, which brings the whole
+  tile's rim to the planet's own ground over the edge blend with a curve
+  that is flat at both ends, so there is no crease on either side. The
+  planet relief a tile blends to is sampled where the tile stands, so a
+  moved or turned tile, or a second tile, meets the ground that is there; *Edge blend* is how far the join
   reaches, up to half the tile; *Edge gradient* is its curve, a plateau
   with a cliff below 1 and a beach above; and any heightmap wired into
   Terrain output's **blend mask** port decides where the join is, 1 the

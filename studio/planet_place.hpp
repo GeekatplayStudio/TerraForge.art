@@ -55,8 +55,15 @@ struct PlaceSettings {
   // when set, multiplies the blend - 1 the tile, 0 the planet - so any
   // heightmap the graph produces can decide where the join is.
   float gradient = 1.f;
-  int mode = 0;
+  int mode = 0; // 0 features only, 1 whole tile, 2 zero edge (seamless)
   std::shared_ptr<const gpx::Heightmap> mask;
+  // Where the tile stands (terrain_xform.hpp): the planet relief it blends
+  // to is sampled where the tile actually is, not at the origin tile. Offset
+  // in tile units, heading in degrees, scale per axis.
+  bool tx_on = false;
+  float tx_pos[2] = {0.f, 0.f};
+  float tx_yaw = 0.f;
+  float tx_scl[2] = {1.f, 1.f};
 };
 
 // What the compositing decided, for the Properties panel and for tests.
@@ -77,7 +84,8 @@ struct PlaceResult {
 // suited to the map's resolution. `smooth` gets the broad shape only. Pure.
 void planet_relief_under_tile(const std::vector<gpx::planet::Layer> &layers,
                               int w, int h, std::vector<float> &relief,
-                              std::vector<float> &smooth);
+                              std::vector<float> &smooth,
+                              const PlaceSettings *where = nullptr);
 
 // Composite `tile` onto the planet described by `layers`. Returns the map to
 // upload; with placement off or no layers, a copy of the tile. Deterministic:

@@ -12,6 +12,7 @@
 #include "terrain_upload.hpp"
 #include "terrain_cull.hpp"
 #include "terrain_tiles.hpp"
+#include "terrain_xform.hpp"
 #include <future>
 #include <optional>
 #include <GLFW/glfw3.h>
@@ -98,6 +99,30 @@ static uint64_t placement_key() {
   mix(&rs.place_mode, sizeof rs.place_mode);
   mix(&rs.terrain_shape, sizeof rs.terrain_shape);
   mix(&rs.terrain_aspect, sizeof rs.terrain_aspect);
+  // tile 0's place on the planet: a moved tile blends to different ground
+  {
+    const int obj = terrain_tile_object(0);
+    if (obj >= 0 && obj < (int)scene().objects.size()) {
+      const SceneObject &o = scene().objects[(size_t)obj];
+      mix(o.pos, sizeof o.pos);
+      mix(&o.yaw, sizeof o.yaw);
+      mix(o.scl, sizeof o.scl);
+    }
+  }
+  return h;
+}
+
+uint64_t app_placement_key_for(int object) {
+  uint64_t h = placement_key();
+  if (object < 0 || object >= (int)scene().objects.size()) return h;
+  const SceneObject &o = scene().objects[(size_t)object];
+  auto mix = [&](const void *p, size_t n) {
+    const unsigned char *b = (const unsigned char *)p;
+    for (size_t i = 0; i < n; ++i) h = (h ^ b[i]) * 1099511628211ull;
+  };
+  mix(o.pos, sizeof o.pos);
+  mix(&o.yaw, sizeof o.yaw);
+  mix(o.scl, sizeof o.scl);
   return h;
 }
 
@@ -108,17 +133,28 @@ static uint64_t placement_key() {
 static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> &hm,
                                   std::shared_ptr<const gpx::TextureRGBA> albedo) {
   g_place_key = placement_key();
-  PlaceSettings ps = app_place_settings(a, nullptr);
+  PlaceSettings ps = app_place_settings(a, nullptr, -1);
   g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(), ps,
       g_last_features, a.eval_serial, g_place_key};
 }
 
-PlaceSettings app_place_settings(App &a, gpx::Node *out) {
+PlaceSettings app_place_settings(App &a, gpx::Node *out, int object) {
   const auto &rs = render_settings();
   PlaceSettings ps{rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence,
                    rs.place_ground, rs.terrain_shape, rs.terrain_aspect};
   ps.gradient = rs.place_gradient;
   ps.mode = rs.place_mode;
+  // where this tile stands, so the relief it blends to is the relief there
+  if (object < 0) object = terrain_tile_object(0);
+  if (object >= 0 && object < (int)scene().objects.size()) {
+    const TerrainXform tx = terrain_xform_of(scene().objects[(size_t)object], rs.height_scale);
+    ps.tx_on = tx.on;
+    ps.tx_pos[0] = tx.pos[0];
+    ps.tx_pos[1] = tx.pos[2];
+    ps.tx_yaw = tx.yaw;
+    ps.tx_scl[0] = tx.scl[0];
+    ps.tx_scl[1] = tx.scl[2];
+  }
   // the blend mask, when the graph feeds one into the Terrain Output:
   // copied, because the placement runs on a worker after the graph
   // buffers move on

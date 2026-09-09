@@ -20,8 +20,17 @@ namespace {
 struct ReliefEntry {
   std::vector<gpx::planet::Layer> layers;
   int w = 0, h = 0;
+  float tx[6] = {0, 0, 0, 0, 1, 1}; // on, pos x, pos z, yaw, scl x, scl z
   std::vector<float> relief, smooth;
 };
+void tx_key(const PlaceSettings &s, float out[6]) {
+  out[0] = s.tx_on ? 1.f : 0.f;
+  out[1] = s.tx_pos[0];
+  out[2] = s.tx_pos[1];
+  out[3] = s.tx_yaw;
+  out[4] = s.tx_scl[0];
+  out[5] = s.tx_scl[1];
+}
 std::deque<ReliefEntry> g_cache;
 std::mutex g_cache_mtx;
 
@@ -101,10 +110,20 @@ PlaceResult g_last;
 
 void planet_relief_under_tile(const std::vector<gpx::planet::Layer> &layers,
                               int w, int h, std::vector<float> &relief,
-                              std::vector<float> &smooth) {
+                              std::vector<float> &smooth,
+                              const PlaceSettings *where) {
   relief.assign((size_t)w * h, 0.f);
   smooth.assign((size_t)w * h, 0.f);
   if (layers.empty() || w <= 0 || h <= 0) return;
+  // the tile's place on the planet: a texel (u, v) of the tile lies at
+  // world (X, Z) through the tile's offset, heading and scale, and the
+  // relief there is what the tile blends to - the same mapping the
+  // vertex stage applies (terrain_xform.hpp), so the join is exact
+  const bool tx = where && where->tx_on;
+  const float ch = tx ? std::cos(where->tx_yaw * 3.14159265f / 180.f) : 1.f;
+  const float sh = tx ? std::sin(where->tx_yaw * 3.14159265f / 180.f) : 0.f;
+  const float sx = tx ? where->tx_scl[0] : 1.f, sz = tx ? where->tx_scl[1] : 1.f;
+  const float px = tx ? where->tx_pos[0] : 0.f, pz = tx ? where->tx_pos[1] : 0.f;
   // the surround's own budget: one octave per doubling of the map, capped
   // where the shader caps; the broad shape stops after the big octaves
   const float octf = std::clamp(std::log2((float)std::max(w, h)), 4.f, 11.f);
@@ -116,8 +135,14 @@ void planet_relief_under_tile(const std::vector<gpx::planet::Layer> &layers,
       const float v = h > 1 ? (float)y / (float)(h - 1) : 0.f;
       for (int x = 0; x < w; ++x) {
         const float u = w > 1 ? (float)x / (float)(w - 1) : 0.f;
-        // the plane the surround shader samples: (u, 0.37, v)
-        const float d[3] = {u, 0.37f, v};
+        // the plane the surround shader samples: (X, 0.37, Z)
+        float X = u, Z = v;
+        if (tx) {
+          const float qx = (u - 0.5f) * sx, qz = (v - 0.5f) * sz;
+          X = ch * qx + sh * qz + 0.5f + px;   // H(yaw) as the shader composes it
+          Z = -sh * qx + ch * qz + 0.5f + pz;
+        }
+        const float d[3] = {X, 0.37f, Z};
         const size_t i = (size_t)y * w + x;
         relief[i] = 1.2f * gpx::planet::heightf(d, L, n, octf);
         smooth[i] = 1.2f * gpx::planet::heightf(d, L, n, octs);
@@ -142,20 +167,25 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   const int w = tile.w, h = tile.h;
   // relief under the tile, cached
   std::vector<float> relief, smooth;
+  float key[6];
+  tx_key(s, key);
   {
     std::lock_guard<std::mutex> lk(g_cache_mtx);
     for (const ReliefEntry &e : g_cache)
-      if (e.w == w && e.h == h && same_layers(e.layers, layers)) {
+      if (e.w == w && e.h == h && same_layers(e.layers, layers) &&
+          std::equal(key, key + 6, e.tx)) {
         relief = e.relief;
         smooth = e.smooth;
         break;
       }
   }
   if (relief.empty()) {
-    planet_relief_under_tile(layers, w, h, relief, smooth);
+    planet_relief_under_tile(layers, w, h, relief, smooth, &s);
     std::lock_guard<std::mutex> lk(g_cache_mtx);
-    g_cache.push_front({layers, w, h, relief, smooth});
-    while (g_cache.size() > 4) g_cache.pop_back();
+    ReliefEntry e{layers, w, h, {}, relief, smooth};
+    std::copy(key, key + 6, e.tx);
+    g_cache.push_front(std::move(e));
+    while (g_cache.size() > 6) g_cache.pop_back();
   }
 
   const float tile_ground = border_median(tile);
@@ -182,7 +212,8 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   const float edge = std::max(s.edge, 1e-4f);
   const float flat = std::clamp(s.flatten, 0.f, 1.f);
   const float grad = std::clamp(s.gradient, 0.05f, 8.f);
-  const bool whole = s.mode == 1;
+  const bool whole = s.mode >= 1;
+  const bool zero_edge = s.mode == 2;
   const gpx::Heightmap *mask = s.mask && !s.mask->empty() ? s.mask.get() : nullptr;
   gpx::parallel_rows(h, [&](int y0, int y1) {
     for (int y = y0; y < y1; ++y) {
@@ -210,7 +241,14 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
         }
         // the border feather over `edge`, bent by the gradient: above 1 the
         // tile gives way from further in, below 1 it holds until the rim
-        wgt *= smoothstep01(0.f, 1.f, std::pow(std::clamp(b / edge, 0.f, 1.f), grad));
+        {
+          float tb = std::pow(std::clamp(b / edge, 0.f, 1.f), grad);
+          // zero edge: the S-curve applied twice is flat at both ends, so
+          // neither the tile's rim nor the planet's shows a crease
+          float f = smoothstep01(0.f, 1.f, tb);
+          if (zero_edge) f = smoothstep01(0.f, 1.f, f);
+          wgt *= f;
+        }
         if (mask) {
           const int mx = std::clamp((int)(u * (float)(mask->w - 1) + 0.5f), 0, mask->w - 1);
           const int my = std::clamp((int)(v * (float)(mask->h - 1) + 0.5f), 0, mask->h - 1);

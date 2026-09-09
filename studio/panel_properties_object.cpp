@@ -6,6 +6,7 @@
 // converted to metres (or feet) and given a unit that reads well at the size
 // in question, so a 30 cm rock is "30 cm" and not "0.0003".
 #include "anim_widgets.hpp"
+#include "wheel_widgets.hpp"
 #include "app.hpp"
 #include "gizmo.hpp"
 #include "imprint.hpp"
@@ -109,9 +110,9 @@ void transform_ui(App &a, SceneObject &o) {
   }
   if (prop_filter_match("Rotation")) {
     ImGui::SeparatorText("Rotation");
-    circ("rot", 0); ImGui::DragFloat("Heading", &o.yaw, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 0);
-    circ("rot", 1); ImGui::DragFloat("Pitch", &o.pitch, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 1);
-    circ("rot", 2); ImGui::DragFloat("Bank", &o.roll, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 2);
+    circ("rot", 0); studio::DragFloatW("Heading", &o.yaw, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 0);
+    circ("rot", 1); studio::DragFloatW("Pitch", &o.pitch, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 1);
+    circ("rot", 2); studio::DragFloatW("Bank", &o.roll, 0.5f, -180.f, 180.f, "%.1f°"); autokey("rot", 2);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Heading turns about the vertical axis, pitch tips the\n"
                         "nose up and down, bank rolls it - applied in that\n"
@@ -122,7 +123,7 @@ void transform_ui(App &a, SceneObject &o) {
     circ("scale", -1); drag_length("Size", &o.scale, 1.f, 0.0005f, 1e6f); autokey("scale", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The object's largest dimension, as a real length.");
-    circ("scl", -1); ImGui::DragFloat3("Squeeze", o.scl, 0.005f, 0.01f, 20.f, "%.3f"); autokey("scl", -1);
+    circ("scl", -1); studio::DragFloat3W("Squeeze", o.scl, 0.005f, 0.01f, 20.f, "%.3f"); autokey("scl", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Scales X, Y and Z independently around the size\n"
                         "above: 1, 0.4, 1 flattens without shrinking.");
@@ -139,18 +140,18 @@ void transform_ui(App &a, SceneObject &o) {
     // gizmos drag: the same numbers, typed
     ImGui::SeparatorText("Deform");
     gpx::Deform &d = o.deform;
-    circ("deform.twist", -1); ImGui::DragFloat3("Twist", d.twist, 0.5f, -720.f, 720.f, "%.1f°"); autokey("deform.twist", -1);
+    circ("deform.twist", -1); studio::DragFloat3W("Twist", d.twist, 0.5f, -720.f, 720.f, "%.1f°"); autokey("deform.twist", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Turns the far end about each axis; the base stays. Vue's Twist.");
-    circ("deform.bend", -1); ImGui::DragFloat("Bend", &d.bend, 0.5f, -180.f, 180.f, "%.1f°"); autokey("deform.bend", -1);
+    circ("deform.bend", -1); studio::DragFloatW("Bend", &d.bend, 0.5f, -180.f, 180.f, "%.1f°"); autokey("deform.bend", -1);
     ImGui::SameLine();
     ImGui::SetNextItemWidth(60);
     ImGui::Combo("##bendaxis", &d.bend_axis, "X\0Y\0Z\0");
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("The axis the object curls around, from its base.");
-    circ("deform.shear", -1); ImGui::DragFloat3("Skew", d.shear, 0.005f, -4.f, 4.f, "%.3f"); autokey("deform.shear", -1);
+    circ("deform.shear", -1); studio::DragFloat3W("Skew", d.shear, 0.005f, -4.f, 4.f, "%.3f"); autokey("deform.shear", -1);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("X and Z slide the top sideways by that fraction of the width;\nY slides one side up.");
-    circ("deform.taper", -1); ImGui::DragFloat("Taper", &d.taper, 0.005f, -1.f, 3.f, "%.3f"); autokey("deform.taper", -1);
+    circ("deform.taper", -1); studio::DragFloatW("Taper", &d.taper, 0.005f, -1.f, 3.f, "%.3f"); autokey("deform.taper", -1);
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("-1 brings the top to a point; 1 doubles it.");
     if (!d.identity() && ImGui::SmallButton("Reset deformations")) d = gpx::Deform();
   }
@@ -168,7 +169,7 @@ void transform_ui(App &a, SceneObject &o) {
     int detail = o.primitive_detail;
     // A drag with a floor and no ceiling. The only cap is inside the
     // generator, at a size that would exhaust memory, and it says so.
-    if (ImGui::DragInt("Segments", &detail, 0.5f, 3, 0)) {
+    if (studio::DragIntW("Segments", &detail, 0.5f, 3, 0)) {
       detail = std::max(detail, 3);
       if (detail != o.primitive_detail &&
           scene_primitive_verts(o.path.substr(10), o.verts, detail)) {
@@ -238,7 +239,7 @@ void ground_ui(App &a, SceneObject &o) {
   const float dt = std::max(tile_m * 0.002f, 0.01f); // distances across the tile
 
   float off_m = o.ground_offset * m;
-  if (ImGui::DragFloat("Height over surface", &off_m, dh, -1e6f, 1e6f, "%.2f m"))
+  if (studio::DragFloatW("Height over surface", &off_m, dh, -1e6f, 1e6f, "%.2f m"))
     o.ground_offset = off_m / m;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Where the object sits relative to the ground under it.\n"
@@ -252,7 +253,7 @@ void ground_ui(App &a, SceneObject &o) {
   // never intersects the terrain - and on any slope that means it touches at
   // one corner and hangs over the rest, which reads as floating.
   float sunk_m = o.ground_sunk * m;
-  if (ImGui::DragFloat("Sink into the ground", &sunk_m, dh, 0.f, 0.f, "%.2f m"))
+  if (studio::DragFloatW("Sink into the ground", &sunk_m, dh, 0.f, 0.f, "%.2f m"))
     o.ground_sunk = sunk_m / m;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Moves the object without the terrain following.\n\n"
@@ -273,20 +274,20 @@ void ground_ui(App &a, SceneObject &o) {
     ImGui::SetTooltip("Highest minus lowest ground under the base. Sink by at\n"
                       "least this much and no corner is left in the air.");
   float margin_m = o.ground_margin * tile_m;
-  if (ImGui::DragFloat("Flat margin", &margin_m, dt, 0.f, 1e6f, "%.2f m"))
+  if (studio::DragFloatW("Flat margin", &margin_m, dt, 0.f, 1e6f, "%.2f m"))
     o.ground_margin = std::max(margin_m, 0.f) / tile_m;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How far past the base's walls the flat patch reaches -\n"
                       "the ground under the whole base, and a little around it.\n"
                       "Widen it for a terrace, a courtyard, a road bed.");
   float blend_m = o.ground_blend * tile_m;
-  if (ImGui::DragFloat("Blend distance", &blend_m, dt, 0.f, 1e6f, blend_m > 0.f ? "%.2f m" : "auto"))
+  if (studio::DragFloatW("Blend distance", &blend_m, dt, 0.f, 1e6f, blend_m > 0.f ? "%.2f m" : "auto"))
     o.ground_blend = std::max(blend_m, 0.f) / tile_m;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How far around the object the ground responds. Zero lets the\n"
                       "TerrainImprint node choose a multiple of the footprint's size.");
   float sink_m = o.ground_sink * m;
-  if (ImGui::DragFloat("May sink", &sink_m, dh, 0.f, 1e6f, "%.2f m"))
+  if (studio::DragFloatW("May sink", &sink_m, dh, 0.f, 1e6f, "%.2f m"))
     o.ground_sink = std::max(sink_m, 0.f) / m;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("A dead band: the ground is left alone while the object sits\n"
@@ -311,7 +312,7 @@ void ground_ui(App &a, SceneObject &o) {
                       "you put it - an arch, a bridge deck, a boulder perched on\n"
                       "a ledge.");
   if (!free_lift) {
-    if (ImGui::DragFloat("  Rise at most", &lift_m, dh, 0.f, 1e6f, "%.2f m"))
+    if (studio::DragFloatW("  Rise at most", &lift_m, dh, 0.f, 1e6f, "%.2f m"))
       o.ground_lift = std::max(lift_m, 0.f) / m;
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The mound reaches this far up and no further. Past it the\n"
@@ -325,7 +326,7 @@ void ground_ui(App &a, SceneObject &o) {
                       "it and the ground closes over it - a half-sunk ruin, a rock\n"
                       "with only its cap showing.");
   if (!free_dig) {
-    if (ImGui::DragFloat("  Dig at most", &dig_m, dh, 0.f, 1e6f, "%.2f m"))
+    if (studio::DragFloatW("  Dig at most", &dig_m, dh, 0.f, 1e6f, "%.2f m"))
       o.ground_dig = std::max(dig_m, 0.f) / m;
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The hollow reaches this far down and no further. Past it\n"
@@ -348,7 +349,7 @@ void ground_ui(App &a, SceneObject &o) {
     gpx::Attribute *at = node->attrs.find(key);
     if (!at) return;
     float v = at->f;
-    if (ImGui::SliderFloat(label, &v, at->fmin, at->fmax)) {
+    if (studio::SliderFloatW(label, &v, at->fmin, at->fmax)) {
       at->f = v;
       changed = true;
     }
@@ -420,33 +421,33 @@ void object_properties_ui(App &a) {
         float w = o.scl[0] * unit, d = o.scl[2] * unit;
         ImGui::TextUnformatted("Width");
         ImGui::SetNextItemWidth(-1);
-        if (ImGui::DragFloat("##twidth", &w, 25.f, unit * 0.01f, unit * 50.f, "%.0f m"))
+        if (studio::DragFloatW("##twidth", &w, 25.f, unit * 0.01f, unit * 50.f, "%.0f m"))
           o.scl[0] = std::clamp(w / unit, 0.01f, 50.f);
         if (ImGui::IsItemHovered())
           ImGui::SetTooltip("The tile across, X. The heightmap is stretched to\n"
                             "fit; the Scale gizmo's X handle drags the same.");
         ImGui::TextUnformatted("Depth");
         ImGui::SetNextItemWidth(-1);
-        if (ImGui::DragFloat("##tdepth2", &d, 25.f, unit * 0.01f, unit * 50.f, "%.0f m"))
+        if (studio::DragFloatW("##tdepth2", &d, 25.f, unit * 0.01f, unit * 50.f, "%.0f m"))
           o.scl[2] = std::clamp(d / unit, 0.01f, 50.f);
         if (ImGui::IsItemHovered())
           ImGui::SetTooltip("The tile across, Z.");
         float hm = rs.height_scale * o.scl[1] * unit;
         ImGui::TextUnformatted("Height");
         ImGui::SetNextItemWidth(-1);
-        if (ImGui::DragFloat("##theight", &hm, 5.f, unit * 0.001f, unit * 2.f, "%.0f m"))
+        if (studio::DragFloatW("##theight", &hm, 5.f, unit * 0.001f, unit * 2.f, "%.0f m"))
           rs.height_scale = std::clamp(hm / (unit * std::max(o.scl[1], 0.01f)), 0.005f, 2.f);
         if (ImGui::IsItemHovered())
           ImGui::SetTooltip("The highest the tile can reach: a heightmap value of\n"
                             "1 stands this far above 0. Vertical squeeze (Y) in\n"
                             "the Squeeze row multiplies it.");
-        ImGui::DragFloat3("Squeeze", o.scl, 0.005f, 0.01f, 50.f, "%.3f");
+        studio::DragFloat3W("Squeeze", o.scl, 0.005f, 0.01f, 50.f, "%.3f");
         if (ImGui::IsItemHovered())
           ImGui::SetTooltip("X, Y, Z as factors of the natural size: the same\n"
                             "three numbers as the lengths above.");
         ImGui::TextUnformatted("World unit");
         ImGui::SetNextItemWidth(-1);
-        ImGui::DragFloat("##across", &rs.terrain_size_m, 50.f, 10.f, 1e7f, "%.0f m per tile");
+        studio::DragFloatW("##across", &rs.terrain_size_m, 50.f, 10.f, 1e7f, "%.0f m per tile");
         if (ImGui::IsItemHovered())
           ImGui::SetTooltip("How many metres one tile stands for. Every length in\n"
                             "the interface is measured against this - object\n"
@@ -471,7 +472,7 @@ void object_properties_ui(App &a) {
           float d = depth_m;
           ImGui::TextUnformatted("Depth");
           ImGui::SetNextItemWidth(-1);
-          if (ImGui::DragFloat("##tdepth", &d, 50.f, rs.terrain_size_m * 0.05f, rs.terrain_size_m,
+          if (studio::DragFloatW("##tdepth", &d, 50.f, rs.terrain_size_m * 0.05f, rs.terrain_size_m,
                                "%.0f m"))
             rs.terrain_aspect = std::clamp(d / std::max(rs.terrain_size_m, 1.f), 0.05f, 1.f);
           if (ImGui::IsItemHovered())
@@ -503,13 +504,16 @@ void object_properties_ui(App &a) {
         if (rs.place_on_planet) {
           ImGui::TextUnformatted("Blend");
           ImGui::SetNextItemWidth(-1);
-          ImGui::Combo("##pmode", &rs.place_mode, "Features only\0Whole tile\0");
+          ImGui::Combo("##pmode", &rs.place_mode, "Features only\0Whole tile\0Zero edge (seamless)\0");
           if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Features only: the planet shows through wherever the\n"
                               "tile is flat at its own ground level, and each feature\n"
                               "is blended in with a halo. Whole tile: everything the\n"
                               "graph made stands, flat ground included, and only the\n"
-                              "border blends into the planet.");
+                              "border blends into the planet. Zero edge: the whole\n"
+                              "tile, its rim brought to the planet's own ground over\n"
+                              "the edge blend with a curve flat at both ends - no\n"
+                              "crease on either side.");
           drag_length("Edge blend", &rs.place_edge, 1.f, 0.f,
                       0.5f * rs.terrain_size_m);
           if (ImGui::IsItemHovered())
@@ -586,12 +590,12 @@ void object_properties_ui(App &a) {
         labeled_scalar("Azimuth", "az", &rs.sun_azimuth, 0.f, 360.f);
         labeled_scalar("Altitude", "al", &rs.sun_altitude, 1.f, 89.f);
       } else {
-        ImGui::DragFloat("Latitude", &rs.latitude, 0.1f, -89.f, 89.f, "%.2f");
-        ImGui::DragFloat("Longitude", &rs.longitude, 0.1f, -180.f, 180.f, "%.2f");
-        ImGui::DragFloat("UTC offset", &rs.utc_offset, 0.25f, -12.f, 14.f, "%.2f h");
-        ImGui::SliderInt("Month", &rs.month, 1, 12);
-        ImGui::SliderInt("Day", &rs.day, 1, 31);
-        ImGui::SliderFloat("Local time", &rs.hour, 0.f, 24.f, "%.2f h");
+        studio::DragFloatW("Latitude", &rs.latitude, 0.1f, -89.f, 89.f, "%.2f");
+        studio::DragFloatW("Longitude", &rs.longitude, 0.1f, -180.f, 180.f, "%.2f");
+        studio::DragFloatW("UTC offset", &rs.utc_offset, 0.25f, -12.f, 14.f, "%.2f h");
+        studio::SliderIntW("Month", &rs.month, 1, 12);
+        studio::SliderIntW("Day", &rs.day, 1, 31);
+        studio::SliderFloatW("Local time", &rs.hour, 0.f, 24.f, "%.2f h");
       }
       ImGui::SeparatorText("Light");
       ImGui::ColorEdit3("Color", rs.sun_color);
@@ -617,13 +621,13 @@ void object_properties_ui(App &a) {
       drag_length("Y", &o.pos[1]);
       drag_length("Z", &o.pos[2]);
       ImGui::ColorEdit3("Color", o.color);
-      ImGui::SliderFloat("Intensity", &o.light_intensity, 0.f, 10.f);
-      ImGui::SliderFloat("Reach", &o.light_radius, 0.01f, 2.f);
+      studio::SliderFloatW("Intensity", &o.light_intensity, 0.f, 10.f);
+      studio::SliderFloatW("Reach", &o.light_radius, 0.01f, 2.f);
       ImGui::Combo("Type", &o.light_type, "Point\0Spot\0");
       if (o.light_type == 1) {
-        ImGui::SliderFloat("Cone", &o.light_cone, 5.f, 160.f, "%.0f\xC2\xB0");
-        ImGui::SliderFloat("Heading", &o.yaw, -180.f, 180.f, "%.0f\xC2\xB0");
-        ImGui::SliderFloat("Pitch", &o.pitch, -90.f, 90.f, "%.0f\xC2\xB0");
+        studio::SliderFloatW("Cone", &o.light_cone, 5.f, 160.f, "%.0f\xC2\xB0");
+        studio::SliderFloatW("Heading", &o.yaw, -180.f, 180.f, "%.0f\xC2\xB0");
+        studio::SliderFloatW("Pitch", &o.pitch, -90.f, 90.f, "%.0f\xC2\xB0");
         ImGui::TextDisabled("Pitch -90 aims straight down.");
       }
       ImGui::TextDisabled("Lights the terrain and every mesh within reach.");
@@ -673,13 +677,13 @@ void object_properties_ui(App &a) {
         }
         if (o.scatter_node) {
           bool ch = false;
-          ch |= ImGui::SliderFloat("Size", &o.scatter_scale, 0.05f, 4.f);
-          ch |= ImGui::SliderFloat("Size jitter", &o.scatter_jitter, 0.f, 1.f);
-          ImGui::SliderFloat("Wind sway", &o.scatter_sway, 0.f, 0.3f);
-          ch |= ImGui::SliderFloat("Size from value", &o.scatter_value_size,
+          ch |= studio::SliderFloatW("Size", &o.scatter_scale, 0.05f, 4.f);
+          ch |= studio::SliderFloatW("Size jitter", &o.scatter_jitter, 0.f, 1.f);
+          studio::SliderFloatW("Wind sway", &o.scatter_sway, 0.f, 0.3f);
+          ch |= studio::SliderFloatW("Size from value", &o.scatter_value_size,
                                    0.f, 1.f);
           int sd = (int)o.scatter_seed;
-          if (ImGui::DragInt("Seed", &sd, 1, 0, 1 << 24)) {
+          if (studio::DragIntW("Seed", &sd, 1, 0, 1 << 24)) {
             o.scatter_seed = (unsigned)sd;
             ch = true;
           }

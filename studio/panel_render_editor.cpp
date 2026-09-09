@@ -4,6 +4,7 @@
 // RenderBackdrop nodes, which overwrite these settings after every
 // evaluation when they are present in the graph.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "render_settings.hpp"
 #include <imgui.h>
 #include <cstdio>
@@ -103,21 +104,21 @@ void render_backdrop_ui(App &a) {
                "Planar backdrop\0");
   if (b.mapping == 4 || b.mapping == 6) {
     ImGui::SetNextItemWidth(-90);
-    ImGui::SliderFloat("Vertical FOV", &b.vfov, 5.f, 179.f, "%.0f\xC2\xB0");
+    studio::SliderFloatW("Vertical FOV", &b.vfov, 5.f, 179.f, "%.0f\xC2\xB0");
   }
   studio::Checkbox("Mirror horizontally", &b.flip);
   ImGui::SetNextItemWidth(-90);
-  ImGui::SliderFloat("Rotate", &b.yaw, -180.f, 180.f, "%.0f\xC2\xB0");
+  studio::SliderFloatW("Rotate", &b.yaw, -180.f, 180.f, "%.0f\xC2\xB0");
   ImGui::SetNextItemWidth(-90);
-  ImGui::SliderFloat("Tilt", &b.pitch, -90.f, 90.f, "%.0f\xC2\xB0");
+  studio::SliderFloatW("Tilt", &b.pitch, -90.f, 90.f, "%.0f\xC2\xB0");
   ImGui::SetNextItemWidth(-90);
-  ImGui::SliderFloat("Exposure", &b.exposure_ev, -10.f, 10.f, "%.1f EV");
+  studio::SliderFloatW("Exposure", &b.exposure_ev, -10.f, 10.f, "%.1f EV");
   ImGui::SetNextItemWidth(-90);
   ImGui::ColorEdit3("Tint", b.tint, ImGuiColorEditFlags_NoInputs);
   ImGui::SetNextItemWidth(-90);
-  ImGui::SliderFloat("Blend over sky", &b.blend, 0.f, 1.f);
+  studio::SliderFloatW("Blend over sky", &b.blend, 0.f, 1.f);
   ImGui::SetNextItemWidth(-90);
-  ImGui::SliderFloat("Atmosphere on dome", &b.haze, 0.f, 1.f);
+  studio::SliderFloatW("Atmosphere on dome", &b.haze, 0.f, 1.f);
   studio::Checkbox("Hide the sun disc", &b.hide_sun);
 }
 

@@ -3,6 +3,7 @@
 // albedo and PBR material, then drives an external engine through the Python
 // layer so the render matches the preview.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "i18n.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -427,7 +428,7 @@ void render_properties_ui(App &a) {
   ImGui::SetNextItemWidth(-90);
   if (ImGui::InputInt(tr("Height"), &height)) commit();
   ImGui::SetNextItemWidth(-90);
-  if (ImGui::SliderInt(tr("Samples"), &spp, 8, 1024)) commit();
+  if (studio::SliderIntW(tr("Samples"), &spp, 8, 1024)) commit();
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("%s", tr("More samples = less noise, longer render.\n"
                       "32 preview, 128 good, 512+ final."));

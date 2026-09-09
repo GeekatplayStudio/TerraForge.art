@@ -333,6 +333,18 @@ from outside a lease. A node the editor added is recognised by type
 (`is_editor_node`), which is what `remove_effects` walks back through -
 so a new effect node type goes in the table or it is not removable.
 
+## Numbers take the wheel
+
+studio/wheel_widgets.hpp wraps ImGui's drag and slider widgets
+(DragFloatW, SliderFloatW, DragIntW...) so the wheel over a value nudges
+it and the panel does not scroll; scalar_float does the same. Use the
+wrappers, not ImGui's, in any panel that shows a number - a raw
+ImGui::DragFloat is a value the wheel scrolls past, which is the report
+"the wheel does not work on the planet surface options" verbatim. The
+mechanism is ImGui's key ownership, claimed while hovered, so the first
+frame the pointer arrives with a wheel notch already in it can still
+scroll; that is ImGui's, not ours.
+
 ## The tile's join with the planet
 
 studio/planet_place.cpp composes weight = feature halo (or 1 in whole-tile

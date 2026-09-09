@@ -4,6 +4,7 @@
 // workflow are down the left column (toolbar_left.cpp); the frame around
 // this row and the global commands are in toolbar_bars.cpp.
 #include "anim_widgets.hpp"
+#include "wheel_widgets.hpp"
 #include "app.hpp"
 #include "ai_jobs.hpp"
 #include "i18n.hpp"
@@ -81,12 +82,12 @@ void sun_tools(App &a, const char *suffix) {
   RenderSettings &rs = render_settings();
   tool_label(tr("sun"));
   ImGui::SetNextItemWidth(120);
-  ImGui::SliderFloat((std::string("##sunalt") + suffix).c_str(), &rs.sun_altitude, 1.f, 89.f,
+  studio::SliderFloatW((std::string("##sunalt") + suffix).c_str(), &rs.sun_altitude, 1.f, 89.f,
                      "%.0f\xC2\xB0");
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Sun altitude."));
   tool_gap();
   ImGui::SetNextItemWidth(120);
-  ImGui::SliderFloat((std::string("##sunaz") + suffix).c_str(), &rs.sun_azimuth, 0.f, 360.f,
+  studio::SliderFloatW((std::string("##sunaz") + suffix).c_str(), &rs.sun_azimuth, 0.f, 360.f,
                      "%.0f\xC2\xB0");
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Sun azimuth."));
 }
@@ -128,7 +129,7 @@ void tools_atmosphere(App &a) {
   // that changes the light on the ground.
   tool_label(tr("cloud"));
   ImGui::SetNextItemWidth(110);
-  ImGui::SliderFloat("##cloudcov", &rs.cloud_coverage, 0.f, 1.f, "%.2f");
+  studio::SliderFloatW("##cloudcov", &rs.cloud_coverage, 0.f, 1.f, "%.2f");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("%s", tr("Cloud coverage: 0 clear, 1 overcast."));
   tool_sep();
@@ -165,7 +166,7 @@ void tools_lighting(App &a) {
   sun_tools(a, "2");
   tool_gap();
   ImGui::SetNextItemWidth(100);
-  ImGui::SliderFloat("##sunint", &rs.sun_intensity, 0.f, 10.f, "x%.1f");
+  studio::SliderFloatW("##sunint", &rs.sun_intensity, 0.f, 10.f, "x%.1f");
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Sun intensity."));
 }
 
@@ -179,7 +180,7 @@ void tools_cameras(App &a) {
   if (active >= 0 && active < (int)sc.objects.size() &&
       sc.objects[active].type == SceneObject::Camera) {
     ImGui::SetNextItemWidth(120);
-    ImGui::SliderFloat("##focal", &sc.objects[active].cam.focal_mm, 8.f, 800.f, "%.0f mm",
+    studio::SliderFloatW("##focal", &sc.objects[active].cam.focal_mm, 8.f, 800.f, "%.0f mm",
                        ImGuiSliderFlags_Logarithmic);
   } else {
     tool_label(tr("(free camera)"));
@@ -208,7 +209,7 @@ void tools_animation(App &a) {
   tool_label(tr("frame"));
   ImGui::SetNextItemWidth(160);
   float f = tl.frame_of(a.graph.time);
-  if (ImGui::SliderFloat("##anim_t", &f, tl.frame_of(tl.play_start()),
+  if (studio::SliderFloatW("##anim_t", &f, tl.frame_of(tl.play_start()),
                          tl.frame_of(tl.play_end()), "%.0f"))
     anim_set_time(a, tl.time_of(std::round(f)));
   tool_sep();

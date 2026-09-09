@@ -2,6 +2,7 @@
 // Split from panel_properties_object.cpp for the 500-line module rule; the
 // object switch there dispatches here.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "prop_lengths.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -23,27 +24,27 @@ void object_properties_planet_ui(App &a, SceneObject &o) {
   drag_length("Radius", &P.radius, 1.f, 1e-4f, 1e12f);
   text_length("Circumference", P.radius * 6.2831853f *
                                    render_settings().terrain_size_m);
-  ImGui::DragFloat("Relief", &P.relief, 0.001f, 0.f, 1.f, "%.3f");
+  studio::DragFloatW("Relief", &P.relief, 0.001f, 0.f, 1.f, "%.3f");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Maximum mountain height as a fraction of the\n"
                       "radius. Earth is about 0.0014; go higher for\n"
                       "dramatic fantasy worlds.");
   int seed = (int)P.seed;
-  if (ImGui::DragInt("Seed", &seed, 1, 1, 1 << 24)) P.seed = (uint32_t)seed;
-  ImGui::SliderFloat("Rotation", &P.spin_deg, -180.f, 180.f, "%.0f\xC2\xB0");
+  if (studio::DragIntW("Seed", &seed, 1, 1, 1 << 24)) P.seed = (uint32_t)seed;
+  studio::SliderFloatW("Rotation", &P.spin_deg, -180.f, 180.f, "%.0f\xC2\xB0");
   ImGui::SeparatorText("Position");
   drag_length("X", &o.pos[0]);
   drag_length("Y", &o.pos[1]);
   drag_length("Z", &o.pos[2]);
   ImGui::TextDisabled("Distances between worlds, in real units.");
   ImGui::SeparatorText("Ocean & climate");
-  ImGui::SliderFloat("Sea level", &P.sea_level, 0.f, 1.f);
-  ImGui::SliderFloat("Snow line", &P.snow_line, 0.f, 1.2f);
+  studio::SliderFloatW("Sea level", &P.sea_level, 0.f, 1.f);
+  studio::SliderFloatW("Snow line", &P.snow_line, 0.f, 1.2f);
   ImGui::ColorEdit3("Water", P.water_color);
   ImGui::ColorEdit3("Rock (low)", P.rock_low);
   ImGui::ColorEdit3("Rock (high)", P.rock_high);
   ImGui::SeparatorText("Atmosphere");
-  ImGui::SliderFloat("Density", &P.atmo_density, 0.f, 2.f);
+  studio::SliderFloatW("Density", &P.atmo_density, 0.f, 2.f);
   ImGui::ColorEdit3("Tint", P.atmo_color);
   // The shape of a planet's surface is its stack of displacement layers,
   // so they are edited here rather than only in the Objects tree: this is
@@ -141,20 +142,20 @@ void object_properties_surface_ui(App &a, SceneObject &o) {
                       "layer: eroded ridges where the uplands are, hills\n"
                       "elsewhere, terraced plateaus, carved valleys and\n"
                       "lowland lakes that fill from the water level.");
-  ImGui::DragFloat("Feature scale", &L.frequency, 0.1f, 0.2f, 200.f, "%.1f");
+  studio::DragFloatW("Feature scale", &L.frequency, 0.1f, 0.2f, 200.f, "%.1f");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How many features fit across the world.\n"
                       "Low = continents, high = hills.");
-  ImGui::SliderFloat("Amplitude", &L.amplitude, 0.f, 2.f);
+  studio::SliderFloatW("Amplitude", &L.amplitude, 0.f, 2.f);
   int seed = (int)L.seed;
-  if (ImGui::DragInt("Seed", &seed, 1, 1, 1 << 24)) L.seed = (uint32_t)seed;
+  if (studio::DragIntW("Seed", &seed, 1, 1, 1 << 24)) L.seed = (uint32_t)seed;
   ImGui::SeparatorText("Coverage");
-  ImGui::SliderFloat("Coverage", &L.coverage, 0.f, 1.f);
+  studio::SliderFloatW("Coverage", &L.coverage, 0.f, 1.f);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Fraction of the world this layer occupies.\n"
                       "1 covers everything; lower values confine it to\n"
                       "procedurally chosen regions (continents, ranges).");
-  ImGui::DragFloat("Region size", &L.mask_scale, 0.05f, 0.2f, 12.f, "%.2f");
+  studio::DragFloatW("Region size", &L.mask_scale, 0.05f, 0.2f, 12.f, "%.2f");
   ImGui::SeparatorText("Surface graph");
   ImGui::TextDisabled("These layers are parameters, and there are shapes\n"
                       "no parameter can make. A field graph can: it is\n"
@@ -171,7 +172,7 @@ void object_properties_surface_ui(App &a, SceneObject &o) {
   }
   if (!on_planet) {
     ImGui::SeparatorText("Ground plane");
-    ImGui::SliderFloat("Height scale", &o.surf.height_scale, 0.f, 3.f);
+    studio::SliderFloatW("Height scale", &o.surf.height_scale, 0.f, 3.f);
     ImGui::TextDisabled("Blends seamlessly out of the terrain tile's\n"
                         "edges and continues to the horizon.");
   }

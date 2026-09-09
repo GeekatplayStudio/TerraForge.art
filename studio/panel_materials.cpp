@@ -7,6 +7,7 @@
 // (unreliable previews, append/link confusion): thumbnails regenerate on
 // every save and loading always creates an independent copy.
 #include "ai_services.hpp"
+#include "wheel_widgets.hpp"
 #include "app.hpp"
 #include "graph_lease.hpp"
 #include "material_library.hpp"
@@ -352,7 +353,7 @@ static void material_editor(App &a, SceneObject &obj) {
       gpx::Attribute *at = mat->attrs.find(key);
       if (!at) return;
       ImGui::SetNextItemWidth(-130);
-      if (ImGui::SliderFloat(label2, &at->f, lo, hi)) changed = true;
+      if (studio::SliderFloatW(label2, &at->f, lo, hi)) changed = true;
     };
     slider("roughness", "Roughness", 0.02f, 1.f);
     slider("metallic", "Metallic", 0.f, 1.f);
@@ -399,19 +400,19 @@ static void water_material() {
   ImGui::SeparatorText("Body");
   ImGui::ColorEdit3("Deep color", rs.water_deep_color);
   ImGui::ColorEdit3("Shallow color", rs.water_shallow_color);
-  ImGui::SliderFloat("Clarity", &rs.water_clarity, 1.f, 60.f);
-  ImGui::SliderFloat("Opacity", &rs.water_opacity, 0.3f, 1.f);
+  studio::SliderFloatW("Clarity", &rs.water_clarity, 1.f, 60.f);
+  studio::SliderFloatW("Opacity", &rs.water_opacity, 0.3f, 1.f);
   ImGui::SeparatorText("Waves");
-  ImGui::SliderFloat("Amplitude", &rs.water_wave_amp, 0.f, 4.f);
-  ImGui::SliderFloat("Scale", &rs.water_wave_scale, 0.2f, 6.f);
-  ImGui::SliderFloat("Speed", &rs.water_wave_speed, 0.f, 5.f);
+  studio::SliderFloatW("Amplitude", &rs.water_wave_amp, 0.f, 4.f);
+  studio::SliderFloatW("Scale", &rs.water_wave_scale, 0.2f, 6.f);
+  studio::SliderFloatW("Speed", &rs.water_wave_speed, 0.f, 5.f);
   ImGui::SeparatorText("Foam");
   studio::Checkbox("Enabled", &rs.water_foam);
   if (rs.water_foam) {
     ImGui::ColorEdit3("Foam color", rs.foam_color);
-    ImGui::SliderFloat("Shoreline", &rs.foam_amount, 0.f, 2.f);
-    ImGui::SliderFloat("Crests", &rs.foam_crests, 0.f, 1.f);
-    ImGui::SliderFloat("Pattern scale", &rs.foam_scale, 0.5f, 10.f);
+    studio::SliderFloatW("Shoreline", &rs.foam_amount, 0.f, 2.f);
+    studio::SliderFloatW("Crests", &rs.foam_crests, 0.f, 1.f);
+    studio::SliderFloatW("Pattern scale", &rs.foam_scale, 0.5f, 10.f);
   }
 }
 

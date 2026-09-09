@@ -1,6 +1,7 @@
 ﻿// Geekatplay TerraForge — Environment panel: sun (manual/geographic),
 // atmosphere, fog/haze/pollution, water materials.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "gpu_timer.hpp"
 #include "render_settings.hpp"
 #include "renderer_instances.hpp"
@@ -14,63 +15,63 @@ static void section_sun(RenderSettings &rs) {
   ImGui::SameLine();
   ImGui::RadioButton("Location & time", &rs.sun_mode, 1);
   if (rs.sun_mode == 0) {
-    ImGui::SliderFloat("Azimuth", &rs.sun_azimuth, 0.f, 360.f, "%.0f\xC2\xB0");
-    ImGui::SliderFloat("Altitude", &rs.sun_altitude, 1.f, 89.f, "%.0f\xC2\xB0");
+    studio::SliderFloatW("Azimuth", &rs.sun_azimuth, 0.f, 360.f, "%.0f\xC2\xB0");
+    studio::SliderFloatW("Altitude", &rs.sun_altitude, 1.f, 89.f, "%.0f\xC2\xB0");
   } else {
-    ImGui::DragFloat("Latitude", &rs.latitude, 0.1f, -89.f, 89.f, "%.2f\xC2\xB0");
-    ImGui::DragFloat("Longitude", &rs.longitude, 0.1f, -180.f, 180.f, "%.2f\xC2\xB0");
-    ImGui::DragFloat("UTC offset", &rs.utc_offset, 0.25f, -12.f, 14.f, "%.2f h");
-    ImGui::SliderInt("Month", &rs.month, 1, 12);
-    ImGui::SliderInt("Day", &rs.day, 1, 31);
-    ImGui::SliderFloat("Local time", &rs.hour, 0.f, 24.f, "%.2f h");
+    studio::DragFloatW("Latitude", &rs.latitude, 0.1f, -89.f, 89.f, "%.2f\xC2\xB0");
+    studio::DragFloatW("Longitude", &rs.longitude, 0.1f, -180.f, 180.f, "%.2f\xC2\xB0");
+    studio::DragFloatW("UTC offset", &rs.utc_offset, 0.25f, -12.f, 14.f, "%.2f h");
+    studio::SliderIntW("Month", &rs.month, 1, 12);
+    studio::SliderIntW("Day", &rs.day, 1, 31);
+    studio::SliderFloatW("Local time", &rs.hour, 0.f, 24.f, "%.2f h");
     float dir[3];
     compute_sun_dir(rs, dir);
     float alt = std::asin(std::clamp(dir[1], -1.f, 1.f)) * 57.29578f;
     ImGui::TextDisabled("computed sun altitude: %.1f\xC2\xB0", alt);
   }
   ImGui::ColorEdit3("Sun color", rs.sun_color);
-  ImGui::SliderFloat("Sun intensity", &rs.sun_intensity, 0.2f, 8.f);
+  studio::SliderFloatW("Sun intensity", &rs.sun_intensity, 0.2f, 8.f);
 }
 
 static void section_atmosphere(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Atmosphere", ImGuiTreeNodeFlags_DefaultOpen)) return;
-  ImGui::SliderFloat("Density", &rs.atmosphere_density, 0.05f, 3.f);
-  ImGui::SliderFloat("Ambient light", &rs.ambient_intensity, 0.f, 2.f);
+  studio::SliderFloatW("Density", &rs.atmosphere_density, 0.05f, 3.f);
+  studio::SliderFloatW("Ambient light", &rs.ambient_intensity, 0.f, 2.f);
   ImGui::ColorEdit3("Sky zenith", rs.sky_zenith);
   ImGui::ColorEdit3("Sky horizon", rs.sky_horizon);
-  ImGui::SliderFloat("Exposure", &rs.exposure, 0.3f, 3.f);
+  studio::SliderFloatW("Exposure", &rs.exposure, 0.3f, 3.f);
 }
 
 static void section_fog(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Fog / Haze", ImGuiTreeNodeFlags_DefaultOpen)) return;
   ImGui::Combo("Type", &rs.fog_type, "Off\0Haze\0Fog\0Pollution\0");
   if (rs.fog_type != 0) {
-    ImGui::SliderFloat("Density", &rs.fog_density, 0.f, 6.f);
-    ImGui::SliderFloat("Level (height)", &rs.fog_level, 0.f, 1.f);
-    ImGui::SliderFloat("Vertical falloff", &rs.fog_falloff, 0.5f, 24.f);
+    studio::SliderFloatW("Density", &rs.fog_density, 0.f, 6.f);
+    studio::SliderFloatW("Level (height)", &rs.fog_level, 0.f, 1.f);
+    studio::SliderFloatW("Vertical falloff", &rs.fog_falloff, 0.5f, 24.f);
     ImGui::ColorEdit3("Fog color", rs.fog_color);
     ImGui::ColorEdit3("Light absorption", rs.absorption_color);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("What survives per channel through the fog, raised to the\n"
                         "optical depth: a bluish absorber makes distant things\n"
                         "go warm, the way real haze does.");
-    ImGui::SliderFloat("Sun scattering", &rs.fog_sun_scatter, 0.f, 1.f);
-    ImGui::SliderFloat("Scattering albedo", &rs.fog_albedo, 0.f, 1.f);
+    studio::SliderFloatW("Sun scattering", &rs.fog_sun_scatter, 0.f, 1.f);
+    studio::SliderFloatW("Scattering albedo", &rs.fog_albedo, 0.f, 1.f);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Of the light the fog stops, how much it scatters on\n"
                         "rather than absorbs. Water droplets are near 1;\n"
                         "smoke and pollution much lower.");
-    ImGui::SliderFloat("Anisotropy", &rs.fog_anisotropy, -0.9f, 0.95f);
+    studio::SliderFloatW("Anisotropy", &rs.fog_anisotropy, -0.9f, 0.95f);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The Henyey-Greenstein phase: 0 scatters evenly, toward 1\n"
                         "the light carries on forward, which is the glow around\n"
                         "the sun seen through mist.");
-    ImGui::SliderFloat("Heterogeneity", &rs.fog_heterogeneity, 0.f, 1.f);
+    studio::SliderFloatW("Heterogeneity", &rs.fog_heterogeneity, 0.f, 1.f);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Breaks the fog into drifts with noise. Needs ray steps\n"
                         "above 1 to be seen; at 0 the closed form is used and\n"
                         "the fog costs nothing.");
-    ImGui::SliderInt("Ray steps", &rs.fog_steps, 1, 64);
+    studio::SliderIntW("Ray steps", &rs.fog_steps, 1, 64);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("How many samples the view ray takes through broken fog,\n"
                         "each with a short march toward the sun for shadowing.\n"
@@ -85,19 +86,19 @@ static void section_clouds(RenderSettings &rs) {
   studio::Checkbox("Enabled", &rs.clouds_on);
   if (!rs.clouds_on) return;
   ImGui::Combo("Type", &rs.cloud_type, "Stratus\0Cumulus\0Cumulonimbus\0");
-  ImGui::SliderFloat("Coverage", &rs.cloud_coverage, 0.f, 1.f);
+  studio::SliderFloatW("Coverage", &rs.cloud_coverage, 0.f, 1.f);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("0 = clear sky, 1 = fully overcast.");
-  ImGui::SliderFloat("Density", &rs.cloud_density, 0.1f, 3.f);
-  ImGui::SliderFloat("Detail erosion", &rs.cloud_detail, 0.f, 1.f);
+  studio::SliderFloatW("Density", &rs.cloud_density, 0.1f, 3.f);
+  studio::SliderFloatW("Detail erosion", &rs.cloud_detail, 0.f, 1.f);
   if (rs.cloud_type == 2)
-    ImGui::SliderFloat("Anvil spread", &rs.cloud_anvil, 0.f, 1.f);
-  ImGui::SliderFloat("Altitude", &rs.cloud_altitude, 0.2f, 2.f);
-  ImGui::SliderFloat("Thickness", &rs.cloud_thickness, 0.05f, 1.5f);
+    studio::SliderFloatW("Anvil spread", &rs.cloud_anvil, 0.f, 1.f);
+  studio::SliderFloatW("Altitude", &rs.cloud_altitude, 0.2f, 2.f);
+  studio::SliderFloatW("Thickness", &rs.cloud_thickness, 0.05f, 1.5f);
   ImGui::ColorEdit3("Color", rs.cloud_color);
-  ImGui::SliderFloat("Sky light", &rs.cloud_ambient, 0.f, 2.f);
-  ImGui::SliderFloat("Wind speed", &rs.cloud_wind_speed, 0.f, 0.3f, "%.3f");
-  ImGui::SliderFloat("Wind direction", &rs.cloud_wind_dir, 0.f, 360.f, "%.0f\xC2\xB0");
+  studio::SliderFloatW("Sky light", &rs.cloud_ambient, 0.f, 2.f);
+  studio::SliderFloatW("Wind speed", &rs.cloud_wind_speed, 0.f, 0.3f, "%.3f");
+  studio::SliderFloatW("Wind direction", &rs.cloud_wind_dir, 0.f, 360.f, "%.0f\xC2\xB0");
   ImGui::SeparatorText("Second layer");
   studio::Checkbox("Second layer on", &rs.cloud2_on);
   if (ImGui::IsItemHovered())
@@ -106,23 +107,23 @@ static void section_clouds(RenderSettings &rs) {
                       "Drawn back to front from the camera.");
   if (rs.cloud2_on) {
     ImGui::Combo("Type##2", &rs.cloud2_type, "Stratus\0Cumulus\0Cumulonimbus\0");
-    ImGui::SliderFloat("Coverage##2", &rs.cloud2_coverage, 0.f, 1.f);
-    ImGui::SliderFloat("Density##2", &rs.cloud2_density, 0.1f, 3.f);
-    ImGui::SliderFloat("Altitude##2", &rs.cloud2_altitude, 0.2f, 4.f);
-    ImGui::SliderFloat("Thickness##2", &rs.cloud2_thickness, 0.05f, 1.5f);
+    studio::SliderFloatW("Coverage##2", &rs.cloud2_coverage, 0.f, 1.f);
+    studio::SliderFloatW("Density##2", &rs.cloud2_density, 0.1f, 3.f);
+    studio::SliderFloatW("Altitude##2", &rs.cloud2_altitude, 0.2f, 4.f);
+    studio::SliderFloatW("Thickness##2", &rs.cloud2_thickness, 0.05f, 1.5f);
   }
   ImGui::SeparatorText("Quality");
   ImGui::Combo("Quality", &rs.cloud_quality, "Draft\0Normal\0High\0");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Raymarch step count: higher is smoother but slower.");
-  ImGui::SliderInt("Scattering bounces", &rs.cloud_scatter_octaves, 1, 4);
+  studio::SliderIntW("Scattering bounces", &rs.cloud_scatter_octaves, 1, 4);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("1 stops light at its first hit, which makes dense\n"
                       "cloud read as plastic. Each extra bounce reuses the\n"
                       "shadow ray already computed with lower extinction and\n"
                       "a more even phase, so it costs very little.");
   if (rs.cloud_scatter_octaves > 1) {
-    ImGui::SliderFloat("Bounce depth", &rs.cloud_scatter_depth, 0.4f, 0.99f,
+    studio::SliderFloatW("Bounce depth", &rs.cloud_scatter_depth, 0.4f, 0.99f,
                        "%.2f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("How much further each bounce reaches into the cloud.\n"
@@ -136,21 +137,21 @@ static void section_water(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Water", ImGuiTreeNodeFlags_DefaultOpen)) return;
   studio::Checkbox("Enabled", &rs.show_water);
   if (!rs.show_water) return;
-  ImGui::SliderFloat("Level", &rs.water_level, 0.f, 1.f);
+  studio::SliderFloatW("Level", &rs.water_level, 0.f, 1.f);
   ImGui::ColorEdit3("Deep color", rs.water_deep_color);
   ImGui::ColorEdit3("Shallow color", rs.water_shallow_color);
-  ImGui::SliderFloat("Clarity", &rs.water_clarity, 1.f, 60.f);
-  ImGui::SliderFloat("Opacity", &rs.water_opacity, 0.3f, 1.f);
-  ImGui::SliderFloat("Wave amplitude", &rs.water_wave_amp, 0.f, 4.f);
-  ImGui::SliderFloat("Wave scale", &rs.water_wave_scale, 0.2f, 6.f);
-  ImGui::SliderFloat("Wave speed", &rs.water_wave_speed, 0.f, 5.f);
+  studio::SliderFloatW("Clarity", &rs.water_clarity, 1.f, 60.f);
+  studio::SliderFloatW("Opacity", &rs.water_opacity, 0.3f, 1.f);
+  studio::SliderFloatW("Wave amplitude", &rs.water_wave_amp, 0.f, 4.f);
+  studio::SliderFloatW("Wave scale", &rs.water_wave_scale, 0.2f, 6.f);
+  studio::SliderFloatW("Wave speed", &rs.water_wave_speed, 0.f, 5.f);
   ImGui::SeparatorText("Foam");
   studio::Checkbox("Foam enabled", &rs.water_foam);
   if (rs.water_foam) {
     ImGui::ColorEdit3("Foam color", rs.foam_color);
-    ImGui::SliderFloat("Shoreline foam", &rs.foam_amount, 0.f, 2.f);
-    ImGui::SliderFloat("Crest foam", &rs.foam_crests, 0.f, 1.f);
-    ImGui::SliderFloat("Foam scale", &rs.foam_scale, 0.5f, 10.f);
+    studio::SliderFloatW("Shoreline foam", &rs.foam_amount, 0.f, 2.f);
+    studio::SliderFloatW("Crest foam", &rs.foam_crests, 0.f, 1.f);
+    studio::SliderFloatW("Foam scale", &rs.foam_scale, 0.5f, 10.f);
   }
 }
 
@@ -158,13 +159,13 @@ static void section_planet(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Planet & fractal detail",
                                ImGuiTreeNodeFlags_DefaultOpen))
     return;
-  ImGui::SliderFloat("Fractal detail", &rs.fractal_detail, 0.f, 0.02f, "%.4f");
+  studio::SliderFloatW("Fractal detail", &rs.fractal_detail, 0.f, 0.02f, "%.4f");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Procedural relief added on top of the heightmap.\n"
                       "It keeps resolving as the camera moves closer, so\n"
                       "the surface stays fractal instead of turning into\n"
                       "flat grid cells.");
-  ImGui::SliderFloat("Detail scale", &rs.fractal_scale, 8.f, 400.f, "%.0f");
+  studio::SliderFloatW("Detail scale", &rs.fractal_scale, 8.f, 400.f, "%.0f");
   // In metres, from one metre up: a small planet wraps the terrain tile
   // round itself (equirectangular), a large one is the curved horizon.
   {
@@ -173,7 +174,7 @@ static void section_planet(RenderSettings &rs) {
       rs.planet_radius = flat ? 0.f : 1275.f;
     if (!flat) {
       float m = rs.planet_radius * rs.terrain_size_m;
-      if (ImGui::SliderFloat("Planet radius", &m, 1e-4f, 1e12f, "%.4g m",
+      if (studio::SliderFloatW("Planet radius", &m, 1e-4f, 1e12f, "%.4g m",
                              ImGuiSliderFlags_Logarithmic))
         rs.planet_radius = std::max(m, 1e-4f) / rs.terrain_size_m;
       if (ImGui::IsItemHovered())
@@ -202,38 +203,38 @@ static void section_subdivision(RenderSettings &rs) {
                       "resolving as you approach. Off falls back to the\n"
                       "fixed grid.");
   if (rs.tessellation) {
-    ImGui::SliderFloat("Target edge (px)", &rs.tess_pixels, 2.f, 32.f, "%.0f");
+    studio::SliderFloatW("Target edge (px)", &rs.tess_pixels, 2.f, 32.f, "%.0f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("How long a triangle edge should be on screen.\n"
                         "Smaller means more triangles and finer relief.");
-    ImGui::SliderFloat("Minimum subdivision", &rs.tess_min, 1.f, 32.f, "%.0f");
+    studio::SliderFloatW("Minimum subdivision", &rs.tess_min, 1.f, 32.f, "%.0f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Never go coarser than this, however far away the\n"
                         "ground is. 8 matches the fixed grid exactly, so the\n"
                         "adaptive path can only ever add detail.");
-    ImGui::SliderFloat("Limit subdivision", &rs.tess_max, 1.f, 64.f, "%.0f");
+    studio::SliderFloatW("Limit subdivision", &rs.tess_max, 1.f, 64.f, "%.0f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("The ceiling, for when detail is not worth the cost.");
     ImGui::TextDisabled("%s", renderer_tess_status().c_str());
-    ImGui::SliderFloat("Relief detail by distance", &rs.terrain_lod, 0.f, 1.f, "%.2f");
+    studio::SliderFloatW("Relief detail by distance", &rs.terrain_lod, 0.f, 1.f, "%.2f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Far ground reads a calmer, averaged relief so stone fields\n"
                         "and grass at the horizon stop shimmering. 0 keeps every\n"
                         "texel at every distance.");
     ImGui::SeparatorText("Scattered copies");
-    ImGui::DragFloat("Full detail within (m)", &rs.scatter_lod_full_m, 1.f, 1.f, 1e6f, "%.0f");
+    studio::DragFloatW("Full detail within (m)", &rs.scatter_lod_full_m, 1.f, 1.f, 1e6f, "%.0f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Every copy is drawn, from the mesh itself, inside this.");
-    ImGui::DragFloat("Thinned by (m)", &rs.scatter_lod_far_m, 10.f, 1.f, 1e7f, "%.0f");
+    studio::DragFloatW("Thinned by (m)", &rs.scatter_lod_far_m, 10.f, 1.f, 1e7f, "%.0f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("By this distance only the share below is drawn, and the\n"
                         "survivors grow so the ground stays as covered.");
-    ImGui::SliderFloat("Far crowd share", &rs.scatter_lod_min_keep, 0.01f, 1.f, "%.2f");
-    ImGui::DragFloat("Cards beyond (m)", &rs.scatter_lod_billboard_m, 10.f, 1.f, 1e8f, "%.0f");
+    studio::SliderFloatW("Far crowd share", &rs.scatter_lod_min_keep, 0.01f, 1.f, "%.2f");
+    studio::DragFloatW("Cards beyond (m)", &rs.scatter_lod_billboard_m, 10.f, 1.f, 1e8f, "%.0f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Past this a copy is a flat card facing the camera,\n"
                         "baked from the mesh, instead of geometry.");
-    ImGui::DragFloat("Nothing beyond (m)", &rs.scatter_lod_cull_m, 10.f, 1.f, 1e8f, "%.0f");
+    studio::DragFloatW("Nothing beyond (m)", &rs.scatter_lod_cull_m, 10.f, 1.f, 1e8f, "%.0f");
     {
       int drawn = 0, total = 0, cards = 0;
       renderer_instance_stats(drawn, total, &cards);
@@ -253,7 +254,7 @@ static void section_subdivision(RenderSettings &rs) {
   }
 
   ImGui::Separator();
-  ImGui::SliderFloat("Graph displacement", &rs.field_displacement, -1.f, 1.f,
+  studio::SliderFloatW("Graph displacement", &rs.field_displacement, -1.f, 1.f,
                      "%.3f");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How far a TerrainDisplacement node's field moves the\n"
@@ -269,9 +270,9 @@ static void section_subdivision(RenderSettings &rs) {
 
 static void section_render(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Render")) return;
-  ImGui::SliderFloat("Height scale", &rs.height_scale, 0.02f, 0.8f);
+  studio::SliderFloatW("Height scale", &rs.height_scale, 0.02f, 0.8f);
   studio::Checkbox("Shadows", &rs.shadows);
-  ImGui::SliderFloat("Shadow softness", &rs.shadow_softness, 0.5f, 5.f);
+  studio::SliderFloatW("Shadow softness", &rs.shadow_softness, 0.5f, 5.f);
   studio::Checkbox("Wireframe", &rs.wireframe);
   ImGui::SameLine();
   studio::Checkbox("Use graph albedo", &rs.use_albedo);

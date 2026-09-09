@@ -25,7 +25,11 @@ void renderer_set_terrain_prepared(TerrainUpload &upload);
 // settings, plus the blend mask fed into `out` (or the first Terrain
 // Output when null). And the key that says they changed.
 struct App;
-PlaceSettings app_place_settings(App &a, gpx::Node *out);
+// `object` is the Terrain object whose transform the tile stands in; -1
+// means the first Terrain object (tile 0).
+PlaceSettings app_place_settings(App &a, gpx::Node *out, int object);
+// The placement key with that object's transform folded in.
+uint64_t app_placement_key_for(int object);
 uint64_t app_placement_key();
 
 // Every tile after the first (app_upload_tiles.cpp).

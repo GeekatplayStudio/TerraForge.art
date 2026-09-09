@@ -1,5 +1,6 @@
 // Geekatplay TerraForge - shared material logic. See material_ui.hpp.
 #include "material_ui.hpp"
+#include "wheel_widgets.hpp"
 #include "app.hpp"
 #include "gpx/serialization.hpp"
 #include "material_stack_ops.hpp"
@@ -196,7 +197,7 @@ bool material_surface_ui(App &a, gpx::Node *mat, float label_w) {
     gpx::Attribute *at = mat->attrs.find(key);
     if (!at) return;
     ImGui::SetNextItemWidth(-label_w);
-    if (ImGui::SliderFloat(label, &at->f, lo, hi)) changed = true;
+    if (studio::SliderFloatW(label, &at->f, lo, hi)) changed = true;
   };
   slider("roughness", "Roughness", 0.02f, 1.f);
   slider("metallic", "Metalness", 0.f, 1.f);

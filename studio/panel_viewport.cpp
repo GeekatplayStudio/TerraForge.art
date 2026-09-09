@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — viewport windows. Each view is its own dockable,
 // resizable, floatable window with a Blender-style header toolbar.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "console.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
@@ -166,7 +167,7 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
   ImGui::SetNextItemWidth(W);
   ImGui::Combo("Units", &rs.units, "Metric\0Imperial\0");
   ImGui::SetNextItemWidth(W);
-  ImGui::DragFloat("Terrain size (m)", &rs.terrain_size_m, 50.f, 100.f, 100000.f,
+  studio::DragFloatW("Terrain size (m)", &rs.terrain_size_m, 50.f, 100.f, 100000.f,
                    "%.0f");
 }
 

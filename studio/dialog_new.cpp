@@ -7,6 +7,7 @@
 // that decide what a terrain can be, so they are asked for once, up front,
 // in real units.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "render_settings.hpp"
 #include <algorithm>
 #include <cmath>
@@ -84,7 +85,7 @@ void new_terrain_dialog(App &a) {
   ImGui::SeparatorText("Ground");
   ImGui::TextUnformatted("Across");
   ImGui::SetNextItemWidth(340);
-  ImGui::DragFloat("##size", &g_size_m, 25.f, 10.f, 4.0e7f, "%.0f m",
+  studio::DragFloatW("##size", &g_size_m, 25.f, 10.f, 4.0e7f, "%.0f m",
                    ImGuiSliderFlags_Logarithmic);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How much ground the terrain tile covers, edge to edge.\n"
@@ -92,7 +93,7 @@ void new_terrain_dialog(App &a) {
                       "against this.");
   ImGui::TextUnformatted("Highest point above the base");
   ImGui::SetNextItemWidth(340);
-  ImGui::DragFloat("##relief", &g_relief_m, 5.f, 1.f, 3.0e5f, "%.0f m",
+  studio::DragFloatW("##relief", &g_relief_m, 5.f, 1.f, 3.0e5f, "%.0f m",
                    ImGuiSliderFlags_Logarithmic);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("The vertical range the heightfield spans. Real ranges\n"

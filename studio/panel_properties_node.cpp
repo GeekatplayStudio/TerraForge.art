@@ -6,6 +6,7 @@
 // whole run, and a panel that blocks on it blinks out while you are dragging
 // a value.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "console.hpp"
 #include "gradient_library.hpp"
 #include "ai_assist.hpp"
@@ -80,7 +81,7 @@ bool draw_attribute(gpx::Attribute &at) {
                                        at.v2max, "%.3f", "%.3f");
       break;
     case gpx::AttrType::Vec2:
-      changed = ImGui::DragFloat2("##v", at.v2, (at.v2max - at.v2min) / 300.f,
+      changed = studio::DragFloat2W("##v", at.v2, (at.v2max - at.v2min) / 300.f,
                                   at.v2min, at.v2max, "%.3f");
       break;
     case gpx::AttrType::Color:
@@ -125,7 +126,7 @@ bool draw_attribute(gpx::Attribute &at) {
         ImGui::PushID((int)k);
         float col[4] = {at.stops[k].r, at.stops[k].g, at.stops[k].b, at.stops[k].a};
         ImGui::SetNextItemWidth(60);
-        if (ImGui::DragFloat("##t", &at.stops[k].t, 0.005f, 0.f, 1.f, "%.2f"))
+        if (studio::DragFloatW("##t", &at.stops[k].t, 0.005f, 0.f, 1.f, "%.2f"))
           changed = true;
         ImGui::SameLine();
         if (ImGui::ColorEdit4("##c", col, ImGuiColorEditFlags_NoInputs)) {

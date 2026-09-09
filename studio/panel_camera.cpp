@@ -2,6 +2,7 @@
 // exposure triangle, film stock, per-camera render assignment, and a
 // through-the-lens preview.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
@@ -107,7 +108,7 @@ void camera_properties_ui(App &a, SceneObject &obj) {
     ImGui::SetNextItemWidth(-140);
     changed |= ImGui::Combo("Sensor format", &cd.format, items.c_str());
     ImGui::SetNextItemWidth(-140);
-    changed |= ImGui::SliderFloat("Focal length", &cd.focal_mm, 8.f, 400.f,
+    changed |= studio::SliderFloatW("Focal length", &cd.focal_mm, 8.f, 400.f,
                                   "%.0f mm", ImGuiSliderFlags_Logarithmic);
     // quick primes
     const float primes[] = {14.f, 24.f, 35.f, 50.f, 85.f, 135.f, 200.f};
@@ -132,7 +133,7 @@ void camera_properties_ui(App &a, SceneObject &obj) {
   if (prop_filter_match("Exposure aperture shutter ISO")) {
     ImGui::SeparatorText("Exposure");
     ImGui::SetNextItemWidth(-140);
-    changed |= ImGui::SliderFloat("Aperture", &cd.aperture, 1.f, 32.f, "f/%.1f",
+    changed |= studio::SliderFloatW("Aperture", &cd.aperture, 1.f, 32.f, "f/%.1f",
                                   ImGuiSliderFlags_Logarithmic);
     for (int i = 0; i < FSTOP_N; ++i) {
       char lbl[16];
@@ -159,7 +160,7 @@ void camera_properties_ui(App &a, SceneObject &obj) {
       changed = true;
     }
     ImGui::SetNextItemWidth(-140);
-    changed |= ImGui::SliderFloat("ISO", &cd.iso, 25.f, 6400.f, "%.0f",
+    changed |= studio::SliderFloatW("ISO", &cd.iso, 25.f, 6400.f, "%.0f",
                                   ImGuiSliderFlags_Logarithmic);
     float ev = gpx::cam::ev100(cd.aperture, cd.shutter, cd.iso);
     float mult = gpx::cam::exposure_multiplier(cd.aperture, cd.shutter, cd.iso);
@@ -226,9 +227,9 @@ void camera_properties_ui(App &a, SceneObject &obj) {
   if (prop_filter_match("Position transform")) {
     ImGui::SeparatorText("Transform");
     ImGui::SetNextItemWidth(-140);
-    changed |= ImGui::DragFloat3("Position", cd.eye, 0.01f);
+    changed |= studio::DragFloat3W("Position", cd.eye, 0.01f);
     ImGui::SetNextItemWidth(-140);
-    changed |= ImGui::DragFloat3("Look at", cd.target, 0.01f);
+    changed |= studio::DragFloat3W("Look at", cd.target, 0.01f);
     if (ImGui::Button("Frame the terrain", ImVec2(-1, 0))) {
       cd.target[0] = 0.5f;
       cd.target[1] = render_settings().height_scale * 0.4f;
@@ -252,7 +253,7 @@ void camera_properties_ui(App &a, SceneObject &obj) {
     ImGui::SetNextItemWidth(-140);
     ImGui::InputInt("Height", &cd.render.height);
     ImGui::SetNextItemWidth(-140);
-    ImGui::SliderInt("Samples", &cd.render.samples, 8, 1024);
+    studio::SliderIntW("Samples", &cd.render.samples, 8, 1024);
     char buf[512];
     snprintf(buf, sizeof buf, "%s", cd.render.output.c_str());
     ImGui::SetNextItemWidth(-140);

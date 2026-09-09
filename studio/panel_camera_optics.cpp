@@ -7,6 +7,7 @@
 // of what a real lens does adjustable underneath - because "cinematic" is a
 // look, and a look has to be dialled rather than decreed.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "gpx/camera_math.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -57,7 +58,7 @@ bool camera_optics_ui(App &a, CameraData &cd) {
                         std::fabs(autok) * 100.f);
   } else {
     ImGui::SetNextItemWidth(-140);
-    changed |= ImGui::SliderFloat("Distortion", &cd.distortion, -0.10f, 0.20f,
+    changed |= studio::SliderFloatW("Distortion", &cd.distortion, -0.10f, 0.20f,
                                   "%.3f");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Positive barrels, negative pincushions.\n"
@@ -66,13 +67,13 @@ bool camera_optics_ui(App &a, CameraData &cd) {
 
   // ---- vignetting: what the aperture implies, scaled by taste
   ImGui::SetNextItemWidth(-140);
-  changed |= ImGui::SliderFloat("Vignetting", &cd.vignette, 0.f, 2.f, "%.2f");
+  changed |= studio::SliderFloatW("Vignetting", &cd.vignette, 0.f, 2.f, "%.2f");
   ImGui::TextDisabled("f/%.1f falls off %.0f%% in the corners at 1.00",
                       cd.aperture, gpx::cam::lens_vignette(cd.aperture) * 100.f);
 
   // ---- chromatic aberration: off until asked for
   ImGui::SetNextItemWidth(-140);
-  changed |= ImGui::SliderFloat("Chromatic aberration", &cd.chromatic, 0.f, 2.f,
+  changed |= studio::SliderFloatW("Chromatic aberration", &cd.chromatic, 0.f, 2.f,
                                 "%.2f");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Lateral fringing: the channels focus at slightly\n"
@@ -81,7 +82,7 @@ bool camera_optics_ui(App &a, CameraData &cd) {
 
   // ---- shutter-driven motion blur
   ImGui::SetNextItemWidth(-140);
-  changed |= ImGui::SliderFloat("Shutter blur", &cd.motion_blur, 0.f, 1.f,
+  changed |= studio::SliderFloatW("Shutter blur", &cd.motion_blur, 0.f, 1.f,
                                 "%.2f");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip(
@@ -94,7 +95,7 @@ bool camera_optics_ui(App &a, CameraData &cd) {
   changed |= studio::Checkbox("Lens flare", &cd.flare);
   if (cd.flare) {
     ImGui::SetNextItemWidth(-140);
-    changed |= ImGui::SliderFloat("Flare strength", &cd.flare_strength, 0.f,
+    changed |= studio::SliderFloatW("Flare strength", &cd.flare_strength, 0.f,
                                   1.5f, "%.2f");
     ImGui::TextDisabled("Ghosts and a halo, only while the sun is in frame.");
   }

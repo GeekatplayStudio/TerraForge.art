@@ -35,6 +35,7 @@ struct TileRequest {
 
 struct TileJob {
   uint64_t output_node = 0;
+  int object = -1;
   std::shared_ptr<const gpx::Heightmap> last_tile; // for a re-place when the settings change
   std::shared_ptr<const gpx::TextureRGBA> last_albedo;
   uint64_t last_key = 0;
@@ -78,6 +79,7 @@ void extra_tiles_prepare(App &a) {
     TileJob &job = g_jobs[k];
     if (job.output_node != t.output_node) job = TileJob();
     job.output_node = t.output_node;
+    job.object = t.object;
     gpx::Node *out = a.graph.find_node(t.output_node);
     if (!out) continue;
     gpx::Port *ph = out->first_out(gpx::DataType::Heightmap);
@@ -105,9 +107,9 @@ void extra_tiles_prepare(App &a) {
     req.tile = std::make_shared<gpx::Heightmap>(*ph->hmap);
     req.albedo = albedo ? std::make_shared<gpx::TextureRGBA>(*albedo) : nullptr;
     req.layers = planet_home_layers();
-    req.settings = app_place_settings(a, out);
+    req.settings = app_place_settings(a, out, t.object);
     req.serial = a.eval_serial;
-    req.key = app_placement_key();
+    req.key = app_placement_key_for(t.object);
     job.last_tile = req.tile;
     job.last_albedo = req.albedo;
     job.last_key = req.key;
@@ -119,9 +121,9 @@ void extra_tiles_prepare(App &a) {
 // Main thread, every frame: collect what the workers finished, start what
 // is queued, and re-place a tile whose settings changed under it.
 void extra_tiles_service(App &a) {
-  const uint64_t key = app_placement_key();
   for (size_t k = 0; k < g_jobs.size(); ++k) {
     TileJob &job = g_jobs[k];
+    const uint64_t key = app_placement_key_for(job.object);
     if (job.work.valid() &&
         job.work.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
       try {
@@ -140,7 +142,7 @@ void extra_tiles_service(App &a) {
       {
         std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
         if (!lk.owns_lock()) continue;
-        req.settings = app_place_settings(a, a.graph.find_node(job.output_node));
+        req.settings = app_place_settings(a, a.graph.find_node(job.output_node), job.object);
       }
       req.serial = a.eval_serial;
       req.key = key;

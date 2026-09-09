@@ -7,6 +7,7 @@
 // local and cloud addresses, the mode, the installation folder and extra
 // workflow folders, and a "Check" that asks the server what it is.
 #include "ai_services.hpp"
+#include "wheel_widgets.hpp"
 #include "app.hpp"
 #include "config.hpp"
 #include <cstring>
@@ -162,9 +163,9 @@ void settings_comfy_tab(App &a) {
   }
   ImGui::SeparatorText("Jobs");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Poll interval", &cf.poll_ms, 250, 5000, "%d ms");
+  studio::SliderIntW("Poll interval", &cf.poll_ms, 250, 5000, "%d ms");
   ImGui::SetNextItemWidth(220);
-  ImGui::SliderInt("Timeout", &cf.timeout_s, 60, 7200, "%d s");
+  studio::SliderIntW("Timeout", &cf.timeout_s, 60, 7200, "%d s");
 }
 
 } // namespace studio

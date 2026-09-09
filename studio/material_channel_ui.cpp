@@ -6,6 +6,7 @@
 // preview and parameters with an Edit function button into the graph, or
 // the owner's constant value.
 #include "app.hpp"
+#include "wheel_widgets.hpp"
 #include "material_channel_ops.hpp"
 #include "material_ui.hpp"
 #include "undo.hpp"
@@ -140,7 +141,7 @@ void material_attr_widget(App &a, gpx::Node *n, const char *key, float label_w) 
     break;
   }
   case gpx::AttrType::Vec2:
-    changed = ImGui::DragFloat2("##v", at->v2, 0.01f, at->v2min, at->v2max);
+    changed = studio::DragFloat2W("##v", at->v2, 0.01f, at->v2min, at->v2max);
     break;
   case gpx::AttrType::Range:
     changed = ImGui::DragFloatRange2("##v", &at->v2[0], &at->v2[1],
