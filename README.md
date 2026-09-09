@@ -516,6 +516,23 @@ wanted his students to have.
   without changing the buffer size.
 
 ### Terrain
+- **Vue's Terrain Editor, on the Terrain object's tab.** The styles down
+  its left edge (Mountain, Ridged peaks, Eroded mountain, Canyon, Mounds,
+  Dunes, Iceberg, Lunar, and a realistic range), the Paint tab's brushes
+  (Raise, Plateaus, Flatten, Altitude, Smooth, Terrace, Noise, Erase, Shade)
+  with Radius, Flow, Falloff, Invert, a target altitude and *Constrain to
+  clipping range*, the Effects tab's eight erosions (diffusive, thermal,
+  glaciation, wind, dissolve, alluvium, fluvial, river valley) and twelve
+  global effects (grit, gravel, pebbles, stones, peaks, fir trees, plateaus,
+  terraces, stairs, craters, sharpen, cracks) under one **Rock hardness**
+  slider, the **clipping** slider with an end at each altitude and a hole
+  or a flat beyond each, the toolbar's Invert, Zero edges, Retopologize
+  and resolution halve/double, and the **Picture** button that mixes an
+  image into the terrain by blend, add, subtract, multiply, min or max.
+  Every one is a node dropped in front of the Terrain Output, so it is
+  undoable, retunable, and the same thing from a script: `terrain_clip`,
+  `terrain_effect`, `terrain_style`, `terrain_global`,
+  `terrain_import_picture`, `set_sculpt`.
 - **The terrain is an object.** It has a position, heading, pitch and bank,
   a width, depth and height typed in metres (or as per-axis squeeze), and
   the four deformers - twist, bend, skew, taper - through the same fields,

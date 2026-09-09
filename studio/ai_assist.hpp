@@ -63,6 +63,10 @@ int ai_asset_op(App &a, const std::string &op, const nlohmann::json &act,
 // strength, shadows, exposure. Same return convention as ai_graph_op.
 int ai_view_op(App &a, const std::string &op, const nlohmann::json &act,
                std::string &err);
+// Vue's Terrain Editor (ai_ops_terrain.cpp): terrain_clip, terrain_effect,
+// terrain_style, terrain_global, terrain_import_picture, set_sculpt.
+int ai_terrain_op(App &a, const std::string &op, const nlohmann::json &act,
+                  std::string &err);
 
 // Scene, animation and session ops (ai_ops_scene.cpp): set_time,
 // render_sequence, camera/attribute keys, select_node, set_locked,

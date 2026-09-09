@@ -463,6 +463,10 @@ FillBasins.blend_invert|bool
 FillBasins.epsilon|float
 FillBasins.min_depth|float
 FillBasins.normalize_depth|bool
+FirTrees.amount|float
+FirTrees.density|float
+FirTrees.seed|seed
+FirTrees.size_jitter|float
 FlatColor.b|float
 FlatColor.g|float
 FlatColor.r|float
@@ -599,6 +603,7 @@ InfiniteTerrain.planet|text
 InfiniteTerrain.seed|seed
 InfiniteTerrain.type|choice
 InfiniteTerrain.visible|bool
+Invert.amount|float
 KMeans.k|int
 KMeans.seed|seed
 KMeans.slope_weight|float
@@ -775,6 +780,12 @@ MaterialOutput.turb_complexity|int
 MaterialOutput.turb_harmonics|float
 MaterialOutput.turb_scale|float
 MaterialOutput.turbulence|bool
+MaterialOutput.vol_absorb|color
+MaterialOutput.vol_albedo|float
+MaterialOutput.vol_anisotropy|float
+MaterialOutput.vol_density|float
+MaterialOutput.vol_heterogeneity|float
+MaterialOutput.vol_steps|int
 MaterialSource.object|text
 MaterialSource.source_node|text
 MaterialStack.alt_influence|float
@@ -923,6 +934,10 @@ PathSpline.samples|int
 PathSpline.tension|float
 Peaks.pivot|float
 Peaks.strength|float
+Pebbles.amount|float
+Pebbles.density|float
+Pebbles.seed|seed
+Pebbles.size_jitter|float
 Planet.atmo_color|color
 Planet.atmo_density|float
 Planet.object|text

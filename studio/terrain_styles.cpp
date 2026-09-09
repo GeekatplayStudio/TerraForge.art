@@ -11,6 +11,7 @@
 #include "sculpt.hpp"
 #include "toolbar_internal.hpp"
 #include "undo.hpp"
+#include "terrain_editor.hpp"
 #include "gpx/node_graph.hpp"
 #include <imgui.h>
 #include <cstdio>
@@ -85,6 +86,67 @@ static void apply_terrain_style(App &a, const char *name,
   a.graph_layout_serial++;
   a.request_eval();
   a.status = std::string("terrain style: ") + name;
+}
+
+// Vue's styles down the left of its Terrain Editor, as chains. One table,
+// so the Terrain menu, the Terrain object's tab and the terrain_style op
+// offer the same set (terrain_editor.hpp).
+struct Style {
+  const char *name, *tip;
+  std::vector<StyleNode> chain;
+};
+static const std::vector<Style> &styles() {
+  static const std::vector<Style> S = {
+      {"Realistic mountain range",
+       "Eroded ridges, then the shallow-water solver settles\n"
+       "the valleys, stream power cuts the drainage network,\n"
+       "and ErosionLayers adds talus and gullies - with the\n"
+       "material masks (rock, scree, soil, grass, snow...) on\n"
+       "its outputs, ready for a MaterialStack.",
+       {{"Noise", {}, {{"type", 3}, {"octaves", 8}}},
+        {"Hydraulic", {}, {{"method", 1}, {"iterations", 200}}},
+        {"StreamPower", {{"k_erode", 0.12f}, {"smooth", 0.06f}}, {{"iterations", 60}, {"method", 0}}},
+        {"ErosionLayers", {{"strength", 0.5f}, {"talus", 1.6f}, {"snowline", 0.78f}},
+         {{"method", 3}, {"thermal_iters", 80}}}}},
+      {"Mountain", "Vue's default: a fractal with the higher ground near the centre.",
+       {{"Noise", {}, {{"octaves", 10}}}}},
+      {"Ridged peaks", "Vue's Peak: a ridged fractal, young mountains.",
+       {{"Noise", {}, {{"type", 1}, {"octaves", 11}}}, {"Peaks", {{"strength", 0.45f}}, {}}}},
+      {"Eroded mountain", "Vue's Eroded: the mountain through hydraulic and thermal erosion.",
+       {{"Noise", {}, {{"octaves", 10}}}, {"Hydraulic", {}, {}}, {"Thermal", {}, {}}}},
+      {"Canyon", "Vue's Canyon: terraced ridges in the profile, dissolved.",
+       {{"Noise", {}, {{"octaves", 9}}}, {"Terrace", {{"shape", 6.f}}, {{"levels", 7}}},
+        {"Dissolve", {{"amount", 0.4f}}, {}}}},
+      {"Mounds", "Vue's Mounds: the mountain at a higher frequency - several lower mounds.",
+       {{"Noise", {{"frequency", 3.f}, {"gain", 0.45f}}, {{"octaves", 7}}}}},
+      {"Dunes", "Vue's Dunes.", {{"Dunes", {}, {}}}},
+      {"Iceberg", "Vue's Iceberg: a flat, gently sloping top, clipped and glaciated.",
+       {{"Noise", {}, {{"octaves", 8}}}, {"TerrainClip", {{"softness", 0.04f}}, {{"high_mode", 1}}},
+        {"Glaciation", {{"strength", 0.7f}}, {}}}},
+      {"Lunar", "Vue's Lunar: craters and grit on a soft fractal.",
+       {{"Noise", {{"gain", 0.42f}}, {{"octaves", 8}}}, {"Crater", {}, {{"profile", 1}}},
+        {"Grit", {{"amount", 0.015f}}, {}}}},
+  };
+  return S;
+}
+
+const std::vector<std::string> &terrain_style_names() {
+  static std::vector<std::string> names;
+  if (names.empty())
+    for (const Style &s : styles()) names.push_back(s.name);
+  return names;
+}
+
+bool terrain_style_apply(App &a, const std::string &name, std::string &err) {
+  for (const Style &s : styles())
+    if (name == s.name) {
+      apply_terrain_style(a, s.name, s.chain);
+      return true;
+    }
+  err = "terrain_style: no style called '" + name + "' (";
+  for (size_t i = 0; i < styles().size(); ++i) err += (i ? ", " : "") + std::string(styles()[i].name);
+  err += ")";
+  return false;
 }
 
 // A node slipped in between the terrain chain and the Terrain Output: what
@@ -167,51 +229,10 @@ void menu_terrain(App &a) {
   // model to settle coherent valleys, explicit stream power to cut the
   // drainage network, then thermal + a light droplet pass with the material
   // masks - reads as a real range at 512 in about two and a half seconds.
-  if (ImGui::MenuItem("Realistic mountain range"))
-    apply_terrain_style(
-        a, "Realistic mountain range",
-        {{"Noise", {}, {{"type", 3}, {"octaves", 8}}},
-         {"Hydraulic", {}, {{"method", 1}, {"iterations", 200}}},
-         {"StreamPower", {{"k_erode", 0.12f}, {"smooth", 0.06f}},
-          {{"iterations", 60}, {"method", 0}}},
-         {"ErosionLayers", {{"strength", 0.5f}, {"talus", 1.6f}, {"snowline", 0.78f}},
-          {{"method", 3}, {"thermal_iters", 80}}}});
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Eroded ridges, then the shallow-water solver settles\n"
-                      "the valleys, stream power cuts the drainage network,\n"
-                      "and ErosionLayers adds talus and gullies - with the\n"
-                      "material masks (rock, scree, soil, grass, snow...) on\n"
-                      "its outputs, ready for a MaterialStack.");
-  if (ImGui::MenuItem("Mountain"))
-    apply_terrain_style(a, "Mountain",
-                        {{"Noise", {}, {{"octaves", 10}}}});
-  if (ImGui::MenuItem("Ridged peaks"))
-    apply_terrain_style(a, "Ridged peaks",
-                        {{"Noise", {}, {{"type", 1}, {"octaves", 11}}},
-                         {"Peaks", {{"strength", 0.45f}}, {}}});
-  if (ImGui::MenuItem("Eroded mountain"))
-    apply_terrain_style(a, "Eroded mountain",
-                        {{"Noise", {}, {{"octaves", 10}}},
-                         {"Hydraulic", {}, {}},
-                         {"Thermal", {}, {}}});
-  if (ImGui::MenuItem("Canyon"))
-    apply_terrain_style(a, "Canyon",
-                        {{"Noise", {}, {{"octaves", 9}}},
-                         {"Terrace", {{"shape", 6.f}}, {{"levels", 7}}},
-                         {"Dissolve", {{"amount", 0.4f}}, {}}});
-  if (ImGui::MenuItem("Dunes"))
-    apply_terrain_style(a, "Dunes", {{"Dunes", {}, {}}});
-  if (ImGui::MenuItem("Iceberg"))
-    apply_terrain_style(
-        a, "Iceberg",
-        {{"Noise", {}, {{"octaves", 8}}},
-         {"TerrainClip", {{"softness", 0.04f}}, {{"high_mode", 1}}},
-         {"Glaciation", {{"strength", 0.7f}}, {}}});
-  if (ImGui::MenuItem("Lunar"))
-    apply_terrain_style(a, "Lunar",
-                        {{"Noise", {{"gain", 0.42f}}, {{"octaves", 8}}},
-                         {"Crater", {}, {{"profile", 1}}},
-                         {"Grit", {{"amount", 0.015f}}, {}}});
+  for (const Style &s : styles()) {
+    if (ImGui::MenuItem(s.name)) apply_terrain_style(a, s.name, s.chain);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", s.tip);
+  }
   ImGui::Separator();
   ImGui::TextDisabled("Each style drops a fresh chain into the graph\n"
                       "and wires it to the Terrain Output — the old\n"

@@ -58,6 +58,14 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"set_setting","key":"cloud_coverage","value":0.7}  (any of those settings by its name; colours as [r,g,b])
 - {"op":"crash_reports"}   (every crash report, hang report and session killed without a clean exit in logs/, newest first, with whether each was dealt with, in "reply")
 - {"op":"crash_mark_fixed","file":"hang_20260908_120000.txt","note":"double lock in the browser"}  (closes one report; it leaves the startup warning)
+- {"op":"terrain_clip","low_m":120,"high_m":900,"low_mode":"hole"|"flatten","high_mode":"flatten"|"hole","softness":0.02}
+   (Vue's clipping altitudes: a TerrainClip node in front of the Terrain Output; "clear":true removes it; "low"/"high" take 0..1 of the height range instead of metres)
+- {"op":"terrain_effect","effect":"dissolve","hardness":0.6,"iterations":1}
+   (one pass of a Vue terrain-editor effect in front of the output: erosion diffusive, thermal, glaciation, wind, dissolve, alluvium, fluvial, river valley; global grit, gravel, pebbles, stones, peaks, fir trees, plateaus, terraces, stairs, craters, sharpen, cracks; hardness is Vue's Rock hardness 0..1)
+- {"op":"terrain_style","name":"Canyon"}   (Mountain, Ridged peaks, Eroded mountain, Canyon, Mounds, Dunes, Iceberg, Lunar, Realistic mountain range: a fresh chain wired to the output)
+- {"op":"terrain_global","action":"invert"|"zero_edges"|"smooth_all"|"halve"|"double"|"reset_sculpt"|"remove_effects"}
+- {"op":"terrain_import_picture","path":"C:/dem.png","mode":"blend"|"add"|"subtract"|"multiply"|"min"|"max","proportion":0.6}   (Vue's Picture button)
+- {"op":"set_sculpt","active":true,"tool":"raise"|"plateau"|"flatten"|"altitude"|"smooth"|"terrace"|"noise"|"erase"|"shade","radius":0.08,"flow":0.6,"falloff":2,"invert":false,"altitude_m":300,"constrain_clip":true}
 - {"op":"perf_report"}   (the performance watcher: frame phases, event rates, memory and findings about work done for nothing, in "reply"; also logs/perf_watch.json every 10 s)
 - {"op":"render_passes","path":"shot.png","width":1920,"height":1080,
    "format":0|1|2,"passes":["depth","normal","albedo","object_id","direct",

@@ -20,6 +20,11 @@ enum class SculptTool {
   // carve, white the highest rise. Appended last so saved tool indices
   // keep meaning what they meant.
   Shade,
+  // Vue's Plateaus: toward a horizontal plane at the brush centre, found
+  // again as the brush moves (Flatten is Vue's UniSlope, fixed at the first
+  // click); and Vue's Altitude: toward one chosen altitude.
+  Plateau,
+  Altitude,
 };
 
 struct SculptState {
@@ -37,6 +42,11 @@ struct SculptState {
   // own range rather than in field units, so the same swatch means the same
   // thing whether the layer runs -1..1 (a sculpt) or 0..1 (a mask).
   float shade = 0.75f;
+  // Altitude brush: the target, 0..1 of the height range.
+  float altitude = 0.5f;
+  // Vue's "Constrain to clipping range": the brush cannot push the ground
+  // past the TerrainClip node's two altitudes.
+  bool constrain_clip = false;
 };
 
 SculptState &sculpt_state();

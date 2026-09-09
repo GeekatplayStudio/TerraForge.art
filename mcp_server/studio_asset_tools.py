@@ -100,6 +100,50 @@ ASSET_TOOLS: Dict[str, Dict[str, Any]] = {
                        "status. Also written to logs/perf_watch.json every 10 s.",
         "params": {},
     },
+    "studio_terrain_clip": {
+        "description": "Vue's clipping altitudes on the terrain: ground below the low "
+                       "mark becomes a hole (or a flat), ground above the high mark a "
+                       "flat top, with an edge softness. A TerrainClip node in front "
+                       "of the Terrain Output; clear removes it. low_m/high_m in "
+                       "metres, or low/high as 0..1 of the height range.",
+        "params": {"low_m": "float", "high_m": "float", "low": "float", "high": "float",
+                   "low_mode": "str", "high_mode": "str", "softness": "float", "clear": "bool"},
+    },
+    "studio_terrain_effect": {
+        "description": "One pass of a Vue terrain-editor effect in front of the Terrain "
+                       "Output. Erosion: diffusive, thermal, glaciation, wind, dissolve, "
+                       "alluvium, fluvial, river valley. Global: grit, gravel, pebbles, "
+                       "stones, peaks, fir trees, plateaus, terraces, stairs, craters, "
+                       "sharpen, cracks. hardness is Vue's Rock hardness 0..1; "
+                       "iterations repeats the pass.",
+        "params": {"effect": "str", "hardness": "float", "iterations": "int"},
+    },
+    "studio_terrain_style": {
+        "description": "Drop one of Vue's terrain styles into the graph, wired to the "
+                       "Terrain Output: Mountain, Ridged peaks, Eroded mountain, Canyon, "
+                       "Mounds, Dunes, Iceberg, Lunar, Realistic mountain range.",
+        "params": {"name": "str"},
+    },
+    "studio_terrain_global": {
+        "description": "Vue's terrain-editor toolbar: invert, zero_edges (toggle the "
+                       "output's edge fade), smooth_all (retopologize), halve and double "
+                       "(resolution), reset_sculpt, remove_effects.",
+        "params": {"action": "str"},
+    },
+    "studio_terrain_import_picture": {
+        "description": "Vue's Picture button: mix an image or elevation file into the "
+                       "terrain (HeightmapFile through a Blend node). mode blend, add, "
+                       "subtract, multiply, min or max; proportion 0..1.",
+        "params": {"path": "str", "mode": "str", "proportion": "float"},
+    },
+    "studio_set_sculpt": {
+        "description": "The sculpt brush: active, tool (raise, plateau, flatten, altitude, "
+                       "smooth, terrace, noise, erase, shade), radius, flow, falloff, "
+                       "invert, altitude_m (the Altitude brush's target), constrain_clip.",
+        "params": {"active": "bool", "tool": "str", "radius": "float", "flow": "float",
+                   "falloff": "float", "invert": "bool", "altitude_m": "float",
+                   "constrain_clip": "bool", "shade": "float"},
+    },
     "studio_crash_reports": {
         "description": "Every crash report, hang report (the watchdog caught the "
                        "main thread standing still) and session killed without a "
@@ -254,6 +298,12 @@ ASSET_SIMPLE = {
     "studio_paint_clear": "paint_clear",
     "studio_perf_report": "perf_report",
     "studio_crash_reports": "crash_reports",
+    "studio_terrain_clip": "terrain_clip",
+    "studio_terrain_effect": "terrain_effect",
+    "studio_terrain_style": "terrain_style",
+    "studio_terrain_global": "terrain_global",
+    "studio_terrain_import_picture": "terrain_import_picture",
+    "studio_set_sculpt": "set_sculpt",
     "studio_crash_mark_fixed": "crash_mark_fixed",
     "studio_list_settings": "list_settings",
     "studio_set_setting": "set_setting",

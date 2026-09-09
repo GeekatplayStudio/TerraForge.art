@@ -18,6 +18,7 @@
 #include "scene.hpp"
 #include "undo.hpp"
 #include <algorithm>
+namespace studio { struct SceneObject; void terrain_editor_ui(App &a, SceneObject &o); }
 #include <cmath>
 #include <cstdio>
 #include <imgui.h>
@@ -569,6 +570,7 @@ void object_properties_ui(App &a) {
           }
         }
       }
+      terrain_editor_ui(a, o); // Vue's Terrain Editor (panel_terrain_editor.cpp)
       break;
     case SceneObject::Water:
       ImGui::SeparatorText("Level");

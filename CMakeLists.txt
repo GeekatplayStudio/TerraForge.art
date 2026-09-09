@@ -211,6 +211,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_field_material.cpp
     engine/nodes/nodes_terrain_fx.cpp
     engine/nodes/nodes_sculpt_layer.cpp
+    engine/nodes/nodes_terrain_fx2.cpp
     engine/nodes/nodes_imprint.cpp
     engine/nodes/nodes_grass.cpp
     engine/scatter_candidates.cpp
@@ -328,6 +329,9 @@ set(STUDIO_SOURCES
     studio/hang_watch.cpp
     studio/crash_ledger.cpp
     studio/terrain_xform.cpp
+    studio/terrain_editor.cpp
+    studio/panel_terrain_editor.cpp
+    studio/ai_ops_terrain.cpp
     studio/imprint.cpp
     studio/updater.cpp
     studio/mesh_thumbnail.cpp

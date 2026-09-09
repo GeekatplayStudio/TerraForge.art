@@ -102,7 +102,8 @@ bool sculpt_apply_segment(App &a, float u0, float v0, float u1, float v1,
     static const char *names[] = {"Sculpt raise", "Sculpt flatten",
                                   "Sculpt smooth", "Sculpt terrace",
                                   "Sculpt noise",  "Sculpt erase",
-                                  "Paint height"};
+                                  "Paint height",  "Sculpt plateau",
+                                  "Sculpt altitude"};
     const int ti = std::clamp((int)S.tool, 0,
                               (int)(sizeof names / sizeof *names) - 1);
     undo_push_locked(a, names[ti]);
@@ -146,6 +147,12 @@ bool sculpt_apply_segment(App &a, float u0, float v0, float u1, float v1,
   int r = std::max(1, (int)(S.radius * fw));
   bool inv = S.invert;
   float lo = fa->fmin, hi = fa->fmax;
+  // the clipping range, when the brush is constrained to it: the surface
+  // (0..1 of the input's range) may not leave [clip_lo, clip_hi]
+  float clip_lo = -1e9f, clip_hi = 1e9f;
+  if (S.constrain_clip)
+    for (auto &cn : a.graph.nodes)
+      if (cn->type == "TerrainClip") cn->attrs.get_range("clip", clip_lo, clip_hi);
 
   // Stamp along the way, not just where the pointer ended up: the brush lands
   // once per frame, so a hand moving at any speed would otherwise leave a row
@@ -231,6 +238,17 @@ bool sculpt_apply_segment(App &a, float u0, float v0, float u1, float v1,
           // terrain underneath is untouched either way.
           d *= 1.f - std::min(w * 2.f, 1.f);
           break;
+        case SculptTool::Plateau: {
+          // a horizontal plane at the height under the brush centre, found
+          // again for every stamp - Vue's Plateaus
+          const float centre = surface01(tx, tz);
+          float cur = surface01(u, v);
+          d += (centre - cur) * w / strength;
+        } break;
+        case SculptTool::Altitude: {
+          float cur = surface01(u, v);
+          d += (S.altitude - cur) * w / strength;
+        } break;
         case SculptTool::Shade: {
           // Toward the chosen grey, never past it, so going over the same
           // ground twice deepens the stroke up to that value and then stops
@@ -241,6 +259,13 @@ bool sculpt_apply_segment(App &a, float u0, float v0, float u1, float v1,
         } break;
       }
       d = std::clamp(d, lo, hi);
+      if (S.constrain_clip) {
+        // hold the surface inside the clipping altitudes
+        const float surf = surface01(u, v);
+        if (surf > clip_hi) d -= (surf - clip_hi) / strength;
+        if (surf < clip_lo) d += (clip_lo - surf) / strength;
+        d = std::clamp(d, lo, hi);
+      }
     }
   } // stamps
 

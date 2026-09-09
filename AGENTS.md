@@ -319,6 +319,20 @@ size; and a status line proves an op ran, a log line does not.
 4. **The UI snapshot is rebuilt on change, not per frame** (eval serial,
    layout serial, node count, a pointer button, or a quarter second).
 
+## Vue's Terrain Editor is a set of graph operations
+
+studio/terrain_editor.cpp holds the table: every effect name Vue's Effects
+tab offers, the node it is, and how Rock hardness reaches its parameter;
+the styles (terrain_styles.cpp `styles()`), the clipping node, the toolbar
+commands and the Picture import. The panel (panel_terrain_editor.cpp) and
+the ops (ai_ops_terrain.cpp) both call these and nothing else, so adding an
+effect means one table row: the panel button, the op name, the MCP tool's
+list and the assistant's schema line follow (the schema and MCP text are
+written by hand - update both). Every function takes the graph lock; call
+from outside a lease. A node the editor added is recognised by type
+(`is_editor_node`), which is what `remove_effects` walks back through -
+so a new effect node type goes in the table or it is not removable.
+
 ## The tile's join with the planet
 
 studio/planet_place.cpp composes weight = feature halo (or 1 in whole-tile

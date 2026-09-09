@@ -92,6 +92,7 @@ FieldVectorSplit|Field Convert
 FieldVoronoi|Field Noise
 FieldZone|Field Displace
 FillBasins|Hydrology
+FirTrees|Effect
 FlatColor|Material
 Flood|Hydrology
 FlowAccumulation|Analysis
@@ -112,6 +113,7 @@ HydraulicBlur|Erosion
 Hydraulic|Erosion
 ImportObject|Scene
 InfiniteTerrain|Scene
+Invert|Effect
 KMeans|Mask
 KeyframeCurve|Animation
 Kuwahara|Filter
@@ -152,6 +154,7 @@ PathResample|Path
 PathSDF|Path
 PathSpline|Path
 Peaks|Effect
+Pebbles|Effect
 Planet|Scene
 Plateau|Filter
 PointsFilter|Points
