@@ -304,6 +304,36 @@ void main(){
   frag = vec4(col, 1.0);
 })GLSL";
 
+// -------- the far shell's relief --------------------------------------------
+// The surround samples the layers in tile units: hills every few tiles, the
+// ground the tile's own relief was placed against. The far shell of an
+// inside world is the whole world seen from within, and a tile's hills
+// repeated eight thousand times round it is noise - so past the surround the
+// layers are sampled by direction from the world's centre (a globe, a Dyson
+// sphere) or from its axis (a ring), the way a planet in the sky is shaped:
+// continents. The two blend over the first hundred tiles.
+// Needs PL_FN and PL_SPHERE_FN before it, and u_shell / u_curve declared.
+const char *PL_SHELL_FN = R"GLSL(
+vec3 pl_shell_dir(vec2 uv, float R){
+  vec2 a = pl_sphere_angles(uv, R);
+  float cl = cos(a.y);
+  float z = u_world_shape.y > 0.5 ? (uv.y - 0.5) / max(R, 1e-6) : sin(a.y);
+  return vec3(sin(a.x) * cl, cos(a.x) * cl, z);
+}
+vec2 pl_relief_w(vec2 uv, float octf){
+  vec2 near = pl_height_w(vec3(uv.x, 0.37, uv.y), octf);
+  if (u_shell != 1) return near;
+  // band-limited by distance: continents on the far side, valleys as it
+  // comes nearer - a fixed count streaked the mid distance with ridges a
+  // pixel wide, foreshortened along the view
+  float dd = max(length(uv - u_cam.xz), 1.0);
+  float octf_far = clamp(2.0 + log2(4000.0 / dd) * 1.3, 2.0, 6.0);
+  vec2 far = pl_height_w(pl_shell_dir(uv, u_curve), octf_far);
+  float d = max(abs(uv.x - 0.5), abs(uv.y - 0.5));
+  return mix(near, far, smoothstep(29.0, 120.0, d));
+}
+)GLSL";
+
 // -------- home ground plane extended to the horizon -------------------------
 const char *VS_INF = R"GLSL(#version 430 core
 layout(location=0) in vec2 in_p; // -1..1 param, concentrated near the tile
@@ -311,8 +341,13 @@ uniform mat4 u_mvp;
 uniform sampler2D u_height;
 uniform vec3 u_cam;
 uniform float u_hscale, u_curve, u_amp, u_base, u_wl;
+// the far shell of an inside world (world_shape.hpp): the grid spans the
+// whole shape instead of the 30 tiles round the tile; u_shell_w is a ring's width
+uniform int u_shell;
+uniform float u_shell_w;
 PL_FN_PLACEHOLDER
 PL_SPHERE_PLACEHOLDER
+PL_SHELL_PLACEHOLDER
 TILE_XFORM_INV_PLACEHOLDER
 FRACTAL_FN_PLACEHOLDER
 uniform float u_frac_amount, u_frac_scale, u_tile_octf;
@@ -326,6 +361,13 @@ void main(){
   // blend must be exact, the far ring reaches ~30 tiles = the horizon
   vec2 off = in_p * (0.5 + 30.0 * in_p*in_p*in_p*in_p);
   vec2 uv = vec2(0.5) + off;
+  if (u_shell == 1){
+    // the whole way round along x (the angles clamp at +-pi, so the two
+    // ends meet on the far side), the ring's width or pole to pole along z
+    float R = max(u_curve, 1e-6);
+    float span_z = u_world_shape.y > 0.5 ? u_shell_w * 0.5 : 1.5707963 * R;
+    uv = vec2(0.5) + vec2(in_p.x * 3.14159265 * R, in_p.y * span_z);
+  }
   // where the tile is: the world point back through the tile's transform
   // (terrain_xform.hpp), so the hole and the border blend follow a tile
   // that was moved, turned or stretched
@@ -349,7 +391,7 @@ void main(){
   // appears all the way round it. u_base is the level the tile was placed
   // at (studio/planet_place.cpp), the same one the tile's relief is built
   // on, so the two are one function of position at the border.
-  vec2 hw = pl_height_w(vec3(uv.x, 0.37, uv.y), octf);
+  vec2 hw = pl_relief_w(uv, octf);
   float proc = hw.x * u_amp + u_base;
   // Outside the tile the sample is clamped to its edge row; read that row
   // from a coarser mip the further out we are, so what is carried into
@@ -388,8 +430,14 @@ uniform float u_hscale, u_amp, u_base, u_sun_i, u_ambient, u_exposure, u_sat;
 uniform float u_wl, u_lat, u_snow_line, u_wclarity;
 uniform vec3 u_wdeep, u_wshallow;
 uniform vec3 u_grade;
+// the world's shape (world_shape.hpp): the far shell of an inside face,
+// a ring's width, its curvature, and whether the sun is a body inside it
+uniform int u_shell, u_sun_mode;
+uniform float u_shell_w, u_curve;
 PL_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
+PL_SPHERE_PLACEHOLDER
+PL_SHELL_PLACEHOLDER
 TILE_XFORM_INV_PLACEHOLDER
 FRACTAL_FN_PLACEHOLDER
 uniform float u_frac_amount, u_frac_scale, u_tile_octf;
@@ -424,20 +472,29 @@ void main(){
   // tile is wherever its transform put it
   vec2 tl = tile_unapply_xz(v_uv);
   if (v_out <= 0.0 && tiles_inside(v_uv)) discard;
+  // the shell leaves the ground round the tile to the surround, which has
+  // the vertices for it; beyond a ring's rim there is only space
+  if (u_shell == 1 && max(abs(v_uv.x - 0.5), abs(v_uv.y - 0.5)) < 29.0) discard;
+  if (u_world_shape.y > 0.5 && abs(v_uv.y - 0.5) > u_shell_w * 0.5) discard;
+  // a sun inside the world shines on each point from the axis or the centre
+  vec3 sun = u_sun_mode == 1 ? pl_world_up_at(v_world, u_curve) : u_sun;
   float cam_d = max(length(u_cam - v_world), 0.02);
   float s_join = smoothstep(0.0, 0.06, v_out);
   float octf = clamp(10.0 - log2(cam_d * 7.0) * 1.3, 2.0, 11.0);
   octf = mix(min(octf, u_tile_octf), octf, s_join); // the tile's grain at the join
   float e = max(0.5 / exp2(octf), 0.0004);
+  // the far shell: a normal differenced over a pixel's footprint rather
+  // than a texel's (its relief is the world's, PL_SHELL_FN)
+  if (u_shell == 1) e = max(e, cam_d * 0.0025);
   // The normal is differenced from the very height function the vertex
   // stage built the surface from - the tile's heightmap blending into the
   // planet's relief over the ring - so the shading is the geometry's. A
   // normal taken from the heightmap alone, clamped at the tile's edge,
   // extruded the edge row outward as stripes.
-  vec2 hw0 = pl_height_w(vec3(v_uv.x, 0.37, v_uv.y), octf);
+  vec2 hw0 = pl_relief_w(v_uv, octf);
   float h0 = join_h(v_uv, hw0.x, octf);
-  float hx = join_h(v_uv + vec2(e, 0.0), pl_height(vec3(v_uv.x + e, 0.37, v_uv.y), octf), octf);
-  float hz = join_h(v_uv + vec2(0.0, e), pl_height(vec3(v_uv.x, 0.37, v_uv.y + e), octf), octf);
+  float hx = join_h(v_uv + vec2(e, 0.0), pl_relief_w(v_uv + vec2(e, 0.0), octf).x, octf);
+  float hz = join_h(v_uv + vec2(0.0, e), pl_relief_w(v_uv + vec2(0.0, e), octf).x, octf);
   vec3 N = normalize(vec3(h0 - hx, e, h0 - hz));
   // the tile's fractal micro-relief, differenced the way the tile does it
   if (u_frac_amount > 0.0){
@@ -451,19 +508,34 @@ void main(){
       N = normalize(N + vec3(-dx * k, 0.0, -dy * k));
     }
   }
+  // steepness and how much of the sky the point sees, in the flat frame;
+  // then the normal into the world's frame at this point (a hair on a
+  // globe, the whole way round on an inside face's far shell)
+  float slope = 1.0 - N.y;
+  float n_up = N.y;
+  {
+    vec3 east, up, north;
+    pl_sphere_frame(v_uv, u_curve, east, up, north);
+    N = normalize(east * N.x + up * N.y + north * N.z);
+  }
   // water where the ground is below the water level; the vertex stage
-  // already flattened the surface to it
-  bool water = v_proc < u_wl - 1e-4;
-  float depth = max(u_wl - v_proc, 0.0);
+  // already flattened the surface to it. The shell's vertices are far
+  // apart, so it reads the height it just built per pixel instead.
+  float proc = u_shell == 1 ? h0 : v_proc;
+  bool water = proc < u_wl - 1e-4;
+  float depth = max(u_wl - proc, 0.0);
 
   // the shared landscape palette on the same altitude scale as the tile:
   // 0 at the water, 1 at the top of the tile's height range
   // water off sends u_wl far below everything (the surface must not
   // flatten); the palette still wants sea level as its zero
   float wl_pal = u_wl < -1.0e8 ? 0.0 : u_wl;
-  float t = (v_proc - wl_pal) / max(u_hscale - wl_pal, 0.02);
-  float slope = 1.0 - N.y;
-  float var = pl_vnoise(vec3(v_uv.x, 0.37, v_uv.y) * 37.0, 0x5a17u);
+  float t = (proc - wl_pal) / max(u_hscale - wl_pal, 0.02);
+  // the shell's variation is at the world's scale, by direction like its
+  // relief: the tile's 37 per tile is speckle from thousands of tiles off,
+  // and a grain scaled by distance smears into stripes along the view
+  float var = u_shell == 1 ? pl_vnoise(pl_shell_dir(v_uv, u_curve) * 40.0, 0x5a17u)
+                           : pl_vnoise(vec3(v_uv.x, 0.37, v_uv.y) * 37.0, 0x5a17u);
   vec3 alb = pl_palette(t, slope, u_lat, hw0.y, u_snow_line, var);
   // No colour is borrowed from the tile any more: across the placement's
   // skirt the tile's own shader gives its material way to this same
@@ -474,26 +546,55 @@ void main(){
   // or turning the texture off leaves a coloured horizon around a grey tile
   if (u_textured == 0) alb = vec3(0.58, 0.57, 0.55);
   vec3 V = normalize(u_cam - v_world);
-  float NdL = max(dot(N, u_sun), 0.0);
+  float NdL = max(dot(N, sun), 0.0);
   // the ambient half is skylight, so it fades with the same nightfall
-  // factor the sky uses - otherwise the surround glows all night
-  float day_f = clamp(u_sun.y * 4.0 + 0.35, 0.035, 1.0);
+  // factor the sky uses - otherwise the surround glows all night. A sun
+  // inside the world never sets: it is overhead everywhere.
+  float sun_elev = u_sun_mode == 1 ? 1.0 : sun.y;
+  float day_f = clamp(sun_elev * 4.0 + 0.35, 0.035, 1.0);
   vec3 direct = alb * u_sun_color * u_sun_i * NdL * 0.92 / 3.14159;
   vec3 ambient = alb * mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient
-                     * (0.45 + 0.55*N.y) * day_f;
+                     * (0.45 + 0.55*n_up) * day_f;
   vec3 col = direct + ambient;
-  if (water){
+  if (water && u_shell == 1){
+    // far water is a colour, not waves: at thousands of tiles a wave
+    // normal is speckle
+    alb = u_wdeep;
+    col = alb * (u_sun_color * u_sun_i * NdL * 0.92 / 3.14159 +
+                 mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient * day_f);
+  } else if (water){
     // the tile's own water shader - waves, foam, the translucent shore -
     // over the bed shaded above, so a lake crossing the tile's border is
     // one lake (WATER_FN_GLSL)
-    WaterShade ws = water_shade(v_uv, v_world, depth, u_hscale, u_cam, u_sun, u_sun_color,
+    WaterShade ws = water_shade(v_uv, v_world, depth, u_hscale, u_cam, sun, u_sun_color,
                                 u_sky_zenith, u_sky_horizon);
     col = mix(col, ws.col, ws.alpha);
     N = ws.n;
     alb = ws.water;
   }
   float fog_f; vec3 fog_c;
-  fog_terms(v_world, u_cam, cam_d, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
+  // the fog's day factor reads the sun's elevation from its y: a sun
+  // inside the world is overhead, whichever way it lies from this point
+  fog_terms(v_world, u_cam, cam_d, u_hscale, u_sun_mode == 1 ? vec3(0.0, 1.0, 0.0) : sun,
+            u_sun_color, fog_f, fog_c);
+  if (u_shell == 1 && u_fog_type != 0 && u_fog_density > 0.0){
+    // Two layers of air, not one. The ray leaves the atmosphere over the
+    // camera, crosses the empty middle of the world and enters the far
+    // side's own layer at the mirrored angle. Each is a slant column of
+    // the exponential profile fog_terms integrates, measured from its own
+    // ground - world y is R up there, which would read as no air at all.
+    float level = u_fog_level * u_hscale * 4.0;
+    float falloff = u_fog_falloff / max(u_hscale, 1e-3);
+    float dens = u_fog_density * (u_fog_type == 1 ? 0.35 : (u_fog_type == 2 ? 1.0 : 1.8));
+    vec3 dir = (v_world - u_cam) / cam_d;
+    float R = max(u_curve, 1e-6);
+    vec3 up_cam = pl_world_up_at(u_cam, R);
+    vec3 up_far = pl_world_up_at(v_world, R);
+    float cam_h = R - length(pl_world_centre_at(u_cam, R) - u_cam); // the camera's height over the inside ground
+    float od_near = exp(-falloff * max(cam_h - level, 0.0)) / (falloff * max(abs(dot(dir, up_cam)), 0.02)) * dens;
+    float od_far = exp(-falloff * max(proc - level, 0.0)) / (falloff * max(abs(dot(dir, up_far)), 0.02)) * dens;
+    fog_f = clamp(1.0 - exp(-od_near - od_far), 0.0, 1.0);
+  }
   if (u_aov != 0){
     // the same quantities the terrain tile writes; the surround is terrain
     // too, so it carries the tile's object id, and its water the water's

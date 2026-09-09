@@ -16,6 +16,7 @@
 #include <future>
 #include <optional>
 #include <GLFW/glfw3.h>
+#include "world_shape.hpp"
 
 namespace studio {
 
@@ -67,6 +68,15 @@ static SurfaceFeatures collect_features(App &a) {
 static std::optional<PlacementRequest> g_placement_next;
 static std::future<TerrainUpload> g_placement_work;
 
+// The face of the world tile 0 stands on (world_shape.hpp): its placement
+// reads that face's ground, and a change of face re-places it.
+static int home_tile_side() {
+  const int obj = terrain_tile_object(0);
+  return (obj >= 0 && obj < (int)scene().objects.size())
+             ? object_side(render_settings(), scene().objects[(size_t)obj])
+             : 0;
+}
+
 static uint64_t placement_key();
 uint64_t app_placement_key() { return placement_key(); }
 static uint64_t placement_key() {
@@ -80,7 +90,9 @@ static uint64_t placement_key() {
   // after its bool, and hashing indeterminate padding made the key change
   // every frame - which re-placed the tile onto the planet and re-uploaded
   // the terrain every frame, 9 ms of work for a picture that had not moved.
-  for (const gpx::planet::Layer &L : planet_home_layers()) {
+  const int side = home_tile_side(); // its face's ground, and the face itself
+  mix(&side, sizeof side);
+  for (const gpx::planet::Layer &L : planet_home_layers(side)) {
     mix(&L.seed, sizeof L.seed);
     mix(&L.type, sizeof L.type);
     mix(&L.frequency, sizeof L.frequency);
@@ -134,7 +146,7 @@ static void upload_placed_terrain(App &a, const std::shared_ptr<gpx::Heightmap> 
                                   std::shared_ptr<const gpx::TextureRGBA> albedo) {
   g_place_key = placement_key();
   PlaceSettings ps = app_place_settings(a, nullptr, -1);
-  g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(), ps,
+  g_placement_next = PlacementRequest{hm, std::move(albedo), planet_home_layers(home_tile_side()), ps,
       g_last_features, a.eval_serial, g_place_key};
 }
 

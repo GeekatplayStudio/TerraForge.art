@@ -122,6 +122,10 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"tess_max", 'f', &rs.tess_max},
       {"frustum_cull", 'b', &rs.frustum_cull},
       {"planet_radius", 'f', &rs.planet_radius},
+      {"world_shape", 'i', &rs.world_shape},
+      {"world_inside", 'b', &rs.world_inside},
+      {"world_width", 'f', &rs.world_width},
+      {"world_sun_inside", 'b', &rs.world_sun_inside},
       {"place_on_planet", 'b', &rs.place_on_planet},
       {"place_edge", 'f', &rs.place_edge},
       {"place_flatten", 'f', &rs.place_flatten},
@@ -230,6 +234,7 @@ json scene_to_json() {
         {"parent", o.parent},
         {"expanded", o.expanded},
     };
+    if (o.side) jo["side"] = o.side; // world_shape.hpp: 1 outside, 2 inside
     object_visibility_to_json(jo, o); // scene_io_object.cpp
     object_transform_to_json(jo, o);
     if (o.driver_node) jo["driver_node"] = o.driver_node;
@@ -352,6 +357,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
     o.builtin = jo.value("builtin", false);
     o.layer = jo.value("layer", 0);
     o.parent = jo.value("parent", -1);
+    o.side = jo.value("side", 0);
     o.expanded = jo.value("expanded", true);
     object_transform_from_json(jo, o); // scene_io_object.cpp
     o.driver_node = remap_id(jo.value("driver_node", 0ull), idmap);

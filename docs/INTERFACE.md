@@ -160,3 +160,21 @@ translation can be completed.
   circle.
 - [Layered materials](MATERIAL_LAYERS.md) — the Material Studio.
 - [AI services](AI_SERVICES.md) — the Settings window's service tabs.
+
+## World shape
+
+Objects ▸ Home planet ▸ *World shape*: **Shape** (Globe, Ring world, Dyson
+sphere - a preset that sets the two switches below), **Ring width** (a ring
+only: how far it reaches north and south of the tile; beyond its rim is
+space), **Ground on the inside** (the centre is above the tile: the surface
+rises away from you and the far side of the world is drawn overhead; every
+view curves an inside world) and **Sun inside** (the sun is a body on the
+ring's axis or at the sphere's centre, straight above the tile; the Sun
+object's angles are not used while it is on). A terrain tile's Placement
+section and a surface layer's tab carry **Side of the world**: the world's
+own face, or the other face of the same shell, where the heights go the
+other way - a globe's other face is the inside of its crust, seen from
+within the hollow planet. A tile on the other face is placed against that
+face's own layers. Script: `set_viewport` with `world`, `world_shape`,
+`world_inside`, `world_width`, `world_sun_inside`; `place_object` with
+`side`.

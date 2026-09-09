@@ -72,7 +72,9 @@ extern const char *const TERRAIN_XFORM_FS_GLSL;
 extern const char *const TERRAIN_XFORM_INV_GLSL;
 // Uploads for the two (renderer_passes.cpp; GL lives there, not here).
 void upload_terrain_xform(unsigned prog);
-void upload_terrain_xform_inverse(unsigned prog);
+// `side` (world_shape.hpp): 0 every tile; SIDE_OUTSIDE / SIDE_INSIDE only
+// the tiles standing on that face of the world, for a surround drawn per face.
+void upload_terrain_xform_inverse(unsigned prog, int side = 0);
 struct RenderSettings;
 // The water's look (WATER_FN_GLSL) into a program; renderer_passes.cpp.
 void upload_water_uniforms(unsigned prog, const RenderSettings &rs, float time);

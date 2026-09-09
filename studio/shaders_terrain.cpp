@@ -124,6 +124,7 @@ uniform vec3 u_cull_cam;          // camera, for the planetary curvature term
 uniform float u_cull_radius;      // planet radius, 0 = flat
 uniform int u_cull_on;
 TILE_XFORM_PLACEHOLDER
+PL_SPHERE_PLACEHOLDER
 vec2 screen_of(vec2 uv){
   vec3 p = tile_xform(vec3(uv.x, texture(u_height, uv).r * u_hscale, uv.y));
   vec4 c = u_mvp * vec4(p, 1.0);
@@ -170,10 +171,21 @@ bool patch_visible(vec2 c0, vec2 c2){
     // sits under it): nearest point lowers the box top, furthest corner
     // lowers its bottom
     vec2 ctr = vec2(0.5);
-    vec2 d_near = max(max(lo_uv - ctr, vec2(0.0)), ctr - hi_uv);
-    vec2 d_far = max(abs(lo_uv - ctr), abs(hi_uv - ctr));
-    yhi -= dot(d_near, d_near) / (2.0 * u_cull_radius);
-    ylo -= dot(d_far, d_far) / (2.0 * u_cull_radius);
+    // the other face of the shell: its heights go the other way
+    if (u_world_shape.w > 0.5){ float t = ylo; ylo = -yhi; yhi = -t; }
+    // a flat axis (a ring world's z) contributes no drop (world_shape.hpp)
+    vec2 curved = vec2(u_world_shape.x > 0.5 ? 0.0 : 1.0, u_world_shape.y > 0.5 ? 0.0 : 1.0);
+    vec2 d_near = max(max(lo_uv - ctr, vec2(0.0)), ctr - hi_uv) * curved;
+    vec2 d_far = max(abs(lo_uv - ctr), abs(hi_uv - ctr)) * curved;
+    if (u_world_shape.z > 0.5){
+      // an inside face rises: the near distance lifts the bottom, the far
+      // corner lifts the top
+      ylo += dot(d_near, d_near) / (2.0 * u_cull_radius);
+      yhi += dot(d_far, d_far) / (2.0 * u_cull_radius);
+    } else {
+      yhi -= dot(d_near, d_near) / (2.0 * u_cull_radius);
+      ylo -= dot(d_far, d_far) / (2.0 * u_cull_radius);
+    }
   }
   vec3 lo = vec3(lo_uv.x, ylo, lo_uv.y);
   vec3 hi = vec3(hi_uv.x, yhi, hi_uv.y);
@@ -387,6 +399,20 @@ uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
 uniform vec3 u_fog_color, u_absorb;
 uniform float u_fog_albedo, u_fog_g, u_fog_hetero;
 uniform int u_fog_steps;
+// The world the air lies on (world_shape.hpp). On an inside world (a ring,
+// a Dyson sphere) the profile's height is measured from the world's
+// surface - the air is a layer on the shell - rather than from world y,
+// which is R at the far side of a ring. A globe keeps world y, the profile
+// every scene was lit with (a giant radius is past float precision anyway).
+uniform float u_fog_world_r;
+uniform vec4 u_fog_world_shape;
+float fog_alt(vec3 p){
+  float R = u_fog_world_r;
+  if (R <= 0.0 || R > 1.0e5 || u_fog_world_shape.z < 0.5 ||
+      (u_fog_world_shape.x > 0.5 && u_fog_world_shape.y > 0.5)) return p.y;
+  vec3 c = vec3(0.5, u_fog_world_shape.z > 0.5 ? R : -R, u_fog_world_shape.y > 0.5 ? p.z : 0.5);
+  return abs(length(c - p) - R);
+}
 uniform int u_aov, u_object_id;
 // ID colours: a view's shading mode that paints every object (mode 1) or
 // every material (mode 2) in one flat bright colour, so a layer or an object
@@ -446,7 +472,7 @@ void fog_terms(vec3 world, vec3 cam, float dist, float hscale, vec3 sun, vec3 su
   vec3 sky_in = u_fog_color * fog_day;
   if (u_fog_steps <= 1 || u_fog_hetero <= 0.0) {
     // closed form: optical depth through an exponential height profile
-    float fy0 = cam.y - level, fy1 = world.y - level;
+    float fy0 = fog_alt(cam) - level, fy1 = fog_alt(world) - level;
     float dY = fy1 - fy0;
     float a = exp(-falloff * max(fy0, 0.0));
     float b = exp(-falloff * max(fy1, 0.0));
@@ -463,14 +489,14 @@ void fog_terms(vec3 world, vec3 cam, float dist, float hscale, vec3 sun, vec3 su
     float ls = (0.35 / falloff) / 3.0; // the sun march covers a third of the profile
     for (int i = 0; i < steps; ++i){
       vec3 p = cam + dir * ((float(i) + 0.5) * dt);
-      float sig = dens * exp(-falloff * max(p.y - level, 0.0))
+      float sig = dens * exp(-falloff * max(fog_alt(p) - level, 0.0))
                 * mix(1.0, fog_noise3(p * nscale) * 1.6, u_fog_hetero);
       float ext = sig * dt;
       // self-shadowing: optical depth toward the sun from this point
       float od_sun = 0.0;
       for (int j = 0; j < 3; ++j){
         vec3 q = p + sun * ((float(j) + 0.5) * ls);
-        od_sun += dens * exp(-falloff * max(q.y - level, 0.0))
+        od_sun += dens * exp(-falloff * max(fog_alt(q) - level, 0.0))
                 * mix(1.0, fog_noise3(q * nscale) * 1.6, u_fog_hetero) * ls;
       }
       vec3 Li = u_fog_albedo * (sky_in + sun_in * exp(-od_sun));

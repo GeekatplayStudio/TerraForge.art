@@ -114,6 +114,10 @@ struct SceneObject {
   std::string name;
   int layer = 0;
   int parent = -1;       // index into objects, -1 = root
+  // Which face of the world this stands on (world_shape.hpp): 0 the
+  // world's own, 1 outside, 2 inside - so one shell can carry ground on
+  // both faces. Read for terrain tiles and surface layers.
+  int side = 0;
   bool expanded = true;  // groups: children shown in the Outliner
   bool visible = true;
   // Locked: no gizmo, no drag, transform fields read-only. The small lock in
@@ -384,7 +388,8 @@ std::vector<int> scene_surface_layers(int planet_idx);
 // The home planet's root layers as the shaders and the tile placement
 // receive them: visible only, amplitude weighted by the ground-plane height
 // scale, at most gpx::planet::MAX_LAYERS.
-std::vector<gpx::planet::Layer> planet_home_layers();
+// `side` (world_shape.hpp): 0 every layer, else only those on that face
+std::vector<gpx::planet::Layer> planet_home_layers(int side = 0);
 
 // ---- cameras ----
 // creates a camera under the "Cameras" group, inheriting every property

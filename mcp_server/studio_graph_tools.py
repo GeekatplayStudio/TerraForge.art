@@ -212,7 +212,13 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "subdivision (tessellation, tess_pixels, tess_min, "
                        "tess_max), per-patch culling (frustum_cull), the "
                        "surface itself (height_scale, planet_radius, "
-                       "fractal_detail, fractal_scale, field_displacement) "
+                       "fractal_detail, fractal_scale, field_displacement), "
+                       "the world's shape (world: globe, ring or dyson - a "
+                       "ring world curves along the tile's east-west with "
+                       "the ground inside and the sun on its axis, a Dyson "
+                       "sphere is a globe with the ground inside and the sun "
+                       "at the centre; the parts: world_shape, world_inside, "
+                       "world_width in tile units, world_sun_inside) "
                        "and shading (wireframe, shadows, shadow_softness, "
                        "exposure, use_albedo, layout, engine). Also "
                        "graph_memory_mb, the ceiling on cached node output "
@@ -233,7 +239,10 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
         "params": {"tessellation": "bool", "tess_pixels": "float",
                    "tess_min": "float", "tess_max": "float",
                    "frustum_cull": "bool", "height_scale": "float",
-                   "planet_radius": "float", "fractal_detail": "float",
+                   "planet_radius": "float", "world": "str",
+                   "world_shape": "str", "world_inside": "bool",
+                   "world_width": "float", "world_sun_inside": "bool",
+                   "fractal_detail": "float",
                    "fractal_scale": "float", "field_displacement": "float",
                    "wireframe": "bool", "shadows": "bool",
                    "shadow_softness": "float", "exposure": "float",

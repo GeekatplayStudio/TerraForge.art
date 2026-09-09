@@ -14,6 +14,7 @@
 #include "terrain_cull.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
+#include "world_shape.hpp"
 #include <imgui.h>
 #include <json.hpp>
 #include <algorithm>
@@ -188,6 +189,10 @@ static void publish_state(App &a) {
                    {"instances_total", inst_total},
                    {"instances_cards", inst_cards},
                    {"planet_radius", rs.planet_radius},
+                   {"world_shape", world_shape_name(rs.world_shape)},
+                   {"world_inside", rs.world_inside},
+                   {"world_width", rs.world_width},
+                   {"world_sun_inside", rs.world_sun_inside},
                    {"fractal_detail", rs.fractal_detail},
                    {"field_displacement", rs.field_displacement},
                    {"wireframe", rs.wireframe},

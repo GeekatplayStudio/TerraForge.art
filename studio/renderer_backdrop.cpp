@@ -8,6 +8,7 @@
 #include "renderer_internal.hpp"
 #include "console.hpp"
 #include "hdr_image.hpp"
+#include "world_shape.hpp"
 #include <cmath>
 #include <chrono>
 #include <filesystem>
@@ -147,6 +148,12 @@ void upload_fog_uniforms(GLuint prog, const RenderSettings &RS, bool atmosphere)
   uni1(prog, "u_fog_g", RS.fog_anisotropy);
   uni1(prog, "u_fog_hetero", RS.fog_heterogeneity);
   unii(prog, "u_fog_steps", RS.fog_steps);
+  // the world the air lies on (world_shape.hpp); the fog is not distortion,
+  // so it keeps the setting whatever the view draws
+  const gpx::planet::Shape S = world_shape(RS);
+  uni1(prog, "u_fog_world_r", RS.planet_radius);
+  glUniform4f(uniform_location(prog, "u_fog_world_shape"), S.flat_x ? 1.f : 0.f,
+              S.flat_z ? 1.f : 0.f, S.inside ? 1.f : 0.f, 0.f);
 }
 
 } // namespace studio

@@ -14,6 +14,7 @@
 #include "cloud_noise.hpp"
 #include "planet_renderer.hpp"
 #include "scene.hpp"
+#include "world_shape.hpp"
 #include "gpu_timer.hpp"
 #include "terrain_cull.hpp"
 #include "gpx/camera_math.hpp"
@@ -264,6 +265,23 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.tile_octf = std::clamp(std::log2((float)std::max(hm_w, 16)), 4.f, 11.f);
     inf.time = time_acc;
     infinite_draw(inf);
+  }
+
+  // a sun inside the world (world_shape.hpp): a body on a ring's axis or
+  // at a Dyson sphere's centre, R above the tile, half a degree across as
+  // seen from the ground - drawn as a thing, since the far shell hides
+  // the sky's own sun disc
+  if (sun_on && RS.world_sun_inside && RS.world_inside && RS.planet_radius > 0.f && g_aov == 0) {
+    const float R = view_planet_radius(RS, vc);
+    const float radius = std::max(R * 0.0047f, 0.02f);
+    glUseProgram(prog_gizmo);
+    glUniformMatrix4fv(uniform_location(prog_gizmo, "u_mvp"), 1, GL_FALSE, mvp);
+    glUniform4f(uniform_location(prog_gizmo, "u_xform"), 0.5f, R, 0.5f, radius);
+    float sun_col[3] = {RS.sun_color[0] * 2.5f, RS.sun_color[1] * 2.3f, RS.sun_color[2] * 1.8f};
+    uni3(prog_gizmo, "u_color", sun_col);
+    unii(prog_gizmo, "u_selected", sel_type == SceneObject::Sun ? 1 : 0);
+    glBindVertexArray(vao_sphere);
+    glDrawArrays(GL_TRIANGLES, 0, sphere_verts);
   }
 
   // every mesh object and its scattered copies (renderer_meshes.cpp)

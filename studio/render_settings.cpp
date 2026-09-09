@@ -15,6 +15,13 @@ RenderSettings &render_settings() {
 }
 
 void compute_sun_dir(const RenderSettings &rs, float out[3]) {
+  if (rs.world_sun_inside && rs.world_inside) {
+    // a sun on a ring world's axis or at a Dyson sphere's centre stands
+    // straight above the tile (world_shape.hpp); the far shell lights each
+    // of its points toward that body itself
+    out[0] = 0.f; out[1] = 1.f; out[2] = 0.f;
+    return;
+  }
   float az, alt;
   if (rs.sun_mode == 0) {
     az = rs.sun_azimuth * 0.017453293f;

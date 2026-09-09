@@ -67,6 +67,7 @@ GPX_BUMP_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 FOG_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
+PL_SPHERE_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -203,13 +204,10 @@ void main(){
   // the normal was built in the flat tile's frame; on a planet that frame is
   // rotated to the sphere's local east/up/north at this point
   if (u_planet_radius > 0.0){
-    float k = min(1.0 / u_planet_radius, 6.2831853);
-    float kl = min(1.0 / u_planet_radius, 3.14159265);
-    vec2 a = vec2((v_uv.x - 0.5) * k, (v_uv.y - 0.5) * kl);
-    float cl = cos(a.y), sl = sin(a.y);
-    vec3 up = vec3(sin(a.x) * cl, cos(a.x) * cl, sl);
-    vec3 east = vec3(cos(a.x), -sin(a.x), 0.0);
-    vec3 north = normalize(cross(east, up));
+    // the world's shape decides the frame: a globe's, a ring's (flat along
+    // z) or an inside world's, where up leans toward the centre
+    vec3 east, up, north;
+    pl_sphere_frame(v_uv, u_planet_radius, east, up, north);
     N = normalize(east * N.x + up * N.y + north * N.z);
   }
   // The material's mapping mode, once for the whole pass. The tile spans

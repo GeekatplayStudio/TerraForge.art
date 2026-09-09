@@ -335,6 +335,7 @@ set(STUDIO_SOURCES
     studio/terrain_tiles.cpp
     studio/app_upload_tiles.cpp
     studio/component_add.cpp
+    studio/world_shape.cpp
     studio/imprint.cpp
     studio/updater.cpp
     studio/mesh_thumbnail.cpp
@@ -471,6 +472,7 @@ set(STUDIO_SOURCES
     studio/panel_render_editor.cpp
     studio/render_scene_export.cpp
     studio/scene.cpp
+    studio/world_shape.cpp
     studio/mesh_load.cpp
     studio/scene_primitives.cpp
     studio/scene_csg.cpp
@@ -642,6 +644,7 @@ add_executable(undo_tests
     studio/mesh_load.cpp
     studio/node_library.cpp
     studio/scene.cpp
+    studio/world_shape.cpp
     studio/scene_primitives.cpp
     studio/scene_io.cpp
     studio/scene_io_object.cpp

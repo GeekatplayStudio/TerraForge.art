@@ -10,8 +10,65 @@
 #include <algorithm>
 #include <imgui.h>
 #include <vector>
+#include "world_shape.hpp"
 
 namespace studio {
+
+// The world's shape (world_shape.hpp): a globe, a ring world, a Dyson
+// sphere - and which face its ground is on.
+static void world_shape_ui(RenderSettings &rs) {
+  ImGui::SeparatorText("World shape");
+  int preset = rs.world_shape == WORLD_RING ? 1 : (rs.world_inside ? 2 : 0);
+  if (ImGui::Combo("Shape", &preset, "Globe\0Ring world\0Dyson sphere\0"))
+    world_preset_apply(rs, preset == 1 ? "ring" : preset == 2 ? "dyson" : "globe");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Globe: the planet, its ground on the outside and the\n"
+                      "horizon falling away.\n"
+                      "Ring world: a cylinder of this radius, curving along\n"
+                      "the tile's east-west only, with the ground on the\n"
+                      "inside and the sun on its axis - the far side of the\n"
+                      "ring arches overhead.\n"
+                      "Dyson sphere: a globe with the ground on the inside\n"
+                      "and the sun at its centre.\n"
+                      "The two settings below are what a preset sets.");
+  if (rs.world_shape == WORLD_RING) {
+    drag_length("Ring width", &rs.world_width, 1.f, 1.f, 1e9f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How far the ring reaches north and south of the\n"
+                        "tile; beyond its rim there is only space.");
+  }
+  studio::Checkbox("Ground on the inside", &rs.world_inside);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The ground faces the centre: up is toward it, the\n"
+                      "surface rises away from you instead of falling, and\n"
+                      "the far side of the world is drawn overhead. Every\n"
+                      "view curves an inside world.");
+  if (rs.world_inside) {
+    studio::Checkbox("Sun inside", &rs.world_sun_inside);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The sun is a body on the ring's axis or at the\n"
+                        "sphere's centre rather than a direction: it stands\n"
+                        "straight above the tile and lights the far side\n"
+                        "toward itself. The Sun object's angles are not\n"
+                        "used while this is on.");
+  }
+  ImGui::TextDisabled("A tile or a surface layer can stand on the other\n"
+                      "face of the same world: its Side, in its own tab.");
+}
+
+void object_side_ui(SceneObject &o) {
+  int side = std::clamp(o.side, 0, 2);
+  if (ImGui::Combo("Side of the world", &side, "The world's own\0Outside\0Inside\0")) o.side = side;
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Which face of the world this stands on. One shell\n"
+                      "can carry ground on both: on the other face it is\n"
+                      "the same shell with the heights going the other\n"
+                      "way - a globe's other face is the inside of its\n"
+                      "crust, seen from within the hollow planet; a Dyson\n"
+                      "sphere's is its dark outside. It is placed against\n"
+                      "that face's own layers. The world's own face is the\n"
+                      "home planet's setting (World shape).");
+}
 
 void object_properties_planet_ui(App &a, SceneObject &o) {
   SceneState &sc = scene();
@@ -35,6 +92,7 @@ void object_properties_planet_ui(App &a, SceneObject &o) {
                         "views (and views with Planet curvature on) curve.");
     text_length("Circumference", rsn.planet_radius * 6.2831853f * rsn.terrain_size_m);
     P.radius = rsn.planet_radius;
+    world_shape_ui(rsn);
     return;
   }
   ImGui::SeparatorText("Body");
@@ -148,7 +206,9 @@ void object_properties_surface_ui(App &a, SceneObject &o) {
         ImGui::TextDisabled("The tile wraps the whole planet; the\n"
                             "surround below is not drawn.");
     }
+    world_shape_ui(rs);
   }
+  object_side_ui(o);
   ImGui::SeparatorText("Relief");
   int type = L.type;
   if (ImGui::Combo("Style", &type,

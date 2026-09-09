@@ -389,6 +389,48 @@ pass draws with - the setting for a camera view or a view with `curved` on,
 reads that instead; the sky and the fog keep the setting (they are not
 distortion).
 
+## The world's shape
+
+studio/world_shape.hpp: the home world is a globe, a ring (a cylinder, flat
+along the tile's z) or either with the ground on the inside (RenderSettings
+world_shape / world_inside / world_width / world_sun_inside), and every tile
+and surface layer has a `side` - the world's own face or the other one.
+gpx::planet::Shape {flat_x, flat_z, inside, flip} is the maths, in
+`sphere_place` / `sphere_frame` (engine/gpx/planet_math.hpp) and their GLSL
+twins in planet_shaders_common.cpp: PL_SPHERE_FN reads `u_world_shape`, a
+vec4 whose all-zero - the value a uniform never set reads as - is the globe
+every scene had, and the globe placement is bit-identical to the old one
+(tested). Every program that places geometry on the world uploads it next
+to u_planet_radius: `upload_world_shape(prog, tile_shape(RS))` in the
+terrain and water passes, per face in infinite_draw. `flip` is the other
+face of the *same* shell (h -> -h, up -> -up), never a second sphere; the
+face that faces the centre is `shape_faces_centre` (inside xor flip).
+Culling (terrain_cull.cpp and the TCS) swaps the box for a flip and adds
+the curvature term with the face's sign.
+
+An inside face (a ring, a Dyson sphere, a hollow globe's crust) needs the
+far side: infinite_draw draws the surround once per face that has layers
+(upload_layers / upload_terrain_xform_inverse take a side) and, for an
+inside face, a second grid - the shell (`u_shell`) - which VS_INF spreads
+round the whole shape and FS_INF shades per pixel. Its relief is
+PL_SHELL_FN's pl_relief_w: the layers sampled by direction from the centre
+or the axis, band-limited by distance, blending into the tile-scale
+surround over 29..120 tiles; its palette variation is by direction too (a
+grain scaled by distance smeared into stripes along the view); its fog is
+two slant columns, the camera's layer and the far side's, because
+fog_terms's world-y profile reads R up there as no air. The shell discards
+within 29 tiles of the tile (the surround has the vertices there) and
+beyond a ring's world_width. With world_sun_inside the sun direction is
+(0,1,0) at the tile (compute_sun_dir), per pixel toward the centre or the
+axis on the shell (`u_sun_mode`, pl_world_up_at), the day factor is 1 there,
+and a sun body is drawn at the centre (renderer_scene.cpp); the sky's
+`u_space` is at least 0.75. view_planet_radius curves every view of an
+inside world, and the far plane reaches 2.4 R (renderer_camera.cpp).
+Placement reads the layers of the tile's own face (planet_home_layers(side))
+and its key mixes the face. Not done: a ring's rim wall, shadow squares (a
+ring's night), a Dyson sphere's outside from space, planets in the sky with
+these shapes.
+
 Any object can be deleted (`scene_delete_subtree`, the tree's Delete, the
 delete_object op): the passes skip tile 0 when no Terrain object exists,
 and nothing else may assume a builtin is there.

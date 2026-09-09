@@ -12,6 +12,7 @@
 #include "scene.hpp"
 #include "gpu_timer.hpp"
 #include "terrain_cull.hpp"
+#include "world_shape.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/field_glsl.hpp"
 #include <imgui.h>
@@ -385,6 +386,12 @@ void camera_matrices(int w, int h, float *eye, float *mvp, float *inv_vp) {
   // neighborhood; planets themselves render as a depth-write-free sky layer,
   // so they are never clipped by it regardless
   float zfar = std::max(cam_d * 40.f, 60.f);
+  // an inside world's far side is 2R away and is the picture (world_shape.hpp)
+  {
+    const RenderSettings &rsw = render_settings();
+    if (world_has_inside(rsw) && rsw.planet_radius > 0.f)
+      zfar = std::max(zfar, rsw.planet_radius * 2.4f + 10.f);
+  }
   float f = 1.f / std::tan(fovy_rad * 0.5f);
   float proj[16] = {f / aspect, 0, 0, 0, 0, f, 0, 0,
                     0, 0, (zfar + znear) / (znear - zfar), -1,

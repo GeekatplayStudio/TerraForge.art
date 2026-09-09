@@ -29,6 +29,8 @@ namespace studio { struct SceneObject; void terrain_editor_ui(App &a, SceneObjec
 
 namespace studio {
 
+void object_side_ui(SceneObject &o); // panel_properties_object_planet.cpp
+
 namespace {
 
 // ------------------------------------------------------------- transform
@@ -494,6 +496,7 @@ void object_properties_ui(App &a) {
         // feather, a length for what counts as a feature, and how much of
         // the planet survives underneath.
         ImGui::SeparatorText("Placement on planet");
+        object_side_ui(o); // which face of the world (world_shape.hpp)
         studio::Checkbox("Place on planet surface", &rs.place_on_planet);
         if (ImGui::IsItemHovered())
           ImGui::SetTooltip("The planet's own landscape shows through where\n"

@@ -116,7 +116,7 @@ float cull_pad(float disp_strength, bool has_disp, float fractal_amount,
 
 int patches_visible(const Frustum &f, const std::vector<float> &bounds,
                     int patches, float hscale, float pad, const float cam[3],
-                    float planet_radius) {
+                    float planet_radius, const gpx::planet::Shape &shape) {
   if (patches <= 0 || (int)bounds.size() < patches * patches * 2) return 0;
   // a small planet wraps the tile round itself: no box bound holds, so the
   // shader draws every patch and this reports the same
@@ -138,14 +138,28 @@ int patches_visible(const Frustum &f, const std::vector<float> &bounds,
         // box and the far distance lowers the bottom.
         (void)cam;
         const float c = 0.5f;
-        float dx = std::max({x0 - c, 0.f, c - x1});
-        float dz = std::max({z0 - c, 0.f, c - z1});
+        // the other face of the shell: its heights go the other way
+        if (shape.flip) {
+          const float t = ylo;
+          ylo = -yhi;
+          yhi = -t;
+        }
+        // a flat axis (a ring world's z) contributes no drop at all
+        float dx = shape.flat_x ? 0.f : std::max({x0 - c, 0.f, c - x1});
+        float dz = shape.flat_z ? 0.f : std::max({z0 - c, 0.f, c - z1});
         float near2 = dx * dx + dz * dz;
-        float fx = std::max(std::fabs(x0 - c), std::fabs(x1 - c));
-        float fz = std::max(std::fabs(z0 - c), std::fabs(z1 - c));
+        float fx = shape.flat_x ? 0.f : std::max(std::fabs(x0 - c), std::fabs(x1 - c));
+        float fz = shape.flat_z ? 0.f : std::max(std::fabs(z0 - c), std::fabs(z1 - c));
         float far2 = fx * fx + fz * fz;
-        yhi -= near2 / (2.f * planet_radius);
-        ylo -= far2 / (2.f * planet_radius);
+        if (!shape.inside) {
+          yhi -= near2 / (2.f * planet_radius);
+          ylo -= far2 / (2.f * planet_radius);
+        } else {
+          // an inside face rises instead: the near distance lifts the
+          // bottom of the box and the far corner lifts its top
+          ylo += near2 / (2.f * planet_radius);
+          yhi += far2 / (2.f * planet_radius);
+        }
       }
       const float lo[3] = {x0, ylo, z0};
       const float hi[3] = {x1, yhi, z1};

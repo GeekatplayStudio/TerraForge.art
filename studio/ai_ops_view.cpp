@@ -21,6 +21,7 @@
 #include "paint_canvas.hpp"
 #include "render_settings.hpp"
 #include "undo.hpp"
+#include "world_shape.hpp"
 #include <algorithm>
 #include <json.hpp>
 #include <map>
@@ -305,6 +306,28 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   // surface shape
   n += take_f(act, "height_scale", rs.height_scale, 0.f, 8.f);
   n += take_f(act, "planet_radius", rs.planet_radius, 0.f, 1e12f);
+  // the world's shape (studio/world_shape.hpp): a preset, or its parts
+  if (act.contains("world") && act["world"].is_string()) {
+    if (!world_preset_apply(rs, act["world"].get<std::string>().c_str())) {
+      err = "world is globe, ring or dyson";
+      return 0;
+    }
+    ++n;
+  }
+  if (act.contains("world_shape")) {
+    const json &v = act["world_shape"];
+    const int shape = v.is_string() ? world_shape_from_name(v.get<std::string>().c_str())
+                                    : v.get<int>();
+    if (shape != WORLD_GLOBE && shape != WORLD_RING) {
+      err = "world_shape is globe or ring";
+      return 0;
+    }
+    rs.world_shape = shape;
+    ++n;
+  }
+  n += take_b(act, "world_inside", rs.world_inside);
+  n += take_f(act, "world_width", rs.world_width, 1.f, 1e9f);
+  n += take_b(act, "world_sun_inside", rs.world_sun_inside);
   // placing the tile on the planet (studio/planet_place.cpp)
   n += take_b(act, "place_on_planet", rs.place_on_planet);
   n += take_f(act, "place_edge", rs.place_edge, 0.f, 0.5f);

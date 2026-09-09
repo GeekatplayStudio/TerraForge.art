@@ -179,8 +179,12 @@ void test_a_material_assignment_survives_a_save() {
   GraphIdMap idmap{{7, 7}, {9, 9}};
   scene_from_json(j, idmap, warn);
   SceneState &back = scene();
-  CHECK(back.objects.size() == 3, "every object came back");
-  if (back.objects.size() != 3) return;
+  // a scene with a terrain in it is given its home planet on load
+  // (scene_ensure_home_planet), appended after the objects that were saved
+  CHECK(back.objects.size() == 4 && back.objects[3].type == SceneObject::Planet &&
+            back.objects[3].planet.home,
+        "every object came back, and the world under them");
+  if (back.objects.size() < 3) return;
   CHECK(back.objects[0].material_node == 7,
         "the terrain kept its material: " +
             std::to_string(back.objects[0].material_node));

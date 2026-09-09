@@ -245,6 +245,16 @@ struct RenderSettings {
   // than on an infinite plane, because that is what makes distance read
   // correctly (Terragen guide p5); set it to 0 for true infinite flatness.
   float planet_radius = 1275.f;
+  // The world's shape (studio/world_shape.hpp): a globe, or a ring world -
+  // a cylinder of that radius curving along the tile's x, `world_width`
+  // tile units across. `world_inside` puts the ground on the inner face
+  // (a ring world, a Dyson sphere): the far side arches overhead and, with
+  // `world_sun_inside`, the sun is a body on the axis or at the centre
+  // rather than a direction in the sky.
+  int world_shape = 0;         // 0 globe, 1 ring
+  bool world_inside = false;
+  float world_width = 400.f;   // ring width, tile units (2000 km at 5 km)
+  bool world_sun_inside = false;
   // Placing the terrain tile on that planet (studio/planet_place.cpp): the
   // planet's relief shows through where the tile is flat, is levelled under
   // the tile's features, and everything is feathered so nothing steps.
@@ -342,8 +352,10 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w,
 void renderer_invalidate_views();
 // The planet radius a view draws with: the setting for a camera view or a
 // view with curvature on, 0 (flat) for a free view.
+// An inside world (a ring, a Dyson sphere) is nothing without its
+// curvature - the far side overhead is the point - so every view curves it.
 inline float view_planet_radius(const RenderSettings &rs, const RenderSettings::ViewConfig &vc) {
-  return (vc.scene_camera >= 0 || vc.curved) ? rs.planet_radius : 0.f;
+  return (vc.scene_camera >= 0 || vc.curved || rs.world_inside) ? rs.planet_radius : 0.f;
 }
 void renderer_view_input(RenderSettings::ViewConfig &vc, float dx, float dy,
                          float wheel, bool rotating, bool panning, int view_w);

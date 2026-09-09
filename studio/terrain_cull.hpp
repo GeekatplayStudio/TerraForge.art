@@ -14,6 +14,7 @@
 // Everything here is deliberately free of GL so the maths can be tested without
 // a context. The renderer owns the texture; this module owns the numbers in it.
 #pragma once
+#include "gpx/planet_math.hpp"
 #include <cstddef>
 #include <vector>
 
@@ -70,6 +71,7 @@ float cull_pad(float disp_strength, bool has_disp, float fractal_amount,
 // implementation, and the GLSL is its mirror.
 int patches_visible(const Frustum &f, const std::vector<float> &bounds,
                     int patches, float hscale, float pad,
-                    const float cam[3], float planet_radius);
+                    const float cam[3], float planet_radius,
+                    const gpx::planet::Shape &shape = gpx::planet::Shape{});
 
 } // namespace studio

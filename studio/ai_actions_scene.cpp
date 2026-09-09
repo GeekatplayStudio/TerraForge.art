@@ -9,6 +9,7 @@
 #include "render_settings.hpp"
 #include "imprint.hpp"
 #include "scene.hpp"
+#include "world_shape.hpp"
 #include <algorithm>
 #include <json.hpp>
 #include <cmath>
@@ -35,11 +36,34 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       }
     } else if (op == "place_object") {
       std::string want = act.value("name", std::string());
+      // which face of the world a tile or a surface layer stands on
+      // (world_shape.hpp): "world", "outside", "inside", or 0..2
+      auto read_side = [&](SceneObject &o) {
+        if (!act.contains("side")) return false;
+        const json &v = act["side"];
+        int side = -1;
+        if (v.is_number()) side = v.get<int>();
+        else {
+          const std::string s = v.get<std::string>();
+          side = s == "world" ? SIDE_WORLD : s == "outside" ? SIDE_OUTSIDE : s == "inside" ? SIDE_INSIDE : -1;
+        }
+        if (side < 0 || side > 2) {
+          err = "side is world, outside or inside";
+          return false;
+        }
+        o.side = side;
+        return true;
+      };
       for (auto &o : sc.objects) {
+        if (o.type == SceneObject::InfiniteSurface && (want.empty() || o.name == want)) {
+          if (read_side(o)) ++applied;
+          continue;
+        }
         // meshes, and the terrain tile - which is placed, turned, sized and
         // deformed through the same fields (terrain_xform.hpp)
         if (o.type != SceneObject::Mesh && o.type != SceneObject::Terrain) continue;
         if (!want.empty() && o.name != want) continue;
+        read_side(o);
         read_vec3(act, "position", o.pos);
         if (act.contains("scale")) o.scale = act["scale"].get<float>();
         if (act.contains("rotation_deg")) o.yaw = act["rotation_deg"].get<float>();

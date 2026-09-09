@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include "render_settings.hpp"
+#include "world_shape.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -172,6 +173,16 @@ int scene_delete_subtree(int object) {
 void scene_ensure_home_planet() {
   SceneState &s = scene();
   if (scene_home_planet() >= 0) return;
+  // only a scene with a world in it - a terrain, water, an atmosphere or a
+  // surface layer standing at the root, which every project saved before
+  // the home planet had; a scene of meshes and cameras alone (a test's, an
+  // import's) keeps its count
+  bool world = false;
+  for (const SceneObject &o : s.objects)
+    if (o.parent == -1 && (o.type == SceneObject::Terrain || o.type == SceneObject::Water ||
+                           o.type == SceneObject::Atmosphere || o.type == SceneObject::InfiniteSurface))
+      world = true;
+  if (!world) return;
   SceneObject h;
   h.type = SceneObject::Planet;
   h.name = "Home planet";
@@ -251,15 +262,17 @@ std::vector<int> scene_surface_layers(int planet_idx) {
   return out;
 }
 
-std::vector<gpx::planet::Layer> planet_home_layers() {
+std::vector<gpx::planet::Layer> planet_home_layers(int side) {
   std::vector<gpx::planet::Layer> out;
   SceneState &sc = scene();
+  const RenderSettings &rsw = render_settings();
   // the surface layers under the home planet; a scene with no home planet
   // (none should remain) reads the root-level ones as it used to
   // (-1 lists the root-level surfaces and the home planet's children alike;
   // an older project's surfaces stand at the root until scene_ensure_home_planet)
   for (int idx : scene_surface_layers(-1)) {
     if ((int)out.size() >= gpx::planet::MAX_LAYERS) break;
+    if (side != 0 && object_side(rsw, sc.objects[idx]) != side) continue;
     gpx::planet::Layer L = sc.objects[idx].surf.layer;
     L.amplitude *= sc.objects[idx].surf.height_scale;
     out.push_back(L);

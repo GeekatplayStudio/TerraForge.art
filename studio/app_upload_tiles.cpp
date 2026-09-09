@@ -16,6 +16,7 @@
 #include "terrain_cull.hpp"
 #include "terrain_tiles.hpp"
 #include "terrain_upload.hpp"
+#include "world_shape.hpp"
 #include <GLFW/glfw3.h>
 #include <future>
 #include <optional>
@@ -106,7 +107,7 @@ void extra_tiles_prepare(App &a) {
     TileRequest req;
     req.tile = std::make_shared<gpx::Heightmap>(*ph->hmap);
     req.albedo = albedo ? std::make_shared<gpx::TextureRGBA>(*albedo) : nullptr;
-    req.layers = planet_home_layers();
+    req.layers = planet_home_layers(object_side(render_settings(), o)); // its own face's ground
     req.settings = app_place_settings(a, out, t.object);
     req.serial = a.eval_serial;
     req.key = app_placement_key_for(t.object);
@@ -138,7 +139,9 @@ void extra_tiles_service(App &a) {
       TileRequest req;
       req.tile = job.last_tile;
       req.albedo = job.last_albedo;
-      req.layers = planet_home_layers();
+      req.layers = planet_home_layers(
+          job.object >= 0 && job.object < (int)scene().objects.size()
+              ? object_side(render_settings(), scene().objects[(size_t)job.object]) : 0);
       {
         std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
         if (!lk.owns_lock()) continue;

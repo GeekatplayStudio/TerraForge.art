@@ -11,6 +11,7 @@
 // no memory beyond its ~100-byte description, which is what makes an
 // unlimited number of planets (each with unlimited surface detail) possible.
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -361,30 +362,80 @@ inline float sphere_height_scale(float R) {
   float c = R * 6.2831853f;
   return c < 1.f ? c * c : 1.f;
 }
-inline void sphere_place(float u, float v, float h, float R, float out[3]) {
-  if (R <= 0.f) {
+// The shape of the world the tile lies on (GLSL: u_world_shape). A globe
+// curves along both of the tile's axes and its surface faces away from the
+// centre; a ring world (a cylinder, Niven's) curves along x only and its
+// surface faces the axis; a Dyson sphere is a globe whose surface faces the
+// centre. The default is the globe every scene had, and the placement is
+// bit-identical to the old one for it.
+struct Shape {
+  bool flat_x = false; // no curvature along the tile's x (east-west)
+  bool flat_z = false; // no curvature along the tile's z (north-south)
+  bool inside = false; // the centre is above the tile: a bowl, not a ball
+  // The other face of the same shell: the heights go the other way and up
+  // is the opposite direction. A globe's flipped face is the inside of its
+  // crust; a Dyson sphere's is its dark outside. The face that faces the
+  // centre is `inside != flip`.
+  bool flip = false;
+};
+inline bool shape_faces_centre(const Shape &S) { return S.inside != S.flip; }
+inline Shape shape_globe() { return Shape{}; }
+inline Shape shape_ring(bool inside = true) { return Shape{false, true, inside}; }
+inline Shape shape_dyson() { return Shape{false, false, true}; }
+inline void sphere_place(float u, float v, float h, float R, const Shape &S, float out[3]) {
+  if (R <= 0.f || (S.flat_x && S.flat_z)) {
     out[0] = u; out[1] = h; out[2] = v;
     return;
   }
   float k = 1.f / R, kl = 1.f / R;
   if (k > 6.2831853f) k = 6.2831853f;
   if (kl > 3.14159265f) kl = 3.14159265f;
+  // a flat axis has no angle and its reach is the tile's own distance
+  const float wrap_x = S.flat_x ? 1.f : k * R, wrap_z = S.flat_z ? 1.f : kl * R;
+  if (S.flat_x) k = 0.f;
+  if (S.flat_z) kl = 0.f;
   float ax = (u - 0.5f) * k, ay = (v - 0.5f) * kl;
   if (ax > 3.14159265f) ax = 3.14159265f;
   if (ax < -3.14159265f) ax = -3.14159265f;
   if (ay > 1.5707963f) ay = 1.5707963f;
   if (ay < -1.5707963f) ay = -1.5707963f;
   h *= sphere_height_scale(R);
+  if (S.flip) h = -h; // the other face: the same shell, heights the other way
+  // inside: the centre is R *above* the tile, the drop is a rise, and the
+  // height leans toward the centre instead of away from it
+  const float s = S.inside ? -1.f : 1.f;
   float sx = std::sin(ax), cx = std::cos(ax), sy = std::sin(ay), cl = std::cos(ay);
   float hx = std::sin(ax * 0.5f), hy = std::sin(ay * 0.5f);
   float drop = 2.f * R * hx * hx + 2.f * R * cx * hy * hy;
   // R sin(ax) == (ax R) sinc(ax) == (u - 0.5) k R sinc(ax); k R is 1 unless
   // the tile wraps, in which case the reach is the globe's own
-  float reach_x = (u - 0.5f) * (k * R) * pl_sinc(ax);
-  float reach_z = (v - 0.5f) * (kl * R) * pl_sinc(ay);
-  out[0] = 0.5f + (reach_x + h * sx) * cl;
-  out[1] = -drop + h * cx * cl;
-  out[2] = 0.5f + reach_z + h * sy;
+  float reach_x = (u - 0.5f) * wrap_x * pl_sinc(ax);
+  float reach_z = (v - 0.5f) * wrap_z * pl_sinc(ay);
+  out[0] = 0.5f + (reach_x + s * h * sx) * cl;
+  out[1] = -s * drop + h * cx * cl;
+  out[2] = 0.5f + reach_z + s * h * sy;
+}
+inline void sphere_place(float u, float v, float h, float R, float out[3]) {
+  sphere_place(u, v, h, R, Shape{}, out);
+}
+// The local frame at a tile point: east (+u), up (+h) and north (+v) in
+// world space, for shading a normal built in the flat tile's frame. The
+// globe's frame is the one the terrain shader always used.
+inline void sphere_frame(float u, float v, float R, const Shape &S, float east[3], float up[3],
+                         float north[3]) {
+  float k = R > 0.f ? std::min(1.f / R, 6.2831853f) : 0.f;
+  float kl = R > 0.f ? std::min(1.f / R, 3.14159265f) : 0.f;
+  if (S.flat_x) k = 0.f;
+  if (S.flat_z) kl = 0.f;
+  const float ax = (u - 0.5f) * k, ay = (v - 0.5f) * kl;
+  const float s = S.inside ? -1.f : 1.f;
+  const float sx = std::sin(ax), cx = std::cos(ax), sy = std::sin(ay), cl = std::cos(ay);
+  const float f = S.flip ? -1.f : 1.f; // the other face looks the other way
+  up[0] = f * s * sx * cl; up[1] = f * cx * cl; up[2] = f * s * sy;
+  east[0] = cx; east[1] = -s * sx; east[2] = 0.f;
+  north[0] = east[1] * up[2] - east[2] * up[1];
+  north[1] = east[2] * up[0] - east[0] * up[2];
+  north[2] = east[0] * up[1] - east[1] * up[0];
 }
 
 } // namespace gpx::planet

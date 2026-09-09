@@ -5,6 +5,7 @@
 #include "renderer_shaders.hpp"
 #include "scene.hpp"
 #include "terrain_xform.hpp"
+#include "world_shape.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/planet_math.hpp"
 #include "glsl_version.hpp"
@@ -23,6 +24,7 @@ namespace studio {
 extern const char *PL_FN;
 extern const char *PL_PALETTE;
 extern const char *PL_SPHERE_FN;
+extern const char *PL_SHELL_FN;
 extern const char *PL_FIELD_STUB;
 extern const char *VS_PLANET;
 extern const char *FS_PLANET;
@@ -53,6 +55,10 @@ static GLuint sph_vao[3] = {0}, sph_vbo[3] = {0}, sph_ebo[3] = {0};
 static int sph_count[3] = {0};
 static GLuint inf_vao = 0, inf_vbo = 0, inf_ebo = 0;
 static int inf_count = 0;
+// the far shell of an inside world (world_shape.hpp): a plain grid the
+// vertex stage spreads round the whole shape
+static GLuint shell_vao = 0, shell_vbo = 0, shell_ebo = 0;
+static int shell_count = 0;
 // mesh-LOD hysteresis per planet: switching thresholds overlap so a planet
 // hovering at a boundary never flickers between meshes
 static std::vector<int> g_lod_state;
@@ -107,6 +113,7 @@ static std::string pl_inject(const char *src, const std::string &glsl) {
   sub("PL_FN_PLACEHOLDER", body);
   sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);
   sub("PL_SPHERE_PLACEHOLDER", PL_SPHERE_FN);
+  sub("PL_SHELL_PLACEHOLDER", PL_SHELL_FN);
   sub("TILE_XFORM_INV_PLACEHOLDER", TERRAIN_XFORM_INV_GLSL);
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
@@ -261,34 +268,42 @@ static void build_sphere_lod(int lod, int sect, int rings) {
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, nullptr);
 }
 
-static void build_infinite_grid() {
-  const int N = 180;
+// a -1..1 grid of NX by NY quads; how the vertex stage spreads it is its own
+static void build_grid(int NX, int NY, GLuint &vao, GLuint &vbo, GLuint &ebo, int &count) {
   std::vector<float> v;
-  v.reserve((size_t)(N + 1) * (N + 1) * 2);
-  for (int y = 0; y <= N; ++y)
-    for (int x = 0; x <= N; ++x) {
-      v.push_back(x / float(N) * 2.f - 1.f);
-      v.push_back(y / float(N) * 2.f - 1.f);
+  v.reserve((size_t)(NX + 1) * (NY + 1) * 2);
+  for (int y = 0; y <= NY; ++y)
+    for (int x = 0; x <= NX; ++x) {
+      v.push_back(x / float(NX) * 2.f - 1.f);
+      v.push_back(y / float(NY) * 2.f - 1.f);
     }
   std::vector<unsigned> idx;
-  idx.reserve((size_t)N * N * 6);
-  for (int y = 0; y < N; ++y)
-    for (int x = 0; x < N; ++x) {
-      unsigned a = y * (N + 1) + x, b = a + N + 1;
+  idx.reserve((size_t)NX * NY * 6);
+  for (int y = 0; y < NY; ++y)
+    for (int x = 0; x < NX; ++x) {
+      unsigned a = y * (NX + 1) + x, b = a + NX + 1;
       idx.insert(idx.end(), {a, b, b + 1, a, b + 1, a + 1});
     }
-  inf_count = (int)idx.size();
-  glGenVertexArrays(1, &inf_vao);
-  glBindVertexArray(inf_vao);
-  glGenBuffers(1, &inf_vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, inf_vbo);
+  count = (int)idx.size();
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, v.size() * 4, v.data(), GL_STATIC_DRAW);
-  glGenBuffers(1, &inf_ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, inf_ebo);
+  glGenBuffers(1, &ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * 4, idx.data(),
                GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, nullptr);
+}
+
+static void build_infinite_grid() {
+  build_grid(180, 180, inf_vao, inf_vbo, inf_ebo, inf_count);
+  // the whole way round the world by 512 steps: 78 km a step on an Earth-
+  // size ring, whose sag against the true curve is a kilometre - nothing
+  // at the thousands of kilometres the far side stands at
+  build_grid(512, 256, shell_vao, shell_vbo, shell_ebo, shell_count);
 }
 
 bool planet_renderer_init() {
@@ -305,15 +320,18 @@ bool planet_renderer_init() {
   return base.planet != 0 && base.inf != 0;
 }
 
-// upload one object's stack of infinite layers as shader uniforms
+// upload one object's stack of infinite layers as shader uniforms; `side`
+// (world_shape.hpp) keeps only the home world's layers on that face
 static int upload_layers(GLuint prog, int planet_idx, float amp_scale,
-                         float field_strength) {
+                         float field_strength, int side = 0) {
   SceneState &sc = scene();
   std::vector<int> layers = scene_surface_layers(planet_idx);
+  const RenderSettings &rsw = render_settings();
   float la[6][4], lb[6][4];
   int n = 0;
   for (int idx : layers) {
     if (n >= 6) break;
+    if (side != 0 && object_side(rsw, sc.objects[idx]) != side) continue;
     const gpx::planet::Layer &L = sc.objects[idx].surf.layer;
     la[n][0] = L.frequency;
     la[n][1] = L.amplitude * amp_scale *
@@ -459,7 +477,6 @@ void infinite_draw(const InfiniteFrame &f) {
   puni3(prog_inf, "u_grade", f.grade);
   puni1(prog_inf, "u_sat", f.saturation);
   puni1(prog_inf, "u_hscale", f.height_scale);
-  upload_terrain_xform_inverse(prog_inf); // the hole and the border blend follow the tile
   puni1(prog_inf, "u_frac_amount", f.frac_amount);
   puni1(prog_inf, "u_frac_scale", f.frac_scale);
   puni1(prog_inf, "u_tile_octf", f.tile_octf);
@@ -484,10 +501,30 @@ void infinite_draw(const InfiniteFrame &f) {
   glBindTexture(GL_TEXTURE_2D, f.tex_albedo);
   punii(prog_inf, "u_albedo", 1);
   punii(prog_inf, "u_has_albedo", f.tex_albedo ? 1 : 0);
-  upload_layers(prog_inf, -1, amp / std::max(f.height_scale, 1e-4f),
-                sp.glsl.empty() ? 0.f : sp.strength);
-  glBindVertexArray(inf_vao);
-  glDrawElements(GL_TRIANGLES, inf_count, GL_UNSIGNED_INT, nullptr);
+  // Once per face of the world that has ground on it (world_shape.hpp):
+  // the world's own face always, the other one when a layer stands there.
+  // Each face gets its shape, its layers and the holes of its own tiles;
+  // an inside face is followed by the far shell, the whole shape seen
+  // from within, lit toward a sun inside when there is one.
+  const RenderSettings &rsw = render_settings();
+  const float amp_scale = amp / std::max(f.height_scale, 1e-4f);
+  const float field_strength = sp.glsl.empty() ? 0.f : sp.strength;
+  for (int side : {SIDE_OUTSIDE, SIDE_INSIDE}) {
+    const gpx::planet::Shape S = world_shape(rsw, side);
+    upload_world_shape(prog_inf, S);
+    upload_terrain_xform_inverse(prog_inf, side); // the holes and the border blend follow the tiles
+    if (upload_layers(prog_inf, -1, amp_scale, field_strength, side) == 0) continue;
+    punii(prog_inf, "u_sun_mode", (rsw.world_sun_inside && S.inside) ? 1 : 0);
+    puni1(prog_inf, "u_shell_w", rsw.world_width);
+    punii(prog_inf, "u_shell", 0);
+    glBindVertexArray(inf_vao);
+    glDrawElements(GL_TRIANGLES, inf_count, GL_UNSIGNED_INT, nullptr);
+    if (gpx::planet::shape_faces_centre(S) && f.planet_radius > 0.f) {
+      punii(prog_inf, "u_shell", 1);
+      glBindVertexArray(shell_vao);
+      glDrawElements(GL_TRIANGLES, shell_count, GL_UNSIGNED_INT, nullptr);
+    }
+  }
 }
 
 } // namespace studio

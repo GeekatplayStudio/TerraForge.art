@@ -252,6 +252,15 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    tile lies on, in tile units: 1275 = Earth at a 5 km tile, 0.0002 = a 1 m
    globe made from the heightmap, 2e-8 = a 0.1 mm globe, 1e12 = a giant,
    0 = flat world)
+- {"op":"set_viewport","world":"ring"}   (the world's shape: "globe" the planet;
+   "ring" a ring world - a cylinder of planet_radius curving along the tile's
+   east-west, ground on the inside, sun on the axis, the far side overhead;
+   "dyson" a Dyson sphere - ground on the inside of the globe, sun at the centre.
+   The parts a preset sets: "world_shape":"globe"|"ring", "world_inside":true,
+   "world_width":400 (a ring's width, tile units), "world_sun_inside":true)
+- {"op":"place_object","name":"Terrain 2","side":"inside"}   (which face of the
+   world a tile or a surface layer stands on: "world", "outside", "inside" -
+   one shell with ground on both faces)
 - {"op":"set_viewport","place_on_planet":true,"place_edge":0.1,
    "place_flatten":1.0,"place_presence":0.04,"place_ground":0.14,
    "place_gradient":1.0,"place_mode":0}

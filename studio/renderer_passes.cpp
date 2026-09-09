@@ -13,6 +13,7 @@
 #include "terrain_xform.hpp"
 #include "terrain_tiles.hpp"
 #include "planet_place.hpp"
+#include "world_shape.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/field_glsl.hpp"
 #include <algorithm>
@@ -80,8 +81,25 @@ void upload_water_uniforms(unsigned prog, const RenderSettings &RS, float time) 
   uni1(prog, "u_w_foam_crests", RS.foam_crests);
 }
 
-void upload_terrain_xform_inverse(unsigned prog) {
-  // the further tiles, for the surround's holes (planet_shaders.cpp)
+void upload_world_shape(unsigned prog, const gpx::planet::Shape &S) {
+  glUniform4f(uniform_location(prog, "u_world_shape"), S.flat_x ? 1.f : 0.f,
+              S.flat_z ? 1.f : 0.f, S.inside ? 1.f : 0.f, S.flip ? 1.f : 0.f);
+}
+
+// The shape of the face the tile being drawn stands on (world_shape.hpp):
+// the globe's, a ring's, an inside face's.
+static gpx::planet::Shape tile_shape(const RenderSettings &RS) {
+  const int cur = terrain_tile_current() < 0 ? 0 : terrain_tile_current();
+  const int obj = terrain_tile_object(cur);
+  const SceneObject *o = (obj >= 0 && obj < (int)scene().objects.size())
+                             ? &scene().objects[(size_t)obj] : nullptr;
+  return world_shape_of(RS, o);
+}
+
+void upload_terrain_xform_inverse(unsigned prog, int side) {
+  const RenderSettings &rsw = render_settings();
+  // the further tiles, for the surround's holes (planet_shaders.cpp);
+  // asked for one face of the world, only the tiles standing on it
   {
     const std::vector<TerrainTileGpu> &extra = terrain_tiles_extra();
     int n = 0;
@@ -90,6 +108,7 @@ void upload_terrain_xform_inverse(unsigned prog) {
     for (size_t k = 0; k < extra.size() && n < 8; ++k) {
       if (!terrain_tile_visible((int)k + 1)) continue;
       const SceneObject &o = scene().objects[(size_t)extra[k].object];
+      if (side != 0 && object_side(rsw, o) != side) continue;
       const TerrainXform tk = terrain_xform_of(o, render_settings().height_scale);
       const float rad = tk.yaw * 3.14159265f / 180.f;
       on[n] = 1;
@@ -109,6 +128,18 @@ void upload_terrain_xform_inverse(unsigned prog) {
     }
   }
   const TerrainXform t = terrain_xform_current();
+  if (side != 0) {
+    // tile 0 on the other face: no hole for it here - its footprint is
+    // pushed out of reach, so the surround reads the planet everywhere
+    const int obj0 = terrain_tile_object(0);
+    if (obj0 < 0 || object_side(rsw, scene().objects[(size_t)obj0]) != side) {
+      unii(prog, "u_tx_on", 1);
+      glUniform2f(uniform_location(prog, "u_txi_pos"), 1e5f, 1e5f);
+      glUniform4f(uniform_location(prog, "u_txi"), 1.f, 0.f, 1.f, 1.f);
+      glUniform2f(uniform_location(prog, "u_txi_y"), 1.f, 0.f);
+      return;
+    }
+  }
   unii(prog, "u_tx_on", t.on ? 1 : 0);
   // The identity is uploaded too: the surround multiplies the tile's edge
   // height by u_txi_y.x whether or not the transform is on, and a uniform
@@ -220,7 +251,14 @@ void pass_sky(const FrameCtx &F) {
     unii(prog_sky, "u_panorama", 0);
     unii(prog_sky, "u_hdr", 0);
     unii(prog_sky, "u_no_sun", 0);
-    uni1(prog_sky, "u_space", vc.camera == 0 ? space_t : 0.f);
+    {
+      float space = vc.camera == 0 ? space_t : 0.f;
+      // an inside world's air is a layer on its ground: the sky over it
+      // thins to space, and beyond a ring's rim there is nothing but stars
+      // (world_shape.hpp); the far shell covers the rest
+      if (RS.world_inside) space = std::max(space, 0.75f);
+      uni1(prog_sky, "u_space", space);
+    }
     uni1(prog_sky, "u_cl_cov", RS.cloud_coverage);
     uni1(prog_sky, "u_cl_den", RS.cloud_density);
     uni1(prog_sky, "u_cl_alt", RS.cloud_altitude);
@@ -393,6 +431,7 @@ static void draw_terrain_tile(const FrameCtx &F) {
     glUniform4f(uniform_location(PT, "u_brush"), g_brush[0],
                 g_brush[1], g_brush[2], g_brush[3]);
     uni1(PT, "u_planet_radius", view_planet_radius(RS, vc));
+    upload_world_shape(PT, tile_shape(RS)); // the face this tile stands on
     uni1(PT, "u_water_level", RS.show_water ? RS.water_level * RS.height_scale
                                             : 0.f);
     uni1(PT, "u_lat", std::fabs(RS.latitude) / 90.f);
@@ -482,7 +521,7 @@ static void draw_terrain_tile(const FrameCtx &F) {
         if (slot == 0 && (stat_tick++ % 10) == 0)
           g_patches_visible = patches_visible(fr, cpu_patch_bounds, patch_n - 1,
                                               RS.height_scale, pad, view_eye,
-                                              view_planet_radius(RS, vc));
+                                              view_planet_radius(RS, vc), tile_shape(RS));
       } else if (slot == 0) {
         g_patches_visible = -1;
       }
@@ -573,6 +612,7 @@ void pass_water(const FrameCtx &F) {
       if (k == 0 && terrain_tile_object(0) < 0) continue;
       TileSwap swap(k);
       upload_terrain_xform(prog_water);
+      upload_world_shape(prog_water, tile_shape(RS)); // the water lies on the tile's face
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, tex_height);
       unii(prog_water, "u_height", 0);

@@ -654,6 +654,23 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **Ring worlds and Dyson spheres.** The world has a shape: a *Globe* (the
+  planet), a *Ring world* - a cylinder of the planet's radius curving along
+  the tile's east-west, *Ring width* across, with the ground on the inside
+  and the sun on its axis - or a *Dyson sphere*, a globe with the ground on
+  the inside and the sun at its centre. From an inside world the far side
+  arches overhead: the surround is followed by a far shell that draws the
+  whole shape, its relief the world's continents (the surface layers
+  sampled by direction, the way a planet in the sky is shaped), lit toward
+  the sun body at the centre and seen through two layers of air - the one
+  over you and the one over the far side. Beyond a ring's rim there is
+  space. One shell can carry ground on both faces: every terrain tile and
+  surface layer has a *Side* - the world's own, or the other face, where
+  the heights go the other way (a globe's other face is the inside of its
+  crust, seen from within the hollow planet). Objects ▸ Home planet ▸
+  World shape; from a script `set_viewport` with `world: ring|dyson|globe`
+  (or `world_shape`, `world_inside`, `world_width`, `world_sun_inside`)
+  and `place_object` with `side`.
 - **The home planet is a sphere:** the terrain tile lies on a planet whose
   radius is a real length from a tenth of a millimetre to a billion
   kilometres (Objects ▸ Planet surface, or the Atmosphere tab). Large radii

@@ -296,9 +296,11 @@ MCP_TOOLS = {
     },
     "studio_place_object": {
         "description": "Move a scene object: name, position [x,y,z], scale, "
-                       "rotation_deg. Terrain spans x 0..1, z 0..1.",
+                       "rotation_deg. Terrain spans x 0..1, z 0..1. side "
+                       "(world, outside, inside) puts a terrain tile or a "
+                       "surface layer on the other face of the world.",
         "params": {"name": "str", "position": "[x,y,z]", "scale": "float",
-                   "rotation_deg": "float"},
+                   "rotation_deg": "float", "side": "str"},
     },
     "studio_probe_height": {
         "description": "The ground's height at a point of the tile (x, z in "

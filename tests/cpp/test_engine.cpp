@@ -1090,6 +1090,57 @@ static void test_planet_math() {
     sphere_place(0.3f, 0.7f, 0.05f, 0.f, p);
     CHECK(p[0] == 0.3f && p[1] == 0.05f && p[2] == 0.7f, "radius 0 is a flat world");
   }
+
+  // ---- the shapes of the world: ring, Dyson sphere, and the globe unchanged
+  {
+    float p[3], q[3];
+    // the default shape is the globe, bit for bit
+    for (float u : {0.f, 0.25f, 0.5f, 0.9f})
+      for (float R : {1275.f, 3.f, 2e-8f, 1e9f}) {
+        sphere_place(u, 0.7f, 0.12f, R, p);
+        sphere_place(u, 0.7f, 0.12f, R, Shape{}, q);
+        CHECK(p[0] == q[0] && p[1] == q[1] && p[2] == q[2], "the globe shape is the old placement exactly");
+      }
+    // a ring world: curved along x, flat along z, rising toward the axis
+    sphere_place(1.f, 0.5f, 0.f, 1275.f, shape_ring(), p);
+    CHECK(std::fabs(p[1] - 0.25f / (2.f * 1275.f)) < 1e-7f, "a ring's far corner rises by r^2/2R");
+    sphere_place(0.5f, 1.f, 0.f, 1275.f, shape_ring(), p);
+    CHECK(p[1] == 0.f && p[2] == 1.f, "along a ring's width the ground stays level");
+    // the height leans toward the axis on the inside
+    sphere_place(0.75f, 0.5f, 0.1f, 2.f, shape_ring(), p);
+    sphere_place(0.75f, 0.5f, 0.f, 2.f, shape_ring(), q);
+    CHECK(p[0] < q[0] && p[1] > q[1], "on the inside, up leans toward the axis");
+    // a Dyson sphere rises along both axes
+    sphere_place(1.f, 0.5f, 0.f, 1275.f, shape_dyson(), p);
+    sphere_place(0.5f, 1.f, 0.f, 1275.f, shape_dyson(), q);
+    CHECK(p[1] > 0.f && std::fabs(p[1] - q[1]) < 1e-7f, "a Dyson sphere rises the same both ways");
+    // the outside of a cylinder drops along x only
+    Shape barrel{false, true, false};
+    sphere_place(1.f, 0.5f, 0.f, 1275.f, barrel, p);
+    CHECK(std::fabs(p[1] + 0.25f / (2.f * 1275.f)) < 1e-7f, "a cylinder's outside drops along x");
+    // a shape flat both ways is the flat world
+    sphere_place(0.3f, 0.7f, 0.05f, 1275.f, Shape{true, true, false}, p);
+    CHECK(p[0] == 0.3f && p[1] == 0.05f && p[2] == 0.7f, "flat along both axes is a flat world");
+    // the local frame: at the tile's centre it is the world's, inside or out
+    float e[3], up[3], n[3];
+    sphere_frame(0.5f, 0.5f, 1275.f, shape_dyson(), e, up, n);
+    CHECK(up[1] == 1.f && e[0] == 1.f && n[2] == 1.f, "the frame at the centre is east/up/north");
+    // east of the centre on the inside, up leans back toward the middle
+    sphere_frame(1.f, 0.5f, 2.f, shape_dyson(), e, up, n);
+    CHECK(up[0] < 0.f && up[1] > 0.f, "inside, up leans toward the centre");
+    sphere_frame(1.f, 0.5f, 2.f, Shape{}, e, up, n);
+    CHECK(up[0] > 0.f && up[1] > 0.f, "outside, up leans away from it");
+    // the other face of the same shell: the same sphere, heights the other way
+    Shape under{false, false, false, true};
+    sphere_place(0.75f, 0.5f, 0.1f, 1275.f, under, p);
+    sphere_place(0.75f, 0.5f, -0.1f, 1275.f, Shape{}, q);
+    CHECK(p[0] == q[0] && p[1] == q[1] && p[2] == q[2], "a flipped face is the shell with the height negated");
+    sphere_frame(0.5f, 0.5f, 1275.f, under, e, up, n);
+    CHECK(up[1] == -1.f && e[0] == 1.f && n[2] == -1.f, "a flipped face's up points the other way");
+    CHECK(!shape_faces_centre(Shape{}) && shape_faces_centre(under) && shape_faces_centre(shape_dyson()) &&
+              !shape_faces_centre(Shape{false, false, true, true}),
+          "the face that faces the centre is inside xor flip");
+  }
 }
 
 // ---------------------------------------------------------- field domain
