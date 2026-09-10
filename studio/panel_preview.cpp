@@ -12,6 +12,7 @@
 #include "panel_float.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
+#include "anim_widgets.hpp"
 #include "scene.hpp"
 #include "theme_colors.hpp"
 #include <imgui.h>
@@ -22,6 +23,83 @@
 #include <vector>
 
 namespace studio {
+
+// The picture is not a picture: it is a viewport that happens to show one
+// camera, and it flies like the others. Left drag orbits the camera about
+// what it is aimed at, Shift+left / middle / right slide both the eye and
+// the aim across the screen, Ctrl+left or the wheel move it along its own
+// axis. The camera itself is what moves - so with Auto-key on, every drag
+// writes the keys, the same way dragging its numbers in the Properties
+// panel does.
+//
+// The bindings are the viewport's, deliberately: a person who has learned
+// one should not have to learn another to use the window next door.
+static void preview_navigate(App &a, int cam) {
+  SceneState &sc = scene();
+  if (cam < 0 || cam >= (int)sc.objects.size() ||
+      sc.objects[(size_t)cam].type != SceneObject::Camera)
+    return;
+  if (!ImGui::IsItemHovered() && !ImGui::IsItemActive()) return;
+  ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+  const ImGuiIO &io = ImGui::GetIO();
+  const bool l = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+  const bool m = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+  const bool r = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+  const bool any = ImGui::IsItemHovered() || ImGui::IsItemActive();
+  const float wheel = any ? io.MouseWheel : 0.f;
+  const bool dragging = (l || m || r) &&
+                        (io.MouseDelta.x != 0.f || io.MouseDelta.y != 0.f);
+  if (!dragging && wheel == 0.f) return;
+
+  CameraData &cd = sc.objects[(size_t)cam].cam;
+  float d[3] = {cd.eye[0] - cd.target[0], cd.eye[1] - cd.target[1],
+                cd.eye[2] - cd.target[2]};
+  float dist = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+  if (!(dist > 1e-7f)) dist = 1e-7f;
+  float yaw = std::atan2(d[0], d[2]);
+  float pitch = std::asin(std::clamp(d[1] / dist, -1.f, 1.f));
+  const bool shift_pan = io.KeyShift && !io.KeyCtrl && !io.KeyAlt && l;
+  const bool alt_dolly = io.KeyAlt && r;
+  const bool dolly = (io.KeyCtrl && l) || alt_dolly;
+  const bool pan = m || (r && !alt_dolly) || shift_pan;
+
+  if (wheel != 0.f) dist *= std::pow(0.88f, wheel);
+  if (dragging) {
+    if (dolly) {
+      dist *= std::pow(1.006f, io.MouseDelta.y);
+    } else if (pan) {
+      // across the screen, in the camera's own frame, scaled by how far
+      // away it is - so panning feels the same at any distance
+      const float cp = std::cos(pitch);
+      const float rx = std::cos(yaw), rz = -std::sin(yaw);   // screen right
+      const float ux = -std::sin(yaw) * std::sin(pitch);     // screen up
+      const float uy = cp;
+      const float uz = -std::cos(yaw) * std::sin(pitch);
+      const float k = dist * 0.0022f;
+      const float mx = -io.MouseDelta.x * k, my = io.MouseDelta.y * k;
+      const float off[3] = {rx * mx + ux * my, uy * my, rz * mx + uz * my};
+      for (int i = 0; i < 3; ++i) {
+        cd.target[i] += off[i];
+        cd.eye[i] += off[i];
+      }
+    } else if (l) {
+      yaw -= io.MouseDelta.x * 0.008f;
+      pitch = std::clamp(pitch + io.MouseDelta.y * 0.008f, -1.5533f, 1.5533f);
+    }
+  }
+  dist = std::clamp(dist, 1e-6f, 1e9f);
+  const float cp = std::cos(pitch);
+  cd.eye[0] = cd.target[0] + dist * cp * std::sin(yaw);
+  cd.eye[1] = cd.target[1] + dist * std::sin(pitch);
+  cd.eye[2] = cd.target[2] + dist * std::cos(yaw);
+  // Auto-key: a camera flown here is a camera moved, and a moved camera
+  // with a track on it takes a key, exactly as it would from its numbers.
+  SceneObject &o = sc.objects[(size_t)cam];
+  if (const AnimProp *pe = anim_find_prop(o, "cam.eye")) anim_autokey(a, o, *pe, -1);
+  if (const AnimProp *pt = anim_find_prop(o, "cam.target")) anim_autokey(a, o, *pt, -1);
+  a.scene_selection_serial++;
+  renderer_invalidate_views();
+}
 
 namespace {
 // -3 follows whatever camera is selected, -2 the active one, -1 the free
@@ -317,6 +395,7 @@ void draw_panel_preview(App &a) {
     if (P.last_tex)
       ImGui::Image((ImTextureID)(intptr_t)P.last_tex, ImVec2(w, h), ImVec2(0, 1),
                    ImVec2(1, 0));
+    preview_navigate(a, cam_index);
   }
   // a hairline frame, so the picture reads as a picture
   ImGui::GetWindowDrawList()->AddRect(pos, ImVec2(pos.x + w, pos.y + h),

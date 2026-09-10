@@ -135,6 +135,10 @@ void test_blend_controls() {
       s.edge = 0.30f;
       s.gradient = grad;
       s.flatten = 0.f;
+      // the plain square border, so the probe really is at b = 0.1: this
+      // is a test of the gradient's curve, not of the border's shape
+      s.round = 0.f;
+      s.wander = 0.f;
       gpx::Heightmap out = studio::planet_place_tile(dome, L, s, nullptr);
       // a point 10% in from the left edge, mid-height: b = 0.1, t = 1/3
       const size_t i = (size_t)c * n + (size_t)std::lround(0.1f * (n - 1));
@@ -144,6 +148,55 @@ void test_blend_controls() {
     check(beach < s1 - 1e-4f, "gradient above 1 gives way sooner");
     check(plateau > s1 + 1e-4f, "gradient below 1 holds its ground longer");
   }
+  // The border's shape. A blend keyed on the distance to a square draws a
+  // square on the ground, which is what people see and report; rounding
+  // takes the corners off and the wander stops the outline being an
+  // outline. Neither may put the tile outside its own square, because
+  // there is no tile there. The blend weight is the thing under test -
+  // the height at a point also carries whatever the tile has there.
+  {
+    gpx::Heightmap dome = tile_with_bump(n, 0.12f, 0.5f, 0.7f);
+    auto weight_map = [&](float round, float wander) {
+      studio::PlaceSettings s;
+      s.ground = 0.12f;
+      s.mode = 1;
+      s.edge = 0.30f;
+      s.flatten = 0.f;
+      s.round = round;
+      s.wander = wander;
+      studio::PlaceResult res;
+      studio::planet_place_tile(dome, L, s, &res);
+      return res.weight;
+    };
+    // Two points the same Chebyshev distance from the middle: one straight
+    // out along an axis, one out along the diagonal. On a square border
+    // they carry the same weight - that sameness *is* the square. Rounded,
+    // the diagonal one lies further out and gives way first.
+    const int q = (int)std::lround(0.18f * (n - 1));
+    const size_t axis = (size_t)c * n + (size_t)q, diag = (size_t)q * n + (size_t)q;
+    const gpx::Heightmap sq = weight_map(0.f, 0.f);
+    const gpx::Heightmap rd = weight_map(1.f, 0.f);
+    check(std::fabs(sq.v[axis] - sq.v[diag]) < 1e-4f,
+          "square border: the corner and the side blend alike, which is the square");
+    check(rd.v[diag] < rd.v[axis] - 1e-3f,
+          "rounded border: the corner gives way before the side");
+    // the wander moves the outline about rather than leaving it a shape
+    const gpx::Heightmap wa = weight_map(0.8f, 1.f);
+    const gpx::Heightmap st = weight_map(0.8f, 0.f);
+    bool moved = false;
+    for (size_t i = 0; i < wa.v.size() && !moved; ++i)
+      if (std::fabs(wa.v[i] - st.v[i]) > 1e-3f) moved = true;
+    check(moved, "the wander actually moves the border");
+    // and the tile never reaches past its own square, however far it
+    // wanders - the wander eats inward only
+    bool border_clean = true;
+    for (int y = 0; y < n; ++y) {
+      if (wa.v[(size_t)y * n] > 1e-4f) border_clean = false;
+      if (wa.v[(size_t)y * n + (size_t)(n - 1)] > 1e-4f) border_clean = false;
+    }
+    check(border_clean, "however the border wanders, the tile stops at its own edge");
+  }
+
   // the mask: zero on the left half hands that half to the planet
   {
     auto mask = std::make_shared<gpx::Heightmap>(n, n, 1.f);

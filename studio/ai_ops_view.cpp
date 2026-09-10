@@ -350,6 +350,8 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_f(act, "place_presence", rs.place_presence, 0.001f, 1.f);
   n += take_f(act, "place_ground", rs.place_ground, -1.f, 2.f);
   n += take_f(act, "place_gradient", rs.place_gradient, 0.05f, 8.f);
+  n += take_f(act, "place_round", rs.place_round, 0.f, 1.f);
+  n += take_f(act, "place_wander", rs.place_wander, 0.f, 1.f);
   n += take_i(act, "place_mode", rs.place_mode, 0, 4);
   n += take_f(act, "fractal_detail", rs.fractal_detail, 0.f, 1.f);
   n += take_f(act, "fractal_scale", rs.fractal_scale, 0.1f, 4096.f);

@@ -4,6 +4,7 @@
 #include "gpx/parallel.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <deque>
 #include <mutex>
@@ -40,6 +41,31 @@ bool same_layers(const std::vector<gpx::planet::Layer> &a,
   for (size_t i = 0; i < a.size(); ++i)
     if (std::memcmp(&a[i], &b[i], sizeof(gpx::planet::Layer)) != 0) return false;
   return true;
+}
+
+// A little value noise for the tile's outline, so its border is a coastline
+// rather than a shape. Two octaves is all it needs: the first decides which
+// way the edge bulges, the second frays it.
+float bn_hash(int x, int y) {
+  uint32_t h = (uint32_t)x * 0x9E3779B1u ^ (uint32_t)y * 0x85EBCA77u;
+  h ^= h >> 15;
+  h *= 0x2C1B3C6Du;
+  h ^= h >> 12;
+  h *= 0x297A2D39u;
+  h ^= h >> 15;
+  return h * (1.f / 4294967295.f);
+}
+float bn_value(float x, float y) {
+  const int xi = (int)std::floor(x), yi = (int)std::floor(y);
+  float tx = x - xi, ty = y - yi;
+  tx = tx * tx * (3.f - 2.f * tx);
+  ty = ty * ty * (3.f - 2.f * ty);
+  const float a = bn_hash(xi, yi), b = bn_hash(xi + 1, yi);
+  const float c = bn_hash(xi, yi + 1), d = bn_hash(xi + 1, yi + 1);
+  return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+}
+float border_noise(float u, float v) {
+  return bn_value(u * 5.f, v * 5.f) * 0.68f + bn_value(u * 13.f + 7.f, v * 13.f + 3.f) * 0.32f;
 }
 
 float smoothstep01(float e0, float e1, float x) {
@@ -244,8 +270,36 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
           b = std::min(std::min(hw - std::fabs(u - 0.5f), hd - std::fabs(v - 0.5f)),
                        std::min(std::min(u, 1.f - u), std::min(v, 1.f - v)));
         } else {
-          b = std::min(std::min(u, 1.f - u), std::min(v, 1.f - v));
+          // Not the plain minimum of the four edge distances. That is the
+          // Chebyshev distance to the square: its contours are squares,
+          // with a crease running out to each corner where the argmin
+          // swaps - so the feather, the material weight and everything
+          // downstream of them draw a square frame on the ground. That
+          // frame is the square people report seeing.
+          //
+          // A p-norm rounds it away: a large p is the square again, p = 2
+          // the inscribed circle, and in between the corners come off while
+          // the sides stay where they are. It is smooth everywhere, so
+          // there is no crease left to catch the light.
+          const float du = std::fabs(u - 0.5f), dv = std::fabs(v - 0.5f);
+          const float rr = std::clamp(s.round, 0.f, 1.f);
+          if (rr <= 0.001f) {
+            b = 0.5f - std::max(du, dv);
+          } else {
+            // p = 2 is the circle inscribed in the tile and p = 8 already
+            // reads as a square again, so the whole useful range lives in
+            // between - a 30 there left the default indistinguishable from
+            // the square it was meant to replace.
+            const float pn = 2.f + (1.f - rr) * 6.f;
+            b = 0.5f - std::pow(std::pow(du, pn) + std::pow(dv, pn), 1.f / pn);
+          }
         }
+        // And the outline wanders, so the eye finds no outline at all.
+        // Inward only: the tile has no data past its own square, so a
+        // border pushed outward would show the tile where there is nothing
+        // to show and put back the hard edge this is here to remove.
+        if (s.wander > 0.f && s.shape != 2)
+          b -= border_noise(u, v) * edge * std::clamp(s.wander, 0.f, 1.f) * 1.3f;
         // the border feather over `edge`, bent by the gradient: above 1 the
         // tile gives way from further in, below 1 it holds until the rim
         {

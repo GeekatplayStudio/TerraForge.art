@@ -208,7 +208,13 @@ with `side`.
 ## Atmosphere height and deep space
 
 Environment ▸ Atmosphere ▸ **Height** is how high the air reaches over the
-world's surface, whatever its shape; beyond it is space. From high enough
+world's surface, whatever its shape; beyond it is space. **Thins by** is the
+scale height as a fraction of that: how far up the air thins by a factor of
+e. A real atmosphere has no top - the density falls off exponentially - and
+this is what makes a planet's limb a soft band rather than a drawn line. 1
+is the old flat slab. Straight up from the ground is one scale height
+whatever the dial says, so the sky over your head does not change when you
+set how sharply the air thins above it. From high enough
 the sky thins to stars and the world shows a blue rim; on a ring the air
 is a band inside the ring, seen from outside through its opening. 0 keeps
 the old rule of sky everywhere thinning with distance. Environment ▸

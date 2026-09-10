@@ -662,6 +662,35 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **The air thins with height, as air does.** The atmosphere was a slab of
+  one density between the ground and a ceiling, so it ended on a line -
+  which is why a planet seen from space had a drawn edge instead of a band.
+  It is an exponential profile now, integrated exactly along each segment of
+  the ray, and *Thins by* in Environment ▸ Atmosphere is the scale height: a
+  real atmosphere has no top, only a height at which too little is left to
+  see. Earth's is about an eighth of its visible air.
+- **Clouds have weather, and can be a sheet when a sheet will do.** The
+  cloud volume tiles every five and a half tiles, and a sky is seen thirty
+  of them deep, so the same few kilometres used to repeat across the lower
+  sky in a plain grid. One coarse lookup now both opens and closes the cover
+  the way a front does and pushes the shape lookup about, so the repeat has
+  nowhere to show; *Weather*, *Weather scale* and *Cloud size* control it.
+  *Volumetric* off draws the layer as one flat sheet sampled once instead of
+  marching it - a third of the frame cost, and for a high overcast seen from
+  below it is most of what the march arrives at anyway.
+- **A terrain tile stops looking like a square.** Every blend that joined a
+  tile to the planet was keyed on the distance to the tile's square, and the
+  contours of that distance are squares - with a crease running out to each
+  corner. So the ground carried a square frame wherever a tile stood.
+  *Corner rounding* takes the corners off and *Edge wander* moves the
+  outline in and out by a fraction of the feather's own width, inward only,
+  because the tile has no data past its own edge. What meets the planet is a
+  coastline rather than an outline.
+- **The Preview panel flies.** It is a viewport that happens to show one
+  camera, so it takes the mouse like the others: left drag orbits, Shift +
+  left, middle or right slides, Ctrl + left or the wheel moves along the
+  view axis. The camera itself is what moves, so with Auto-key on a drag
+  writes its keys, exactly as dragging its numbers does.
 - **A view becomes a shot in one press.** Flying around until something
   looks right and then rebuilding it by typing numbers into a camera is the
   long way round. Every viewport carries a *Copy this view to the camera*

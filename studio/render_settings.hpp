@@ -55,6 +55,13 @@ struct RenderSettings {
   // the old rule, sky everywhere thinning to space with the camera's
   // distance from the tile.
   float atmosphere_height = 20.f;
+  // How fast the air thins with height: the scale height as a fraction of
+  // the height above. A real atmosphere has no top - the density falls off
+  // exponentially, and the "height" is only where there is too little left
+  // to see. Earth's scale height is 8.5 km against a hundred-odd km of
+  // visible air, which is about an eighth. This is what makes a planet's
+  // limb a soft band rather than a drawn line.
+  float atmosphere_falloff = 0.12f;
   // Deep space (studio/shaders_space.cpp, renderer_space.cpp): the star
   // field, the galaxy band, and the nebulas (SceneObject::Nebula).
   SpaceSettings space; // deep space (studio/space_settings.hpp)
@@ -195,6 +202,21 @@ struct RenderSettings {
   float cloud_color[3] = {1.f, 1.f, 1.f};
   float cloud_ambient = 0.55f;    // sky light into clouds
   int   cloud_quality = 1;        // 0 draft, 1 normal, 2 high
+  // Marched as a real volume, or drawn as one flat sheet. The sheet is a
+  // single sample on the middle of the layer instead of dozens along the
+  // ray: far cheaper, and for a high overcast seen from below it is most
+  // of what a march gives anyway.
+  bool  cloud_volumetric = true;
+  // Weather, at the scale of weather. The shape volume tiles every five and
+  // a half tiles and a sky is seen thirty tiles deep, so without a field
+  // far coarser than any cloud the same few kilometres repeat to the
+  // horizon in a plain grid. This is how strongly that field opens and
+  // closes the cover; 0 is the old repeating sky.
+  float cloud_weather = 0.7f;
+  float cloud_weather_scale = 0.012f; // its frequency, per world unit
+  // How large the clouds themselves are: the frequency the shape volume is
+  // read at. Lower is bigger cloud and a longer repeat.
+  float cloud_scale = 0.10f;
   float cloud_anvil = 0.3f;       // cumulonimbus top spread
   // Multiple-scattering octaves. 1 is single scattering, which stops light at
   // its first hit and makes dense cloud read as plastic; each further octave
@@ -281,6 +303,11 @@ struct RenderSettings {
   float place_presence = 0.04f; // relief (heightmap units) that counts as one
   float place_ground = 0.14f;   // the planet's ground level, heightmap units
   float place_gradient = 1.f;   // the feather's curve (planet_place.hpp)
+  // The shape of the border the feather runs along: how far the square's
+  // corners are rounded off, and how much the outline wanders. Both exist
+  // because a blend keyed on the distance to a square draws a square.
+  float place_round = 0.55f;
+  float place_wander = 0.6f;
   // 0 blend the features, 1 blend the whole tile, 2 zero edge, 3 clip low
   // (the tile stands only where it is higher than the planet), 4 clip high
   // (only where it is lower)

@@ -108,6 +108,8 @@ static uint64_t placement_key() {
   mix(&rs.place_presence, sizeof rs.place_presence);
   mix(&rs.place_ground, sizeof rs.place_ground);
   mix(&rs.place_gradient, sizeof rs.place_gradient);
+  mix(&rs.place_round, sizeof rs.place_round);
+  mix(&rs.place_wander, sizeof rs.place_wander);
   mix(&rs.place_mode, sizeof rs.place_mode);
   mix(&rs.terrain_shape, sizeof rs.terrain_shape);
   mix(&rs.terrain_aspect, sizeof rs.terrain_aspect);
@@ -155,6 +157,8 @@ PlaceSettings app_place_settings(App &a, gpx::Node *out, int object) {
   PlaceSettings ps{rs.place_on_planet, rs.place_edge, rs.place_flatten, rs.place_presence,
                    rs.place_ground, rs.terrain_shape, rs.terrain_aspect};
   ps.gradient = rs.place_gradient;
+  ps.round = rs.place_round;
+  ps.wander = rs.place_wander;
   ps.mode = rs.place_mode;
   // where this tile stands, so the relief it blends to is the relief there
   if (object < 0) object = terrain_tile_object(0);

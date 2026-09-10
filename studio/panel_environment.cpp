@@ -38,6 +38,14 @@ static void section_atmosphere(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Atmosphere", ImGuiTreeNodeFlags_DefaultOpen)) return;
   studio::SliderFloatW("Density", &rs.atmosphere_density, 0.05f, 3.f);
   drag_length("Height", &rs.atmosphere_height, 1.f, 0.f, 1e9f);
+  studio::SliderFloatW("Thins by", &rs.atmosphere_falloff, 0.02f, 1.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How fast the air thins with height, as a fraction of the\n"
+                      "height above: the scale height. A real atmosphere has no\n"
+                      "top - the density falls off exponentially, and the height\n"
+                      "is only where too little is left to see. Earth is about an\n"
+                      "eighth. This is what makes a planet's limb a soft band\n"
+                      "rather than a drawn line; 1 is the old flat slab.");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("How high the air reaches over the world's surface, whatever\n"
                       "its shape - a globe, a ring, a flat world. Beyond it is space:\n"
@@ -99,7 +107,28 @@ static void section_clouds(RenderSettings &rs) {
   studio::Checkbox("Enabled", &rs.clouds_on);
   if (!rs.clouds_on) return;
   ImGui::Combo("Type", &rs.cloud_type, "Stratus\0Cumulus\0Cumulonimbus\0");
+  studio::Checkbox("Volumetric", &rs.cloud_volumetric);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("On, a ray is marched through the layer and the clouds\n"
+                      "have depth, shape and their own shadows. Off, the layer\n"
+                      "is one flat sheet sampled once - a fraction of the cost,\n"
+                      "and for a high overcast seen from below it is most of\n"
+                      "what the march arrives at anyway.");
   studio::SliderFloatW("Coverage", &rs.cloud_coverage, 0.f, 1.f);
+  studio::SliderFloatW("Weather", &rs.cloud_weather, 0.f, 1.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Cloud is not spread evenly over a world: fronts open and\n"
+                      "close the cover over hundreds of kilometres. Without\n"
+                      "this the shape repeats every few kilometres and a sky\n"
+                      "seen thirty of them deep comes out as a plain grid.");
+  studio::SliderFloatW("Cloud size", &rs.cloud_scale, 0.01f, 0.5f, "%.3f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How large the clouds themselves are. Lower is bigger\n"
+                      "cloud, and the pattern takes longer to come round again.");
+  studio::SliderFloatW("Weather scale", &rs.cloud_weather_scale, 0.001f, 0.2f, "%.4f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How large those fronts are. Small is a whole sky of one\n"
+                      "weather; large breaks it into separate systems.");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("0 = clear sky, 1 = fully overcast.");
   studio::SliderFloatW("Density", &rs.cloud_density, 0.1f, 3.f);

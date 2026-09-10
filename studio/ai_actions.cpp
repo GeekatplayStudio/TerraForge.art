@@ -132,6 +132,8 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
     } else if (op == "set_sky") {
       if (act.contains("density")) rs.atmosphere_density = act["density"].get<float>();
       if (act.contains("height")) rs.atmosphere_height = act["height"].get<float>();
+      if (act.contains("falloff"))
+        rs.atmosphere_falloff = std::clamp(act["falloff"].get<float>(), 0.02f, 1.f);
       if (act.contains("height_m"))
         rs.atmosphere_height = act["height_m"].get<float>() / (rs.terrain_size_m > 1.f ? rs.terrain_size_m : 1.f);
       if (act.contains("ambient")) rs.ambient_intensity = act["ambient"].get<float>();
@@ -163,6 +165,13 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
         rs.cloud_type = t == "stratus" ? 0 : t == "cumulonimbus" ? 2 : 1;
       }
       if (act.contains("coverage")) rs.cloud_coverage = std::clamp(act["coverage"].get<float>(), 0.f, 1.f);
+      if (act.contains("volumetric")) rs.cloud_volumetric = act["volumetric"].get<bool>();
+      if (act.contains("weather"))
+        rs.cloud_weather = std::clamp(act["weather"].get<float>(), 0.f, 1.f);
+      if (act.contains("weather_scale"))
+        rs.cloud_weather_scale = std::clamp(act["weather_scale"].get<float>(), 0.0005f, 0.5f);
+      if (act.contains("scale"))
+        rs.cloud_scale = std::clamp(act["scale"].get<float>(), 0.005f, 1.f);
       if (act.contains("density")) rs.cloud_density = act["density"].get<float>();
       if (act.contains("altitude")) rs.cloud_altitude = act["altitude"].get<float>();
       if (act.contains("thickness")) rs.cloud_thickness = act["thickness"].get<float>();

@@ -134,6 +134,7 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     uni3(prog_sky, "u_sky_horizon", RS.sky_horizon);
     uni1(prog_sky, "u_atmo", RS.atmosphere_density);
     uni1(prog_sky, "u_atm_h", RS.atmosphere_height);
+    uni1(prog_sky, "u_atm_falloff", RS.atmosphere_falloff);
     upload_world_shape(prog_sky, world_shape(RS));
     uni1(prog_sky, "u_world_r", RS.planet_radius);
     uni1(prog_sky, "u_world_w", RS.world_width);
@@ -146,6 +147,10 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     unii(prog_sky, "u_clouds", RS.clouds_on ? 1 : 0);
     unii(prog_sky, "u_cl_steps", 72);
     unii(prog_sky, "u_cl_type", RS.cloud_type);
+    unii(prog_sky, "u_cl_volumetric", RS.cloud_volumetric ? 1 : 0);
+    uni1(prog_sky, "u_cl_weather", RS.cloud_weather);
+    uni1(prog_sky, "u_cl_weather_scale", RS.cloud_weather_scale);
+    uni1(prog_sky, "u_cl_scale", RS.cloud_scale);
     uni1(prog_sky, "u_cl_cov", RS.cloud_coverage);
     uni1(prog_sky, "u_cl_den", RS.cloud_density);
     uni1(prog_sky, "u_cl_alt", RS.cloud_altitude);

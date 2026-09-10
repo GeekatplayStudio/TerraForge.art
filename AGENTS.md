@@ -1185,6 +1185,53 @@ belongs to; do not fake a field node with a 1×1 buffer.
     fog of its own painted it pale right up to the tile's border, which read
     as a cliff around the tile.
 
+## The air, and the clouds on it
+
+The atmosphere is an exponential density profile, not a slab
+(shaders_sky.cpp `atm_path`): the ray's interval over the world is found
+first, then integrated in eight segments by `seg_air`, which is the exact
+airmass of a straight segment through exp(-h/Hs). `Hs` is
+`atmosphere_height * atmosphere_falloff`, and the result is divided by `Hs`
+so straight up from the ground is 1 whatever the falloff - existing scenes
+keep their sky. A slab ends on a line, which is why the limb used to be
+drawn rather than faded.
+
+`world_slab` clips a ray interval to the world's own extent - a ring's
+width along its axis, a flat world's outline - and the air, every cloud
+layer and anything else that is a layer on the surface must go through it,
+or it fills a sky that has no ground under it. It must be defined **before**
+`layer_span` and `atm_path`: GLSL has no forward declarations, and a sky
+shader that fails to compile comes out an even grey with no stars, which
+looks like a lighting bug rather than a build one.
+
+Clouds: `cloud_density` takes one coarse lookup that does two jobs - its red
+channel opens and closes the cover the way a weather front does, and its
+other three warp the shape lookup. The warp is the half that matters: the
+shape volume tiles every 5.5 tiles and a sky is seen thirty deep, so
+modulating the cover alone only gives a modulated grid. One fetch for both,
+because the density is sampled six times a step (once forward, five toward
+the sun). `cloud_volumetric` off replaces the march with a single sample on
+the middle of the layer - a third of the frame cost.
+
+## A blend keyed on a square draws a square
+
+planet_place.cpp: the tile's border used to be
+`min(min(u,1-u), min(v,1-v))`, which is the Chebyshev distance to the unit
+square. Its contours are squares, and its gradient jumps across the
+diagonals, so the feather, the material weight and everything downstream of
+them drew a square frame with a crease out to each corner - the square
+people report seeing. It is a p-norm now (`place_round`: p = 2 is the
+inscribed circle, p = 8 already reads square again, so the whole useful
+range is between - a larger exponent leaves the default indistinguishable
+from what it replaced), plus `place_wander`, a noise on the border.
+
+The wander eats **inward only**. A border pushed outward asks for tile data
+past the tile's own square, where there is none, and puts back the hard edge
+it exists to remove; tests/cpp/test_planet_place.cpp holds that invariant.
+Any test that pins a probe to a particular border distance must set
+`round = 0, wander = 0` - it is testing the feather's curve, not the
+border's shape.
+
 ## Deep space
 
 studio/shaders_space*.cpp is four GLSL chunks and an entry, spliced through

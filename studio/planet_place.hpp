@@ -55,6 +55,16 @@ struct PlaceSettings {
   // when set, multiplies the blend - 1 the tile, 0 the planet - so any
   // heightmap the graph produces can decide where the join is.
   float gradient = 1.f;
+  // How far the border is taken off the square. 0 is the square itself - a
+  // plain minimum of the four edge distances, whose contours are squares
+  // with a crease running out to each corner, so every blend keyed on it
+  // draws a square frame on the ground. 1 is the circle inscribed in the
+  // tile. Between them the corners round off while the sides stay put.
+  float round = 0.55f;
+  // And the outline wanders: a rounded square is still a shape, and nothing
+  // in a landscape has a geometric edge. Pushed in and out by this much of
+  // the feather's own width.
+  float wander = 0.6f;
   int mode = 0; // 0 features only, 1 whole tile, 2 zero edge (seamless)
   std::shared_ptr<const gpx::Heightmap> mask;
   // Where the tile stands (terrain_xform.hpp): the planet relief it blends

@@ -249,6 +249,10 @@ void pass_sky(const FrameCtx &F) {
     if (cinematic) steps = (int)(steps * 1.5f);
     unii(prog_sky, "u_cl_steps", steps);
     unii(prog_sky, "u_cl_type", RS.cloud_type);
+    unii(prog_sky, "u_cl_volumetric", RS.cloud_volumetric ? 1 : 0);
+    uni1(prog_sky, "u_cl_weather", RS.cloud_weather);
+    uni1(prog_sky, "u_cl_weather_scale", RS.cloud_weather_scale);
+    uni1(prog_sky, "u_cl_scale", RS.cloud_scale);
     uni1(prog_sky, "u_sun_intensity", sun_intensity);
     unii(prog_sky, "u_panorama", 0);
     unii(prog_sky, "u_hdr", 0);
@@ -270,6 +274,7 @@ void pass_sky(const FrameCtx &F) {
       uni1(prog_sky, "u_world_w", RS.world_width);
       unii(prog_sky, "u_world_outline", RS.world_outline);
       uni1(prog_sky, "u_atm_h", RS.atmosphere_height);
+      uni1(prog_sky, "u_atm_falloff", RS.atmosphere_falloff);
       upload_space_uniforms(prog_sky); // the stars, the galaxy, the nebulas
       unii(prog_sky, "u_sun_mode", (RS.world_sun_inside && S.inside) ? 1 : 0);
     }

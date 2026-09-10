@@ -532,6 +532,19 @@ void object_properties_ui(App &a) {
             ImGui::SetTooltip("How far in from the border (and around each feature)\n"
                               "the join reaches. Up to half the tile.");
           labeled_scalar("Edge gradient", "pg", &rs.place_gradient, 0.05f, 8.f);
+          studio::SliderFloatW("Corner rounding", &rs.place_round, 0.f, 1.f);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("A tile is a square, and a blend that follows the\n"
+                              "distance to a square draws a square on the ground -\n"
+                              "a frame with a crease out to each corner. This takes\n"
+                              "the corners off: 0 leaves the square, 1 is the circle\n"
+                              "inscribed in the tile.");
+          studio::SliderFloatW("Edge wander", &rs.place_wander, 0.f, 1.f);
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("A rounded square is still a shape. This pushes the\n"
+                              "border in and out by a fraction of the feather's own\n"
+                              "width, so what meets the planet is a coastline rather\n"
+                              "than an outline.");
           if (ImGui::IsItemHovered())
             ImGui::SetTooltip("The curve of the join across that distance. 1 is the\n"
                               "plain S-curve; below 1 the tile holds its ground and\n"
