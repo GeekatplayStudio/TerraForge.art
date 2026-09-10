@@ -19,6 +19,19 @@ std::string ai_action_schema(AiDomain domain) {
    "azimuth_deg":210, "activate":true}
 - {"op":"set_camera","name":"Hero", ...same fields...}   (edits the selected
    or named camera instead of creating one)
+- {"op":"view_to_camera","view":1,"camera":"Hero","name":"Hero","activate":true}
+   (a viewport's point of view written into a camera - the named one, or a new
+    one called `name` when there is none)
+- {"op":"camera_to_view","camera":"Hero","view":2,"link":true}   (link: the view
+   looks through the camera from now on; link false: the free orbit moves there)
+- {"op":"render","camera":"Hero","preset":"Final 4K"}   (the active camera when
+   no name; a preset applied first when given)
+- {"op":"render_preset","action":"save","name":"Final 4K","camera":"Hero",
+   "engine":"cycles","width":3840,"height":2160,"samples":512}
+   (action save | apply (camera name, "all", or the active one) | delete | list;
+    presets are saved with the project and listed in the Render menu)
+- {"op":"render_batch","cameras":["Hero","Wide"],"preset":"Final 4K"}   (every
+   camera when the list is omitted; each renders in turn to its own file)
 Sensor formats: Full frame 35mm, APS-C, Super 35 (cine), Micro Four Thirds,
 16mm film, 65mm / IMAX, Large format 4x5.
 Film stocks: Digital (neutral), Kodak Portra 400, Kodak Kodachrome 64,
@@ -62,7 +75,7 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    (Vue's clipping altitudes: a TerrainClip node in front of the Terrain Output; "clear":true removes it; "low"/"high" take 0..1 of the height range instead of metres)
 - {"op":"terrain_effect","effect":"dissolve","hardness":0.6,"iterations":1}
    (one pass of a Vue terrain-editor effect in front of the output: erosion diffusive, thermal, glaciation, wind, dissolve, alluvium, fluvial, river valley; global grit, gravel, pebbles, stones, peaks, fir trees, plateaus, terraces, stairs, craters, sharpen, cracks; hardness is Vue's Rock hardness 0..1)
-- {"op":"add_component","kind":"terrain"|"infinite_terrain"|"planet"|"atmosphere"|"cloud_layer"|"sun"|"water"|"light"|"camera"|"cube"|"sphere"|"plane"|"cylinder"|"cone"|"scatter"|"ecosystem"|"material","name":"...","path":"C:/mesh.obj"}
+- {"op":"add_component","kind":"terrain"|"infinite_terrain"|"planet"|"moon"|"nebula"|"dark_nebula"|"galaxy"|"elliptical_galaxy"|"planetary_nebula"|"atmosphere"|"cloud_layer"|"sun"|"water"|"light"|"camera"|"cube"|"sphere"|"plane"|"cylinder"|"cone"|"scatter"|"ecosystem"|"material","name":"...","path":"C:/mesh.obj"}
    (the whole component: object, driving node and material; "terrain" is a further heightfield tile with its own Noise -> Terrain Output chain, standing beside the ones there are - move it with place_object; import_mesh takes a path)
 - {"op":"delete_object","name":"Terrain 2"}   (any asset and everything under it; the Add tile puts one back)
 - {"op":"terrain_style","name":"Canyon"}   (Mountain, Ridged peaks, Eroded mountain, Canyon, Mounds, Dunes, Iceberg, Lunar, Realistic mountain range: a fresh chain wired to the output)
@@ -255,9 +268,16 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"set_viewport","world":"ring"}   (the world's shape: "globe" the planet;
    "ring" a ring world - a cylinder of planet_radius curving along the tile's
    east-west, ground on the inside, sun on the axis, the far side overhead;
-   "dyson" a Dyson sphere - ground on the inside of the globe, sun at the centre.
-   The parts a preset sets: "world_shape":"globe"|"ring", "world_inside":true,
-   "world_width":400 (a ring's width, tile units), "world_sun_inside":true)
+   "dyson" a Dyson sphere - ground on the inside of the globe, sun at the centre;
+   "flat" a flat world - a plane world_width across, cut to "world_outline":"disc"|"square",
+   nothing beyond its edge.
+   The parts a preset sets: "world_shape":"globe"|"ring"|"flat", "world_inside":true,
+   "world_width":400 (a ring's width or a flat world's size, tile units),
+   "world_sun_inside":true. "world_thickness":0.5 (tile units) makes the world a body:
+   the other face lies that far below the ground and a ring or a flat world shows the
+   rim wall between its faces; 0 is a skin. The atmosphere, the cloud layers and the
+   water lie on the surface whatever its shape - on a ring the clouds are a band round
+   the inside of the ring.)
 - {"op":"place_object","name":"Terrain 2","side":"inside"}   (which face of the
    world a tile or a surface layer stands on: "world", "outside", "inside" -
    one shell with ground on both faces)
@@ -268,7 +288,9 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
     below 1 the tile holds its ground and drops at the rim, above 1 it gives way from further
     in; place_mode 0 blends the tile's features and lets the planet through where the tile
     is flat, 1 blends the whole tile, 2 is zero edge: the whole tile with its rim brought to
-    the planet's ground seamlessly; a heightmap into Terrain output's "blend mask" port
+    the planet's ground seamlessly, 3 clips low: the tile stands only where it is higher
+    than the planet's ground, its low edges cut away, 4 clips high: only where it is lower,
+    its high edges cut away; a heightmap into Terrain output's "blend mask" port
     multiplies the join, 1 tile, 0 planet)
    (how the terrain tile sits on the planet: the planet's relief shows
     through where the tile is flat, is levelled under the tile's features
@@ -277,7 +299,35 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
     ground level, so a hole dug below ground becomes a basin the water fills;
     place_ground is the planet's own ground level in heightmap units (water
     is at water_level, 0.08 by default), and the tile's ground settles to it)
-- {"op":"add_infinite_terrain","planet":"Mars","style":"terrain"|"mountains"|"hills"|"dunes",
+- {"op":"add_moon","name":"Luna","radius":1.5,"seed":3,"position":[x,y,z]}
+   (a small airless cratered world in the sky; set_planet edits it)
+- {"op":"add_nebula","name":"Orion","type":"nebula"|"dark"|"galaxy"|"elliptical"|"planetary",
+   "azimuth":40,"elevation":35,"size_deg":24,"tilt_deg":50,"rotation_deg":0,"seed":7,
+   "brightness":1.0,"density":0.5,"detail":0.5,"arms":2,"color1":[r,g,b],"color2":[r,g,b]}
+   (a thing in deep space, at infinity, seen where the atmosphere lets space
+    through: at night, from high up, beyond a ring's rim; any number of them)
+- {"op":"set_nebula","name":"Orion", ...same fields...}
+   (clouds also take "dust":0.55, "warp":0.6 (how far it is pulled out of a
+    ball), "glow":0.4, "sources":3 (hot stars inside, whose glare decides
+    where it is teal and where it is red), and "palette":"auto" to take both
+    colours from the realism dial)
+- {"op":"space_preset","name":"night"|"hubble"|"cinema"|"deep_field"|"nursery"|"void"}
+   (a whole sky at once: the star field, the milky band and the palette, and
+    the ones that want nebulas scatter them too)
+- {"op":"space_populate","count":4,"seed":1,"style":"mixed"|"nebulas"|"galaxies"|"dark"}
+   (scatters that many nebulas and galaxies over the sky, spread apart and
+    varied, coloured from the realism dial; replaces what a previous
+    populate made and leaves anything placed by hand. Eight at most.)
+- {"op":"set_space","on":true,"brightness":1,"realism":0.65,"glow":0.5,"quality":1,
+   "star_spikes":0.45,"star_halo":0.6,"star_clump":0.55,"galaxy_grain":0.8,
+   "stars":true,"star_density":0.5,"star_brightness":1,"star_size":1,
+   "star_temperature":0.6,"star_seed":1,"galaxy":true,"galaxy_intensity":0.7,
+   "galaxy_width":14,"galaxy_yaw":35,"galaxy_pitch":55,"galaxy_core":0,"galaxy_dust":0.7,
+   "galaxy_color":[1,0.95,0.9],"galaxy_seed":1}
+   (the star field and the galaxy band - the Milky Way - behind the air; the
+    atmosphere is a layer of "set_sky" "height_m" (100000 = 100 km) over the
+    world's surface whatever its shape, and beyond it is this)
+- {"op":"add_infinite_terrain","planet":"Mars","style":"terrain"|"mountains"|"hills"|"dunes"|"craters",
    "scale":5,"amplitude":1.0,"coverage":0.5,"seed":7}
    (omit "planet" to extend the home ground plane to the horizon instead;
     layers stack, so add several with different styles and coverages;
@@ -321,6 +371,36 @@ fog_density, fog_level, water_level, cloud_coverage, cloud_wind_dir...), by
 - {"op":"add_marker","frame":60,"name":"impact"}  {"op":"key_transform"}
 - {"op":"playblast","dir":"D:/out/blast","width":1280,"height":720}
 - {"op":"render_sequence","dir":"D:/out/shot","fps":30,"width":1920,"height":1080}
+
+The graph, by single steps (the "graph" op builds a whole graph at once):
+- {"op":"add_node","type":"Noise","alias":"n1","x":40,"y":40,"attrs":{"octaves":8}}
+- {"op":"connect","from":"n1","to":"out","from_port":"output","to_port":"heightmap"}
+- {"op":"disconnect","to":"out","to_port":"heightmap"}
+- {"op":"set_attr","node":"n1","key":"octaves","value":9}   (or "attrs":{...})
+- {"op":"delete_node","node":"n1"}  {"op":"bypass","node":"n1","bypass":true}
+- {"op":"move_node","node":"n1","x":300,"y":80}  {"op":"clear_graph"}
+- {"op":"set_resolution","resolution":1024}   (the heightmap size; 256..8192)
+- {"op":"view_node","node":"n1"}   (pin the 3D views to this node's output; omit
+   node to follow the Terrain output again)
+- {"op":"select_node","node":"n1","properties":true}  {"op":"open_node_editor","domain":"materials"}
+- {"op":"set_workspace","workspace":"terrain"|"materials"|"atmosphere"|"render"|"objects"|"lighting"|"cameras"|"animation"}
+- {"op":"evaluate"}   (recompute the graph now)  {"op":"capture","path":"D:/out/view.png","width":1280,"height":720}
+Project, painting, meshes, diagnostics:
+- {"op":"save_project","path":"D:/scenes/valley.gpxt"}  {"op":"open_project","path":"..."}
+- {"op":"paint_save","path":"D:/out/paint.png"}  {"op":"paint_load","path":"..."}  {"op":"paint_clear"}
+- {"op":"export_instances","object":"Rock","path":"D:/out/rocks.csv"}   (every scattered copy's transform)
+- {"op":"mesh_retopo","faces":5000}   (quad-dominant remesh of the selected mesh)
+- {"op":"mesh_solidify"}   (give an open surface a thickness)   {"op":"mesh_analyze"} = mesh_analyse
+- {"op":"set_time","time":2.5}  {"op":"set_camera_key","camera":"Hero","time":2.5}
+- {"op":"remove_track", ...address...}  {"op":"set_interp", ...address...,"frame":24,"interp":"bezier"|"linear"|"step","ease":"in"|"out"|"inout"}
+- {"op":"remove_marker","name":"impact"}  {"op":"clear_modifiers", ...address...}
+- {"op":"verify_field_gpu"}  {"op":"verify_accel"}   (CPU/GPU agreement reports; the
+   first also writes api/field_gpu_report.txt)
+- {"op":"set_light","name":"Lamp","position":[x,y,z],"color":[r,g,b],"intensity":2,"reach":0.4,
+   "type":"point"|"spot","cone":40,"heading_deg":90,"pitch_deg":-30}
+- {"op":"list_layouts"}  {"op":"delete_layout","name":"night work"}  {"op":"reset_layout"}
+- {"op":"asset_untag","id":"mesh/rocks/boulder.obj","tag":"granite"}  {"op":"asset_restore","id":"..."}
+- {"op":"asset_remove_root","path":"D:/assets"}
 
 Available in every domain:
 - {"op":"undo","steps":1}   (revert the last change, including your own)

@@ -264,6 +264,14 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.frac_scale = RS.fractal_scale;
     inf.tile_octf = std::clamp(std::log2((float)std::max(hm_w, 16)), 4.f, 11.f);
     inf.time = time_acc;
+    // the far shell's cloud band: the sky pass's own cloud shape and clock
+    inf.tex_cloud_shape = tex_cloud_shape;
+    inf.clouds_on = clouds_ok;
+    inf.cloud_cov = RS.cloud_coverage;
+    inf.cloud_alt = RS.cloud_altitude + RS.cloud_thickness * 0.5f;
+    inf.cloud_time = cloud_time;
+    inf.cloud_wind[0] = wind[0];
+    inf.cloud_wind[1] = wind[1];
     infinite_draw(inf);
   }
 

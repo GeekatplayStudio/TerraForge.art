@@ -69,6 +69,20 @@ void workspace_layout_switch(App &a, int from, int to) {
   a.request_layout_reset = true;
 }
 
+// The first frame: the arrangement the workspace was left in, put back.
+// Switching workspaces restored it; starting the application did not -
+// the exit capture was written and never read, and every launch came
+// back with the viewports at their defaults.
+bool workspace_layout_restore(App &a, int ws) {
+  LayoutRecord r;
+  std::string err;
+  if (!layout_read(workspace_layout_name(ws), r, err)) return false;
+  r.workspace = ws;
+  layout_apply(a, r);
+  apply_workspace_panels(a, ws);
+  return true;
+}
+
 // Called by app.cpp when a layout reset is due: which builder applies.
 void build_workspace_default_layout(App &a, unsigned dockspace_id) {
   build_workspace_layout(a.workspace, dockspace_id, prefs().view_mask);

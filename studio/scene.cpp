@@ -226,6 +226,69 @@ int scene_add_planet(const std::string &name) {
   return idx;
 }
 
+int view_active_camera() { return scene_active_camera(); }
+
+int scene_add_moon(const std::string &name) {
+  SceneState &s = scene();
+  int count = 0;
+  for (const SceneObject &o : s.objects)
+    if (o.type == SceneObject::Planet && o.planet.atmo_density <= 0.f && o.planet.sea_level <= 0.f) ++count;
+  const int idx = scene_add_planet(name.empty() ? "Moon " + std::to_string(count + 1) : name);
+  if (idx < 0) return idx;
+  SceneObject &o = s.objects[(size_t)idx];
+  PlanetData &P = o.planet;
+  P.radius = 1.2f + (count % 3) * 0.5f;
+  P.relief = 0.012f;
+  P.sea_level = 0.f;
+  P.snow_line = 1.f;
+  P.atmo_density = 0.f;
+  const float lo[3] = {0.36f, 0.35f, 0.34f}, hi[3] = {0.62f, 0.61f, 0.59f};
+  for (int k = 0; k < 3; ++k) { P.rock_low[k] = lo[k]; P.rock_high[k] = hi[k]; }
+  // its one surface layer is craters (gpx::planet::Layer type 4)
+  for (SceneObject &c : s.objects)
+    if (c.type == SceneObject::InfiniteSurface && c.parent == idx) {
+      c.surf.layer.type = 4;
+      c.surf.layer.frequency = 3.f;
+      c.surf.layer.amplitude = 1.f;
+      c.name = "Craters";
+    }
+  return idx;
+}
+
+int scene_add_nebula(const std::string &name, int type) {
+  SceneState &s = scene();
+  SceneObject o;
+  o.type = SceneObject::Nebula;
+  const int count = (int)scene_nebula_indices().size();
+  NebulaData &N = o.nebula;
+  N.type = type < 0 ? 0 : (type > 4 ? 4 : type);
+  static const char *const names[5] = {"Nebula", "Dark nebula", "Galaxy", "Elliptical galaxy",
+                                        "Planetary nebula"};
+  o.name = name.empty() ? std::string(names[N.type]) + " " + std::to_string(count + 1) : name;
+  // round the sky in golden steps, well above the horizon
+  N.azimuth = std::fmod(40.f + count * 137.5f, 360.f);
+  N.elevation = 25.f + (count % 4) * 12.f;
+  N.seed = 1u + (uint32_t)count * 7919u;
+  if (N.type == 2 || N.type == 3) N.size_deg = 12.f;
+  if (N.type == 4) N.size_deg = 6.f;
+  if (N.type == 2) { N.color1[0] = 1.f; N.color1[1] = 0.88f; N.color1[2] = 0.72f;
+                     N.color2[0] = 0.6f; N.color2[1] = 0.72f; N.color2[2] = 1.f; }
+  if (N.type == 3) { N.color1[0] = 1.f; N.color1[1] = 0.92f; N.color1[2] = 0.8f;
+                     N.color2[0] = 0.85f; N.color2[1] = 0.8f; N.color2[2] = 0.75f; }
+  if (N.type == 4) { N.color1[0] = 0.4f; N.color1[1] = 0.95f; N.color1[2] = 0.7f;
+                     N.color2[0] = 0.95f; N.color2[1] = 0.45f; N.color2[2] = 0.35f; }
+  s.objects.push_back(o);
+  return (int)s.objects.size() - 1;
+}
+
+std::vector<int> scene_nebula_indices() {
+  std::vector<int> out;
+  const SceneState &s = scene();
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (s.objects[(size_t)i].type == SceneObject::Nebula) out.push_back(i);
+  return out;
+}
+
 int scene_add_infinite_surface(int parent, const std::string &name) {
   SceneState &s = scene();
   SceneObject o;

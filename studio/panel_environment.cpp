@@ -2,6 +2,7 @@
 // atmosphere, fog/haze/pollution, water materials.
 #include "app.hpp"
 #include "wheel_widgets.hpp"
+#include "prop_lengths.hpp"
 #include "gpu_timer.hpp"
 #include "render_settings.hpp"
 #include "renderer_instances.hpp"
@@ -36,11 +37,23 @@ static void section_sun(RenderSettings &rs) {
 static void section_atmosphere(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Atmosphere", ImGuiTreeNodeFlags_DefaultOpen)) return;
   studio::SliderFloatW("Density", &rs.atmosphere_density, 0.05f, 3.f);
+  drag_length("Height", &rs.atmosphere_height, 1.f, 0.f, 1e9f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How high the air reaches over the world's surface, whatever\n"
+                      "its shape - a globe, a ring, a flat world. Beyond it is space:\n"
+                      "from high enough the sky thins to stars and the world shows a\n"
+                      "blue rim; on a ring the air is a band inside the ring. 0 keeps\n"
+                      "the old rule, sky everywhere thinning with distance.");
   studio::SliderFloatW("Ambient light", &rs.ambient_intensity, 0.f, 2.f);
   ImGui::ColorEdit3("Sky zenith", rs.sky_zenith);
   ImGui::ColorEdit3("Sky horizon", rs.sky_horizon);
   studio::SliderFloatW("Exposure", &rs.exposure, 0.3f, 3.f);
 }
+
+// Deep space behind the air lives in panel_environment_space.cpp: it grew
+// a palette, a march and a way to fill the sky, and this file has the
+// 500-line rule to keep.
+void section_space(RenderSettings &rs);
 
 static void section_fog(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Fog / Haze", ImGuiTreeNodeFlags_DefaultOpen)) return;
@@ -300,6 +313,7 @@ void world_properties_ui(App &a) {
   }
   if (prop_filter_match("Sun")) section_sun(rs);
   if (prop_filter_match("Atmosphere sky")) section_atmosphere(rs);
+  if (prop_filter_match("Space stars galaxy nebula")) section_space(rs);
   if (prop_filter_match("Clouds")) section_clouds(rs);
   if (prop_filter_match("Fog haze")) section_fog(rs);
   if (prop_filter_match("Water foam")) section_water(rs);

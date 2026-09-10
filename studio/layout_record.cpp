@@ -50,8 +50,14 @@ std::string layout_to_json(const LayoutRecord &r) {
                      {"water", v.water},
                      {"grid", v.grid},
                      {"outlines", v.outlines},
-                     {"curved", v.curved}});
+                     {"curved", v.curved},
+                     {"ortho_zoom", v.ortho_zoom},
+                     {"ortho_cx", v.ortho_cx},
+                     {"ortho_cy", v.ortho_cy}});
   j["views"] = std::move(views);
+  if (r.orbit.valid)
+    j["orbit"] = {{"target", {r.orbit.target[0], r.orbit.target[1], r.orbit.target[2]}},
+                  {"yaw", r.orbit.yaw}, {"pitch", r.orbit.pitch}, {"dist", r.orbit.dist}};
   j["editor_domains"] = r.editor_domains;
   j["panels"] = {{"library", r.library},
                  {"nodelist", r.nodelist},
@@ -89,7 +95,21 @@ bool layout_from_json(const std::string &text, LayoutRecord &r,
     out.grid = v.value("grid", out.grid);
     out.outlines = v.value("outlines", out.outlines);
     out.curved = v.value("curved", out.curved);
+    out.ortho_zoom = v.value("ortho_zoom", out.ortho_zoom);
+    out.ortho_cx = v.value("ortho_cx", out.ortho_cx);
+    out.ortho_cy = v.value("ortho_cy", out.ortho_cy);
     r.views.push_back(out);
+  }
+  r.orbit.valid = false;
+  if (j.contains("orbit") && j["orbit"].is_object()) {
+    const json &o = j["orbit"];
+    if (o.contains("target") && o["target"].is_array() && o["target"].size() == 3) {
+      for (int k = 0; k < 3; ++k) r.orbit.target[k] = o["target"][k].get<float>();
+      r.orbit.yaw = o.value("yaw", r.orbit.yaw);
+      r.orbit.pitch = o.value("pitch", r.orbit.pitch);
+      r.orbit.dist = o.value("dist", r.orbit.dist);
+      r.orbit.valid = r.orbit.dist > 0.f;
+    }
   }
   r.editor_domains.clear();
   for (const auto &d : j.value("editor_domains", json::array()))

@@ -58,6 +58,9 @@ void apply_scene_nodes(App &a) {
       rs.shadows = at.get_b("shadows", rs.shadows);
     } else if (n.type == "AtmosphereSettings") {
       rs.atmosphere_density = at.get_f("density", rs.atmosphere_density);
+      if (at.find("height_km"))
+        rs.atmosphere_height = at.get_f("height_km", 100.f) * 1000.f /
+                               (rs.terrain_size_m > 1.f ? rs.terrain_size_m : 1.f);
       rs.ambient_intensity = at.get_f("ambient", rs.ambient_intensity);
       rs.sky_zenith[0] = at.get_f("zenith_r", rs.sky_zenith[0]);
       rs.sky_zenith[1] = at.get_f("zenith_g", rs.sky_zenith[1]);

@@ -226,6 +226,17 @@ int &renderer_camera_override() {
   return v;
 }
 
+void renderer_orbit_get(float target[3], float &yaw, float &pitch, float &dist) {
+  for (int i = 0; i < 3; ++i) target[i] = CAM.target[i];
+  yaw = CAM.yaw; pitch = CAM.pitch; dist = CAM.dist;
+}
+void renderer_orbit_set(const float target[3], float yaw, float pitch, float dist) {
+  for (int i = 0; i < 3; ++i) CAM.target[i] = target[i];
+  CAM.yaw = yaw;
+  CAM.pitch = std::clamp(pitch, -1.55f, 1.55f);
+  CAM.dist = std::clamp(dist, 1e-8f, 100000.f);
+}
+
 float perspective_eye_target(float *eye, float *target, float *up_out) {
   float fovy_rad = 0.9f;
   SceneState &sc = scene();

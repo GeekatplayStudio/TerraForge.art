@@ -158,6 +158,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_camera.cpp
     engine/nodes/nodes_animation.cpp
     engine/nodes/nodes_scene.cpp
+    engine/nodes/nodes_space.cpp
     engine/nodes/nodes_clouds.cpp
     engine/nodes/nodes_render.cpp
     engine/nodes/nodes_field_color.cpp
@@ -440,11 +441,22 @@ set(STUDIO_SOURCES
     studio/shaders_sky.cpp
     studio/planet_renderer.cpp
     studio/planet_shaders.cpp
+    studio/planet_rim.cpp
+    studio/shaders_space.cpp
+    studio/renderer_space.cpp
+    studio/shaders_space_stars.cpp
+    studio/shaders_space_gal.cpp
+    studio/shaders_space_neb.cpp
+    studio/space_noise.cpp
+    studio/space_presets.cpp
+    studio/panel_properties_object_space.cpp
+    studio/render_presets.cpp
     studio/field_gpu_check.cpp
     studio/field_gpu_check_convert.cpp
     studio/preview.cpp
     studio/project_io.cpp
     studio/panel_environment.cpp
+    studio/panel_environment_space.cpp
     studio/panel_ai.cpp
     studio/panel_materials.cpp
     studio/panel_material_editor.cpp
@@ -628,6 +640,8 @@ add_executable(undo_tests
     tests/cpp/test_undo.cpp
     tests/cpp/test_undo_render.cpp
     tests/cpp/test_scene_tree.cpp
+    tests/cpp/test_space.cpp
+    studio/space_presets.cpp
     tests/cpp/test_anim_scene.cpp
     tests/cpp/test_imprint.cpp
     tests/cpp/test_material_source_scene.cpp

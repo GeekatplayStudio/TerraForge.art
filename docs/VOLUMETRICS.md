@@ -28,7 +28,7 @@ materials — `FOG_FN` in `studio/shaders_terrain.cpp`, `march_clouds` in
 | Multiple cloud layers | **no → added** | one slab (`cloud_altitude` / `cloud_thickness`); a second layer with its own type, height, coverage, density |
 | Temporal reconstruction (quarter-res + reprojection) | no | needs motion vectors and a history buffer; the governor's render scale does the resolution half without the reprojection |
 | Density baked to a 3D texture per weather change | no | the shape/detail textures are baked once; density is remapped per sample (cheap) |
-| Planet-wrapped layers (spherical shells) | no | the tile's clouds are a flat slab; the planet renderer has its own atmosphere |
+| Planet-wrapped layers (spherical shells) | yes | `layer_span` in shaders_sky.cpp: the band between two shells about the world's centre or a ring's axis, cut at a ring's rim; a flat world keeps the slab |
 | VDB / NanoVDB import | no | see below |
 | Gaussian-splat media | no | see below |
 | Offline: true medium in a path tracer | yes | Mitsuba 3 `volpath`, homogeneous medium behind a null BSDF, terms converted from the material |
@@ -90,7 +90,8 @@ planet renderer draws its own sky. The design that unifies them:
 3. The sky pass marches the layers back to front from the camera.
 
 The second cloud layer added now is step 1 with N = 2 and flat only. The
-shell case is the next piece of work and is not started.
+shell case shipped in phase 36 (the home world only; planets in the sky
+still get a limb-glow term - see docs/roadmaps/planets.md).
 
 ## Cost rules (AGENTS.md "Participating media")
 

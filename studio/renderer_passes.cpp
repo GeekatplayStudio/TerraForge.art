@@ -14,6 +14,7 @@
 #include "terrain_tiles.hpp"
 #include "planet_place.hpp"
 #include "world_shape.hpp"
+#include "renderer_space.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/field_glsl.hpp"
 #include <algorithm>
@@ -84,6 +85,7 @@ void upload_water_uniforms(unsigned prog, const RenderSettings &RS, float time) 
 void upload_world_shape(unsigned prog, const gpx::planet::Shape &S) {
   glUniform4f(uniform_location(prog, "u_world_shape"), S.flat_x ? 1.f : 0.f,
               S.flat_z ? 1.f : 0.f, S.inside ? 1.f : 0.f, S.flip ? 1.f : 0.f);
+  glUniform1f(uniform_location(prog, "u_world_thick"), S.thick);
 }
 
 // The shape of the face the tile being drawn stands on (world_shape.hpp):
@@ -256,8 +258,20 @@ void pass_sky(const FrameCtx &F) {
       // an inside world's air is a layer on its ground: the sky over it
       // thins to space, and beyond a ring's rim there is nothing but stars
       // (world_shape.hpp); the far shell covers the rest
-      if (RS.world_inside) space = std::max(space, 0.75f);
+      if (RS.world_inside && !world_is_flat(RS)) space = std::max(space, 0.75f);
       uni1(prog_sky, "u_space", space);
+      // the world the air lies on (world_shape.hpp): the cloud layers are
+      // bands over its surface and the sky's up is the surface's up, at
+      // the curvature this view draws the ground with, so the clouds sit
+      // on the ground they are seen over
+      const gpx::planet::Shape S = world_shape(RS);
+      upload_world_shape(prog_sky, S);
+      uni1(prog_sky, "u_world_r", view_planet_radius(RS, vc));
+      uni1(prog_sky, "u_world_w", RS.world_width);
+      unii(prog_sky, "u_world_outline", RS.world_outline);
+      uni1(prog_sky, "u_atm_h", RS.atmosphere_height);
+      upload_space_uniforms(prog_sky); // the stars, the galaxy, the nebulas
+      unii(prog_sky, "u_sun_mode", (RS.world_sun_inside && S.inside) ? 1 : 0);
     }
     uni1(prog_sky, "u_cl_cov", RS.cloud_coverage);
     uni1(prog_sky, "u_cl_den", RS.cloud_density);

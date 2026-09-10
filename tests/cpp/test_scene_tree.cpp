@@ -170,6 +170,40 @@ static void test_layer_colour_and_old_files() {
 // so picking a 14 mm lens gave a perfectly rectilinear picture and nothing on
 // screen said why. The two settings that are taste rather than physics stay
 // off, so the default is what the glass does and nothing more.
+// a nebula (scene.hpp NebulaData) round-trips through the scene file
+static void test_nebula_round_trip() {
+  std::printf("object manager: a nebula round-trips...\n");
+  scene() = SceneState{};
+  const int idx = scene_add_nebula("Orion", 2);
+  CHECK(idx >= 0 && scene().objects[idx].type == SceneObject::Nebula, "a nebula was added");
+  NebulaData &N = scene().objects[idx].nebula;
+  N.azimuth = 123.f; N.elevation = 44.f; N.size_deg = 9.5f; N.tilt_deg = 61.f;
+  N.seed = 77u; N.brightness = 1.7f; N.density = 0.3f; N.arms = 3;
+  N.color1[0] = 0.2f; N.color2[2] = 0.9f;
+  CHECK(scene_nebula_indices().size() == 1, "and is listed");
+  nlohmann::json j = scene_to_json();
+  scene() = SceneState{};
+  std::string warn;
+  scene_from_json(j, GraphIdMap{}, warn);
+  const std::vector<int> back = scene_nebula_indices();
+  CHECK(back.size() == 1, "the nebula came back");
+  if (back.size() == 1) {
+    const NebulaData &M = scene().objects[back[0]].nebula;
+    CHECK(M.type == 2 && M.azimuth == 123.f && M.elevation == 44.f && M.size_deg == 9.5f &&
+              M.tilt_deg == 61.f && M.seed == 77u && M.brightness == 1.7f && M.density == 0.3f &&
+              M.arms == 3 && M.color1[0] == 0.2f && M.color2[2] == 0.9f,
+          "every nebula field round-trips");
+    CHECK(scene().objects[back[0]].name == "Orion", "and its name");
+  }
+  // a moon is a planet with a crater layer and no air
+  const int moon = scene_add_moon("Luna");
+  bool craters = false;
+  for (const SceneObject &c : scene().objects)
+    if (c.type == SceneObject::InfiniteSurface && c.parent == moon && c.surf.layer.type == 4) craters = true;
+  CHECK(moon >= 0 && craters && scene().objects[moon].planet.atmo_density == 0.f, "a moon is cratered and airless");
+  scene() = SceneState{};
+}
+
 static void test_camera_optics_default() {
   CameraData cd;
   CHECK(cd.optics, "a new camera simulates its lens");
@@ -188,6 +222,7 @@ int test_scene_tree_run() {
   test_visibility_states();
   test_move_object();
   test_layer_colour_and_old_files();
+  test_nebula_round_trip();
   test_camera_optics_default();
   return g_fail;
 }

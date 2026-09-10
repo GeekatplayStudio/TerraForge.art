@@ -19,7 +19,8 @@ Three rows sit above the workspace:
    `logs/perf_watch.json`.
 2. **The workspace tabs** — Terrain, Materials, Atmosphere, Render, All
    domains, Objects, Lighting, Cameras, Animation. Each workspace remembers
-   its own arrangement of windows (`layouts/workspace-<name>.json`).
+   its own arrangement of windows (`layouts/workspace2-<name>.json`,
+   captured when you leave it and at exit, put back at startup).
 3. **The tool row** — the commands that belong to the active workspace
    (resolution presets and sculpt for Terrain; primitives, planet, infinite
    terrain and mesh tools for Objects; the transport for Animation; …).
@@ -164,17 +165,77 @@ translation can be completed.
 ## World shape
 
 Objects ▸ Home planet ▸ *World shape*: **Shape** (Globe, Ring world, Dyson
-sphere - a preset that sets the two switches below), **Ring width** (a ring
-only: how far it reaches north and south of the tile; beyond its rim is
-space), **Ground on the inside** (the centre is above the tile: the surface
-rises away from you and the far side of the world is drawn overhead; every
-view curves an inside world) and **Sun inside** (the sun is a body on the
-ring's axis or at the sphere's centre, straight above the tile; the Sun
-object's angles are not used while it is on). A terrain tile's Placement
+sphere, Flat world - a preset that sets the switches below), **Ring width**
+(a ring only: how far it reaches north and south of the tile; beyond its
+rim is space), **Outline** and **Width** (a flat world only: a disc or a
+square that wide, with nothing beyond its edge), **Thickness** (0 is a
+skin; above it the other face lies that far below the ground - a ring's
+outside, a flat world's underside, a globe's inner crust - and a ring or a
+flat world is drawn as a body: both faces and the rim wall between them),
+**Ground on the inside** (the centre is above the tile: the surface rises
+away from you and the far side of the world is drawn overhead; every view
+curves an inside world) and **Sun inside** (the sun is a body on the ring's
+axis or at the sphere's centre, straight above the tile; the Sun object's
+angles are not used while it is on). The atmosphere, the cloud layers,
+their shadows and the water lie on the surface whatever its shape: on a
+ring the clouds are a band round the inside of the ring, ending at its rim,
+and the sky stands over the ring's ground. A terrain tile's Placement
 section and a surface layer's tab carry **Side of the world**: the world's
 own face, or the other face of the same shell, where the heights go the
 other way - a globe's other face is the inside of its crust, seen from
 within the hollow planet. A tile on the other face is placed against that
-face's own layers. Script: `set_viewport` with `world`, `world_shape`,
-`world_inside`, `world_width`, `world_sun_inside`; `place_object` with
-`side`.
+face's own layers. The Placement section's **Blend** also offers **Clip
+low** (the tile stands only where it rises above the planet's own ground;
+its low edges are cut away, so a mountain sits in the landscape without a
+skirt) and **Clip high** (only where it lies below; a basin is carved into
+the ground). Script: `set_viewport` with `world`, `world_shape`,
+`world_inside`, `world_width`, `world_sun_inside`, `world_thickness`,
+`world_outline`, `place_mode` (3 clip low, 4 clip high); `place_object`
+with `side`.
+
+## Atmosphere height and deep space
+
+Environment ▸ Atmosphere ▸ **Height** is how high the air reaches over the
+world's surface, whatever its shape; beyond it is space. From high enough
+the sky thins to stars and the world shows a blue rim; on a ring the air
+is a band inside the ring, seen from outside through its opening. 0 keeps
+the old rule of sky everywhere thinning with distance. Environment ▸
+**Space** is the whole backdrop. *A whole sky at once* holds six named
+skies - **A dark night sky**, **Hubble**, **Science fiction**, **Deep
+field**, **Star nursery**, **Empty** - each of which sets the star field,
+the band and the palette together, and **Fill the sky**, which scatters
+*How many* (up to eight) nebulas and galaxies over it, of a chosen kind,
+spread apart and varied; *Arrangement* is the seed. Filling again replaces
+what the last fill made and leaves anything placed by hand.
+
+*The look*: **Realism** is the dial the whole backdrop turns on - 1 is a
+photograph, hydrogen's crimson with doubly-ionised oxygen's teal where the
+gas is hardest lit; 0 is what a film paints, cyan and magenta with gold
+cores. It grades what is already in the sky and chooses the colours
+anything new is born with. **Brightness**, **Glow** (the halo a long
+exposure spreads round bright gas) and **Quality** (how far the march
+through a nebula steps: 12, 22, 40 or 72 samples) sit beside it. Only the
+pixels a nebula covers pay for the march, and only where space is visible
+at all, so a daylit scene costs nothing.
+
+*Stars*: density, brightness, size, colour spread, **Diffraction spikes**
+(the four arms a telescope's vanes cut across the brightest), **Halo**,
+**Clumping** (stars gather into associations rather than sprinkling
+evenly), seed. *Galaxy band*: intensity, width, pole heading and
+elevation, core position, **Dark rifts** (dust that reddens as well as
+dims), **Star haze** (the unresolved stars that make it milky), tint,
+seed.
+
+Nebulas and galaxies are objects: Add tile ▸ Space ▸ Nebula, Dark nebula,
+Spiral galaxy, Elliptical galaxy, Planetary nebula, and Moon - a small
+airless cratered world (a planet whose surface layer style is Craters). A
+nebula's Properties: kind, azimuth, elevation, size, rotation, tilt
+(galaxies), seed, brightness, density, detail, arms, and - for the clouds,
+which are marched as real volumes - **Dust**, **Shape** (how far it is
+pulled out of a ball), **Glow** and **Hot stars** (how many young stars
+inside light it; their glare is what decides where it is teal and where it
+is red). *Colours from the Realism dial* takes both colours from where
+that dial stands. Eight are drawn at once. Script: `set_sky` with `height`
+(tile units) or `height_m`; `space_preset`; `space_populate`; `set_space`;
+`add_nebula` / `set_nebula` (with `palette:"auto"`); `add_moon`;
+`add_infinite_terrain` with style `craters`.

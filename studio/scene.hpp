@@ -41,6 +41,38 @@ struct PlanetData {
   unsigned long long surface_node = 0;
 };
 
+// A nebula, or a galaxy: a thing in deep space, at infinity, drawn by
+// direction (studio/shaders_space.cpp). Its place in the sky is an azimuth
+// and an elevation, its size an angle; everything else is its look. Any
+// number of them, each its own object in the tree, drawn where the
+// atmosphere lets space through.
+struct NebulaData {
+  // 0 emission cloud, 1 dark cloud (hides what is behind it), 2 spiral
+  // galaxy, 3 elliptical galaxy, 4 planetary nebula (a ring round a star)
+  int type = 0;
+  float azimuth = 40.f;      // degrees, the sun's frame
+  float elevation = 35.f;    // degrees above the horizon
+  float size_deg = 24.f;     // angular diameter
+  float tilt_deg = 50.f;     // galaxies: how far the disc is turned from face-on
+  float rotation_deg = 0.f;  // turned in the sky
+  uint32_t seed = 1;
+  float brightness = 1.f;
+  float density = 0.5f;      // clouds: how much of the footprint is cloud; galaxies: dust
+  float detail = 0.5f;       // fractal octaves, 0 soft .. 1 fine
+  int arms = 2;              // spiral galaxies
+  // The cloud kinds are marched as volumes (shaders_space_neb.cpp): dust is
+  // how much dark matter threads through the gas and hides it, warp how far
+  // the shape is pulled out of a ball, glow the halo it throws around
+  // itself, and sources how many hot stars inside light it - their glare
+  // is what decides where it is teal and where it is red.
+  float dust = 0.55f;
+  float warp = 0.6f;
+  float glow = 0.4f;
+  int sources = 3;
+  float color1[3] = {0.62f, 0.92f, 0.96f}; // the ionised heart
+  float color2[3] = {0.95f, 0.26f, 0.30f}; // the hydrogen around it
+};
+
 // One infinite procedural terrain layer. Parented to a Planet it shapes that
 // planet's surface; at the root it extends the home ground plane to the
 // horizon. Any number can be stacked — they sum.
@@ -60,6 +92,14 @@ struct RenderAssign {
   std::string output = "render.png";
   bool passes = false; // also write depth + normal AOVs beside the image
   bool panorama = false; // render a full 360 equirectangular image
+  std::string preset;    // the render preset this was applied from, if any
+};
+
+// A named render assignment (render_presets.hpp), saved with the scene:
+// applied to any camera in one step, rendered with from the Render menu.
+struct RenderPreset {
+  std::string name;
+  RenderAssign assign;
 };
 
 struct CameraData {
@@ -107,10 +147,11 @@ struct CameraData {
 
 struct SceneObject {
   enum Type { Terrain, Water, Sun, Atmosphere, Mesh, Group, Camera, Planet,
-              InfiniteSurface, Light };
+              InfiniteSurface, Light, Nebula };
   Type type = Mesh;
   PlanetData planet;          // valid when type == Planet
   InfiniteSurfaceData surf;   // valid when type == InfiniteSurface
+  NebulaData nebula;          // valid when type == Nebula
   std::string name;
   int layer = 0;
   int parent = -1;       // index into objects, -1 = root
@@ -319,6 +360,7 @@ struct SceneState {
   gpx::Timeline timeline;
   std::map<std::string, gpx::Track> world_anim;
   std::vector<SceneLayer> layers{{"Default", true}};
+  std::vector<RenderPreset> render_presets; // render_presets.hpp
   // The Objects tree's swatch, clicked: every object drawn in its layer's
   // colour, so a layer can be told apart on screen. Off, the swatch is a
   // label only.
@@ -369,6 +411,14 @@ int scene_import_obj(const std::string &path, std::string &err);
 // ---- planets & infinite surfaces ----
 // creates a planet at a free spot in space; returns its index
 int scene_add_planet(const std::string &name = "");
+// A moon: a small airless cratered planet in the sky (crater layer, grey
+// rock, no sea, no air).
+int scene_add_moon(const std::string &name = "");
+// A nebula or a galaxy in deep space (NebulaData::type), spread round the
+// sky so several never land on one another.
+int scene_add_nebula(const std::string &name = "", int type = 0);
+// every Nebula object, in tree order
+std::vector<int> scene_nebula_indices();
 // creates an infinite terrain layer; parent = planet object index, or -1 for
 // the home ground plane. Returns its index.
 int scene_add_infinite_surface(int parent = -1, const std::string &name = "");

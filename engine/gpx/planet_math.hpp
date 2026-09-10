@@ -21,7 +21,7 @@ namespace gpx::planet {
 struct Layer {
   uint32_t seed = 1;
   int type = 1;          // 0 rolling hills, 1 ridged mountains, 2 billow dunes,
-                         // 3 realistic terrain (see pl_terrain)
+                         // 3 realistic terrain (see pl_terrain), 4 craters
   float frequency = 3.f; // features per planet radius
   float amplitude = 1.f; // relative weight within the planet's relief budget
   int octaves = 6;       // detail depth for CPU evaluation (GPU picks its own)
@@ -290,9 +290,44 @@ inline float pl_terrain(float x, float y, float z, uint32_t seed, float octf,
 }
 
 // one layer's relief at a point already scaled by its frequency
+// Craters (layer type 4, GLSL: pl_craters): a bowl with a raised rim in
+// about half the cells of a grid, at four scales, the large ones first.
+// The sum in the same order as the shader, so the two agree.
+inline float pl_craters(float x, float y, float z, uint32_t seed, float octf) {
+  float h = 0.f, amp = 0.6f, freq = 1.f;
+  for (int i = 0; i < 4; ++i) {
+    float w = octf - (float)(i * 2);
+    w = w < 0.f ? 0.f : (w > 1.f ? 1.f : w);
+    if (w <= 0.f) break;
+    const float qx = x * freq, qy = y * freq, qz = z * freq;
+    const float cx = std::floor(qx), cy = std::floor(qy), cz = std::floor(qz);
+    const uint32_t s = seed + (uint32_t)i * 977u;
+    float sum = 0.f;
+    for (int dz = -1; dz <= 1; ++dz)
+      for (int dy = -1; dy <= 1; ++dy)
+        for (int dx = -1; dx <= 1; ++dx) {
+          const float ix = cx + (float)dx, iy = cy + (float)dy, iz = cz + (float)dz;
+          if (pl_hash(ix, iy, iz, s + 53u) > 0.55f) continue;
+          const float ex = pl_hash(ix, iy, iz, s), ey = pl_hash(ix, iy, iz, s + 17u),
+                      ez = pl_hash(ix, iy, iz, s + 31u);
+          const float rad = 0.22f + 0.2f * pl_hash(ix, iy, iz, s + 71u);
+          const float ddx = qx - (ix + ex), ddy = qy - (iy + ey), ddz = qz - (iz + ez);
+          const float d = std::sqrt(ddx * ddx + ddy * ddy + ddz * ddz) / rad;
+          if (d >= 1.3f) continue;
+          const float bowl = 1.f - pl_smoothstep(0.f, 1.f, d);
+          const float rim = std::exp(-((d - 1.f) * (d - 1.f)) / 0.02f);
+          sum += -bowl * bowl * 0.9f + rim * 0.35f;
+        }
+    h += sum * amp * w;
+    amp *= 0.55f;
+    freq *= 2.7f;
+  }
+  return h < -0.5f ? -0.5f : (h > 0.5f ? 0.5f : h);
+}
 inline float pl_layer(float x, float y, float z, const Layer &L, float octf,
                       float *wet) {
   if (L.type == 3) return pl_terrain(x, y, z, L.seed, octf, wet);
+  if (L.type == 4) return pl_craters(x, y, z, L.seed, octf);
   if (wet) *wet = 0.f;
   return pl_fbmf(x, y, z, L.seed, octf, L.type);
 }
@@ -377,14 +412,24 @@ struct Shape {
   // crust; a Dyson sphere's is its dark outside. The face that faces the
   // centre is `inside != flip`.
   bool flip = false;
+  // How thick the shell is, tile units. 0 is a skin: both faces are the
+  // same surface. Above 0 the other face lies `thick` deeper into the
+  // world - a globe's inside crust is at R - thick, a ring's outside at
+  // R + thick, a flat world's underside at -thick - so a ring seen from
+  // its rim, or a flat world from below, is a body and not a sheet.
+  float thick = 0.f;
 };
 inline bool shape_faces_centre(const Shape &S) { return S.inside != S.flip; }
+// flat along both axes: a plane, whatever the radius says
+inline bool shape_is_flat(const Shape &S) { return S.flat_x && S.flat_z; }
 inline Shape shape_globe() { return Shape{}; }
 inline Shape shape_ring(bool inside = true) { return Shape{false, true, inside}; }
 inline Shape shape_dyson() { return Shape{false, false, true}; }
+inline Shape shape_flat() { return Shape{true, true, false}; }
 inline void sphere_place(float u, float v, float h, float R, const Shape &S, float out[3]) {
   if (R <= 0.f || (S.flat_x && S.flat_z)) {
-    out[0] = u; out[1] = h; out[2] = v;
+    // a flat world: the other face is its underside, `thick` below
+    out[0] = u; out[1] = S.flip ? -h - S.thick : h; out[2] = v;
     return;
   }
   float k = 1.f / R, kl = 1.f / R;
@@ -404,16 +449,56 @@ inline void sphere_place(float u, float v, float h, float R, const Shape &S, flo
   // inside: the centre is R *above* the tile, the drop is a rise, and the
   // height leans toward the centre instead of away from it
   const float s = S.inside ? -1.f : 1.f;
+  // The other face of a thick shell is the same angles at another radius:
+  // `thick` further from the centre when the world's face is inside, nearer
+  // when it is outside - and `thick` below the world's ground either way.
+  // A skin (thick 0) leaves every number exactly as it was.
+  float Rf = R, dy = 0.f, ratio = 1.f;
+  if (S.flip && S.thick > 0.f) {
+    Rf = R - s * S.thick;
+    if (Rf < R * 1e-3f) Rf = R * 1e-3f; // thicker than the radius: a solid ball
+    dy = -S.thick;
+    ratio = Rf / R;
+  }
   float sx = std::sin(ax), cx = std::cos(ax), sy = std::sin(ay), cl = std::cos(ay);
   float hx = std::sin(ax * 0.5f), hy = std::sin(ay * 0.5f);
-  float drop = 2.f * R * hx * hx + 2.f * R * cx * hy * hy;
+  float drop = 2.f * Rf * hx * hx + 2.f * Rf * cx * hy * hy;
   // R sin(ax) == (ax R) sinc(ax) == (u - 0.5) k R sinc(ax); k R is 1 unless
   // the tile wraps, in which case the reach is the globe's own
   float reach_x = (u - 0.5f) * wrap_x * pl_sinc(ax);
   float reach_z = (v - 0.5f) * wrap_z * pl_sinc(ay);
+  if (ratio != 1.f) {
+    if (!S.flat_x) reach_x *= ratio;
+    if (!S.flat_z) reach_z *= ratio;
+  }
   out[0] = 0.5f + (reach_x + s * h * sx) * cl;
-  out[1] = -s * drop + h * cx * cl;
+  out[1] = -s * drop + h * cx * cl + dy;
   out[2] = 0.5f + reach_z + s * h * sy;
+}
+// The altitude of a world point above the world's surface (h = 0 on the
+// world's own face), and the face's up there - the direction away from the
+// centre or the axis, or toward it on an inside world. Flat worlds (and
+// radii past float precision) measure world y. Mirrored by pl_world_alt /
+// pl_world_up in PL_SPHERE_FN; the sky's clouds, its gradient and the
+// cloud shadows on the ground are built on these, so a ring's air is a
+// layer on the ring.
+inline float world_alt(const float p[3], float R, const Shape &S) {
+  if (R <= 0.f || R > 1.0e5f || shape_is_flat(S)) return p[1];
+  const float cy = S.inside ? R : -R;
+  const float dx = p[0] - 0.5f, dy = p[1] - cy, dz = S.flat_z ? 0.f : p[2] - 0.5f;
+  const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+  return S.inside ? R - d : d - R;
+}
+inline void world_up(const float p[3], float R, const Shape &S, float out[3]) {
+  if (R <= 0.f || R > 1.0e5f || shape_is_flat(S)) {
+    out[0] = 0.f; out[1] = 1.f; out[2] = 0.f;
+    return;
+  }
+  const float cy = S.inside ? R : -R;
+  float dx = p[0] - 0.5f, dy = p[1] - cy, dz = S.flat_z ? 0.f : p[2] - 0.5f;
+  const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+  const float k = (S.inside ? -1.f : 1.f) / (d > 1e-12f ? d : 1e-12f);
+  out[0] = dx * k; out[1] = dy * k; out[2] = dz * k;
 }
 inline void sphere_place(float u, float v, float h, float R, float out[3]) {
   sphere_place(u, v, h, R, Shape{}, out);

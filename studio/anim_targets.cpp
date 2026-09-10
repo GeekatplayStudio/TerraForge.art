@@ -51,6 +51,16 @@ const AnimProp OBJ_PROPS[] = {
     {"surf.amplitude", "Amplitude", "Surface", 1, false, false},
     {"surf.coverage", "Coverage", "Surface", 1, false, false},
     {"surf.height_scale", "Height scale", "Surface", 1, false, false},
+    {"nebula.azimuth", "Azimuth", "Nebula", 1, false, false},
+    {"nebula.elevation", "Elevation", "Nebula", 1, false, false},
+    {"nebula.size", "Size", "Nebula", 1, false, false},
+    {"nebula.rotation", "Rotation", "Nebula", 1, false, false},
+    {"nebula.tilt", "Tilt", "Nebula", 1, false, false},
+    {"nebula.brightness", "Brightness", "Nebula", 1, false, false},
+    {"nebula.density", "Density", "Nebula", 1, false, false},
+    {"nebula.detail", "Detail", "Nebula", 1, false, false},
+    {"nebula.color1", "Bright gas / core", "Nebula", 3, true, false},
+    {"nebula.color2", "Cool gas / arms", "Nebula", 3, true, false},
 };
 
 const AnimProp WORLD_PROPS[] = {
@@ -84,6 +94,10 @@ const AnimProp WORLD_PROPS[] = {
     {"cloud_wind_dir", "Wind direction", "Clouds", 1, false, false},
     {"cloud_color", "Colour", "Clouds", 3, true, false},
     {"height_scale", "Height scale", "Terrain", 1, false, false},
+    {"atmosphere_height", "Height", "Sky", 1, false, false},
+    {"star_brightness", "Star brightness", "Space", 1, false, false},
+    {"galaxy_intensity", "Galaxy", "Space", 1, false, false},
+    {"galaxy_core", "Galaxy core", "Space", 1, false, false},
 };
 
 bool applies(const SceneObject &o, const AnimProp &p) {
@@ -94,6 +108,7 @@ bool applies(const SceneObject &o, const AnimProp &p) {
   if (!std::strcmp(g, "Camera")) return o.type == SceneObject::Camera;
   if (!std::strcmp(g, "Planet")) return o.type == SceneObject::Planet;
   if (!std::strcmp(g, "Surface")) return o.type == SceneObject::InfiniteSurface;
+  if (!std::strcmp(g, "Nebula")) return o.type == SceneObject::Nebula;
   return false;
 }
 
@@ -137,6 +152,16 @@ float *obj_ptr(SceneObject &o, const char *path, int c) {
   if (is("surf.amplitude")) return &o.surf.layer.amplitude;
   if (is("surf.coverage")) return &o.surf.layer.coverage;
   if (is("surf.height_scale")) return &o.surf.height_scale;
+  if (is("nebula.azimuth")) return &o.nebula.azimuth;
+  if (is("nebula.elevation")) return &o.nebula.elevation;
+  if (is("nebula.size")) return &o.nebula.size_deg;
+  if (is("nebula.rotation")) return &o.nebula.rotation_deg;
+  if (is("nebula.tilt")) return &o.nebula.tilt_deg;
+  if (is("nebula.brightness")) return &o.nebula.brightness;
+  if (is("nebula.density")) return &o.nebula.density;
+  if (is("nebula.detail")) return &o.nebula.detail;
+  if (is("nebula.color1")) return &o.nebula.color1[c];
+  if (is("nebula.color2")) return &o.nebula.color2[c];
   return nullptr;
 }
 
@@ -172,6 +197,10 @@ float *world_ptr(RenderSettings &r, const char *path, int c) {
   if (is("cloud_wind_dir")) return &r.cloud_wind_dir;
   if (is("cloud_color")) return &r.cloud_color[c];
   if (is("height_scale")) return &r.height_scale;
+  if (is("atmosphere_height")) return &r.atmosphere_height;
+  if (is("star_brightness")) return &r.space.star_brightness;
+  if (is("galaxy_intensity")) return &r.space.galaxy_intensity;
+  if (is("galaxy_core")) return &r.space.galaxy_core;
   return nullptr;
 }
 

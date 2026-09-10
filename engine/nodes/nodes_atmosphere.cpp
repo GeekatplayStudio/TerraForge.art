@@ -66,6 +66,12 @@ REGISTER_NODE(
                      "and washes distance out to blue - the single strongest cue\n"
                      "of scale in a landscape, because it tells the eye how far\n"
                      "away a ridge is.";
+      add_float(n.attrs, "height_km", "Atmosphere height (km)", 100.f, 0.f, 100000.f, "Sky")
+          .tooltip = "How high the air reaches over the world's surface, in\n"
+                     "kilometres, whatever its shape - a globe, a ring, a flat\n"
+                     "world. Beyond it is space: from high enough the sky thins\n"
+                     "to stars and the world shows a blue rim. 0 keeps sky\n"
+                     "everywhere.";
       add_float(n.attrs, "ambient", "Ambient light", 0.7f, 0.f, 2.f, "Sky")
           .tooltip = "How much light the sky itself throws down. This is what\n"
                      "fills the shadows; too little and they read as black holes\n"

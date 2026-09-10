@@ -162,6 +162,20 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "sits in the world.",
         "params": {"path": "str", "ascii": "bool", "apply_transform": "bool"},
     },
+    "studio_mesh_retopo": {
+        "description": "Quad-dominant remesh of the selected mesh to about "
+                       "`faces` faces (Manifold-based; docs/LICENSING.md).",
+        "params": {"faces": "int"},
+    },
+    "studio_mesh_solidify": {
+        "description": "Give the selected open surface a thickness, so it "
+                       "becomes a closed solid.",
+        "params": {},
+    },
+    "studio_mesh_analyze": {
+        "description": "US spelling of studio_mesh_analyse.",
+        "params": {},
+    },
     "studio_arrange_views": {
         "description": "Rearrange the 3D viewport area into 1-8 cells "
                        "(2 side by side, quad 2x2, 3x2 and so on). Only the "
@@ -213,12 +227,18 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                        "tess_max), per-patch culling (frustum_cull), the "
                        "surface itself (height_scale, planet_radius, "
                        "fractal_detail, fractal_scale, field_displacement), "
-                       "the world's shape (world: globe, ring or dyson - a "
+                       "the world's shape (world: globe, ring, dyson or flat - a "
                        "ring world curves along the tile's east-west with "
                        "the ground inside and the sun on its axis, a Dyson "
                        "sphere is a globe with the ground inside and the sun "
-                       "at the centre; the parts: world_shape, world_inside, "
-                       "world_width in tile units, world_sun_inside) "
+                       "at the centre, a flat world is a plane world_width "
+                       "across cut to world_outline disc or square; the parts: "
+                       "world_shape, world_inside, world_width in tile units, "
+                       "world_sun_inside, world_outline; world_thickness in "
+                       "tile units makes the world a body with its other face "
+                       "that far below and, on a ring or a flat world, a rim "
+                       "wall between the faces; the atmosphere, clouds and "
+                       "water lie on the surface whatever its shape) "
                        "and shading (wireframe, shadows, shadow_softness, "
                        "exposure, use_albedo, layout, engine). Also "
                        "graph_memory_mb, the ceiling on cached node output "
@@ -242,6 +262,11 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
                    "planet_radius": "float", "world": "str",
                    "world_shape": "str", "world_inside": "bool",
                    "world_width": "float", "world_sun_inside": "bool",
+                   "world_thickness": "float", "world_outline": "str",
+                   "atmosphere_height": "float",
+                   "view": "int", "scene_camera": "str", "projection": "str",
+                   "curved": "bool", "atmosphere": "bool", "water": "bool",
+                   "grid": "bool", "outlines": "bool",
                    "fractal_detail": "float",
                    "fractal_scale": "float", "field_displacement": "float",
                    "wireframe": "bool", "shadows": "bool",
@@ -450,6 +475,9 @@ _SIMPLE = {
     "studio_mesh_reduce": "mesh_reduce",
     "studio_mesh_split": "mesh_split",
     "studio_mesh_export": "mesh_export",
+    "studio_mesh_retopo": "mesh_retopo",
+    "studio_mesh_solidify": "mesh_solidify",
+    "studio_mesh_analyze": "mesh_analyze",
     "studio_arrange_views": "arrange_views",
     "studio_add_view": "add_view",
     "studio_close_view": "close_view",

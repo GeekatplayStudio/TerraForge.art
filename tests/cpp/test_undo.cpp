@@ -1034,6 +1034,7 @@ static void test_autosave() {
 
 int test_undo_render_run(); // test_undo_render.cpp
 int test_scene_tree_run();  // test_scene_tree.cpp
+int test_space_run();       // test_space.cpp
 int test_anim_scene_run();  // test_anim_scene.cpp
 int test_imprint_run();     // test_imprint.cpp
 int test_material_source_scene_run(); // test_material_source_scene.cpp
@@ -1045,6 +1046,7 @@ int main() {
   std::printf("Geekatplay TerraForge - undo/redo tests\n\n");
   g_failures += test_undo_render_run();
   g_failures += test_scene_tree_run();
+  g_failures += test_space_run();
   g_failures += test_anim_scene_run();
   g_failures += test_imprint_run();
   g_failures += test_material_source_scene_run();

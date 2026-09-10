@@ -92,6 +92,7 @@ struct App {
   bool graph_show_all_domains = false;
   uint64_t scene_selection_serial = 1; // bumped when the scene selection changes
   int request_camera_render = -1;      // camera index queued for rendering
+  std::vector<int> render_queue;       // cameras waiting their turn (render_presets.hpp)
   // Blender-style Properties editor: which vertical tab is active.
   // 0 Render, 1 Scene, 2 World, 3 Object, 4 Material, 5 Node
   int prop_tab = 3;
@@ -247,6 +248,8 @@ void draw_panel_paint_canvas(App &a);     // paint_canvas.cpp
 void draw_panel_material_browser(App &a); // panel_material_browser.cpp
 // Every workspace keeps its own window arrangement (layout_workspace.cpp).
 void workspace_layout_switch(App &a, int from, int to);
+// the arrangement a workspace was left in, at startup; false when none was saved
+bool workspace_layout_restore(App &a, int ws);
 void build_materials_layout(unsigned dockspace_id, unsigned view_mask);
 // layout_workspaces.cpp: the default arrangement of the given workspace
 void build_workspace_layout(int ws, unsigned dockspace_id, unsigned view_mask);
@@ -321,6 +324,13 @@ void surface_graph_picker(App &a, unsigned long long *node);
 // panel_properties_object_planet.cpp: the Planet and InfiniteSurface pages
 void object_properties_planet_ui(App &a, SceneObject &o);
 void object_properties_surface_ui(App &a, SceneObject &o);
+void object_properties_nebula_ui(App &a, SceneObject &o); // panel_properties_object_space.cpp
+// A viewport's point of view into a camera (cam -1 = a new one named
+// `name`), and a camera into a viewport - linked, so the view looks
+// through it, or copied into the free orbit (layout_store.cpp).
+int view_to_camera(App &a, int slot, int cam, const std::string &name, bool activate,
+                   std::string &err);
+bool camera_to_view(App &a, int cam, int slot, bool link);
 void camera_apply_film();
 void studio_api_tick(App &a); // scripting / MCP bridge
 void apply_scene_nodes(App &a);

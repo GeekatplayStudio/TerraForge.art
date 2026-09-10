@@ -2,6 +2,7 @@
 // exposure triangle, film stock, per-camera render assignment, and a
 // through-the-lens preview.
 #include "app.hpp"
+#include "render_presets.hpp"
 #include "wheel_widgets.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
@@ -263,6 +264,17 @@ void camera_properties_ui(App &a, SceneObject &obj) {
       scene_last_used_camera() = self;
       a.request_camera_render = self;
     }
+    // a preset, saved with the project, in one step
+    ImGui::SetNextItemWidth(-140);
+    if (ImGui::BeginCombo("Preset", cd.render.preset.empty() ? "(none)" : cd.render.preset.c_str())) {
+      for (const RenderPreset &p : scene().render_presets)
+        if (ImGui::Selectable(p.name.c_str(), p.name == cd.render.preset)) render_preset_apply(p.name, cd.render);
+      if (scene().render_presets.empty()) ImGui::TextDisabled("no presets yet - the Render tab saves one");
+      ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("A named render assignment saved with the project;\n"
+                        "the Render menu lists them too.");
     ImGui::TextDisabled("Each camera keeps its own engine, format and file.");
   }
 

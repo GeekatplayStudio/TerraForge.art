@@ -3,6 +3,7 @@
 // albedo and PBR material, then drives an external engine through the Python
 // layer so the render matches the preview.
 #include "app.hpp"
+#include "render_presets.hpp"
 #include "wheel_widgets.hpp"
 #include "i18n.hpp"
 #include "render_settings.hpp"
@@ -336,6 +337,11 @@ void draw_render_window(App &a) {
 // tab happens to be on screen.
 void render_service_requests(App &a) {
   SceneState &sc = scene();
+  // the batch: the next camera in the queue once the last render is done
+  if (a.request_camera_render < 0 && !a.render_queue.empty() && !render_running.load()) {
+    a.request_camera_render = a.render_queue.front();
+    a.render_queue.erase(a.render_queue.begin());
+  }
   if (a.request_camera_render < 0) return;
   int c = a.request_camera_render;
   a.request_camera_render = -1;
@@ -399,6 +405,35 @@ void render_properties_ui(App &a) {
     }
   };
 
+  if (assign) {
+    // a named preset onto this camera, or its settings into a new one
+    ImGui::SeparatorText(tr("Preset"));
+    ImGui::SetNextItemWidth(-90);
+    if (ImGui::BeginCombo(tr("Apply"), assign->preset.empty() ? "(none)" : assign->preset.c_str())) {
+      for (const RenderPreset &p : sc.render_presets)
+        if (ImGui::Selectable(p.name.c_str(), p.name == assign->preset)) {
+          render_preset_apply(p.name, *assign);
+          engine = assign->engine; width = assign->width; height = assign->height;
+          spp = assign->samples;
+          snprintf(out_path, sizeof out_path, "%s", assign->output.c_str());
+        }
+      if (sc.render_presets.empty()) ImGui::TextDisabled("%s", tr("no presets yet"));
+      ImGui::EndCombo();
+    }
+    static char preset_name[96] = {0};
+    ImGui::SetNextItemWidth(-90);
+    ImGui::InputTextWithHint("##presetname", tr("preset name"), preset_name, sizeof preset_name);
+    ImGui::SameLine();
+    if (ImGui::Button(tr("Save"))) {
+      const std::string nm = preset_name[0] ? std::string(preset_name) : render_preset_free_name();
+      render_preset_upsert(nm, *assign);
+      assign->preset = nm;
+      a.status = "render preset '" + nm + "' saved";
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("%s", tr("These settings as a named preset, saved with the\n"
+                                  "project; the Render menu applies and renders with it."));
+  }
   ImGui::SeparatorText(tr("Engine"));
   static const char *const K[] = {"Mitsuba 3 (path tracer)", "Blender Cycles", "LuxCoreRender", "appleseed", "OpenGL viewport (instant)"};
   ImGui::SetNextItemWidth(-1);
@@ -451,6 +486,16 @@ void render_properties_ui(App &a) {
                       "sun, water and height fog, and the same ACES exposure."));
 
   bool busy = render_running.load();
+  if (assign) {
+    // this camera, with its own assignment, through the same queue the
+    // menu and the batch use
+    ImGui::BeginDisabled(busy);
+    if (ImGui::Button((std::string(tr("Render")) + " " + sc.objects[(size_t)cam].name).c_str(), ImVec2(-1, 0)))
+      a.request_camera_render = cam;
+    ImGui::EndDisabled();
+    if (!a.render_queue.empty())
+      ImGui::TextDisabled("%d camera(s) queued", (int)a.render_queue.size());
+  }
   ImGui::BeginDisabled(busy);
   if (ImGui::Button(busy ? tr("rendering...") : tr("Render"), ImVec2(-1, 0))) {
     width = std::clamp(width, 64, 8192);

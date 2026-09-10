@@ -45,7 +45,13 @@ ALIASES = {
     "set_planet": "studio_set_planet",
     "add_infinite_terrain": "studio_add_infinite_terrain",
     "set_render": "studio_set_render",
+    "bake": "studio_bake_track",
+    "simplify": "studio_simplify_track",
 }
+
+# Ops that the assistant's schema (studio/ai_schema.cpp) need not show as a
+# syntax line: development-only, or a spelling alias of one it does show.
+SCHEMA_EXEMPT = {"debug_crash", "mesh_analyze"}
 
 
 def handled_ops():
@@ -54,11 +60,27 @@ def handled_ops():
     # once (ai_actions, ai_actions_scene, ai_ops_graph, ai_ops_scene,
     # ai_ops_view), and a fixed file list silently stopped seeing the ops
     # that moved
+    # ... and then to *_ops.cpp and layout_store.cpp, which the ai_*.cpp glob
+    # never saw: 60 ops were invisible to this audit, five of them with no
+    # tool at all. Every file that compares `op` is read now.
     ops = set()
-    for path in sorted(STUDIO.glob("ai_*.cpp")):
+    files = list(STUDIO.glob("ai_*.cpp")) + list(STUDIO.glob("*_ops.cpp")) + [STUDIO / "layout_store.cpp"]
+    for path in sorted(set(files)):
         text = path.read_text(encoding="utf-8", errors="replace")
-        ops |= set(re.findall(r'op == "([a-z_]+)"', text))
+        ops |= set(re.findall(r'op [!=]= "([a-z_]+)"', text))
     return ops
+
+
+def test_every_op_is_in_the_assistant_schema():
+    """AGENTS.md: extend ai_action_schema() whenever an op is added. Enforced:
+    every op has a `"op":"name"` syntax line the assistant can copy."""
+    schema = (STUDIO / "ai_schema.cpp").read_text(encoding="utf-8", errors="replace")
+    shown = set(re.findall(r'"op":"([a-z_]+)"', schema))
+    # alternations: {"op":"bake"|"simplify"|...}
+    for alt in re.findall(r'"op":"[a-z_]+"((?:\|"[a-z_]+")+)', schema):
+        shown |= set(re.findall(r'"([a-z_]+)"', alt))
+    missing = sorted(handled_ops() - shown - SCHEMA_EXEMPT)
+    assert not missing, "ops the assistant is never shown: " + ", ".join(missing)
 
 
 def test_source_declares_operations():

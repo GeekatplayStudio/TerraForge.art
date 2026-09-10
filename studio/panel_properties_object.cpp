@@ -389,6 +389,7 @@ void object_properties_ui(App &a) {
                    : o.type == SceneObject::Camera ? "Camera"
                    : o.type == SceneObject::Group  ? "Group"
                    : o.type == SceneObject::Planet ? "Planet"
+                   : o.type == SceneObject::Nebula ? "Deep space"
                    : o.type == SceneObject::InfiniteSurface ? "Infinite terrain"
                                                    : "Mesh object";
   ImGui::TextDisabled("· %s", kind);
@@ -507,7 +508,9 @@ void object_properties_ui(App &a) {
         if (rs.place_on_planet) {
           ImGui::TextUnformatted("Blend");
           ImGui::SetNextItemWidth(-1);
-          ImGui::Combo("##pmode", &rs.place_mode, "Features only\0Whole tile\0Zero edge (seamless)\0");
+          ImGui::Combo("##pmode", &rs.place_mode,
+                       "Features only\0Whole tile\0Zero edge (seamless)\0"
+                       "Clip low (tile where higher)\0Clip high (tile where lower)\0");
           if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Features only: the planet shows through wherever the\n"
                               "tile is flat at its own ground level, and each feature\n"
@@ -516,7 +519,13 @@ void object_properties_ui(App &a) {
                               "border blends into the planet. Zero edge: the whole\n"
                               "tile, its rim brought to the planet's own ground over\n"
                               "the edge blend with a curve flat at both ends - no\n"
-                              "crease on either side.");
+                              "crease on either side.\n"
+                              "Clip low: the tile stands only where it rises above\n"
+                              "the planet's own ground - its low edges are cut away\n"
+                              "and the planet shows there; a mountain sits in the\n"
+                              "landscape with no skirt. Clip high: only where the\n"
+                              "tile lies below the planet - its high edges are cut\n"
+                              "away; a basin or a valley is carved into the ground.");
           drag_length("Edge blend", &rs.place_edge, 1.f, 0.f,
                       0.5f * rs.terrain_size_m);
           if (ImGui::IsItemHovered())
@@ -608,6 +617,10 @@ void object_properties_ui(App &a) {
     case SceneObject::Atmosphere:
       ImGui::SeparatorText("Sky");
       labeled_scalar("Density", "ad", &rs.atmosphere_density, 0.05f, 3.f);
+      drag_length("Height", &rs.atmosphere_height, 1.f, 0.f, 1e9f);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("How high the air reaches over the world's surface,\n"
+                          "whatever its shape; beyond it is space.");
       ImGui::ColorEdit3("Zenith", rs.sky_zenith);
       ImGui::ColorEdit3("Horizon", rs.sky_horizon);
       ImGui::SeparatorText("Fog");
@@ -723,6 +736,9 @@ void object_properties_ui(App &a) {
       break;
     case SceneObject::Planet:
       object_properties_planet_ui(a, o);
+      break;
+    case SceneObject::Nebula:
+      object_properties_nebula_ui(a, o);
       break;
     case SceneObject::InfiniteSurface:
       object_properties_surface_ui(a, o);

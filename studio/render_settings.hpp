@@ -1,6 +1,7 @@
 // Geekatplay TerraForge — environment / render settings shared between the
 // renderer and the Environment panel.
 #pragma once
+#include "space_settings.hpp"
 #include "gpx/material_params.hpp"
 #include <string>
 #include <utility>
@@ -48,6 +49,15 @@ struct RenderSettings {
 
   // atmosphere
   float atmosphere_density = 1.f;   // sky scattering strength
+  // The air as a layer on the world (world_shape.hpp, shaders_sky.cpp
+  // atm_path): this high over the surface, tile units (20 = 100 km at a
+  // 5 km tile), whatever the world's shape - beyond it is space. 0 keeps
+  // the old rule, sky everywhere thinning to space with the camera's
+  // distance from the tile.
+  float atmosphere_height = 20.f;
+  // Deep space (studio/shaders_space.cpp, renderer_space.cpp): the star
+  // field, the galaxy band, and the nebulas (SceneObject::Nebula).
+  SpaceSettings space; // deep space (studio/space_settings.hpp)
   float sky_zenith[3] = {0.18f, 0.32f, 0.58f};
   float sky_horizon[3] = {0.62f, 0.65f, 0.70f};
   float ambient_intensity = 0.7f;
@@ -251,10 +261,17 @@ struct RenderSettings {
   // (a ring world, a Dyson sphere): the far side arches overhead and, with
   // `world_sun_inside`, the sun is a body on the axis or at the centre
   // rather than a direction in the sky.
-  int world_shape = 0;         // 0 globe, 1 ring
+  // The third shape is a flat world: a plane `world_width` across, cut to
+  // a disc or a square (`world_outline`), nothing beyond its edge.
+  // `world_thickness` makes any shape a body: the other face lies that
+  // far below the ground (a ring's outside, a flat world's underside), and
+  // a ring or a flat world shows the rim between the two; 0 is a skin.
+  int world_shape = 0;         // 0 globe, 1 ring, 2 flat
   bool world_inside = false;
-  float world_width = 400.f;   // ring width, tile units (2000 km at 5 km)
+  float world_width = 400.f;   // ring width / flat world size, tile units (2000 km at 5 km)
   bool world_sun_inside = false;
+  float world_thickness = 0.f; // tile units, 0 = a skin
+  int world_outline = 0;       // flat world: 0 disc, 1 square
   // Placing the terrain tile on that planet (studio/planet_place.cpp): the
   // planet's relief shows through where the tile is flat, is levelled under
   // the tile's features, and everything is feathered so nothing steps.
@@ -264,7 +281,10 @@ struct RenderSettings {
   float place_presence = 0.04f; // relief (heightmap units) that counts as one
   float place_ground = 0.14f;   // the planet's ground level, heightmap units
   float place_gradient = 1.f;   // the feather's curve (planet_place.hpp)
-  int place_mode = 0;           // 0 blend the features, 1 blend the whole tile
+  // 0 blend the features, 1 blend the whole tile, 2 zero edge, 3 clip low
+  // (the tile stands only where it is higher than the planet), 4 clip high
+  // (only where it is lower)
+  int place_mode = 0;
   // The terrain's outline: 0 square, 1 round, 2 rectangle of `terrain_aspect`
   // (depth over width; above 1 is deeper than wide). Cut at placement, so
   // the feature fades into the planet along that outline.
@@ -354,9 +374,19 @@ void renderer_invalidate_views();
 // view with curvature on, 0 (flat) for a free view.
 // An inside world (a ring, a Dyson sphere) is nothing without its
 // curvature - the far side overhead is the point - so every view curves it.
+// the scene's active camera, or -1 (scene.cpp): a view with scene_camera -2
+// looks through it when there is one, and such a view is a camera view
+int view_active_camera();
 inline float view_planet_radius(const RenderSettings &rs, const RenderSettings::ViewConfig &vc) {
-  return (vc.scene_camera >= 0 || vc.curved || rs.world_inside) ? rs.planet_radius : 0.f;
+  const bool camera_view = vc.scene_camera >= 0 ||
+                           (vc.scene_camera == -2 && view_active_camera() >= 0);
+  return (camera_view || vc.curved || rs.world_inside) ? rs.planet_radius : 0.f;
 }
+// The free orbit camera (renderer_camera.cpp), for the layout that is
+// captured at exit and put back at startup: a viewport must come back
+// where it was left.
+void renderer_orbit_get(float target[3], float &yaw, float &pitch, float &dist);
+void renderer_orbit_set(const float target[3], float yaw, float pitch, float dist);
 void renderer_view_input(RenderSettings::ViewConfig &vc, float dx, float dy,
                          float wheel, bool rotating, bool panning, int view_w);
 float renderer_view_width_m(const RenderSettings::ViewConfig &vc);

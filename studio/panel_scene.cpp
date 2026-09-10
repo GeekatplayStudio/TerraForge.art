@@ -43,6 +43,7 @@ Icon scene_type_icon(SceneObject::Type t) {
     case SceneObject::Planet: return Icon::Planet;
     case SceneObject::InfiniteSurface: return Icon::Grid;
     case SceneObject::Light: return Icon::Light;
+    case SceneObject::Nebula: return Icon::Cloud;
     default: return Icon::Mesh;
   }
 }
@@ -58,6 +59,7 @@ const char *scene_type_name(SceneObject::Type t) {
     case SceneObject::Planet: return tr("om.type.planet");
     case SceneObject::InfiniteSurface: return tr("om.type.infinite");
     case SceneObject::Light: return tr("om.type.light");
+    case SceneObject::Nebula: return tr("om.type.nebula");
     default: return tr("om.type.mesh");
   }
 }

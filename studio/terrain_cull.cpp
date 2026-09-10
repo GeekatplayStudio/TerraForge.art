@@ -130,7 +130,14 @@ int patches_visible(const Frustum &f, const std::vector<float> &bounds,
       size_t i = ((size_t)py * patches + px) * 2;
       float ylo = bounds[i] * hscale - pad;
       float yhi = bounds[i + 1] * hscale + pad;
-      if (planet_radius > 0.f) {
+      // the other face of the shell: its heights go the other way, and it
+      // lies the shell's thickness below the ground - flat worlds included
+      if (shape.flip) {
+        const float t = ylo;
+        ylo = -yhi - shape.thick;
+        yhi = -t - shape.thick;
+      }
+      if (planet_radius > 0.f && !gpx::planet::shape_is_flat(shape)) {
         // The surface curves away from the tile's centre (the sphere sits
         // under it): p.y -= |p.xz - 0.5|^2 / (2R). Over the patch's footprint
         // that term is smallest at the point nearest the centre and largest
@@ -138,12 +145,6 @@ int patches_visible(const Frustum &f, const std::vector<float> &bounds,
         // box and the far distance lowers the bottom.
         (void)cam;
         const float c = 0.5f;
-        // the other face of the shell: its heights go the other way
-        if (shape.flip) {
-          const float t = ylo;
-          ylo = -yhi;
-          yhi = -t;
-        }
         // a flat axis (a ring world's z) contributes no drop at all
         float dx = shape.flat_x ? 0.f : std::max({x0 - c, 0.f, c - x1});
         float dz = shape.flat_z ? 0.f : std::max({z0 - c, 0.f, c - z1});

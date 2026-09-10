@@ -29,6 +29,15 @@ extern const char *const VS_TERRAIN_PASS;
 extern const char *const FRACTAL_FN;
 
 extern const char *const SKY_FN;
+// deep space behind the air (shaders_space.cpp): stars, the galaxy, the nebulas
+// deep space, spliced in this order through SPACE_FN_PLACEHOLDER: what
+// they share, the stars, the milky band and the discs, the nebulas, and
+// last the entry the sky calls (shaders_space.cpp)
+extern const char *const SPACE_COMMON_FN;
+extern const char *const SPACE_STARS_FN;
+extern const char *const SPACE_GAL_FN;
+extern const char *const SPACE_NEB_FN;
+extern const char *const SPACE_ENTRY_FN;
 extern const char *const WATER_FN_GLSL;
 extern const char *const FOG_FN;
 

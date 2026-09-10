@@ -7,6 +7,7 @@
 // it. The scripting API and the MCP server call the same function, so text,
 // script and tool calls all take one code path.
 #include "ai_assist.hpp"
+#include "render_presets.hpp"
 #include "gpu_compute.hpp"
 #include "ai_actions_internal.hpp"
 #include "app.hpp"
@@ -130,6 +131,9 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       ++applied;
     } else if (op == "set_sky") {
       if (act.contains("density")) rs.atmosphere_density = act["density"].get<float>();
+      if (act.contains("height")) rs.atmosphere_height = act["height"].get<float>();
+      if (act.contains("height_m"))
+        rs.atmosphere_height = act["height_m"].get<float>() / (rs.terrain_size_m > 1.f ? rs.terrain_size_m : 1.f);
       if (act.contains("ambient")) rs.ambient_intensity = act["ambient"].get<float>();
       read_vec3(act, "zenith", rs.sky_zenith);
       read_vec3(act, "horizon", rs.sky_horizon);
@@ -198,7 +202,118 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (act.contains("panorama")) r.panorama = act["panorama"].get<bool>();
       ++applied;
     } else if (op == "render") {
-      a.request_camera_render = scene_active_camera();
+      // the active camera, or a named one; a preset applied first
+      int cam = scene_active_camera();
+      const std::string cname = act.value("camera", std::string());
+      if (!cname.empty()) {
+        cam = -1;
+        for (int i = 0; i < (int)sc.objects.size(); ++i)
+          if (sc.objects[(size_t)i].type == SceneObject::Camera && sc.objects[(size_t)i].name == cname) cam = i;
+        if (cam < 0) {
+          err = "no camera named '" + cname + "'";
+          return true;
+        }
+      }
+      if (cam >= 0 && act.contains("preset") && act["preset"].is_string() &&
+          !render_preset_apply(act["preset"].get<std::string>(), sc.objects[(size_t)cam].cam.render)) {
+        err = "no render preset named '" + act["preset"].get<std::string>() + "'";
+        return true;
+      }
+      if (cam < 0) {
+        err = "render: no camera is active - name one with \"camera\", or add_camera with activate";
+        return true;
+      }
+      a.request_camera_render = cam;
+      ++applied;
+    } else if (op == "render_preset") {
+      // "action": save (from a camera's assignment, or from fields), apply
+      // (to a camera, or "all"), delete, list
+      const std::string action = act.value("action", std::string("save"));
+      const std::string name = act.value("name", std::string());
+      auto find_cam = [&](const std::string &n) {
+        for (int i = 0; i < (int)sc.objects.size(); ++i)
+          if (sc.objects[(size_t)i].type == SceneObject::Camera && sc.objects[(size_t)i].name == n) return i;
+        return -1;
+      };
+      if (action == "list") {
+        json out = json::array();
+        for (const RenderPreset &p : sc.render_presets)
+          out.push_back({{"name", p.name}, {"engine", p.assign.engine}, {"width", p.assign.width},
+                         {"height", p.assign.height}, {"samples", p.assign.samples},
+                         {"output", p.assign.output}, {"passes", p.assign.passes},
+                         {"panorama", p.assign.panorama}});
+        a.api_reply = out.dump();
+        a.status = std::to_string(sc.render_presets.size()) + " render presets";
+        ++applied;
+      } else if (name.empty()) {
+        err = "render_preset needs a name";
+        return true;
+      } else if (action == "save") {
+        int cam = act.contains("camera") ? find_cam(act.value("camera", std::string())) : scene_active_camera();
+        RenderAssign from;
+        if (cam >= 0 && cam < (int)sc.objects.size() && sc.objects[(size_t)cam].type == SceneObject::Camera)
+          from = sc.objects[(size_t)cam].cam.render;
+        else if (const RenderPreset *p = render_preset_find(name))
+          from = p->assign;
+        if (act.contains("engine") && act["engine"].is_string()) from.engine = engine_index(act["engine"].get<std::string>());
+        from.width = act.value("width", from.width);
+        from.height = act.value("height", from.height);
+        from.samples = act.value("samples", from.samples);
+        if (act.contains("output")) from.output = act["output"].get<std::string>();
+        if (act.contains("passes")) from.passes = act["passes"].get<bool>();
+        if (act.contains("panorama")) from.panorama = act["panorama"].get<bool>();
+        render_preset_upsert(name, from);
+        a.status = "render preset '" + name + "' saved";
+        ++applied;
+      } else if (action == "apply") {
+        const std::string target = act.value("camera", std::string());
+        int n = 0;
+        for (int i = 0; i < (int)sc.objects.size(); ++i) {
+          SceneObject &o = sc.objects[(size_t)i];
+          if (o.type != SceneObject::Camera) continue;
+          const bool want = target == "all" || (target.empty() ? i == scene_active_camera() : o.name == target);
+          if (!want) continue;
+          if (!render_preset_apply(name, o.cam.render)) {
+            err = "no render preset named '" + name + "'";
+            return true;
+          }
+          ++n;
+        }
+        if (!n) {
+          err = "render_preset apply: no such camera (name one, 'all', or activate one)";
+          return true;
+        }
+        a.status = "preset '" + name + "' applied to " + std::to_string(n) + " camera(s)";
+        ++applied;
+      } else if (action == "delete") {
+        if (!render_preset_delete(name)) {
+          err = "no render preset named '" + name + "'";
+          return true;
+        }
+        ++applied;
+      } else {
+        err = "render_preset action is save, apply, delete or list";
+        return true;
+      }
+    } else if (op == "render_batch") {
+      // every camera, or the named ones, one after the other
+      std::vector<int> cams;
+      if (act.contains("cameras") && act["cameras"].is_array()) {
+        for (const auto &n : act["cameras"]) {
+          if (!n.is_string()) continue;
+          for (int i = 0; i < (int)sc.objects.size(); ++i)
+            if (sc.objects[(size_t)i].type == SceneObject::Camera && sc.objects[(size_t)i].name == n.get<std::string>())
+              cams.push_back(i);
+        }
+      } else {
+        cams = scene_camera_indices();
+      }
+      const int n = render_batch_queue(a, cams, act.value("preset", std::string()));
+      if (!n) {
+        err = "render_batch: no cameras to render";
+        return true;
+      }
+      a.status = std::to_string(n) + " camera(s) queued for rendering";
       ++applied;
     } else if (op == "render_passes") {
       // The render editor from a script: the viewport engine draws the beauty

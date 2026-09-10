@@ -13,7 +13,9 @@
 #include "layout_record.hpp"
 #include "prefs.hpp"
 #include "render_settings.hpp"
+#include "scene.hpp"
 #include <imgui.h>
+#include <cmath>
 #include <algorithm>
 #include <json.hpp>
 
@@ -39,8 +41,13 @@ LayoutRecord layout_capture(App &a, const std::string &name) {
     v.grid = rs.views[i].grid;
     v.outlines = rs.views[i].outlines;
     v.curved = rs.views[i].curved;
+    v.ortho_zoom = rs.views[i].ortho_zoom;
+    v.ortho_cx = rs.views[i].ortho_cx;
+    v.ortho_cy = rs.views[i].ortho_cy;
     r.views.push_back(v);
   }
+  renderer_orbit_get(r.orbit.target, r.orbit.yaw, r.orbit.pitch, r.orbit.dist);
+  r.orbit.valid = true;
   r.editor_domains = prefs().editor_domains;
   r.library = a.show_library;
   r.nodelist = a.show_nodelist;
@@ -66,7 +73,11 @@ void layout_apply(App &a, const LayoutRecord &r) {
     rs.views[i].grid = r.views[i].grid;
     rs.views[i].outlines = r.views[i].outlines;
     rs.views[i].curved = r.views[i].curved;
+    rs.views[i].ortho_zoom = r.views[i].ortho_zoom;
+    rs.views[i].ortho_cx = r.views[i].ortho_cx;
+    rs.views[i].ortho_cy = r.views[i].ortho_cy;
   }
+  if (r.orbit.valid) renderer_orbit_set(r.orbit.target, r.orbit.yaw, r.orbit.pitch, r.orbit.dist);
   a.show_library = r.library;
   a.show_nodelist = r.nodelist;
   a.show_properties = r.properties;
@@ -106,6 +117,72 @@ bool layout_load_named(App &a, const std::string &name, std::string &err) {
   return true;
 }
 
+// ------------------------------------------------- views and cameras
+// Where a viewport is looking from and at: the camera it looks through,
+// the active one, or the free orbit.
+static void view_eye_target(const RenderSettings::ViewConfig &vc, float eye[3], float target[3]) {
+  SceneState &sc = scene();
+  int src = vc.scene_camera >= 0 ? vc.scene_camera
+          : (vc.scene_camera == -2 ? scene_active_camera() : -1);
+  if (src >= 0 && src < (int)sc.objects.size() && sc.objects[(size_t)src].type == SceneObject::Camera) {
+    const CameraData &cd = sc.objects[(size_t)src].cam;
+    for (int k = 0; k < 3; ++k) { eye[k] = cd.eye[k]; target[k] = cd.target[k]; }
+    return;
+  }
+  float yaw, pitch, dist;
+  renderer_orbit_get(target, yaw, pitch, dist);
+  const float cp = std::cos(pitch), sp = std::sin(pitch);
+  eye[0] = target[0] + dist * cp * std::sin(yaw);
+  eye[1] = target[1] + dist * sp;
+  eye[2] = target[2] + dist * cp * std::cos(yaw);
+}
+
+int view_to_camera(App &a, int slot, int cam, const std::string &name, bool activate,
+                   std::string &err) {
+  RenderSettings &rs = render_settings();
+  SceneState &sc = scene();
+  slot = std::clamp(slot, 0, RenderSettings::MAX_VIEWS - 1);
+  float eye[3], target[3];
+  view_eye_target(rs.views[slot], eye, target);
+  if (cam < 0) cam = scene_add_camera(name);
+  if (cam < 0 || cam >= (int)sc.objects.size() || sc.objects[(size_t)cam].type != SceneObject::Camera) {
+    err = "no such camera";
+    return -1;
+  }
+  CameraData &cd = sc.objects[(size_t)cam].cam;
+  for (int k = 0; k < 3; ++k) { cd.eye[k] = eye[k]; cd.target[k] = target[k]; }
+  sc.selected = cam;
+  scene_last_used_camera() = cam;
+  if (activate) scene_active_camera() = cam;
+  a.scene_selection_serial++;
+  a.status = "view " + std::to_string(slot + 1) + " saved to " + sc.objects[(size_t)cam].name;
+  return cam;
+}
+
+bool camera_to_view(App &a, int cam, int slot, bool link) {
+  RenderSettings &rs = render_settings();
+  SceneState &sc = scene();
+  slot = std::clamp(slot, 0, RenderSettings::MAX_VIEWS - 1);
+  if (cam < 0 || cam >= (int)sc.objects.size() || sc.objects[(size_t)cam].type != SceneObject::Camera)
+    return false;
+  RenderSettings::ViewConfig &vc = rs.views[slot];
+  vc.camera = 0; // a perspective
+  if (link) {
+    vc.scene_camera = cam; // the view follows the camera from now on
+  } else {
+    // the free orbit takes the camera's eye and target, and stays free
+    const CameraData &cd = sc.objects[(size_t)cam].cam;
+    const float d[3] = {cd.eye[0] - cd.target[0], cd.eye[1] - cd.target[1], cd.eye[2] - cd.target[2]};
+    const float dist = std::max(std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]), 1e-6f);
+    const float yaw = std::atan2(d[0], d[2]);
+    const float pitch = std::asin(std::clamp(d[1] / dist, -1.f, 1.f));
+    renderer_orbit_set(cd.target, yaw, pitch, dist);
+    vc.scene_camera = -1;
+  }
+  a.status = std::string(link ? "view looks through " : "view moved to ") + sc.objects[(size_t)cam].name;
+  return true;
+}
+
 // ------------------------------------------------------------------ the ops
 // Everything the Layouts menu and the viewport menu can do, reachable from
 // the assistant, the Python API and MCP - the standing rule that anything the
@@ -115,6 +192,31 @@ bool layout_load_named(App &a, const std::string &name, std::string &err) {
 // -1 when the op is not ours.
 int ai_layout_op(App &a, const std::string &op, const json &act,
                  std::string &err) {
+  if (op == "view_to_camera" || op == "camera_to_view") {
+    // a viewport's point of view into a camera (new or named), or a
+    // camera into a viewport - linked (look through) or copied
+    SceneState &sc = scene();
+    int slot = act.value("view", a.view_focus + 1) - 1;
+    int cam = -1;
+    const std::string cname = act.value("camera", std::string());
+    if (!cname.empty())
+      for (int i = 0; i < (int)sc.objects.size(); ++i)
+        if (sc.objects[(size_t)i].type == SceneObject::Camera && sc.objects[(size_t)i].name == cname) cam = i;
+    if (op == "view_to_camera") {
+      if (!cname.empty() && cam < 0 && !act.value("create", true)) {
+        err = "no camera named '" + cname + "'";
+        return 0;
+      }
+      const std::string name = act.value("name", cname);
+      return view_to_camera(a, slot, cam, name, act.value("activate", false), err) >= 0 ? 1 : 0;
+    }
+    if (cam < 0) cam = scene_active_camera();
+    if (!camera_to_view(a, cam, slot, act.value("link", true))) {
+      err = "camera_to_view needs a camera (by name, or an active one)";
+      return 0;
+    }
+    return 1;
+  }
   if (op == "save_layout") {
     std::string name = act.value("name", std::string());
     if (name.empty()) {

@@ -37,8 +37,18 @@ struct LayoutRecord {
     bool grid = false;
     bool outlines = true;
     bool curved = false; // the world's curvature drawn in a free view
+    // an ortho view's zoom and centre
+    float ortho_zoom = 1.2f, ortho_cx = 0.5f, ortho_cy = 0.5f;
   };
   std::vector<View> views;
+  // The free orbit camera the perspective views share: where it was
+  // looking from and at. Without it every restart came back at the
+  // default angle - "the viewports reset".
+  struct Orbit {
+    bool valid = false;
+    float target[3] = {0.5f, 0.08f, 0.5f};
+    float yaw = 0.7f, pitch = 0.26f, dist = 1.9f;
+  } orbit;
 
   // Extra node editors, one domain each (see WS_* in app.hpp).
   std::vector<int> editor_domains;

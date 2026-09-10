@@ -29,6 +29,31 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"sun_intensity", 'f', &rs.sun_intensity},
       // atmosphere
       {"atmosphere_density", 'f', &rs.atmosphere_density},
+      {"atmosphere_height", 'f', &rs.atmosphere_height},
+      {"space_on", 'b', &rs.space.on},
+      {"space_brightness", 'f', &rs.space.brightness},
+      {"space_realism", 'f', &rs.space.realism},
+      {"space_quality", 'i', &rs.space.quality},
+      {"space_glow", 'f', &rs.space.glow},
+      {"space_stars", 'b', &rs.space.stars},
+      {"star_density", 'f', &rs.space.star_density},
+      {"star_brightness", 'f', &rs.space.star_brightness},
+      {"star_size", 'f', &rs.space.star_size},
+      {"star_temperature", 'f', &rs.space.star_temperature},
+      {"star_spikes", 'f', &rs.space.star_spikes},
+      {"star_halo", 'f', &rs.space.star_halo},
+      {"star_clump", 'f', &rs.space.star_clump},
+      {"star_seed", 'i', &rs.space.star_seed},
+      {"galaxy_on", 'b', &rs.space.galaxy_on},
+      {"galaxy_intensity", 'f', &rs.space.galaxy_intensity},
+      {"galaxy_width", 'f', &rs.space.galaxy_width},
+      {"galaxy_yaw", 'f', &rs.space.galaxy_yaw},
+      {"galaxy_pitch", 'f', &rs.space.galaxy_pitch},
+      {"galaxy_core", 'f', &rs.space.galaxy_core},
+      {"galaxy_dust", 'f', &rs.space.galaxy_dust},
+      {"galaxy_grain", 'f', &rs.space.galaxy_grain},
+      {"galaxy_color", 'c', rs.space.galaxy_color},
+      {"galaxy_seed", 'i', &rs.space.galaxy_seed},
       {"sky_zenith", 'c', rs.sky_zenith},
       {"sky_horizon", 'c', rs.sky_horizon},
       {"ambient_intensity", 'f', &rs.ambient_intensity},
@@ -126,6 +151,8 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"world_inside", 'b', &rs.world_inside},
       {"world_width", 'f', &rs.world_width},
       {"world_sun_inside", 'b', &rs.world_sun_inside},
+      {"world_thickness", 'f', &rs.world_thickness},
+      {"world_outline", 'i', &rs.world_outline},
       {"place_on_planet", 'b', &rs.place_on_planet},
       {"place_edge", 'f', &rs.place_edge},
       {"place_flatten", 'f', &rs.place_flatten},
@@ -195,12 +222,14 @@ const char *kind_name(SceneObject::Type t) {
     case SceneObject::Planet: return "planet";
     case SceneObject::InfiniteSurface: return "surface";
     case SceneObject::Light: return "light";
+    case SceneObject::Nebula: return "nebula";
   }
   return "mesh";
 }
 
 bool kind_from_name(const std::string &s, SceneObject::Type &t) {
   if (s == "light") { t = SceneObject::Light; return true; }
+  if (s == "nebula") { t = SceneObject::Nebula; return true; }
   if (s == "terrain") t = SceneObject::Terrain;
   else if (s == "water") t = SceneObject::Water;
   else if (s == "sun") t = SceneObject::Sun;
@@ -287,7 +316,8 @@ json scene_to_json() {
             {"samples", c.render.samples},
             {"output", c.render.output},
             {"passes", c.render.passes},
-            {"panorama", c.render.panorama}}},
+            {"panorama", c.render.panorama},
+            {"preset", c.render.preset}}},
       };
       // camera animation tracks, only when they hold keys
       {
@@ -317,6 +347,20 @@ json scene_to_json() {
           {"water_color", vec3_to_json(P.water_color)},
           {"atmo_color", vec3_to_json(P.atmo_color)},
       };
+    } else if (o.type == SceneObject::Nebula) {
+      const NebulaData &N = o.nebula;
+      jo["nebula"] = {
+          {"type", N.type},           {"azimuth", N.azimuth},
+          {"elevation", N.elevation}, {"size_deg", N.size_deg},
+          {"tilt_deg", N.tilt_deg},   {"rotation_deg", N.rotation_deg},
+          {"seed", N.seed},           {"brightness", N.brightness},
+          {"density", N.density},     {"detail", N.detail},
+          {"arms", N.arms},           {"dust", N.dust},
+          {"warp", N.warp},           {"glow", N.glow},
+          {"sources", N.sources},
+          {"color1", vec3_to_json(N.color1)},
+          {"color2", vec3_to_json(N.color2)},
+      };
     } else if (o.type == SceneObject::InfiniteSurface) {
       const gpx::planet::Layer &L = o.surf.layer;
       jo["surface"] = {
@@ -333,6 +377,15 @@ json scene_to_json() {
   j["objects"] = objs;
   scene_anim_to_json(j, sc);
   j["selected"] = sc.selected;
+  {
+    json presets = json::array();
+    for (const RenderPreset &p : sc.render_presets)
+      presets.push_back({{"name", p.name},         {"engine", p.assign.engine},
+                         {"width", p.assign.width}, {"height", p.assign.height},
+                         {"samples", p.assign.samples}, {"output", p.assign.output},
+                         {"passes", p.assign.passes}, {"panorama", p.assign.panorama}});
+    j["render_presets"] = std::move(presets);
+  }
   j["active_camera"] = scene_active_camera();
   j["last_used_camera"] = scene_last_used_camera();
   return j;
@@ -348,6 +401,22 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
   // index in it still means what it meant when it was written.
   sc.objects.clear();
   scene_anim_from_json(j, sc);
+  sc.render_presets.clear();
+  for (const auto &jp : j.value("render_presets", json::array())) {
+    if (!jp.is_object()) continue;
+    RenderPreset p;
+    p.name = jp.value("name", std::string());
+    if (p.name.empty()) continue;
+    p.assign.engine = jp.value("engine", p.assign.engine);
+    p.assign.width = jp.value("width", p.assign.width);
+    p.assign.height = jp.value("height", p.assign.height);
+    p.assign.samples = jp.value("samples", p.assign.samples);
+    p.assign.output = jp.value("output", p.assign.output);
+    p.assign.passes = jp.value("passes", p.assign.passes);
+    p.assign.panorama = jp.value("panorama", p.assign.panorama);
+    p.assign.preset = p.name;
+    sc.render_presets.push_back(p);
+  }
   for (const json &jo : j.value("objects", json::array())) {
     SceneObject o;
     if (!kind_from_name(jo.value("kind", std::string()), o.type)) continue;
@@ -422,6 +491,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
         c.render.output = jr.value("output", c.render.output);
         c.render.passes = jr.value("passes", c.render.passes);
         c.render.panorama = jr.value("panorama", c.render.panorama);
+        c.render.preset = jr.value("preset", c.render.preset);
       }
       if (jc.contains("anim")) {
         const json &ja = jc["anim"];
@@ -453,6 +523,26 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
         vec3_from_json(jp["water_color"], P.water_color);
       if (jp.contains("atmo_color"))
         vec3_from_json(jp["atmo_color"], P.atmo_color);
+    } else if (o.type == SceneObject::Nebula && jo.contains("nebula")) {
+      const json &jn = jo["nebula"];
+      NebulaData &N = o.nebula;
+      N.type = jn.value("type", N.type);
+      N.azimuth = jn.value("azimuth", N.azimuth);
+      N.elevation = jn.value("elevation", N.elevation);
+      N.size_deg = jn.value("size_deg", N.size_deg);
+      N.tilt_deg = jn.value("tilt_deg", N.tilt_deg);
+      N.rotation_deg = jn.value("rotation_deg", N.rotation_deg);
+      N.seed = jn.value("seed", N.seed);
+      N.brightness = jn.value("brightness", N.brightness);
+      N.density = jn.value("density", N.density);
+      N.detail = jn.value("detail", N.detail);
+      N.arms = jn.value("arms", N.arms);
+      N.dust = jn.value("dust", N.dust);
+      N.warp = jn.value("warp", N.warp);
+      N.glow = jn.value("glow", N.glow);
+      N.sources = jn.value("sources", N.sources);
+      if (jn.contains("color1")) vec3_from_json(jn["color1"], N.color1);
+      if (jn.contains("color2")) vec3_from_json(jn["color2"], N.color2);
     } else if (o.type == SceneObject::InfiniteSurface && jo.contains("surface")) {
       const json &js = jo["surface"];
       gpx::planet::Layer &L = o.surf.layer;

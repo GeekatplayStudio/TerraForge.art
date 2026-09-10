@@ -177,7 +177,9 @@ float cloud_shadow(vec3 world){
   // wp * 0.35 against the march's wp * 0.18 - so the shadows on the ground
   // were a different pattern, at roughly half the scale, from the clouds
   // casting them. They now line up because they are the same lookup.
-  float dy = max(u_cl_alt + u_cl_thick * 0.5 - world.y, 0.0);
+  // the layer's height is over the world's surface, not over world y: on
+  // a ring the clouds are a band round the ring (world_shape.hpp)
+  float dy = max(u_cl_alt + u_cl_thick * 0.5 - pl_world_alt(world, u_planet_radius), 0.0);
   if (u_sun.y < 0.05) return 1.0;
   vec3 p = world + u_sun * (dy / max(u_sun.y, 0.05));
   vec3 wp = p; wp.xz += u_cl_wind * u_cl_time;

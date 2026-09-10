@@ -160,6 +160,78 @@ void test_blend_controls() {
   }
 }
 
+// Clipping (modes 3 and 4): the tile stands only where it is higher, or
+// only where it is lower, than the planet's own ground, and the planet is
+// what stands everywhere else - a mountain with no skirt, a basin with no
+// rim. The height is a hard max/min against the planet, so the crossing is
+// exact; the material weight fades over `presence` either side of it.
+void test_clip_modes() {
+  std::printf("placement: clip low / clip high...\n");
+  const int n = 96;
+  auto L = layers_realistic();
+  std::vector<float> relief, smooth;
+  studio::planet_relief_under_tile(L, n, n, relief, smooth);
+  // a wide dome over a pit: half the tile rises, half sinks, on ground
+  // that already has relief of its own
+  gpx::Heightmap tile(n, n, 0.12f);
+  for (int y = 0; y < n; ++y)
+    for (int x = 0; x < n; ++x) {
+      const float u = (float)x / (n - 1), v = (float)y / (n - 1);
+      const float du = u - 0.5f, dv = v - 0.5f;
+      const float r = std::sqrt(du * du + dv * dv);
+      const float bell = r < 0.45f ? 0.5f * (1.f + std::cos(3.14159265f * r / 0.45f)) : 0.f;
+      tile.at(x, y) = 0.12f + (u < 0.5f ? 0.35f : -0.35f) * bell;
+    }
+  for (int mode : {3, 4}) {
+    studio::PlaceSettings s;
+    s.ground = 0.12f;
+    s.mode = mode;
+    s.edge = 0.05f;
+    s.flatten = 0.f; // the feature is compared with the planet's real relief
+    studio::PlaceResult r;
+    gpx::Heightmap out = studio::planet_place_tile(tile, L, s, &r);
+    int wrong = 0, kept = 0, planet = 0;
+    for (int y = 0; y < n; ++y)
+      for (int x = 0; x < n; ++x) {
+        const size_t i = (size_t)y * n + x;
+        const float pb = 0.12f + relief[i];
+        const float feature = pb + (tile.v[i] - 0.12f);
+        const float o = out.v[i];
+        // never on the wrong side of the planet
+        if (mode == 3 ? o < pb - 1e-5f : o > pb + 1e-5f) ++wrong;
+        // inside the border feather, the winner is exact
+        const float b = std::min(std::min(x, n - 1 - x), std::min(y, n - 1 - y)) / (float)(n - 1);
+        if (b < 0.06f) continue;
+        const bool tile_wins = mode == 3 ? feature > pb + 1e-4f : feature < pb - 1e-4f;
+        if (tile_wins) {
+          if (std::fabs(o - feature) < 1e-5f) ++kept;
+        } else if (std::fabs(o - pb) < 1e-5f) {
+          ++planet;
+          // and the material weight is the planet's there
+          if (r.weight.v[i] > 1e-6f && std::fabs(feature - pb) > s.presence) ++wrong;
+        }
+      }
+    check(wrong == 0, "clip " + std::to_string(mode) + ": nothing on the wrong side of the planet");
+    check(kept > n * n / 8, "clip " + std::to_string(mode) + ": the winning side is the tile, exactly");
+    check(planet > n * n / 8, "clip " + std::to_string(mode) + ": the losing side is the planet, exactly");
+  }
+  // clip low keeps the dome and drops the pit; clip high the reverse
+  {
+    studio::PlaceSettings s;
+    s.ground = 0.12f;
+    s.flatten = 0.f;
+    s.mode = 3;
+    gpx::Heightmap lo = studio::planet_place_tile(tile, L, s, nullptr);
+    s.mode = 4;
+    gpx::Heightmap hi = studio::planet_place_tile(tile, L, s, nullptr);
+    const size_t dome = (size_t)(n / 2) * n + n / 4, pit = (size_t)(n / 2) * n + 3 * n / 4;
+    check(lo.v[dome] > 0.12f + relief[dome] + 0.1f, "clip low keeps the dome");
+    check(std::fabs(lo.v[pit] - (0.12f + relief[pit])) < 1e-5f, "clip low drops the pit");
+    check(hi.v[pit] < 0.12f + relief[pit] - 0.1f, "clip high keeps the pit");
+    check(std::fabs(hi.v[dome] - (0.12f + relief[dome])) < 1e-5f, "clip high drops the dome");
+  }
+}
+
 void test_feature_stands_on_levelled_ground() {
   std::printf("placement: a feature stands on levelled ground...\n");
   const int n = 128;
@@ -269,6 +341,7 @@ int test_planet_place_run() {
   test_flat_tile_is_the_planet();
   test_feature_stands_on_levelled_ground();
   test_blend_controls();
+  test_clip_modes();
   test_hole_is_a_basin();
   test_border_meets_the_planet();
   test_deterministic_and_off();

@@ -44,6 +44,29 @@ uniform int u_no_sun;
 uniform float u_space; // 0 = inside the atmosphere, 1 = open space
 uniform int u_aov;     // render pass being drawn, 0 = the picture
 const float PI = 3.14159265;
+// The world the air lies on (world_shape.hpp): its shape, the curvature
+// this view draws the ground with, and whether the sun is a body inside it.
+// Every height in here is an altitude over the world's surface - on a ring
+// the clouds are a band round the inside of the ring, on a globe a shell
+// over it - and the sky's up is the surface's up under the eye.
+PL_SPHERE_PLACEHOLDER
+uniform float u_world_r;
+uniform float u_world_w; // a ring's width (a flat world's size): its air ends there
+uniform int u_sun_mode;
+float world_alt(vec3 p){ return pl_world_alt(p, u_world_r); }
+vec3 world_up(vec3 p){ return pl_world_up(p, u_world_r); }
+bool world_curved(){ return !(u_world_r <= 0.0 || u_world_r > 1.0e5 || pl_world_flat()); }
+// where the sun shines from at a point: a body inside the world shines
+// from the centre or the axis, anything else from u_sun
+vec3 sun_at(vec3 p){ return u_sun_mode == 1 ? pl_world_up_at(p, u_world_r) : u_sun; }
+// The atmosphere is a layer of this height on the world's surface (0: the
+// old rule, u_space by the camera's distance). How much of the ray lies in
+// it, in vertical thicknesses, decides how much sky and how much space a
+// pixel shows: straight up from the ground is one thickness (all sky), the
+// limb of the world seen from space a short chord (a thin blue rim), a ray
+// that misses the layer nothing but stars.
+uniform float u_atm_h;
+SPACE_FN_PLACEHOLDER
 SKY_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
@@ -73,7 +96,7 @@ float cloud_gradient(float hf){
   return remap01(hf, 0.0, 0.16) * (1.0 - remap01(hf, 0.45, 0.85)); // cumulus
 }
 float cloud_density(vec3 p, out float hf){
-  hf = clamp((p.y - g_alt) / max(g_thick, 1e-3), 0.0, 1.0);
+  hf = clamp((world_alt(p) - g_alt) / max(g_thick, 1e-3), 0.0, 1.0);
   vec3 wp = p; wp.xz += u_cl_wind * u_cl_time;
   vec4 sn = texture(u_cl_shape, wp * 0.18);
   float fbm = sn.g*0.625 + sn.b*0.25 + sn.a*0.125;
@@ -89,16 +112,144 @@ float cloud_density(vec3 p, out float hf){
   d = clamp(remapf(d, er * u_cl_detail_amt * 0.55, 1.0, 0.0, 1.0), 0.0, 1.0);
   return d * g_den;
 }
+// The ray against one shell of the world - a sphere about its centre, or a
+// cylinder about a ring's axis - radius r: the interval of t the ray spends
+// inside it, false when it misses.
+bool shell_hits(vec3 ro, vec3 rd, float r, out float t0, out float t1){
+  vec3 o = ro - pl_world_centre_at(ro, u_world_r);
+  vec3 d = rd;
+  if (u_world_shape.y > 0.5){ o.z = 0.0; d.z = 0.0; } // a ring: the axis is z
+  float a = dot(d, d);
+  if (a < 1e-12) return false;
+  float b = dot(o, d), c = dot(o, o) - r * r;
+  float disc = b * b - a * c;
+  if (disc < 0.0) return false;
+  float sq = sqrt(disc);
+  t0 = (-b - sq) / a; t1 = (-b + sq) / a;
+  return true;
+}
+// Where the ray crosses a cloud layer: the band of altitude [alt, alt +
+// thick] over the world's surface. A flat world's band is two planes, as
+// it always was. A curved world's is the space between two shells: the
+// ray is inside the outer one over one interval and inside the inner one
+// over another, and the band is the first interval less the second - the
+// part before the inner shell, or, from inside it, the part after.
+bool layer_span(vec3 ro, vec3 rd, float alt, float thick, out float t0, out float t1){
+  if (!world_curved()){
+    if (rd.y < 0.015) return false;
+    float y0 = alt, y1 = alt + thick;
+    t0 = (y0 - ro.y) / rd.y;
+    t1 = (y1 - ro.y) / rd.y;
+    if (ro.y > y0 && ro.y < y1) t0 = 0.0;
+    t0 = max(t0, 0.0); t1 = max(t1, 0.0);
+    return t1 > t0;
+  }
+  float R = u_world_r;
+  bool ins = u_world_shape.z > 0.5;
+  float r_lo = ins ? R - alt - thick : R + alt;   // the shell nearer the centre
+  float r_hi = ins ? R - alt : R + alt + thick;   // the shell farther from it
+  float b0, b1;
+  if (r_hi <= 0.0 || !shell_hits(ro, rd, r_hi, b0, b1)) return false;
+  b0 = max(b0, 0.0);
+  if (b1 <= b0) return false;
+  float s0, s1;
+  if (!(r_lo > 0.0 && shell_hits(ro, rd, r_lo, s0, s1))){ t0 = b0; t1 = b1; }
+  else if (s0 > b0){ t0 = b0; t1 = min(s0, b1); }
+  else { t0 = max(s1, b0); t1 = b1; }
+  if (t1 <= t0) return false;
+  // a ring's air ends at its rim: the band is cut to the ring's width
+  if (u_world_shape.y > 0.5 && u_world_w > 0.0){
+    float hw = u_world_w * 0.5;
+    if (abs(rd.z) < 1e-6){
+      if (abs(ro.z - 0.5) > hw) return false;
+    } else {
+      float za = (0.5 - hw - ro.z) / rd.z, zb = (0.5 + hw - ro.z) / rd.z;
+      t0 = max(t0, min(za, zb));
+      t1 = min(t1, max(za, zb));
+    }
+  }
+  return t1 > t0;
+}
+// a ray segment [t0, t1] cut to a ring's width (its air ends at the rim)
+// and to a flat world's outline; its length
+uniform int u_world_outline;
+float seg_in_world(vec3 ro, vec3 rd, float t0, float t1){
+  if (u_world_shape.y > 0.5 && u_world_w > 0.0 && !pl_world_flat()){
+    float hw = u_world_w * 0.5;
+    if (abs(rd.z) < 1e-6){ if (abs(ro.z - 0.5) > hw) return 0.0; }
+    else {
+      float za = (0.5 - hw - ro.z) / rd.z, zb = (0.5 + hw - ro.z) / rd.z;
+      t0 = max(t0, min(za, zb)); t1 = min(t1, max(za, zb));
+    }
+  }
+  if (pl_world_flat() && u_world_w > 0.0){
+    vec2 o = ro.xz - 0.5, dd = rd.xz;
+    float hw = u_world_w * 0.5;
+    if (u_world_outline == 1){
+      for (int k = 0; k < 2; ++k){
+        if (abs(dd[k]) < 1e-6){ if (abs(o[k]) > hw) return 0.0; continue; }
+        float ta = (-hw - o[k]) / dd[k], tb = (hw - o[k]) / dd[k];
+        t0 = max(t0, min(ta, tb)); t1 = min(t1, max(ta, tb));
+      }
+    } else {
+      float a = dot(dd, dd);
+      if (a < 1e-9){ if (dot(o, o) > hw * hw) return 0.0; }
+      else {
+        float b = dot(o, dd), c = dot(o, o) - hw * hw;
+        float disc = b * b - a * c;
+        if (disc < 0.0) return 0.0;
+        float sq = sqrt(disc);
+        t0 = max(t0, (-b - sq) / a); t1 = min(t1, (-b + sq) / a);
+      }
+    }
+  }
+  return max(t1 - t0, 0.0);
+}
+// How much of the ray lies in the air, in vertical thicknesses of it: the
+// band of altitude [0, u_atm_h] over the surface. Flat: a slab (a
+// near-horizontal ray is capped, the way a real horizon's air runs out with
+// distance). Curved: the space between two shells; on an inside world a
+// ray that crosses the middle meets the far side's air too, on a globe the
+// ground stops it at the inner shell.
+float atm_path(vec3 ro, vec3 rd){
+  float H = max(u_atm_h, 1e-5);
+  if (!world_curved()){
+    float t0, t1;
+    if (abs(rd.y) < 1e-6){
+      if (ro.y < 0.0 || ro.y > H) return 0.0;
+      t0 = 0.0; t1 = 40.0 * H;
+    } else {
+      float ta = -ro.y / rd.y, tb = (H - ro.y) / rd.y;
+      t0 = max(min(ta, tb), 0.0); t1 = max(ta, tb);
+    }
+    if (t1 <= t0) return 0.0;
+    t1 = min(t1, t0 + 40.0 * H);
+    return seg_in_world(ro, rd, t0, t1) / H;
+  }
+  float R = u_world_r;
+  bool ins = u_world_shape.z > 0.5;
+  float r_lo = ins ? R - H : R, r_hi = ins ? R : R + H;
+  float b0, b1;
+  if (r_hi <= 0.0 || !shell_hits(ro, rd, r_hi, b0, b1)) return 0.0;
+  b0 = max(b0, 0.0);
+  if (b1 <= b0) return 0.0;
+  float s0, s1;
+  if (!(r_lo > 0.0 && shell_hits(ro, rd, r_lo, s0, s1))) return seg_in_world(ro, rd, b0, b1) / H;
+  // the part before the inner shell (a ray going down to the ground), and
+  // the part after it: always on an inside world (the far side's air),
+  // on a globe only when the ground is behind the eye - looking up from
+  // the ground the inner sphere was crossed in the past, and the air is
+  // everything from here to the top
+  float p1 = (s0 > b0) ? seg_in_world(ro, rd, b0, min(s0, b1)) : 0.0;
+  float p2 = (ins || s1 <= b0 || s0 >= b1) ? seg_in_world(ro, rd, max(s1, b0), b1) : 0.0;
+  return (p1 + p2) / H;
+}
 vec4 march_layer(vec3 ro, vec3 rd, vec3 bg, int type, float alt, float thick, float cov, float den){
   g_type = type; g_alt = alt; g_thick = thick; g_cov = cov; g_den = den;
-  if (rd.y < 0.015) return vec4(bg, 1.0);
-  float y0 = g_alt, y1 = g_alt + g_thick;
-  float t0 = (y0 - ro.y) / rd.y;
-  float t1 = (y1 - ro.y) / rd.y;
-  if (ro.y > y0 && ro.y < y1) t0 = 0.0;
-  t0 = max(t0, 0.0); t1 = max(t1, 0.0);
-  if (t1 <= t0) return vec4(bg, 1.0);
+  float t0, t1;
+  if (!layer_span(ro, rd, alt, thick, t0, t1)) return vec4(bg, 1.0);
   t1 = min(t1, t0 + 30.0);
+  vec3 sun = sun_at(ro);
   int steps = u_cl_steps;
   float dt = (t1 - t0) / float(steps);
   // Offset every ray's start by a fraction of a step, or the whole screen
@@ -117,7 +268,7 @@ vec4 march_layer(vec3 ro, vec3 rd, vec3 bg, int type, float alt, float thick, fl
   // a still image crawl. Left static until that lands.
   float jitter = texture(u_blue_noise,
                          gl_FragCoord.xy / vec2(textureSize(u_blue_noise, 0))).r;
-  float cosA = dot(rd, u_sun);
+  float cosA = dot(rd, sun);
   // dual-lobe HG, renormalised by 4*pi so the phase reads ~0.2..2 instead of
   // the tiny per-steradian value (otherwise clouds vanish against the sky)
   float phase = mix(hg(cosA, 0.75), hg(cosA, -0.25), 0.4) * 12.566;
@@ -154,7 +305,7 @@ vec4 march_layer(vec3 ro, vec3 rd, vec3 bg, int type, float alt, float thick, fl
       float sum = 0.0;
       for (int j = 0; j < 5; ++j){
         float hf2;
-        vec3 lp = p + u_sun * (ldt * (float(j) + 0.5));
+        vec3 lp = p + sun * (ldt * (float(j) + 0.5));
         sum += cloud_density(lp, hf2) * ldt;
       }
       // Multiple scattering, approximated. Single scattering stops light at
@@ -228,13 +379,14 @@ vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
   vec4 c = vec4(bg, 1.0);
   bool done[10];
   for (int i = 0; i < 10; ++i) done[i] = false;
+  float ro_alt = world_alt(ro); // the eye's height over the world's surface
   for (int pass = 0; pass < 10; ++pass) {
     if (pass >= n) break;
     // the farthest layer not yet drawn
     int best = -1; float bestd = -1.0;
     for (int i = 0; i < 10; ++i) {
       if (i >= n || done[i]) continue;
-      float d = abs(al[i] + th[i] * 0.5 - ro.y);
+      float d = abs(al[i] + th[i] * 0.5 - ro_alt);
       if (d > bestd) { bestd = d; best = i; }
     }
     if (best < 0) break;
@@ -254,33 +406,59 @@ void main(){
     vec4 w = u_inv_vp * vec4(v_ndc, 1.0, 1.0);
     dir = normalize(w.xyz / w.w);
   }
+  // the sky stands over the world's surface under the eye: its up is the
+  // surface's up there (world y on a flat world and, at the tile, on a globe)
+  vec3 up = world_up(u_cam);
+  g_sky_up = up;
+  float dir_up = dot(dir, up);
   vec3 col = sky_color(dir, u_sky_zenith, u_sky_horizon, u_sun, u_sun_color, u_atmo);
   // an HDRI carries its own sun; drawing ours over it would light the scene
   // twice
   bool bd_sun_hidden = u_bd_on == 1 && u_bd_hide_sun == 1 && g_bd_weight > 0.0;
+  vec3 sun_disc = vec3(0.0);
+  float atm_scat = 1.0; // how much air the pixel looks through, 0..1
   if (u_no_sun == 0 && !bd_sun_hidden) {
     float s = max(dot(dir, u_sun), 0.0);
-    col += u_sun_color * pow(s, 700.0) * 8.0;   // sun disc
+    sun_disc = u_sun_color * pow(s, 700.0) * 8.0;
   }
-  // night: the same stable star field fades in as the sun sinks below the
-  // horizon - added before the cloud march so clouds occlude the stars
-  float night = smoothstep(0.03, -0.12, u_sun.y);
-  if (night > 0.0 && dir.y > 0.0) {
-    vec3 sd2 = dir * 380.0;
-    vec3 si2 = floor(sd2);
-    float hs2 = fract(sin(dot(si2, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-    if (hs2 > 0.9965) {
-      float tw2 = 0.55 + 0.45 * fract(hs2 * 91.7);
-      col += vec3(tw2) * smoothstep(0.9965, 1.0, hs2) * night *
-             clamp(dir.y * 4.0, 0.0, 1.0);
-    }
+  // Deep space: the stars, the galaxy and the nebulas, behind the air. How
+  // much of it reaches the eye is worked out first, because the backdrop is
+  // the most expensive thing in this shader - a nebula is marched as a
+  // volume - and in daylight, under a full sky, none of it shows. A terrain
+  // scene at noon must not pay for a sky it cannot see.
+  float sp_w = 0.0;
+  if (u_atm_h > 0.0) {
+    float path0 = atm_path(u_cam, dir);
+    float lum0 = dot(col, vec3(0.3, 0.59, 0.11)) * (1.0 - exp(-5.0 * u_atmo * path0));
+    sp_w = exp(-0.35 * u_atmo * path0) * (1.0 - smoothstep(0.0, 0.2, lum0));
+  } else {
+    sp_w = smoothstep(0.03, -0.12, u_sun.y) * clamp(dir_up * 4.0, 0.0, 1.0);
+    sp_w = max(sp_w, u_space);
+  }
+  vec3 space = sp_w > 0.002 ? space_color(dir) : vec3(0.0);
+  if (u_atm_h > 0.0) {
+    // The air is a layer on the world (atm_path): what it scatters is the
+    // sky, what it lets through is space and the sun. Stars are lost in
+    // daylight the way they are outside - not hidden by the air but
+    // outshone by it - so their share falls with the sky's own brightness.
+    float path = atm_path(u_cam, dir);
+    float scat = 1.0 - exp(-5.0 * u_atmo * path);
+    float T = exp(-0.35 * u_atmo * path);
+    atm_scat = scat;
+    col = space * sp_w + sun_disc * T + col * scat;
+  } else {
+    // the old rule: sky everywhere, thinning to space with the camera's
+    // distance from the tile (u_space), stars coming out at night
+    float night = smoothstep(0.03, -0.12, u_sun.y);
+    col += sun_disc;
+    if (night > 0.0 && dir_up > 0.0) col += space * night * clamp(dir_up * 4.0, 0.0, 1.0);
   }
   vec4 cl = march_clouds(u_cam, dir, col);
   col = cl.rgb;
   float fogw = 0.0;
   vec3 fogcol = vec3(0.0);
   if (u_fog_type != 0) {
-    float horizon_fog = pow(1.0 - clamp(dir.y, 0.0, 1.0), 8.0);
+    float horizon_fog = pow(1.0 - clamp(dir_up, 0.0, 1.0), 8.0);
     // haze is lit air: it darkens with the same daylight factor as the sky,
     // or night would end at the horizon line
     float fog_day = clamp(u_sun.y * 4.0 + 0.35, 0.035, 1.0);
@@ -289,6 +467,7 @@ void main(){
     // the dome is at infinity too, but a photograph may already hold its own
     // haze, so how much of ours it receives is a dial
     fogw *= mix(1.0, u_bd_haze, g_bd_weight);
+    fogw *= atm_scat; // no haze where there is no air on the ray
     col = mix(col, fogcol, fogw);
   }
   if (u_aov != 0) {
@@ -303,22 +482,13 @@ void main(){
   // back actually reveals the planets instead of drowning them in daylight
   // haze. u_space is a smooth 0..1 from the camera's altitude, so the
   // transition is continuous — no popping at any zoom level.
-  if (u_space > 0.0) {
-    vec3 stars = vec3(0.0);
-    // stable star field: hashed on the quantized view direction
-    vec3 sd = dir * 380.0;
-    vec3 si = floor(sd);
-    float hs = fract(sin(dot(si, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-    if (hs > 0.9965) {
-      float tw = 0.55 + 0.45 * fract(hs * 91.7);
-      stars = vec3(tw) * smoothstep(0.9965, 1.0, hs);
-    }
-    vec3 space = stars;
+  if (u_atm_h <= 0.0 && u_space > 0.0) {
+    vec3 sp = space;
     if (u_no_sun == 0) {
       float s2 = max(dot(dir, u_sun), 0.0);
-      space += u_sun_color * pow(s2, 900.0) * 9.0; // the sun stays, airless
+      sp += u_sun_color * pow(s2, 900.0) * 9.0; // the sun stays, airless
     }
-    col = mix(col, space, u_space);
+    col = mix(col, sp, u_space);
   }
   if (u_hdr == 1) { frag = vec4(col, 1.0); return; } // linear for env maps
   col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));

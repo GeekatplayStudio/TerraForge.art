@@ -9,6 +9,7 @@
 #include "render_settings.hpp"
 #include "imprint.hpp"
 #include "scene.hpp"
+#include "space_presets.hpp"
 #include "world_shape.hpp"
 #include <algorithm>
 #include <json.hpp>
@@ -20,6 +21,45 @@
 using json = nlohmann::json;
 
 namespace studio {
+
+// A nebula's kind by name or number (scene.hpp NebulaData::type).
+static int nebula_type_of(const json &act, int fallback) {
+  if (!act.contains("type")) return fallback;
+  const json &t = act["type"];
+  if (t.is_number()) return std::clamp(t.get<int>(), 0, 4);
+  const std::string s = t.is_string() ? t.get<std::string>() : std::string();
+  if (s == "nebula" || s == "emission" || s == "cloud") return 0;
+  if (s == "dark" || s == "dark_nebula" || s == "dust") return 1;
+  if (s == "galaxy" || s == "spiral") return 2;
+  if (s == "elliptical" || s == "elliptical_galaxy") return 3;
+  if (s == "planetary" || s == "ring") return 4;
+  return fallback;
+}
+static void apply_nebula_fields(NebulaData &N, const json &act) {
+  auto f = [&](const char *k, float &dst, float lo, float hi) {
+    if (act.contains(k) && act[k].is_number()) dst = std::clamp(act[k].get<float>(), lo, hi);
+  };
+  f("azimuth", N.azimuth, -360.f, 360.f);
+  f("elevation", N.elevation, -90.f, 90.f);
+  f("size_deg", N.size_deg, 0.2f, 180.f);
+  f("tilt_deg", N.tilt_deg, 0.f, 85.f);
+  f("rotation_deg", N.rotation_deg, -360.f, 360.f);
+  f("brightness", N.brightness, 0.f, 10.f);
+  f("density", N.density, 0.f, 1.f);
+  f("detail", N.detail, 0.f, 1.f);
+  f("dust", N.dust, 0.f, 1.f);
+  f("warp", N.warp, 0.f, 1.5f);
+  f("glow", N.glow, 0.f, 2.f);
+  if (act.contains("sources") && act["sources"].is_number())
+    N.sources = std::clamp(act["sources"].get<int>(), 1, 4);
+  if (act.contains("seed") && act["seed"].is_number()) N.seed = act["seed"].get<uint32_t>();
+  // "palette":"auto" takes both colours from the realism dial
+  if (act.value("palette", std::string()) == "auto")
+    space_nebula_colors(N.type, render_settings().space.realism, N.seed, N.color1, N.color2);
+  if (act.contains("arms") && act["arms"].is_number()) N.arms = std::clamp(act["arms"].get<int>(), 1, 6);
+  read_vec3(act, "color1", N.color1);
+  read_vec3(act, "color2", N.color2);
+}
 
 bool ai_scene_object_op(App &a, const std::string &op, const json &act,
                         int &applied, std::string &err) {
@@ -306,6 +346,83 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         if (!want.empty()) break;
       }
       if (!applied) err = "no planet named '" + want + "'";
+    } else if (op == "add_moon") {
+      int idx = scene_add_moon(act.value("name", std::string()));
+      SceneObject &o = sc.objects[idx];
+      read_vec3(act, "position", o.pos);
+      if (act.contains("radius")) o.planet.radius = act["radius"].get<float>();
+      if (act.contains("seed")) o.planet.seed = act["seed"].get<uint32_t>();
+      sc.selected = idx;
+      a.scene_selection_serial++;
+      ++applied;
+    } else if (op == "add_nebula") {
+      int idx = scene_add_nebula(act.value("name", std::string()), nebula_type_of(act, 0));
+      apply_nebula_fields(sc.objects[idx].nebula, act);
+      sc.selected = idx;
+      a.scene_selection_serial++;
+      ++applied;
+    } else if (op == "set_nebula") {
+      std::string want = act.value("name", std::string());
+      for (auto &o : sc.objects) {
+        if (o.type != SceneObject::Nebula) continue;
+        if (!want.empty() && o.name != want) continue;
+        o.nebula.type = nebula_type_of(act, o.nebula.type);
+        apply_nebula_fields(o.nebula, act);
+        ++applied;
+        if (!want.empty()) break;
+      }
+      if (!applied) err = "no nebula named '" + want + "'";
+    } else if (op == "set_space") {
+      // deep space behind the air (render_settings.hpp, shaders_space.cpp)
+      RenderSettings &rs = render_settings();
+      auto f = [&](const char *k, float &dst, float lo, float hi) {
+        if (act.contains(k) && act[k].is_number()) dst = std::clamp(act[k].get<float>(), lo, hi);
+      };
+      auto b = [&](const char *k, bool &dst) {
+        if (act.contains(k) && act[k].is_boolean()) dst = act[k].get<bool>();
+      };
+      auto i = [&](const char *k, int &dst, int lo, int hi) {
+        if (act.contains(k) && act[k].is_number()) dst = std::clamp(act[k].get<int>(), lo, hi);
+      };
+      b("on", rs.space.on);
+      f("brightness", rs.space.brightness, 0.f, 8.f);
+      f("realism", rs.space.realism, 0.f, 1.f);
+      f("glow", rs.space.glow, 0.f, 4.f);
+      i("quality", rs.space.quality, 0, 3);
+      b("stars", rs.space.stars);
+      f("star_density", rs.space.star_density, 0.f, 1.f);
+      f("star_brightness", rs.space.star_brightness, 0.f, 10.f);
+      f("star_size", rs.space.star_size, 0.f, 6.f);
+      f("star_temperature", rs.space.star_temperature, 0.f, 1.f);
+      f("star_spikes", rs.space.star_spikes, 0.f, 4.f);
+      f("star_halo", rs.space.star_halo, 0.f, 4.f);
+      f("star_clump", rs.space.star_clump, 0.f, 1.f);
+      i("star_seed", rs.space.star_seed, 1, 1 << 24);
+      b("galaxy", rs.space.galaxy_on);
+      f("galaxy_intensity", rs.space.galaxy_intensity, 0.f, 10.f);
+      f("galaxy_width", rs.space.galaxy_width, 0.5f, 90.f);
+      f("galaxy_yaw", rs.space.galaxy_yaw, -360.f, 360.f);
+      f("galaxy_pitch", rs.space.galaxy_pitch, -90.f, 90.f);
+      f("galaxy_core", rs.space.galaxy_core, -360.f, 360.f);
+      f("galaxy_dust", rs.space.galaxy_dust, 0.f, 1.f);
+      f("galaxy_grain", rs.space.galaxy_grain, 0.f, 1.f);
+      read_vec3(act, "galaxy_color", rs.space.galaxy_color);
+      i("galaxy_seed", rs.space.galaxy_seed, 1, 1 << 24);
+      ++applied;
+    } else if (op == "space_preset") {
+      // a whole sky at once (space_presets.hpp)
+      const std::string key = act.value("name", act.value("preset", std::string()));
+      if (!space_preset_apply(key, err)) return true;
+      a.scene_selection_serial++;
+      a.status = "space preset " + key;
+      ++applied;
+    } else if (op == "space_populate") {
+      const int n = space_populate(act.value("count", 4), act.value("seed", 1),
+                                   act.value("style", std::string("mixed")), err);
+      if (n < 0) return true;
+      a.scene_selection_serial++;
+      a.status = std::to_string(n) + " scattered over the sky";
+      applied += n > 0 ? n : 1;
     } else if (op == "add_infinite_terrain") {
       // "planet":"name" attaches to that planet; omitted = home ground plane
       int parent = -1;
@@ -328,6 +445,7 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       else if (style == "dunes" || style == "billow") L.type = 2;
       else if (style == "terrain" || style == "realistic" ||
                style == "landscape") L.type = 3;
+      else if (style == "craters" || style == "moon") L.type = 4;
       if (act.contains("scale")) L.frequency = act["scale"].get<float>();
       if (act.contains("amplitude")) L.amplitude = act["amplitude"].get<float>();
       if (act.contains("coverage")) L.coverage = act["coverage"].get<float>();

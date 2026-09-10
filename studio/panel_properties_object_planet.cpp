@@ -18,9 +18,12 @@ namespace studio {
 // sphere - and which face its ground is on.
 static void world_shape_ui(RenderSettings &rs) {
   ImGui::SeparatorText("World shape");
-  int preset = rs.world_shape == WORLD_RING ? 1 : (rs.world_inside ? 2 : 0);
-  if (ImGui::Combo("Shape", &preset, "Globe\0Ring world\0Dyson sphere\0"))
-    world_preset_apply(rs, preset == 1 ? "ring" : preset == 2 ? "dyson" : "globe");
+  int preset = rs.world_shape == WORLD_RING ? 1
+             : rs.world_shape == WORLD_FLAT ? 3
+             : (rs.world_inside ? 2 : 0);
+  if (ImGui::Combo("Shape", &preset, "Globe\0Ring world\0Dyson sphere\0Flat world\0"))
+    world_preset_apply(rs, preset == 1 ? "ring" : preset == 2 ? "dyson"
+                         : preset == 3 ? "flat" : "globe");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Globe: the planet, its ground on the outside and the\n"
                       "horizon falling away.\n"
@@ -30,27 +33,58 @@ static void world_shape_ui(RenderSettings &rs) {
                       "ring arches overhead.\n"
                       "Dyson sphere: a globe with the ground on the inside\n"
                       "and the sun at its centre.\n"
-                      "The two settings below are what a preset sets.");
+                      "Flat world: a plane of the width below, cut to a disc\n"
+                      "or a square, with nothing beyond its edge.\n"
+                      "The atmosphere, the clouds and the water lie on the\n"
+                      "surface whatever its shape: on a ring the clouds are\n"
+                      "a band round the inside of the ring.\n"
+                      "The settings below are what a preset sets.");
   if (rs.world_shape == WORLD_RING) {
     drag_length("Ring width", &rs.world_width, 1.f, 1.f, 1e9f);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("How far the ring reaches north and south of the\n"
-                        "tile; beyond its rim there is only space.");
+                        "tile; beyond its rim there is only space. With a\n"
+                        "thickness the rim is a wall the thickness tall.");
   }
-  studio::Checkbox("Ground on the inside", &rs.world_inside);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("The ground faces the centre: up is toward it, the\n"
-                      "surface rises away from you instead of falling, and\n"
-                      "the far side of the world is drawn overhead. Every\n"
-                      "view curves an inside world.");
-  if (rs.world_inside) {
-    studio::Checkbox("Sun inside", &rs.world_sun_inside);
+  if (rs.world_shape == WORLD_FLAT) {
+    int outline = rs.world_outline == OUTLINE_SQUARE ? 1 : 0;
+    if (ImGui::Combo("Outline", &outline, "Disc\0Square\0"))
+      rs.world_outline = outline ? OUTLINE_SQUARE : OUTLINE_DISC;
     if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("The sun is a body on the ring's axis or at the\n"
-                        "sphere's centre rather than a direction: it stands\n"
-                        "straight above the tile and lights the far side\n"
-                        "toward itself. The Sun object's angles are not\n"
-                        "used while this is on.");
+      ImGui::SetTooltip("The flat world's edge: a disc of the width below\n"
+                        "across, or a square with sides that long.");
+    drag_length("Width", &rs.world_width, 1.f, 1.f, 1e9f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How far the flat world reaches, edge to edge, with the\n"
+                        "tile at its centre. Beyond the edge there is nothing;\n"
+                        "with a thickness the edge is a wall down to the\n"
+                        "underside.");
+  }
+  drag_length("Thickness", &rs.world_thickness, 1.f, 0.f, 1e9f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How thick the world's shell is. 0 is a skin: the other\n"
+                      "face is the same surface. Above 0 the other face lies\n"
+                      "this far below the ground - a ring's outside, a flat\n"
+                      "world's underside, a globe's inner crust - and a ring\n"
+                      "or a flat world is drawn as a body: both faces and the\n"
+                      "rim between them, so it is not a sheet seen from its\n"
+                      "edge or from below.");
+  if (rs.world_shape != WORLD_FLAT) {
+    studio::Checkbox("Ground on the inside", &rs.world_inside);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The ground faces the centre: up is toward it, the\n"
+                        "surface rises away from you instead of falling, and\n"
+                        "the far side of the world is drawn overhead. Every\n"
+                        "view curves an inside world.");
+    if (rs.world_inside) {
+      studio::Checkbox("Sun inside", &rs.world_sun_inside);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The sun is a body on the ring's axis or at the\n"
+                          "sphere's centre rather than a direction: it stands\n"
+                          "straight above the tile and lights the far side\n"
+                          "toward itself. The Sun object's angles are not\n"
+                          "used while this is on.");
+    }
   }
   ImGui::TextDisabled("A tile or a surface layer can stand on the other\n"
                       "face of the same world: its Side, in its own tab.");
@@ -213,7 +247,7 @@ void object_properties_surface_ui(App &a, SceneObject &o) {
   int type = L.type;
   if (ImGui::Combo("Style", &type,
                    "Rolling hills\0Ridged mountains\0Billow dunes\0"
-                   "Realistic terrain\0"))
+                   "Realistic terrain\0Craters\0"))
     L.type = type;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Realistic terrain is a whole landscape in one\n"

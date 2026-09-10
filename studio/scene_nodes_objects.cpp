@@ -234,6 +234,39 @@ void apply_planet(App &a, gpx::Node &n, float size_m) {
   o.visible = at.get_b("visible", true);
 }
 
+// a Nebula node (engine/nodes/nodes_space.cpp) drives a Nebula object
+void apply_nebula(App &a, gpx::Node &n) {
+  (void)a;
+  const gpx::AttrSet &at = n.attrs;
+  std::string name = at.get_s("object");
+  if (name.empty()) name = "Nebula";
+  int idx = find_driven(n, SceneObject::Nebula, name);
+  if (idx < 0) idx = scene_add_nebula(name, at.get_choice("kind"));
+  if (idx < 0) return;
+  SceneObject &o = scene().objects[idx];
+  o.driver_node = n.id;
+  o.name = name;
+  NebulaData &N = o.nebula;
+  N.type = at.get_choice("kind");
+  N.azimuth = at.get_f("azimuth", 40.f);
+  N.elevation = at.get_f("elevation", 35.f);
+  N.size_deg = at.get_f("size_deg", 24.f);
+  N.tilt_deg = at.get_f("tilt_deg", 50.f);
+  N.rotation_deg = at.get_f("rotation_deg", 0.f);
+  N.seed = at.get_seed("seed");
+  N.brightness = at.get_f("brightness", 1.f);
+  N.density = at.get_f("density", 0.5f);
+  N.detail = at.get_f("detail", 0.5f);
+  N.arms = at.get_i("arms", 2);
+  auto col = [&](const char *key, float *dst) {
+    if (const gpx::Attribute *c = at.find(key))
+      for (int k = 0; k < 3; ++k) dst[k] = c->col[k];
+  };
+  col("color1", N.color1);
+  col("color2", N.color2);
+  o.visible = at.get_b("visible", true);
+}
+
 void apply_surface(App &a, gpx::Node &n) {
   (void)a;
   const gpx::AttrSet &at = n.attrs;
@@ -306,6 +339,7 @@ void apply_object_nodes(App &a) {
     else if (n.type == "ImportObject") apply_mesh(a, n, size_m, false);
     else if (n.type == "Primitive") apply_mesh(a, n, size_m, true);
     else if (n.type == "Planet") apply_planet(a, n, size_m);
+    else if (n.type == "Nebula") apply_nebula(a, n);
     else if (n.type == "InfiniteTerrain") apply_surface(a, n);
     else if (n.type == "AnimationSequence") apply_sequence(a, n);
     else if (n.type == "CameraPath") apply_camera_path(a, n, size_m);

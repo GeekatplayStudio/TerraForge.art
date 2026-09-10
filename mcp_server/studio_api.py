@@ -79,6 +79,25 @@ class Studio:
         return doc
 
     # cameras
+    def view_to_camera(self, **kw: Any) -> Dict[str, Any]:
+        """kw: view (1-based), camera (existing name; omit for a new one),
+        name, activate."""
+        return self.send({"op": "view_to_camera", **kw})
+
+    def camera_to_view(self, **kw: Any) -> Dict[str, Any]:
+        """kw: camera (name; omit for the active one), view (1-based), link
+        (True: the view looks through it; False: the free view moves there)."""
+        return self.send({"op": "camera_to_view", **kw})
+
+    def render_preset(self, **kw: Any) -> Dict[str, Any]:
+        """kw: action (save|apply|delete|list), name, camera (or 'all'),
+        engine, width, height, samples, output, passes, panorama."""
+        return self.send({"op": "render_preset", **kw})
+
+    def render_batch(self, **kw: Any) -> Dict[str, Any]:
+        """kw: cameras (list of names; omit for every camera), preset."""
+        return self.send({"op": "render_batch", **kw})
+
     def add_camera(self, **kw: Any) -> Dict[str, Any]:
         return self.send({"op": "add_camera", **kw})
 
@@ -133,6 +152,33 @@ class Studio:
         """kw: planet (name; omit for the home ground plane), style
         ('mountains'|'hills'|'dunes'), scale, amplitude, coverage, seed."""
         return self.send({"op": "add_infinite_terrain", **kw})
+
+    # deep space
+    def add_moon(self, **kw: Any) -> Dict[str, Any]:
+        return self.send({"op": "add_moon", **kw})
+
+    def add_nebula(self, **kw: Any) -> Dict[str, Any]:
+        """kw: name, type (nebula|dark|galaxy|elliptical|planetary), azimuth,
+        elevation, size_deg, tilt_deg, rotation_deg, seed, brightness,
+        density, detail, arms, color1 [r,g,b], color2."""
+        return self.send({"op": "add_nebula", **kw})
+
+    def set_nebula(self, name: str, **kw: Any) -> Dict[str, Any]:
+        return self.send({"op": "set_nebula", "name": name, **kw})
+
+    def set_space(self, **kw: Any) -> Dict[str, Any]:
+        """The star field, the milky band and the palette (studio_set_space)."""
+        return self.send({"op": "set_space", **kw})
+
+    def space_preset(self, name: str) -> Dict[str, Any]:
+        """A whole sky at once: night, hubble, cinema, deep_field, nursery, void."""
+        return self.send({"op": "space_preset", "name": name})
+
+    def space_populate(self, count: int = 4, seed: int = 1,
+                       style: str = "mixed") -> Dict[str, Any]:
+        """Scatter nebulas and galaxies over the sky (mixed/nebulas/galaxies/dark)."""
+        return self.send({"op": "space_populate", "count": count, "seed": seed,
+                          "style": style})
 
     def planets(self) -> List[Dict[str, Any]]:
         return self.state().get("planets", [])
@@ -371,10 +417,41 @@ MCP_TOOLS = {
         "params": {"name": "str"},
     },
     "studio_render": {
-        "description": "Render the active camera. Fields: engine, width, "
-                       "height, samples, output.",
-        "params": {"engine": "str", "width": "int", "height": "int",
-                   "samples": "int", "output": "str"},
+        "description": "Render the active camera (or 'camera' by name), with "
+                       "'preset' applied first if given. Fields: camera, preset, "
+                       "engine, width, height, samples, output.",
+        "params": {"camera": "str", "preset": "str", "engine": "str", "width": "int",
+                   "height": "int", "samples": "int", "output": "str"},
+    },
+    "studio_view_to_camera": {
+        "description": "Write a viewport's point of view (where it looks from and "
+                       "at) into a camera: an existing one by name, or a new one. "
+                       "Fields: view (1-based, default the focused view), camera, "
+                       "name, activate.",
+        "params": {"view": "int", "camera": "str", "name": "str", "activate": "bool"},
+    },
+    "studio_camera_to_view": {
+        "description": "Put a camera into a viewport: link=true makes the view look "
+                       "through it from now on, link=false moves the free orbit to "
+                       "the camera's eye and target. Fields: camera (name; default "
+                       "the active one), view (1-based), link.",
+        "params": {"camera": "str", "view": "int", "link": "bool"},
+    },
+    "studio_render_preset": {
+        "description": "Named render presets, saved with the project. action: save "
+                       "(from a camera's assignment or the given fields), apply (to a "
+                       "camera by name, 'all', or the active one), delete, list. "
+                       "Fields: name, camera, engine, width, height, samples, output, "
+                       "passes, panorama.",
+        "params": {"action": "str", "name": "str", "camera": "str", "engine": "str",
+                   "width": "int", "height": "int", "samples": "int", "output": "str",
+                   "passes": "bool", "panorama": "bool"},
+    },
+    "studio_render_batch": {
+        "description": "Render several cameras one after the other, each with its "
+                       "own assignment and file. Fields: cameras (list of names; omit "
+                       "for every camera), preset (applied to each first).",
+        "params": {"cameras": "[str]", "preset": "str"},
     },
     "studio_add_planet": {
         "description": "Create a procedural planet (any number is fine - they "
@@ -390,6 +467,85 @@ MCP_TOOLS = {
         "description": "Modify an existing planet by name (same fields as "
                        "studio_add_planet).",
         "params": {"name": "str"},
+    },
+    "studio_add_moon": {
+        "description": "Add a moon: a small airless cratered world in the sky "
+                       "(a planet whose surface layer is craters). Fields: name, "
+                       "radius, seed, position [x,y,z]; studio_set_planet edits it.",
+        "params": {"name": "str", "radius": "float", "seed": "int", "position": "[x,y,z]"},
+    },
+    "studio_add_nebula": {
+        "description": "Add a nebula or a galaxy in deep space, seen where the "
+                       "atmosphere lets space through (night, high altitude, beyond "
+                       "a ring's rim). Fields: name, type (nebula|dark|galaxy|"
+                       "elliptical|planetary), azimuth and elevation in degrees, "
+                       "size_deg (angular diameter), tilt_deg and rotation_deg "
+                       "(galaxies), seed, brightness, density, detail 0-1, arms, "
+                       "color1 (the ionised heart) and color2 (the gas around it) "
+                       "[r,g,b], or palette 'auto' to take both from the realism "
+                       "dial. A cloud is marched as a real volume, so it also takes "
+                       "dust 0-1, warp 0-1.5 (how far it is pulled out of a ball), "
+                       "glow, and sources 1-4: the hot stars inside whose glare "
+                       "decides where it is teal and where it is hydrogen red. "
+                       "Eight at most are drawn at once.",
+        "params": {"name": "str", "type": "str", "azimuth": "float", "elevation": "float",
+                   "size_deg": "float", "tilt_deg": "float", "rotation_deg": "float",
+                   "seed": "int", "brightness": "float", "density": "float",
+                   "detail": "float", "arms": "int", "dust": "float", "warp": "float",
+                   "glow": "float", "sources": "int", "palette": "str",
+                   "color1": "[r,g,b]", "color2": "[r,g,b]"},
+    },
+    "studio_set_nebula": {
+        "description": "Modify a nebula or galaxy by name (same fields as studio_add_nebula).",
+        "params": {"name": "str"},
+    },
+    "studio_set_space": {
+        "description": "Deep space behind the atmosphere. The backdrop as a whole: "
+                       "on (bool), brightness, realism 0-1 (1 a photograph - "
+                       "hydrogen's crimson and ionised oxygen's teal; 0 what a film "
+                       "paints - cyan, magenta and gold, with a glow round "
+                       "everything), glow, quality 0-3 (how far the march through a "
+                       "nebula steps). Stars: stars (bool), star_density 0-1, "
+                       "star_brightness, star_size, star_temperature 0-1 (colour "
+                       "spread), star_spikes (the diffraction arms on the brightest), "
+                       "star_halo, star_clump (how strongly they gather into "
+                       "associations), star_seed. The Milky Way band: galaxy (bool), "
+                       "galaxy_intensity, galaxy_width (degrees), galaxy_yaw and "
+                       "galaxy_pitch (where its pole points), galaxy_core (degrees "
+                       "along the band), galaxy_dust 0-1 (dark rifts, which redden "
+                       "what they dim), galaxy_grain 0-1 (the unresolved stars that "
+                       "make it milky), galaxy_color [r,g,b], galaxy_seed. The "
+                       "atmosphere's height (set_sky height_m) decides where space "
+                       "shows.",
+        "params": {"on": "bool", "brightness": "float", "realism": "float",
+                   "glow": "float", "quality": "int",
+                   "stars": "bool", "star_density": "float", "star_brightness": "float",
+                   "star_size": "float", "star_temperature": "float",
+                   "star_spikes": "float", "star_halo": "float", "star_clump": "float",
+                   "star_seed": "int",
+                   "galaxy": "bool", "galaxy_intensity": "float", "galaxy_width": "float",
+                   "galaxy_yaw": "float", "galaxy_pitch": "float", "galaxy_core": "float",
+                   "galaxy_dust": "float", "galaxy_grain": "float",
+                   "galaxy_color": "[r,g,b]", "galaxy_seed": "int"},
+    },
+    "studio_space_preset": {
+        "description": "A whole sky at once. 'night' is what the eye sees from a "
+                       "dark place; 'hubble' a telescope's picture, teal hearts and "
+                       "crimson outskirts; 'cinema' the sky a film paints; "
+                       "'deep_field' a quiet star field and far galaxies; 'nursery' "
+                       "one great cloud lit from inside; 'void' stars alone. Each "
+                       "sets the star field, the band and the palette, and the ones "
+                       "that want nebulas scatter them too.",
+        "params": {"name": "str"},
+    },
+    "studio_space_populate": {
+        "description": "Fill the sky: scatter `count` (0-8) nebulas and galaxies "
+                       "over it, spread apart and varied in kind and size, coloured "
+                       "from wherever the realism dial stands. `seed` changes the "
+                       "arrangement; `style` is mixed, nebulas, galaxies or dark. "
+                       "Replaces what a previous fill made and leaves anything "
+                       "placed by hand alone.",
+        "params": {"count": "int", "seed": "int", "style": "str"},
     },
     "studio_add_infinite_terrain": {
         "description": "Add an endless procedural terrain layer. With "
@@ -469,10 +625,32 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.set_render(**params)}
     if tool == "studio_select":
         return {"status": "success", "sent": s.select(params.get("name", ""))}
+    if tool == "studio_view_to_camera":
+        return {"status": "success", "sent": s.view_to_camera(**params)}
+    if tool == "studio_camera_to_view":
+        return {"status": "success", "sent": s.camera_to_view(**params)}
+    if tool == "studio_render_preset":
+        return {"status": "success", "sent": s.render_preset(**params)}
+    if tool == "studio_render_batch":
+        return {"status": "success", "sent": s.render_batch(**params)}
     if tool == "studio_add_planet":
         return {"status": "success", "sent": s.add_planet(**params)}
     if tool == "studio_set_planet":
         return {"status": "success", "sent": s.set_planet(**params)}
+    if tool == "studio_add_moon":
+        return {"status": "success", "sent": s.add_moon(**params)}
+    if tool == "studio_add_nebula":
+        return {"status": "success", "sent": s.add_nebula(**params)}
+    if tool == "studio_set_nebula":
+        return {"status": "success", "sent": s.set_nebula(**params)}
+    if tool == "studio_set_space":
+        return {"status": "success", "sent": s.set_space(**params)}
+    if tool == "studio_space_preset":
+        return {"status": "success", "sent": s.space_preset(params.get("name", "night"))}
+    if tool == "studio_space_populate":
+        return {"status": "success", "sent": s.space_populate(
+            int(params.get("count", 4)), int(params.get("seed", 1)),
+            str(params.get("style", "mixed")))}
     if tool == "studio_add_infinite_terrain":
         return {"status": "success", "sent": s.add_infinite_terrain(**params)}
     if tool == "studio_undo":

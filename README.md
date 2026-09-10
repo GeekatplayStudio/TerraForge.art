@@ -17,17 +17,25 @@ hand. Rendered in the viewport, in real time.*
 
 ## Status
 
-*8 September 2026.* Working and shipped on `main`: the node engine (252 node
+*9 September 2026.* Working and shipped on `main`: the node engine (252 node
 types, 1,530 attributes, all under the regression lock), the studio with its
 eight workspaces, materials as graphs with a base-material and gradient
 library, volumetric fog and volumetric materials, cloud layers as nodes,
 planets, ecosystems, animation, and offline rendering through Mitsuba,
-Cycles and LuxCore. Everything the interface can change is reachable from
-the Python API, the MCP tools and the assistant, and two audit tests keep
-that true. Twenty-five test suites pass.
+Cycles and LuxCore. The world has a shape - a globe, a ring world, a Dyson
+sphere or a flat disc or square - and a thickness, so a ring seen from its
+rim or a flat world from below is a body; the atmosphere is a layer of a
+set height on that surface whatever its shape, the clouds and the water lie
+on it, and beyond the air is deep space: a star field, the Milky Way, and
+nebulas, galaxies and moons as objects. Everything the interface can
+change is reachable from the Python API, the MCP tools and the assistant,
+and two audit tests keep that true. Twenty-seven test suites pass.
 
-Open at the moment: planet-wrapped atmosphere shells are designed in
-[docs/VOLUMETRICS.md](docs/VOLUMETRICS.md) but not built; 21 component nodes
+Audited 10 September 2026: [docs/AUDIT.md](docs/AUDIT.md) with a roadmap per
+module in [docs/roadmaps/](docs/roadmaps/README.md) and a guide for building
+scenes by language in [docs/AI_SCENE_GUIDE.md](docs/AI_SCENE_GUIDE.md).
+Open at the moment: per-planet atmospheres (the home world has its air
+layer; planets in the sky get a limb glow); 21 component nodes
 are still `[Planned]` placeholders; and the performance watcher has found
 frames in the Materials workspace that work while nothing changes, not yet
 chased.
@@ -654,6 +662,28 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **Deep space is generated, not a photograph.** Beyond the air there is a
+  star field of a quarter of a million stars - laid out on a grid of the
+  sky, coloured along the Planckian locus from a red dwarf's orange to a
+  blue giant's, gathered into associations, the brightest carrying the four
+  diffraction spikes a telescope cuts across them - the Milky Way as a band
+  of unresolved stars with dust rifts that redden what they dim, and clouds
+  of gas. A cloud is not a picture painted on the sky: a ray is marched
+  through it as a real volume, and what comes back is emission where a hot
+  star inside has ionised the gas, reflection off the dust that is lit, and
+  extinction through the dust in front - which absorbs blue hardest, so
+  what shows through is redder as well as darker. That one rule is most of
+  why a photograph of a nebula looks the way it does, and why these come
+  out teal in the heart and crimson at the edges. All of it is a function
+  of a direction and a seed, so it holds its detail at any focal length and
+  costs no memory: there is no backdrop image to run out of pixels.
+  Environment ▸ Space carries six named skies - *A dark night sky*,
+  *Hubble*, *Science fiction*, *Deep field*, *Star nursery*, *Empty* - and
+  **Fill the sky**, which scatters as many as eight nebulas and galaxies
+  over it, spread apart and varied. **Realism** is the dial the whole look
+  turns on: 1 is what a camera records, 0 is what a film paints, cyan and
+  magenta with a glow round everything. Script: `space_preset`,
+  `space_populate`, `set_space`, `add_nebula` / `set_nebula`.
 - **Ring worlds and Dyson spheres.** The world has a shape: a *Globe* (the
   planet), a *Ring world* - a cylinder of the planet's radius curving along
   the tile's east-west, *Ring width* across, with the ground on the inside
@@ -858,7 +888,7 @@ wanted his students to have.
   `TileRotate` tiles a terrain with a random turn per segment so the
   repetition does not show.
 - **Water:** depth-graded color, waves, and shoreline and crest foam.
-- **Viewport:** 1-6 dockable view windows (perspective / top / front / right),
+- **Viewport:** up to 8 dockable view windows (perspective / top / front / right),
   shading modes, shadow mapping, scale bar, metric or imperial units.
 - **Offline rendering:** path-traced output through Mitsuba 3, Blender Cycles
   or LuxCoreRender. The render reuses the viewport's own sky and clouds as an

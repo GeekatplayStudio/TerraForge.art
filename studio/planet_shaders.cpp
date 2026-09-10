@@ -149,8 +149,40 @@ float pl_mask(vec3 d, int i){
   float edge = 1.0 - cov;
   return smoothstep(edge - 0.12, edge + 0.12, m);
 }
+// craters (gpx::planet::pl_craters): bowls with rims in half the cells of
+// a grid, four scales; summed in the CPU's order so the two agree
+float pl_craters(vec3 p, uint seed, float octf){
+  float h = 0.0, amp = 0.6, freq = 1.0;
+  for (int i = 0; i < 4; ++i){
+    float w = clamp(octf - float(i * 2), 0.0, 1.0);
+    if (w <= 0.0) break;
+    vec3 q = p * freq;
+    vec3 c = floor(q);
+    uint s = seed + uint(i) * 977u;
+    float sum = 0.0;
+    for (int dz = -1; dz <= 1; ++dz)
+      for (int dy = -1; dy <= 1; ++dy)
+        for (int dx = -1; dx <= 1; ++dx){
+          vec3 ip = c + vec3(float(dx), float(dy), float(dz));
+          if (pl_hash(ip, s + 53u) > 0.55) continue;
+          vec3 e = vec3(pl_hash(ip, s), pl_hash(ip, s + 17u), pl_hash(ip, s + 31u));
+          float rad = 0.22 + 0.2 * pl_hash(ip, s + 71u);
+          vec3 dd = q - (ip + e);
+          float d = sqrt(dd.x * dd.x + dd.y * dd.y + dd.z * dd.z) / rad;
+          if (d >= 1.3) continue;
+          float bowl = 1.0 - smoothstep(0.0, 1.0, d);
+          float rim = exp(-((d - 1.0) * (d - 1.0)) / 0.02);
+          sum += -bowl * bowl * 0.9 + rim * 0.35;
+        }
+    h += sum * amp * w;
+    amp *= 0.55;
+    freq *= 2.7;
+  }
+  return clamp(h, -0.5, 0.5);
+}
 vec2 pl_layer(vec3 p, int type, uint seed, float octf){
   if (type == 3) return pl_terrain(p, seed, octf);
+  if (type == 4) return vec2(pl_craters(p, seed, octf), 0.0);
   return vec2(pl_fbm(p, seed, octf, type), 0.0);
 }
 uniform float u_fstrength; // graph-authored displacement, 0 = layers only
@@ -268,6 +300,10 @@ void main(){
     vec3 land = pl_palette(t, slope, abs(rd.y), hw.y, u_snow, var);
     vec3 tint = mix(u_rock_lo, u_rock_hi, t) / vec3(0.46, 0.42, 0.38);
     albedo = land * tint;
+    // an airless world grows nothing: bare rock in its own two colours,
+    // the low ground darker, a little grain - a moon, not a green ball
+    if (u_atmo <= 0.0)
+      albedo = mix(u_rock_lo, u_rock_hi, t) * (0.8 + 0.4 * var) * (1.0 - 0.35 * slope);
   }
 
   float NdL = max(dot(N, u_sun), 0.0);
@@ -322,7 +358,9 @@ vec3 pl_shell_dir(vec2 uv, float R){
 }
 vec2 pl_relief_w(vec2 uv, float octf){
   vec2 near = pl_height_w(vec3(uv.x, 0.37, uv.y), octf);
-  if (u_shell != 1) return near;
+  // a flat world has no direction from a centre: its far ground is the
+  // same relief in tile units all the way to its edge
+  if (u_shell != 1 || pl_world_flat()) return near;
   // band-limited by distance: continents on the far side, valleys as it
   // comes nearer - a fixed count streaked the mid distance with ridges a
   // pixel wide, foreshortened along the view
@@ -363,10 +401,12 @@ void main(){
   vec2 uv = vec2(0.5) + off;
   if (u_shell == 1){
     // the whole way round along x (the angles clamp at +-pi, so the two
-    // ends meet on the far side), the ring's width or pole to pole along z
+    // ends meet on the far side), the ring's width or pole to pole along z;
+    // a flat world's far grid is spread flat out to its edge
     float R = max(u_curve, 1e-6);
     float span_z = u_world_shape.y > 0.5 ? u_shell_w * 0.5 : 1.5707963 * R;
     uv = vec2(0.5) + vec2(in_p.x * 3.14159265 * R, in_p.y * span_z);
+    if (pl_world_flat()) uv = vec2(0.5) + in_p * u_shell_w * 0.5;
   }
   // where the tile is: the world point back through the tile's transform
   // (terrain_xform.hpp), so the hole and the border blend follow a tile
@@ -431,9 +471,17 @@ uniform float u_wl, u_lat, u_snow_line, u_wclarity;
 uniform vec3 u_wdeep, u_wshallow;
 uniform vec3 u_grade;
 // the world's shape (world_shape.hpp): the far shell of an inside face,
-// a ring's width, its curvature, and whether the sun is a body inside it
-uniform int u_shell, u_sun_mode;
+// a ring's width (a flat world's size, and its outline: 0 disc, 1 square),
+// its curvature, and whether the sun is a body inside it
+uniform int u_shell, u_sun_mode, u_world_outline;
 uniform float u_shell_w, u_curve;
+// the far shell's cloud band: the sky's own cloud shape, sampled at the
+// cloud altitude over the far surface - the cloud layer is a band on the
+// world (world_shape.hpp), and the far side of a ring shows it too
+uniform int u_fc_on;
+uniform sampler3D u_fc_shape;
+uniform float u_fc_cov, u_fc_alt, u_fc_time;
+uniform vec2 u_fc_wind;
 PL_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
 PL_SPHERE_PLACEHOLDER
@@ -473,9 +521,15 @@ void main(){
   vec2 tl = tile_unapply_xz(v_uv);
   if (v_out <= 0.0 && tiles_inside(v_uv)) discard;
   // the shell leaves the ground round the tile to the surround, which has
-  // the vertices for it; beyond a ring's rim there is only space
+  // the vertices for it; beyond a ring's rim there is only space, and
+  // beyond a flat world's edge - a disc or a square u_shell_w across
+  // (world_shape.hpp) - there is nothing at all
   if (u_shell == 1 && max(abs(v_uv.x - 0.5), abs(v_uv.y - 0.5)) < 29.0) discard;
-  if (u_world_shape.y > 0.5 && abs(v_uv.y - 0.5) > u_shell_w * 0.5) discard;
+  if (pl_world_flat()){
+    vec2 dw = v_uv - 0.5;
+    float rw = u_world_outline == 1 ? max(abs(dw.x), abs(dw.y)) : length(dw);
+    if (rw > u_shell_w * 0.5) discard;
+  } else if (u_world_shape.y > 0.5 && abs(v_uv.y - 0.5) > u_shell_w * 0.5) discard;
   // a sun inside the world shines on each point from the axis or the centre
   vec3 sun = u_sun_mode == 1 ? pl_world_up_at(v_world, u_curve) : u_sun;
   float cam_d = max(length(u_cam - v_world), 0.02);
@@ -572,6 +626,17 @@ void main(){
     N = ws.n;
     alb = ws.water;
   }
+  if (u_shell == 1 && u_fc_on == 1){
+    vec3 p = v_world + pl_world_up(v_world, u_curve) * u_fc_alt;
+    vec3 wp = p; wp.xz += u_fc_wind * u_fc_time;
+    vec4 sn = texture(u_fc_shape, wp * 0.06);
+    float fbm = sn.g*0.625 + sn.b*0.25 + sn.a*0.125;
+    float shape = clamp((sn.r - (fbm - 1.0)) / max(2.0 - fbm, 1e-3), 0.0, 1.0);
+    float cc = clamp((shape - (1.0 - u_fc_cov)) / max(u_fc_cov, 1e-3), 0.0, 1.0);
+    vec3 cloud = u_sun_color * u_sun_i * 0.5 * (0.55 + 0.45 * NdL) * day_f
+               + mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient * day_f;
+    col = mix(col, cloud, cc * 0.85);
+  }
   float fog_f; vec3 fog_c;
   // the fog's day factor reads the sun's elevation from its y: a sun
   // inside the world is overhead, whichever way it lies from this point
@@ -590,7 +655,7 @@ void main(){
     float R = max(u_curve, 1e-6);
     vec3 up_cam = pl_world_up_at(u_cam, R);
     vec3 up_far = pl_world_up_at(v_world, R);
-    float cam_h = R - length(pl_world_centre_at(u_cam, R) - u_cam); // the camera's height over the inside ground
+    float cam_h = pl_world_alt(u_cam, R); // the camera's height over the ground, inside or out
     float od_near = exp(-falloff * max(cam_h - level, 0.0)) / (falloff * max(abs(dot(dir, up_cam)), 0.02)) * dens;
     float od_far = exp(-falloff * max(proc - level, 0.0)) / (falloff * max(abs(dot(dir, up_far)), 0.02)) * dens;
     fog_f = clamp(1.0 - exp(-od_near - od_far), 0.0, 1.0);

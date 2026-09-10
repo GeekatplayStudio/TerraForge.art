@@ -33,6 +33,16 @@ ANIM_TOOLS: Dict[str, Dict[str, Any]] = {
                        "static again.",
         "params": {**_ADDR, "frame": "float", "time": "float"},
     },
+    "studio_remove_track": {
+        "description": "Delete the whole track of the addressed property: "
+                       "every key, so it is static again.",
+        "params": {**_ADDR},
+    },
+    "studio_set_interp": {
+        "description": "Change one key's interpolation (bezier|linear|step) "
+                       "and ease (in|out|inout) on the addressed track.",
+        "params": {**_ADDR, "frame": "float", "time": "float", "interp": "str", "ease": "str"},
+    },
     "studio_remove_animation": {
         "description": "Remove every key, modifier and expression from the "
                        "addressed track(s) so the property is static.",
@@ -152,6 +162,8 @@ ANIM_TOOLS: Dict[str, Dict[str, Any]] = {
 ANIM_SIMPLE = {
     "studio_set_key": "set_key",
     "studio_remove_key": "remove_key",
+    "studio_remove_track": "remove_track",
+    "studio_set_interp": "set_interp",
     "studio_remove_animation": "remove_animation",
     "studio_keys": "keys",
     "studio_set_frame": "set_frame",

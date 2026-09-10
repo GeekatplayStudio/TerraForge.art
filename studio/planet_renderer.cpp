@@ -65,6 +65,10 @@ static std::vector<int> g_lod_state;
 
 // ------------------------------------------------------------------- helpers
 extern int g_aov; // renderer_aov.cpp: which render pass is being drawn
+// one object's stack of infinite layers as uniforms (below); `side`
+// (world_shape.hpp) keeps only the home world's layers on that face
+int upload_layers(GLuint prog, int planet_idx, float amp_scale, float field_strength,
+                  int side = 0);
 
 static void puni3(GLuint p, const char *n, const float *v) {
   glUniform3fv(uniform_location(p, n), 1, v);
@@ -100,7 +104,7 @@ static GLuint pl_compile(GLenum type, const std::string &src) {
 // because pl_height calls gpx_surface_field and GLSL has no forward
 // declarations to lean on. Each shader stage is its own translation unit, so
 // each gets its own copy; duplicates only collide within a stage.
-static std::string pl_inject(const char *src, const std::string &glsl) {
+std::string pl_inject(const char *src, const std::string &glsl) {
   std::string body = gpx::field_glsl_prelude();
   body += glsl.empty() ? std::string(PL_FIELD_STUB)
                        : gpx::field_glsl_strip_prelude(glsl);
@@ -129,8 +133,8 @@ void upload_fog_uniforms(unsigned prog, const RenderSettings &RS, bool atmospher
 // Link and say so when it fails. The built-in shaders are known good; a
 // generated one is written by the user's graph and can genuinely fail, and an
 // unlinked planet program draws nothing at all - the worst way to find out.
-static GLuint pl_link_checked(const char *vs, const char *fs,
-                              const std::string &glsl, std::string &err) {
+GLuint pl_link_checked(const char *vs, const char *fs,
+                       const std::string &glsl, std::string &err) {
   GLuint p = glCreateProgram();
   GLuint v = pl_compile(GL_VERTEX_SHADER, pl_inject(vs, glsl));
   GLuint f = pl_compile(GL_FRAGMENT_SHADER, pl_inject(fs, glsl));
@@ -322,8 +326,8 @@ bool planet_renderer_init() {
 
 // upload one object's stack of infinite layers as shader uniforms; `side`
 // (world_shape.hpp) keeps only the home world's layers on that face
-static int upload_layers(GLuint prog, int planet_idx, float amp_scale,
-                         float field_strength, int side = 0) {
+int upload_layers(GLuint prog, int planet_idx, float amp_scale,
+                  float field_strength, int side) {
   SceneState &sc = scene();
   std::vector<int> layers = scene_surface_layers(planet_idx);
   const RenderSettings &rsw = render_settings();
@@ -501,30 +505,66 @@ void infinite_draw(const InfiniteFrame &f) {
   glBindTexture(GL_TEXTURE_2D, f.tex_albedo);
   punii(prog_inf, "u_albedo", 1);
   punii(prog_inf, "u_has_albedo", f.tex_albedo ? 1 : 0);
+  // the far shell's cloud band (FS_INF): the sky's own cloud shape
+  punii(prog_inf, "u_fc_on", (f.clouds_on && f.tex_cloud_shape) ? 1 : 0);
+  glActiveTexture(GL_TEXTURE2);
+  glBindTexture(GL_TEXTURE_3D, f.tex_cloud_shape);
+  punii(prog_inf, "u_fc_shape", 2);
+  puni1(prog_inf, "u_fc_cov", f.cloud_cov);
+  puni1(prog_inf, "u_fc_alt", f.cloud_alt);
+  puni1(prog_inf, "u_fc_time", f.cloud_time);
+  glUniform2f(uniform_location(prog_inf, "u_fc_wind"), f.cloud_wind[0], f.cloud_wind[1]);
   // Once per face of the world that has ground on it (world_shape.hpp):
   // the world's own face always, the other one when a layer stands there.
   // Each face gets its shape, its layers and the holes of its own tiles;
   // an inside face is followed by the far shell, the whole shape seen
   // from within, lit toward a sun inside when there is one.
+  // A thick ring or flat world is a body (world_shape.hpp): its other face
+  // is drawn even with nothing standing on it - a bare crust at the
+  // thickness below, no relief, no water - and the rim between the faces
+  // follows (planet_rim.cpp). A flat world is cut to its outline in the
+  // fragment stage, and wider than the surround it gets the far grid too,
+  // spread flat out to its edge.
   const RenderSettings &rsw = render_settings();
   const float amp_scale = amp / std::max(f.height_scale, 1e-4f);
   const float field_strength = sp.glsl.empty() ? 0.f : sp.strength;
+  const bool flat = world_is_flat(rsw);
+  const bool body = world_has_body(rsw);
+  punii(prog_inf, "u_world_outline", rsw.world_outline);
   for (int side : {SIDE_OUTSIDE, SIDE_INSIDE}) {
     const gpx::planet::Shape S = world_shape(rsw, side);
     upload_world_shape(prog_inf, S);
     upload_terrain_xform_inverse(prog_inf, side); // the holes and the border blend follow the tiles
-    if (upload_layers(prog_inf, -1, amp_scale, field_strength, side) == 0) continue;
+    const bool body_face = body && side == world_other_side(rsw);
+    const int nl = upload_layers(prog_inf, -1, amp_scale, field_strength, side);
+    if (nl == 0 && !body_face) continue;
+    // a bare crust: flat at the other face's level, no sea on it, and none
+    // of the tile's grit - unlit and without relief, the micro-relief's
+    // normals were the only thing on it and read as a pattern
+    puni1(prog_inf, "u_base", nl == 0 ? 0.f : f.base_height);
+    puni1(prog_inf, "u_wl", nl == 0 ? -1.0e9f : f.water_level);
+    puni1(prog_inf, "u_frac_amount", nl == 0 ? 0.f : f.frac_amount);
     punii(prog_inf, "u_sun_mode", (rsw.world_sun_inside && S.inside) ? 1 : 0);
     puni1(prog_inf, "u_shell_w", rsw.world_width);
     punii(prog_inf, "u_shell", 0);
     glBindVertexArray(inf_vao);
     glDrawElements(GL_TRIANGLES, inf_count, GL_UNSIGNED_INT, nullptr);
-    if (gpx::planet::shape_faces_centre(S) && f.planet_radius > 0.f) {
+    // the far grid: the whole shape for a face that faces the centre or
+    // for a body's other face, the rest of a flat world past the surround
+    // ... and an outside face once the eye is up off the ground: the
+    // world from above and from space, and no edge to the surround
+    const bool aloft = f.eye[1] > 1.0f || std::fabs(f.eye[0] - 0.5f) > 20.f || std::fabs(f.eye[2] - 0.5f) > 20.f;
+    const bool far_shell = flat ? rsw.world_width > 58.f
+                                : (f.planet_radius > 0.f &&
+                                   (gpx::planet::shape_faces_centre(S) || body_face ||
+                                    (nl > 0 && aloft)));
+    if (far_shell) {
       punii(prog_inf, "u_shell", 1);
       glBindVertexArray(shell_vao);
       glDrawElements(GL_TRIANGLES, shell_count, GL_UNSIGNED_INT, nullptr);
     }
   }
+  if (body) planet_rim_draw(f, shell_vao, shell_count);
 }
 
 } // namespace studio

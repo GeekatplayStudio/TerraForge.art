@@ -1141,6 +1141,92 @@ static void test_planet_math() {
               !shape_faces_centre(Shape{false, false, true, true}),
           "the face that faces the centre is inside xor flip");
   }
+
+  // ---- a thick world: the other face at its own radius, the thickness below
+  {
+    float p[3], q[3];
+    // a thickness leaves the world's own face exactly where it was
+    for (Shape S : {Shape{}, shape_ring(), shape_dyson(), shape_flat()}) {
+      Shape T = S;
+      T.thick = 0.3f;
+      sphere_place(0.8f, 0.3f, 0.07f, 1275.f, S, p);
+      sphere_place(0.8f, 0.3f, 0.07f, 1275.f, T, q);
+      CHECK(p[0] == q[0] && p[1] == q[1] && p[2] == q[2], "the thickness does not move the world's own face");
+    }
+    // a globe's inner crust: the tile's twin sits the thickness below, and
+    // its points are R - thick from the centre
+    Shape crust{false, false, false, true};
+    crust.thick = 0.3f;
+    sphere_place(0.5f, 0.5f, 0.f, 1275.f, crust, p);
+    CHECK(std::fabs(p[0] - 0.5f) < 1e-6f && std::fabs(p[1] + 0.3f) < 1e-6f && std::fabs(p[2] - 0.5f) < 1e-6f,
+          "the inner crust under the tile is the thickness below");
+    sphere_place(1.f, 0.7f, 0.f, 1275.f, crust, p);
+    {
+      const float dx = p[0] - 0.5f, dy = p[1] + 1275.f, dz = p[2] - 0.5f;
+      const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+      CHECK(std::fabs(d - (1275.f - 0.3f)) < 2e-3f, "the inner crust is R - thick from the centre");
+    }
+    // a ring's outside: R + thick from the axis, heights going outward
+    Shape ring_out = shape_ring();
+    ring_out.flip = true;
+    ring_out.thick = 0.3f;
+    sphere_place(0.9f, 0.5f, 0.f, 2.f, ring_out, p);
+    sphere_place(0.9f, 0.5f, 0.1f, 2.f, ring_out, q);
+    {
+      const float d0 = std::sqrt((p[0] - 0.5f) * (p[0] - 0.5f) + (p[1] - 2.f) * (p[1] - 2.f));
+      const float d1 = std::sqrt((q[0] - 0.5f) * (q[0] - 0.5f) + (q[1] - 2.f) * (q[1] - 2.f));
+      CHECK(std::fabs(d0 - 2.3f) < 1e-5f, "a ring's outside is R + thick from the axis");
+      CHECK(d1 > d0 + 0.05f, "and its heights rise away from the axis");
+      CHECK(p[2] == 0.5f, "along the ring's width it stays where it was");
+    }
+    // a flat world's underside: the thickness below, heights the other way
+    Shape under_flat = shape_flat();
+    under_flat.flip = true;
+    under_flat.thick = 0.25f;
+    sphere_place(0.3f, 0.7f, 0.05f, 0.f, under_flat, p);
+    CHECK(p[0] == 0.3f && std::fabs(p[1] + 0.30f) < 1e-6f && p[2] == 0.7f,
+          "a flat world's underside is the thickness below with the heights reversed");
+    sphere_place(0.3f, 0.7f, 0.05f, 1275.f, under_flat, q);
+    CHECK(p[0] == q[0] && p[1] == q[1] && p[2] == q[2], "a flat world ignores the radius on both faces");
+    // altitude and up over the surface: what the air is measured from
+    Shape ring = shape_ring();
+    const float at[3] = {0.5f, 0.4f, 0.5f};
+    CHECK(std::fabs(world_alt(at, 2.f, ring) - 0.4f) < 1e-6f, "over the tile, altitude is world y");
+    const float far_side[3] = {0.5f, 4.f - 0.4f, 7.f};
+    CHECK(std::fabs(world_alt(far_side, 2.f, ring) - 0.4f) < 1e-6f,
+          "on a ring the far side's air is the same height over its ground");
+    float up[3];
+    world_up(far_side, 2.f, ring, up);
+    CHECK(std::fabs(up[1] + 1.f) < 1e-6f, "and up there points back toward the axis");
+    world_up(at, 2.f, Shape{}, up);
+    CHECK(up[0] == 0.f && up[1] == 1.f && up[2] == 0.f, "over the tile of a globe, up is up exactly");
+    CHECK(world_alt(at, 0.f, Shape{}) == 0.4f && world_alt(at, 2.f, shape_flat()) == 0.4f,
+          "a flat world's altitude is world y");
+  }
+
+  // ---- craters (layer type 4): bounded, deterministic, seeded, with bowls
+  {
+    Layer C;
+    C.type = 4;
+    C.seed = 9;
+    C.frequency = 3.f;
+    float lo = 1e9f, hi = -1e9f, sum = 0.f;
+    int n = 0, same = 0, differ = 0;
+    Layer C2 = C;
+    C2.seed = 10;
+    for (int i = 0; i < 400; ++i) {
+      const float a = (float)i * 0.61803f * 6.2831853f, b = std::acos(1.f - 2.f * ((float)i + 0.5f) / 400.f);
+      const float d[3] = {std::sin(b) * std::cos(a), std::cos(b), std::sin(b) * std::sin(a)};
+      const float h = heightf(d, &C, 1, 8.f), h2 = heightf(d, &C, 1, 8.f), h3 = heightf(d, &C2, 1, 8.f);
+      CHECK(std::isfinite(h) && h >= -0.5f && h <= 0.5f, "a crater height is finite and within the layer range");
+      if (h == h2) ++same;
+      if (h != h3) ++differ;
+      lo = std::min(lo, h); hi = std::max(hi, h); sum += h; ++n;
+    }
+    CHECK(same == n, "craters are deterministic");
+    CHECK(differ > n / 2, "another seed is another moon");
+    CHECK(lo < -0.02f && hi > 0.005f, "craters have bowls below and rims above the ground");
+  }
 }
 
 // ---------------------------------------------------------- field domain

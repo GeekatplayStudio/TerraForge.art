@@ -65,6 +65,18 @@ std::string inject_sky(const char *src) {
     extern const char *const INSTANCE_FN; // shaders_scene.cpp
     sub("INSTANCE_FN_PLACEHOLDER", INSTANCE_FN);
   }
+  {
+    // Deep space is four files and an entry (shaders_space.cpp), spliced in
+    // dependency order because GLSL has no forward declarations: the stars
+    // call what the common chunk defines, the band calls the stars, the
+    // nebulas call the band, and space_color() calls all three.
+    std::string space = SPACE_COMMON_FN;
+    space += SPACE_STARS_FN;
+    space += SPACE_GAL_FN;
+    space += SPACE_NEB_FN;
+    space += SPACE_ENTRY_FN;
+    sub("SPACE_FN_PLACEHOLDER", space.c_str());
+  }
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
   sub("WATER_FN_PLACEHOLDER", WATER_FN_GLSL);

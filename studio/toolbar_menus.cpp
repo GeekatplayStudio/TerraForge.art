@@ -19,6 +19,7 @@
 //    another one, because a command that needs its workspace should switch to
 //    it rather than quietly do nothing.
 #include "ai_describe.hpp"
+#include "render_presets.hpp"
 #include "wheel_widgets.hpp"
 #include "anim_widgets.hpp"
 #include "app.hpp"
@@ -270,6 +271,56 @@ void menu_render(App &a) {
   }
   item_help("Renders through the active camera with its own engine,\n"
             "resolution and sample settings.");
+  // the presets: apply one, render with one, make one, drop one
+  if (ImGui::BeginMenu("Render presets")) {
+    SceneState &scp = scene();
+    const int cam = scene_active_camera();
+    const bool has_cam = cam >= 0 && cam < (int)scp.objects.size() &&
+                         scp.objects[(size_t)cam].type == SceneObject::Camera;
+    std::string to_delete;
+    for (const RenderPreset &p : scp.render_presets) {
+      char line[160];
+      snprintf(line, sizeof line, "%s  (%dx%d, %d spp)", p.name.c_str(), p.assign.width,
+               p.assign.height, p.assign.samples);
+      if (ImGui::BeginMenu(line)) {
+        if (ImGui::MenuItem("Apply to the active camera", nullptr, false, has_cam))
+          render_preset_apply(p.name, scp.objects[(size_t)cam].cam.render);
+        if (ImGui::MenuItem("Render the active camera with it", nullptr, false, has_cam)) {
+          render_preset_apply(p.name, scp.objects[(size_t)cam].cam.render);
+          a.request_camera_render = cam;
+          go(a, WS_RENDER);
+        }
+        if (ImGui::MenuItem("Apply to every camera"))
+          for (int i : scene_camera_indices()) render_preset_apply(p.name, scp.objects[(size_t)i].cam.render);
+        if (ImGui::MenuItem("Render every camera with it (batch)")) {
+          render_batch_queue(a, scene_camera_indices(), p.name);
+          go(a, WS_RENDER);
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("Delete preset")) to_delete = p.name;
+        ImGui::EndMenu();
+      }
+    }
+    if (!to_delete.empty()) render_preset_delete(to_delete);
+    if (scp.render_presets.empty()) ImGui::TextDisabled("no presets yet");
+    ImGui::Separator();
+    if (ImGui::MenuItem("Save the active camera's settings as a new preset", nullptr, false, has_cam)) {
+      const std::string nm = render_preset_free_name();
+      render_preset_upsert(nm, scp.objects[(size_t)cam].cam.render);
+      scp.objects[(size_t)cam].cam.render.preset = nm;
+      a.status = "render preset '" + nm + "' saved - rename it in the Render tab";
+    }
+    item_help("Presets are saved with the project. The Render tab names\n"
+              "and edits them; a camera's properties apply one.");
+    ImGui::EndMenu();
+  }
+  if (IconMenuItem(Icon::Render, "Render every camera (batch)")) {
+    render_batch_queue(a, scene_camera_indices(), std::string());
+    go(a, WS_RENDER);
+  }
+  item_help("Every camera in turn, each with its own assignment and\n"
+            "its own file; a camera still on the default file gets one\n"
+            "named after it.");
   if (IconMenuItem(Icon::Scene, "Preview render panel", a.show_preview))
     a.show_preview = !a.show_preview;
   item_help("The progressive render, updating as the scene changes.");

@@ -53,6 +53,14 @@ const std::vector<ComponentKind> &component_kinds() {
        "A procedural surface with no edge: a planet's ground, or a layer of\n"
        "relief on it."},
       {"planet", "Planet", "Terrain", "A whole world in the sky, with its own infinite terrain."},
+      {"moon", "Moon", "Space", "A small airless cratered world in the sky."},
+      {"nebula", "Nebula", "Space",
+       "A cloud of glowing gas in deep space, seen where the atmosphere lets\n"
+       "space through: at night, from high up, beyond a ring's rim."},
+      {"dark_nebula", "Dark nebula", "Space", "A cloud of dust that hides the stars behind it."},
+      {"galaxy", "Spiral galaxy", "Space", "A spiral galaxy: arms, a bulge, dust lanes, tilted as you like."},
+      {"elliptical_galaxy", "Elliptical galaxy", "Space", "A smooth glow of old stars."},
+      {"planetary_nebula", "Planetary nebula", "Space", "A ring of gas round a dying star."},
       {"atmosphere", "Atmosphere", "Atmosphere",
        "An Atmosphere settings node: sky colours, density, ambient, fog - the\n"
        "environment as a node you can wire cloud layers into."},
@@ -148,6 +156,20 @@ bool component_add(App &a, const std::string &kind, const std::string &name,
   if (kind == "planet") {
     undo_push(a, "Add planet");
     return select(scene_add_planet(name));
+  }
+  if (kind == "moon") {
+    undo_push(a, "Add moon");
+    return select(scene_add_moon(name));
+  }
+  {
+    // deep space (scene.hpp NebulaData): the kind names the type
+    static const struct { const char *kind; int type; } NEB[] = {
+        {"nebula", 0}, {"dark_nebula", 1}, {"galaxy", 2}, {"elliptical_galaxy", 3}, {"planetary_nebula", 4}};
+    for (const auto &k : NEB)
+      if (kind == k.kind) {
+        undo_push(a, "Add nebula");
+        return select(scene_add_nebula(name, k.type));
+      }
   }
   if (kind == "light") {
     undo_push(a, "Add light");

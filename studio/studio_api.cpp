@@ -118,6 +118,46 @@ static void publish_state(App &a) {
                        {"visible", sc.object_visible(o)}});
   }
   j["planets"] = planets;
+  json nebulas = json::array();
+  for (int i = 0; i < (int)sc.objects.size(); ++i) {
+    const SceneObject &o = sc.objects[i];
+    if (o.type != SceneObject::Nebula) continue;
+    const NebulaData &N = o.nebula;
+    nebulas.push_back({{"index", i}, {"name", o.name}, {"type", N.type},
+                       {"azimuth", N.azimuth}, {"elevation", N.elevation},
+                       {"size_deg", N.size_deg}, {"brightness", N.brightness},
+                       {"seed", N.seed}, {"visible", sc.object_visible(o)}});
+  }
+  j["nebulas"] = nebulas;
+  j["space"] = {{"on", rs.space.on},
+                {"brightness", rs.space.brightness},
+                {"realism", rs.space.realism},
+                {"glow", rs.space.glow},
+                {"quality", rs.space.quality},
+                {"star_spikes", rs.space.star_spikes},
+                {"star_halo", rs.space.star_halo},
+                {"star_clump", rs.space.star_clump},
+                {"galaxy_grain", rs.space.galaxy_grain},
+                {"stars", rs.space.stars}, {"star_density", rs.space.star_density},
+                {"star_brightness", rs.space.star_brightness}, {"star_size", rs.space.star_size},
+                {"star_temperature", rs.space.star_temperature}, {"star_seed", rs.space.star_seed},
+                {"galaxy", rs.space.galaxy_on}, {"galaxy_intensity", rs.space.galaxy_intensity},
+                {"galaxy_width", rs.space.galaxy_width}, {"galaxy_yaw", rs.space.galaxy_yaw},
+                {"galaxy_pitch", rs.space.galaxy_pitch}, {"galaxy_core", rs.space.galaxy_core},
+                {"galaxy_dust", rs.space.galaxy_dust}, {"galaxy_seed", rs.space.galaxy_seed},
+                {"atmosphere_height", rs.atmosphere_height}};
+  j["world"] = {{"shape", world_shape_name(rs.world_shape)}, {"inside", rs.world_inside},
+                {"width", rs.world_width}, {"sun_inside", rs.world_sun_inside},
+                {"thickness", rs.world_thickness}, {"outline", world_outline_name(rs.world_outline)},
+                {"planet_radius", rs.planet_radius}, {"atmosphere_height", rs.atmosphere_height}};
+  {
+    json presets = json::array();
+    for (const RenderPreset &p : sc.render_presets)
+      presets.push_back({{"name", p.name}, {"engine", p.assign.engine}, {"width", p.assign.width},
+                         {"height", p.assign.height}, {"samples", p.assign.samples}});
+    j["render_presets"] = presets;
+    j["render_queue"] = (int)a.render_queue.size();
+  }
   j["sun"] = {{"azimuth_deg", rs.sun_azimuth},
               {"altitude_deg", rs.sun_altitude},
               {"intensity", rs.sun_intensity},
@@ -193,6 +233,9 @@ static void publish_state(App &a) {
                    {"world_inside", rs.world_inside},
                    {"world_width", rs.world_width},
                    {"world_sun_inside", rs.world_sun_inside},
+                   {"world_thickness", rs.world_thickness},
+                   {"world_outline", world_outline_name(rs.world_outline)},
+                   {"place_mode", rs.place_mode},
                    {"fractal_detail", rs.fractal_detail},
                    {"field_displacement", rs.field_displacement},
                    {"wireframe", rs.wireframe},

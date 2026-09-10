@@ -20,6 +20,7 @@
 #include "graph_lease.hpp"
 #include "paint_canvas.hpp"
 #include "render_settings.hpp"
+#include "scene.hpp"
 #include "undo.hpp"
 #include "world_shape.hpp"
 #include <algorithm>
@@ -318,8 +319,8 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     const json &v = act["world_shape"];
     const int shape = v.is_string() ? world_shape_from_name(v.get<std::string>().c_str())
                                     : v.get<int>();
-    if (shape != WORLD_GLOBE && shape != WORLD_RING) {
-      err = "world_shape is globe or ring";
+    if (shape != WORLD_GLOBE && shape != WORLD_RING && shape != WORLD_FLAT) {
+      err = "world_shape is globe, ring or flat";
       return 0;
     }
     rs.world_shape = shape;
@@ -328,6 +329,20 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_b(act, "world_inside", rs.world_inside);
   n += take_f(act, "world_width", rs.world_width, 1.f, 1e9f);
   n += take_b(act, "world_sun_inside", rs.world_sun_inside);
+  // the world as a body: its thickness, and a flat world's outline
+  n += take_f(act, "world_thickness", rs.world_thickness, 0.f, 1e9f);
+  n += take_f(act, "atmosphere_height", rs.atmosphere_height, 0.f, 1e9f);
+  if (act.contains("world_outline")) {
+    const json &v = act["world_outline"];
+    const int outline = v.is_string() ? world_outline_from_name(v.get<std::string>().c_str())
+                                      : v.get<int>();
+    if (outline != OUTLINE_DISC && outline != OUTLINE_SQUARE) {
+      err = "world_outline is disc or square";
+      return 0;
+    }
+    rs.world_outline = outline;
+    ++n;
+  }
   // placing the tile on the planet (studio/planet_place.cpp)
   n += take_b(act, "place_on_planet", rs.place_on_planet);
   n += take_f(act, "place_edge", rs.place_edge, 0.f, 0.5f);
@@ -335,7 +350,7 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_f(act, "place_presence", rs.place_presence, 0.001f, 1.f);
   n += take_f(act, "place_ground", rs.place_ground, -1.f, 2.f);
   n += take_f(act, "place_gradient", rs.place_gradient, 0.05f, 8.f);
-  n += take_i(act, "place_mode", rs.place_mode, 0, 2);
+  n += take_i(act, "place_mode", rs.place_mode, 0, 4);
   n += take_f(act, "fractal_detail", rs.fractal_detail, 0.f, 1.f);
   n += take_f(act, "fractal_scale", rs.fractal_scale, 0.1f, 4096.f);
   n += take_f(act, "field_displacement", rs.field_displacement, -8.f, 8.f);
@@ -376,6 +391,54 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   // every other display option but not this one, so no automated check could
   // ever confirm that "solid" actually stops shading with the material - and
   // that is precisely where the bug was.
+  // one view's own switches (the gear menu's): which camera it looks through,
+  // its projection, curvature and overlays. `view` is 1-based; the focused
+  // view when omitted.
+  {
+    const int slot = std::clamp(act.value("view", a.view_focus + 1) - 1, 0, RenderSettings::MAX_VIEWS - 1);
+    RenderSettings::ViewConfig &vc = rs.views[slot];
+    if (act.contains("scene_camera")) {
+      const json &v = act["scene_camera"];
+      int idx = -3;
+      if (v.is_number()) idx = v.get<int>();
+      else if (v.is_string()) {
+        const std::string want = v.get<std::string>();
+        if (want == "free" || want == "orbit") idx = -1;
+        else if (want == "active") idx = -2;
+        else
+          for (int i = 0; i < (int)scene().objects.size(); ++i)
+            if (scene().objects[(size_t)i].type == SceneObject::Camera && scene().objects[(size_t)i].name == want) idx = i;
+      }
+      if (idx < -2 || idx >= (int)scene().objects.size()) {
+        err = "set_viewport: scene_camera is a camera name, 'active' or 'free'";
+        return 0;
+      }
+      vc.camera = 0;
+      vc.scene_camera = idx;
+      ++n;
+    }
+    if (act.contains("projection")) {
+      const json &v = act["projection"];
+      int p = -1;
+      if (v.is_number()) p = v.get<int>();
+      else if (v.is_string()) {
+        std::string t = v.get<std::string>();
+        for (auto &c : t) c = (char)tolower(c);
+        p = t.rfind("persp", 0) == 0 ? 0 : t == "top" ? 1 : t == "front" ? 2 : t == "right" ? 3 : -1;
+      }
+      if (p < 0 || p > 3) {
+        err = "set_viewport: projection is perspective, top, front or right";
+        return 0;
+      }
+      vc.camera = p;
+      ++n;
+    }
+    n += take_b(act, "curved", vc.curved);
+    n += take_b(act, "atmosphere", vc.atmosphere);
+    n += take_b(act, "water", vc.show_water_view);
+    n += take_b(act, "grid", vc.grid);
+    n += take_b(act, "outlines", vc.outlines);
+  }
   if (act.contains("shading")) {
     const json &v = act["shading"];
     int mode = -1;
@@ -392,7 +455,8 @@ int ai_view_op(App &a, const std::string &op, const json &act,
       err = "set_viewport: shading is 0..3, or wireframe/solid/textured/ids";
       return 0;
     }
-    int view = act.value("view", -1); // -1 = every view
+    // `view` is 1-based like every other view op (View 1 is 1); omitted = every view
+    int view = act.value("view", 0) - 1;
     for (int i = 0; i < RenderSettings::MAX_VIEWS; ++i)
       if (view < 0 || view == i) rs.views[i].display = mode;
     ++n;

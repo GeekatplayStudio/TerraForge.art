@@ -134,6 +134,39 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
       if (cams.empty()) ImGui::TextDisabled("no cameras in the scene");
       ImGui::EndCombo();
     }
+    // This view's point of view into a camera - a new one, or one there is
+    // - and a camera into this view, linked or copied.
+    ImGui::SetNextItemWidth(W);
+    if (ImGui::BeginCombo("##view2cam", "Save this view as camera...")) {
+      std::string err;
+      if (ImGui::Selectable("New camera")) view_to_camera(a, slot, -1, "", false, err);
+      for (int i : cams)
+        if (ImGui::Selectable((scn.objects[(size_t)i].name + "##v2c" + std::to_string(i)).c_str()))
+          view_to_camera(a, slot, i, "", false, err);
+      ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Where this view looks from and at, written into a camera:\n"
+                        "a new one, or one that exists.");
+    ImGui::SetNextItemWidth(W);
+    if (ImGui::BeginCombo("##cam2view", "Look through camera here...")) {
+      for (int i : cams)
+        if (ImGui::Selectable((scn.objects[(size_t)i].name + "##c2v" + std::to_string(i)).c_str()))
+          camera_to_view(a, i, slot, true);
+      if (cams.empty()) ImGui::TextDisabled("no cameras in the scene");
+      ImGui::EndCombo();
+    }
+    ImGui::SetNextItemWidth(W);
+    if (ImGui::BeginCombo("##cam2free", "Move the free view to camera...")) {
+      for (int i : cams)
+        if (ImGui::Selectable((scn.objects[(size_t)i].name + "##c2f" + std::to_string(i)).c_str()))
+          camera_to_view(a, i, slot, false);
+      if (cams.empty()) ImGui::TextDisabled("no cameras in the scene");
+      ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The free orbit takes that camera's eye and target and\n"
+                        "stays free - the camera itself is not moved.");
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Opens another viewport beside this one, locked to that\n"
                         "camera's eye. Right-click any viewport for this menu.");

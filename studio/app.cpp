@@ -176,6 +176,7 @@ void run_main() {
     static int last_workspace = -1;
     if (last_workspace != a.workspace) {
       if (last_workspace >= 0) workspace_layout_switch(a, last_workspace, a.workspace);
+      else workspace_layout_restore(a, a.workspace); // the first frame: where it was left
       last_workspace = a.workspace;
     }
 

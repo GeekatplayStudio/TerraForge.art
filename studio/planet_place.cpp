@@ -214,6 +214,13 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   const float grad = std::clamp(s.gradient, 0.05f, 8.f);
   const bool whole = s.mode >= 1;
   const bool zero_edge = s.mode == 2;
+  // Clipping: the tile stands only where it is higher (mode 3, +1) or lower
+  // (mode 4, -1) than the planet's own ground; the other way the planet
+  // shows. The height is a hard max/min, so the join is where the two
+  // surfaces cross and nothing is dented near it; the material weight
+  // fades over `presence` either side of the crossing, so the tile's
+  // texture does not end on a hairline.
+  const int clip = s.mode == 3 ? 1 : (s.mode == 4 ? -1 : 0);
   const gpx::Heightmap *mask = s.mask && !s.mask->empty() ? s.mask.get() : nullptr;
   gpx::parallel_rows(h, [&](int y0, int y1) {
     for (int y = y0; y < y1; ++y) {
@@ -258,7 +265,14 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
         const float pbs = ground + smooth[i];
         const float seat = pb + (pbs - pb) * flat;
         const float feature = seat + (tile.v[i] - tile_ground);
-        outm.v[i] = pb + (feature - pb) * wgt;
+        if (clip != 0) {
+          // where the tile loses, the planet is what stands there
+          const float kept = clip > 0 ? std::max(feature, pb) : std::min(feature, pb);
+          outm.v[i] = pb + (kept - pb) * wgt;
+          wgt *= smoothstep01(0.f, pw, (feature - pb) * (float)clip);
+        } else {
+          outm.v[i] = pb + (feature - pb) * wgt;
+        }
         res.weight.v[i] = wgt;
       }
     }

@@ -87,8 +87,17 @@ struct InfiniteFrame {
   float frac_scale = 1.f;
   float tile_octf = 9.f;
   float time = 0.f; // the animation clock, for the water's waves
+  // the far shell's cloud band: the sky pass's shape texture and the
+  // main layer's coverage, altitude (its middle), wind and clock
+  unsigned tex_cloud_shape = 0;
+  bool clouds_on = false;
+  float cloud_cov = 0.f, cloud_alt = 0.f, cloud_time = 0.f;
+  float cloud_wind[2] = {0.f, 0.f};
 };
 void infinite_draw(const InfiniteFrame &f);
+// the rim of a thick ring or flat world - the wall between its two faces
+// (planet_rim.cpp); drawn by infinite_draw with the far grid it hands over
+void planet_rim_draw(const InfiniteFrame &f, unsigned grid_vao, int grid_count);
 bool infinite_layers_present(); // any visible root-level InfiniteSurface?
 
 // ray test against the planets; returns scene object index or -1

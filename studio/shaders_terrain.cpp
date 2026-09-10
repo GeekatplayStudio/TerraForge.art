@@ -166,13 +166,14 @@ bool patch_visible(vec2 c0, vec2 c2){
   // a small planet wraps the tile round itself; no box bound holds there,
   // so every patch is drawn (the tile is a globe a few pixels across anyway)
   if (u_cull_radius > 0.0 && u_cull_radius < 4.0) return true;
-  if (u_cull_radius > 0.0){
+  // the other face of the shell: its heights go the other way, and it lies
+  // the shell's thickness below the ground - flat worlds included
+  if (u_world_shape.w > 0.5){ float t = ylo; ylo = -yhi - u_world_thick; yhi = -t - u_world_thick; }
+  if (u_cull_radius > 0.0 && !pl_world_flat()){
     // the surface falls away as r^2/(2R) from the tile's centre (the sphere
     // sits under it): nearest point lowers the box top, furthest corner
     // lowers its bottom
     vec2 ctr = vec2(0.5);
-    // the other face of the shell: its heights go the other way
-    if (u_world_shape.w > 0.5){ float t = ylo; ylo = -yhi; yhi = -t; }
     // a flat axis (a ring world's z) contributes no drop (world_shape.hpp)
     vec2 curved = vec2(u_world_shape.x > 0.5 ? 0.0 : 1.0, u_world_shape.y > 0.5 ? 0.0 : 1.0);
     vec2 d_near = max(max(lo_uv - ctr, vec2(0.0)), ctr - hi_uv) * curved;
@@ -361,9 +362,14 @@ bool bd_uv(vec3 d, out vec2 uv){
   if (u_bd_flip == 1) uv.x = 1.0 - uv.x;
   return true;
 }
+// The sky's up: the world's surface's up at the eye (world_shape.hpp). Every
+// program starts with world y - dot(dir, (0,1,0)) is dir.y to the bit - and
+// the sky pass sets it from the world's shape, so on a ring the gradient
+// stands over the ring's ground and not over the tile's y axis.
+vec3 g_sky_up = vec3(0.0, 1.0, 0.0);
 vec3 sky_color(vec3 dir, vec3 zenith_c, vec3 horizon_c, vec3 sun, vec3 sun_col,
                float atmo){
-  float t = clamp(dir.y*0.5+0.5, 0.0, 1.0);
+  float t = clamp(dot(dir, g_sky_up)*0.5+0.5, 0.0, 1.0);
   vec3 col = mix(horizon_c, zenith_c, pow(t, 0.7/max(atmo,0.05)));
   float low = 1.0 - clamp(sun.y*3.0, 0.0, 1.0);
   col = mix(col, col * vec3(1.15,0.85,0.65), low*0.5*atmo);

@@ -7,6 +7,8 @@
 #include "console.hpp"
 #include "cloud_noise.hpp"
 #include "planet_renderer.hpp"
+#include "renderer_space.hpp"
+#include "world_shape.hpp"
 #include "scene.hpp"
 #include "gpu_timer.hpp"
 #include "terrain_cull.hpp"
@@ -131,6 +133,13 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     uni3(prog_sky, "u_sky_zenith", RS.sky_zenith);
     uni3(prog_sky, "u_sky_horizon", RS.sky_horizon);
     uni1(prog_sky, "u_atmo", RS.atmosphere_density);
+    uni1(prog_sky, "u_atm_h", RS.atmosphere_height);
+    upload_world_shape(prog_sky, world_shape(RS));
+    uni1(prog_sky, "u_world_r", RS.planet_radius);
+    uni1(prog_sky, "u_world_w", RS.world_width);
+    unii(prog_sky, "u_world_outline", RS.world_outline);
+    unii(prog_sky, "u_sun_mode", (RS.world_sun_inside && RS.world_inside) ? 1 : 0);
+    upload_space_uniforms(prog_sky);
     unii(prog_sky, "u_fog_type", RS.fog_type);
     uni3(prog_sky, "u_fog_color", RS.fog_color);
     uni1(prog_sky, "u_fog_density", RS.fog_density);

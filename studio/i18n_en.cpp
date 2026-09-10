@@ -117,6 +117,7 @@ const std::map<std::string, const char *> &i18n_english_tagged() {
       {"om.type.planet", "Planet"},
       {"om.type.infinite", "Infinite terrain layer"},
       {"om.type.light", "Light"},
+      {"om.type.nebula", "Nebula"},
       {"om.type.mesh", "Mesh"},
       {"om.add_camera_tip", "Add camera\n\nInherits the lens, exposure, film and render settings\nof the last camera you used."},
       {"om.add_planet_tip", "Add planet\n\nA whole procedural world, generated on the GPU from its\nparameters - planets cost no memory, add as many as you\nlike. Double-click one in the list to fly to it."},

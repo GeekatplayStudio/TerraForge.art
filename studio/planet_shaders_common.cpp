@@ -50,10 +50,14 @@ vec3 pl_palette(float t, float slope, float lat, float wet, float snow_line, flo
 // centre is above the tile (a ring world, a Dyson sphere), w = 1 for the
 // other face of the same shell (heights the other way). All zero - the
 // value a uniform never set reads as - is the globe every scene had.
+// u_world_thick is the shell's thickness (Shape::thick): the other face lies
+// that much deeper, at its own radius; 0 (never set) is the skin it was.
 const char *PL_SPHERE_FN = R"GLSL(
 uniform vec4 u_world_shape;
+uniform float u_world_thick;
 float pl_sinc(float a){ return abs(a) < 1e-3 ? 1.0 - a*a*(1.0/6.0) : sin(a)/a; }
 float pl_sphere_hscale(float R){ float c = min(R * 6.2831853, 1.0); return R <= 0.0 ? 1.0 : c * c; }
+bool pl_world_flat(){ return u_world_shape.x > 0.5 && u_world_shape.y > 0.5; }
 // the tile's two angles round the world, 0 along a flat axis
 vec2 pl_sphere_angles(vec2 uv, float R){
   if (R <= 0.0) return vec2(0.0); // a flat world has no angles
@@ -63,7 +67,8 @@ vec2 pl_sphere_angles(vec2 uv, float R){
               clamp((uv.y - 0.5) * kl, -1.5707963, 1.5707963));
 }
 vec3 pl_sphere_place(vec2 uv, float h, float R){
-  if (R <= 0.0 || (u_world_shape.x > 0.5 && u_world_shape.y > 0.5)) return vec3(uv.x, h, uv.y);
+  // a flat world: the other face is its underside, the thickness below
+  if (R <= 0.0 || pl_world_flat()) return vec3(uv.x, u_world_shape.w > 0.5 ? -h - u_world_thick : h, uv.y);
   float k = min(1.0 / R, 6.2831853);
   float kl = min(1.0 / R, 3.14159265);
   // a flat axis has no angle and its reach is the tile's own distance
@@ -78,12 +83,24 @@ vec3 pl_sphere_place(vec2 uv, float h, float R){
   // inside: the centre is R above the tile, the drop is a rise and the
   // height leans toward the centre
   float s = u_world_shape.z > 0.5 ? -1.0 : 1.0;
+  // the other face of a thick shell: the same angles at its own radius,
+  // the thickness below the world's ground (gpx::planet::sphere_place)
+  float Rf = R, dy = 0.0, ratio = 1.0;
+  if (u_world_shape.w > 0.5 && u_world_thick > 0.0){
+    Rf = max(R - s * u_world_thick, R * 1e-3);
+    dy = -u_world_thick;
+    ratio = Rf / R;
+  }
   float sx = sin(ax), cx = cos(ax), sy = sin(ay), cl = cos(ay);
   float hx = sin(ax * 0.5), hy = sin(ay * 0.5);
-  float drop = 2.0 * R * hx * hx + 2.0 * R * cx * hy * hy;
+  float drop = 2.0 * Rf * hx * hx + 2.0 * Rf * cx * hy * hy;
   float reach_x = (uv.x - 0.5) * wrap_x * pl_sinc(ax);
   float reach_z = (uv.y - 0.5) * wrap_z * pl_sinc(ay);
-  return vec3(0.5 + (reach_x + s * h * sx) * cl, -s * drop + h * cx * cl, 0.5 + reach_z + s * h * sy);
+  if (ratio != 1.0){
+    if (u_world_shape.x < 0.5) reach_x *= ratio;
+    if (u_world_shape.y < 0.5) reach_z *= ratio;
+  }
+  return vec3(0.5 + (reach_x + s * h * sx) * cl, -s * drop + h * cx * cl + dy, 0.5 + reach_z + s * h * sy);
 }
 // the local east/up/north at a tile point, for a normal built in the flat
 // tile's frame (gpx::planet::sphere_frame)
@@ -105,6 +122,22 @@ vec3 pl_world_centre_at(vec3 world, float R){
 // the direction a sun inside the world shines from, at a world point
 vec3 pl_world_up_at(vec3 world, float R){
   return normalize(pl_world_centre_at(world, R) - world);
+}
+// The altitude of a world point above the world's own surface, and the
+// surface's up there (gpx::planet::world_alt / world_up): the air, the
+// clouds and their shadows are layers on the world, whatever its shape. A
+// flat world, and a radius past float precision, measure world y.
+float pl_world_alt(vec3 p, float R){
+  if (R <= 0.0 || R > 1.0e5 || pl_world_flat()) return p.y;
+  float d = length(p - pl_world_centre_at(p, R));
+  return u_world_shape.z > 0.5 ? R - d : d - R;
+}
+vec3 pl_world_up(vec3 p, float R){
+  if (R <= 0.0 || R > 1.0e5 || pl_world_flat()) return vec3(0.0, 1.0, 0.0);
+  vec3 d = p - pl_world_centre_at(p, R);
+  float l = length(d);
+  if (l < 1e-12) return vec3(0.0, 1.0, 0.0);
+  return u_world_shape.z > 0.5 ? -d / l : d / l;
 }
 )GLSL";
 

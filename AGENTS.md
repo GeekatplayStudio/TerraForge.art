@@ -175,6 +175,42 @@ its own layer (`rs.cloud_layers`, collected in scene_nodes.cpp, eight at
 most in the sky pass); they chain through their `clouds` port into
 `AtmosphereSettings` for order, but are drawn whether wired or not.
 
+## The scripting surface is audited, and the assistant is shown every op
+
+`tests/test_api_coverage.py` reads every file that compares `op` -
+`ai_*.cpp`, `*_ops.cpp`, `layout_store.cpp` - and asserts three things: an
+op has an MCP tool (`studio_<op>`, or an alias in the test), the tool
+dispatches, and `ai_schema.cpp` shows the op as a `{"op":"..."}` syntax
+line. It used to glob `ai_*.cpp` only, which hid sixty ops and five with
+no tool; and nothing checked the schema, so the assistant was never told
+about `add_node`, `connect`, `set_attr` and 24 more. Add an op: add its
+tool and its schema line in the same commit, or the audit fails and names
+it. Views in ops are 1-based everywhere (`view:1` is View 1) - `shading`
+used to be 0-based on its own.
+
+## Viewports come back where they were left
+
+layout_workspace.cpp `workspace_layout_restore` runs on the first frame
+(app.cpp): the record captured at exit is read back. It was written and
+never read - the only restore path ran on a workspace *switch*, and the
+first frame has no previous workspace - so every launch reset the views.
+The record now carries the free orbit camera (`LayoutRecord::orbit`,
+through `renderer_orbit_get/set`) and the ortho views' zoom and centre.
+The orbit is one global for every perspective view (`Camera CAM`); a
+per-view orbit is the viewports roadmap's first item.
+
+## Render presets and the queue
+
+render_presets.cpp: a `RenderPreset` is a named `RenderAssign` saved with
+the scene (`SceneState::render_presets`, scene_io.cpp); applying one
+copies everything but keeps the camera's own output file when the preset
+has none, and records the name in `RenderAssign::preset`. A batch is
+`App::render_queue`; `render_service_requests` (panel_render.cpp) starts
+the next camera when no render is running, and `render_batch_queue` gives
+a camera still on the default file one named after it, or every camera
+would overwrite `render.png`. The `render` op errors without a camera -
+it used to report success and do nothing.
+
 ## The performance watcher
 
 `studio/perf_watch.cpp` counts events the subsystems report (`perf_count`:
@@ -427,9 +463,77 @@ and a sun body is drawn at the centre (renderer_scene.cpp); the sky's
 `u_space` is at least 0.75. view_planet_radius curves every view of an
 inside world, and the far plane reaches 2.4 R (renderer_camera.cpp).
 Placement reads the layers of the tile's own face (planet_home_layers(side))
-and its key mixes the face. Not done: a ring's rim wall, shadow squares (a
-ring's night), a Dyson sphere's outside from space, planets in the sky with
-these shapes.
+and its key mixes the face. Not done: shadow squares (a ring's night), a
+Dyson sphere's outside from space, planets in the sky with these shapes.
+
+**The world is a body, and the air lies on it.** `Shape::thick`
+(RenderSettings world_thickness, `u_world_thick` uploaded by
+upload_world_shape) puts the other face at its own radius - R - thick for
+a globe's crust, R + thick for a ring's outside, -thick for a flat world's
+underside - and `thick` below the ground; 0 leaves every number bit for
+bit. The third shape is WORLD_FLAT (Shape flat_x && flat_z): a plane
+`world_width` across cut to `world_outline` (disc or square) in FS_INF,
+with the far grid spread flat when it is wider than the surround. A thick
+ring or flat world (`world_has_body`) draws its other face even with no
+layers on it - a bare crust: u_base 0, no water, no fractal grit, which on
+an unlit flat face was the only thing there and read as a pattern - and
+the rim wall between the faces (studio/planet_rim.cpp: the far grid
+mapped along the edge, its top the ground's own relief there, its bottom
+the other face). Culling shifts a flipped face's box by the thickness,
+flat views included.
+
+The atmosphere is not measured from world y any more:
+`gpx::planet::world_alt / world_up` and their GLSL twins `pl_world_alt /
+pl_world_up` (PL_SPHERE_FN) give a point's height over the world's
+surface and the surface's up there. The sky pass uploads the world's shape,
+the view's curvature (`u_world_r`) and a ring's width; a cloud layer is the
+band of altitude [alt, alt + thick] - `layer_span` intersects the ray with
+the two shells about the centre or the axis, cut to a ring's width, and
+falls back to the two planes on a flat world, exactly as before - the
+density's height fraction, the far-to-near ordering, the light march (a sun
+inside shines from the axis) and the cloud shadows on the terrain all read
+`pl_world_alt`. `g_sky_up` in SKY_FN is the up `sky_color` grades against:
+(0,1,0) in every program (dot with it is dir.y to the bit) and the
+surface's up under the eye in the sky pass, so a ring's sky stands over the
+ring. Water needed nothing: it was already placed with the tile's face.
+Placement gained two join modes (place_mode 3 clip low, 4 clip high): a
+hard max/min against the planet's ground, the material weight fading over
+`presence` either side of the crossing (tests/cpp/test_planet_place.cpp).
+
+## The air is a layer, and beyond it is space
+
+`RenderSettings::atmosphere_height` (tile units; the AtmosphereSettings
+node's `height_km`, set_sky `height_m`) is how high the air reaches over
+the world's surface. The sky pass (`atm_path`, shaders_sky.cpp) measures
+how much of each ray lies in that band - two shells about the centre or
+the axis, cut to a ring's width and a flat world's outline, a slab on a
+flat view - and composes `space * vis + sun * T + sky * scat`: the air's
+in-scatter grows with the path, what it lets through is deep space, and
+stars fall away with the sky's own brightness (outshone, not hidden).
+The sky's horizon haze is scaled by the same path, so nothing hazes a
+ray that meets no air. Height 0 is the old rule (`u_space` by the
+camera's distance from the tile). A view with scene_camera -2 looking
+through the active camera is a camera view (`view_active_camera`), so
+captures and the default viewport curve - they used to draw R = 0, which
+is why every capture through a camera was flat.
+
+Deep space is studio/shaders_space.cpp (`space_color(dir)`), spliced
+through SPACE_FN_PLACEHOLDER and fed by renderer_space.cpp: the star
+field (two cube-mapped grids, two slots a cell so no lattice shows, a
+steep magnitude law, gaussian spots the size of a pixel), the galaxy
+band (a great circle from a pole heading and elevation, its core turned
+along it, fractal structure, dust lanes) and the nebulas - Nebula scene
+objects (scene.hpp NebulaData; a Nebula node drives one the way a Planet
+node drives a planet): emission cloud, dark cloud, spiral galaxy,
+elliptical galaxy, planetary nebula, eight at most in the sky pass. A moon
+is a planet with crater layer type 4 (`pl_craters`, CPU and GLSL twins),
+no sea and no air; an airless planet is shaded as bare rock (FS_PLANET
+`u_atmo <= 0`). The far shell now draws the outside face too once the
+eye is a tile up (planet_renderer.cpp `aloft`): the world from above and
+from space, and the surround no longer ends in a band at the horizon;
+its cloud band (FS_INF `u_fc_*`) samples the sky's own shape texture at
+the cloud altitude over the far surface, so a ring's far side carries
+clouds. Ops: add_nebula/set_nebula/add_moon/set_space, each an MCP tool.
 
 Any object can be deleted (`scene_delete_subtree`, the tree's Delete, the
 delete_object op): the passes skip tile 0 when no Terrain object exists,
@@ -1080,6 +1184,59 @@ belongs to; do not fake a field node with a 1×1 buffer.
 10. **The surround fogs with `FOG_FN`, like everything else.** A distance
     fog of its own painted it pale right up to the tile's border, which read
     as a cliff around the tile.
+
+## Deep space
+
+studio/shaders_space*.cpp is four GLSL chunks and an entry, spliced through
+SPACE_FN_PLACEHOLDER in that order because GLSL has no forward
+declarations: common (noise, the Planckian colour, the cube grid,
+`sp_falloff`), stars, the band and the discs, the nebulas, then
+`space_color`. renderer_space.cpp uploads the uniforms and binds the noise
+volume on unit 10; space_settings.hpp holds the settings, space_presets.cpp
+the named skies and Fill the sky, space_noise.cpp the 96^3 RGBA16 volume
+(billow, ridged, cellular, fine) both the nebulas and the band read.
+
+**The rule that keeps the sky clean:** every falloff drawn from a cell grid
+must reach zero inside the cells the grid searches. `sp_star_grid` looks at
+the 3x3 cells around a pixel, so a glow wider than one cell is cut off at
+that boundary - and a cut-off glow is a square. The sky used to have a soft
+square around every star for exactly that reason. `sp_falloff` has compact
+support and every reach is bounded by `cellang = 2/(3n)`, the smallest a
+cell of that grid ever gets (a cube's faces are gnomonic, so a cell at a
+corner subtends two thirds of one at the middle). The same trap took out
+the band's grain and the young stars in a nebula, which used to fill a
+whole `floor()` cell.
+
+Two more that cost a day between them. A cell past the edge of a face
+belongs to the *next* face: hashing it as though it were still on this one
+gives the two sides of a cube edge different stars, and a cube's edge is a
+great circle, which a perspective view draws as a dead straight line across
+the sky. `sp_star_grid` resolves out-of-range cells to the face they truly
+lie on. And clumping multiplies the odds a slot holds a star, so a
+multiplier over one fills every slot in the crowded parts and stacks a
+dozen halos into a white ball; the product is capped.
+
+A nebula is marched, not painted: `sp_neb_cloud` intersects a sphere of
+radius `sin(r)` at unit distance (a sphere at unit distance subtends
+`asin(rho)`, so `tan` made every one too big), then integrates emission
+(gas x how hard the hot stars inside have ionised it, which is what moves
+the colour from hydrogen's red to oxygen's teal), reflection off lit dust,
+and per-channel extinction (blue absorbed hardest, so dust reddens as it
+dims). Its halo is worked out *before* the sphere is tested, or the glow
+ends dead on the silhouette and draws an arc. Galaxies and planetary
+nebulas stay flat, because a disc is flat.
+
+The band and the nebulas read the filtered volume rather than hashing a
+fractal per pixel: built by hand out of value noise the band showed the
+lattice it stood on as boxes of haze with straight edges, and cost enough
+to halve the frame rate. `sp_fbm` and `sp_ridge` survive for the star
+clumping and the discs, with a quintic interpolant and a turn between
+octaves so the grid does not come through.
+
+The sky pass works out how much of space reaches the eye *before* calling
+`space_color`, because the backdrop is the most expensive thing in that
+shader and in daylight none of it shows: a terrain scene at noon must not
+pay for a sky it cannot see.
 
 ## Undo
 
