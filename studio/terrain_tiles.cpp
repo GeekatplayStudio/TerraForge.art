@@ -140,13 +140,15 @@ void terrain_tile_set_prepared(int tile, TerrainUpload &up) {
   glBindTexture(GL_TEXTURE_2D, t.tex_patch_bounds);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, patch_n - 1, patch_n - 1, 0, GL_RG, GL_FLOAT,
                t.cpu_patch_bounds.data());
-  t.has_place_w = up.placement.placed && !up.placement.weight.empty() &&
-                  up.placement.weight.w == h.w && up.placement.weight.h == h.h;
-  if (t.has_place_w) {
-    make_tex(t.tex_place_w, false);
-    glBindTexture(GL_TEXTURE_2D, t.tex_place_w);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, h.w, h.h, 0, GL_RED, GL_FLOAT,
-                 up.placement.weight.v.data());
+  {
+    const std::vector<float> rg = planet_place_rg(up.placement, h.w, h.h);
+    t.has_place_w = !rg.empty();
+    if (t.has_place_w) {
+      make_tex(t.tex_place_w, false);
+      glBindTexture(GL_TEXTURE_2D, t.tex_place_w);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, h.w, h.h, 0, GL_RG, GL_FLOAT,
+                   rg.data());
+    }
   }
   t.has_albedo = up.albedo && !up.albedo->empty();
   if (t.has_albedo) {

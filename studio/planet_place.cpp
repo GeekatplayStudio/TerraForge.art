@@ -22,7 +22,7 @@ struct ReliefEntry {
   std::vector<gpx::planet::Layer> layers;
   int w = 0, h = 0;
   float tx[6] = {0, 0, 0, 0, 1, 1}; // on, pos x, pos z, yaw, scl x, scl z
-  std::vector<float> relief, smooth;
+  std::vector<float> relief, smooth, wet;
 };
 void tx_key(const PlaceSettings &s, float out[6]) {
   out[0] = s.tx_on ? 1.f : 0.f;
@@ -146,9 +146,11 @@ PlaceResult g_last;
 void planet_relief_under_tile(const std::vector<gpx::planet::Layer> &layers,
                               int w, int h, std::vector<float> &relief,
                               std::vector<float> &smooth,
-                              const PlaceSettings *where) {
+                              const PlaceSettings *where,
+                              std::vector<float> *wet) {
   relief.assign((size_t)w * h, 0.f);
   smooth.assign((size_t)w * h, 0.f);
+  if (wet) wet->assign((size_t)w * h, 0.f);
   if (layers.empty() || w <= 0 || h <= 0) return;
   // the tile's place on the planet: a texel (u, v) of the tile lies at
   // world (X, Z) through the tile's offset, heading and scale, and the
@@ -179,8 +181,10 @@ void planet_relief_under_tile(const std::vector<gpx::planet::Layer> &layers,
         }
         const float d[3] = {X, 0.37f, Z};
         const size_t i = (size_t)y * w + x;
-        relief[i] = 1.2f * gpx::planet::heightf(d, L, n, octf);
+        float wv = 0.f;
+        relief[i] = 1.2f * gpx::planet::heightf(d, L, n, octf, wet ? &wv : nullptr);
         smooth[i] = 1.2f * gpx::planet::heightf(d, L, n, octs);
+        if (wet) (*wet)[i] = wv;
       }
     }
   });
@@ -201,7 +205,7 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   }
   const int w = tile.w, h = tile.h;
   // relief under the tile, cached
-  std::vector<float> relief, smooth;
+  std::vector<float> relief, smooth, wet;
   float key[6];
   tx_key(s, key);
   {
@@ -211,13 +215,14 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
           std::equal(key, key + 6, e.tx)) {
         relief = e.relief;
         smooth = e.smooth;
+        wet = e.wet;
         break;
       }
   }
   if (relief.empty()) {
-    planet_relief_under_tile(layers, w, h, relief, smooth, &s);
+    planet_relief_under_tile(layers, w, h, relief, smooth, &s, &wet);
     std::lock_guard<std::mutex> lk(g_cache_mtx);
-    ReliefEntry e{layers, w, h, {}, relief, smooth};
+    ReliefEntry e{layers, w, h, {}, relief, smooth, wet};
     std::copy(key, key + 6, e.tx);
     g_cache.push_front(std::move(e));
     while (g_cache.size() > 6) g_cache.pop_back();
@@ -244,6 +249,11 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
 
   gpx::Heightmap outm(w, h);
   res.weight = gpx::Heightmap(w, h);
+  // the planet's wetness travels with the weight: the tile's shader
+  // paints the same wet soil along the same valley floors as the ground
+  // outside it (planet_place.hpp)
+  res.wet = gpx::Heightmap(w, h);
+  if (wet.size() == res.wet.v.size()) res.wet.v = wet;
   const float edge = std::max(s.edge, 1e-4f);
   const float flat = std::clamp(s.flatten, 0.f, 1.f);
   const float grad = std::clamp(s.gradient, 0.05f, 8.f);
@@ -347,6 +357,19 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   res.placed = true;
   if (out) *out = res;
   return outm;
+}
+
+std::vector<float> planet_place_rg(const PlaceResult &r, int w, int h) {
+  const size_t n = (size_t)w * (size_t)h;
+  if (!r.placed || r.weight.w != w || r.weight.h != h || r.weight.v.size() != n)
+    return {};
+  const bool has_wet = r.wet.w == w && r.wet.h == h && r.wet.v.size() == n;
+  std::vector<float> rg(n * 2);
+  for (size_t i = 0; i < n; ++i) {
+    rg[i * 2] = r.weight.v[i];
+    rg[i * 2 + 1] = has_wet ? r.wet.v[i] : 0.f;
+  }
+  return rg;
 }
 
 const PlaceResult &planet_place_last() { return g_last; }

@@ -361,13 +361,16 @@ void renderer_set_terrain_prepared(TerrainUpload &upload) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, patch_n - 1, patch_n - 1, 0, GL_RG,
                  GL_FLOAT, cpu_patch_bounds.data());
   }
-  // the placement's blend weight, for the shader's skirt colouring
-  has_place_w = upload.placement.placed && !upload.placement.weight.empty() &&
-                upload.placement.weight.w == norm.w && upload.placement.weight.h == norm.h;
-  if (has_place_w) {
-    glBindTexture(GL_TEXTURE_2D, tex_place_w);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, norm.w, norm.h, 0, GL_RED, GL_FLOAT,
-                 upload.placement.weight.v.data());
+  // the placement's blend weight and the planet's wetness under the tile,
+  // for the shader's skirt colouring and its palette (planet_place.hpp)
+  {
+    const std::vector<float> rg = planet_place_rg(upload.placement, norm.w, norm.h);
+    has_place_w = !rg.empty();
+    if (has_place_w) {
+      glBindTexture(GL_TEXTURE_2D, tex_place_w);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, norm.w, norm.h, 0, GL_RG,
+                   GL_FLOAT, rg.data());
+    }
   }
   has_albedo = albedo && !albedo->empty();
   if (has_albedo) {

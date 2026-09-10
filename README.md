@@ -662,6 +662,18 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **The tile and the ground beyond it are painted by one palette, from the
+  same numbers.** Rounding the tile's border took the shape of the square
+  away, but two of the palette's own inputs still changed at it. The
+  variation grain - which picks between grass and meadow outright, so it *is*
+  the ground's colour - was broad smooth blotches inside the tile and fine
+  mottle outside, because the tile's shader had no access to the planet's
+  noise and made do with a different fractal. And the palette darkens toward
+  wet soil along valley floors and lake beds: the surround has always had
+  that number, the tile passed zero for it, so every drainage line on the
+  planet stopped dead at the tile's edge. Both come from one place now. The
+  colour step across the border falls by a third at noon and to a fiftieth
+  of the ground's own brightness at a low sun.
 - **The ground runs out over a horizon, not at a line.** A free
   perspective view used to draw the world flat, which is a world with an
   edge: the ground reached the end of the surround, about thirty tiles out,

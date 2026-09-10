@@ -12,6 +12,46 @@ namespace studio {
 // wet = valley floor / lake bed 0..1; snow_line in t; var = 0..1 variation.
 // Linear-light albedos.
 const char *PL_PALETTE = R"GLSL(
+// The palette's variation. It is not decoration: `var` picks between grass
+// and meadow outright and weights the forest, so it *is* the ground's
+// colour, and if the two sides of a tile's border compute it differently the
+// mottling stops dead at the border and draws the square. The surround has
+// the planet's own noise (PL_FN); the tile shader does not, and used to make
+// do with a different fractal entirely - two octaves at five per tile
+// against value noise at thirty-seven, which is broad smooth blotches inside
+// the square and fine mottle outside it. So the grain lives here, with the
+// palette it feeds, and both shaders call this one. Its own copy of the
+// hash, under its own name, because the shaders that carry PL_FN would
+// otherwise have two definitions of it.
+float pv_hash(vec3 ip, uint seed){
+  uvec3 q = uvec3(ivec3(ip));
+  uint h = q.x*374761393u + q.y*668265263u + q.z*2147483647u + seed*3266489917u;
+  h = (h ^ (h>>13u)) * 1274126177u;
+  h ^= h>>16u;
+  return float(h & 0xffffffu) / 16777215.0;
+}
+float pv_noise(vec3 p, uint seed){
+  vec3 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  float c000=pv_hash(i,seed),               c100=pv_hash(i+vec3(1,0,0),seed);
+  float c010=pv_hash(i+vec3(0,1,0),seed),   c110=pv_hash(i+vec3(1,1,0),seed);
+  float c001=pv_hash(i+vec3(0,0,1),seed),   c101=pv_hash(i+vec3(1,0,1),seed);
+  float c011=pv_hash(i+vec3(0,1,1),seed),   c111=pv_hash(i+vec3(1,1,1),seed);
+  float x00=mix(c000,c100,f.x), x10=mix(c010,c110,f.x);
+  float x01=mix(c001,c101,f.x), x11=mix(c011,c111,f.x);
+  return mix(mix(x00,x10,f.y), mix(x01,x11,f.y), f.z);
+}
+// on the ground, from the flat world position in tile units - the same
+// number the surround indexes by, so the grain crosses the border unbroken
+float pl_palette_var(vec2 xz){
+  return pv_noise(vec3(xz.x, 0.37, xz.y) * 37.0, 0x5a17u);
+}
+// and on a world seen whole, by direction: thirty-seven per tile is speckle
+// from thousands of tiles off, and a grain scaled by distance smears into
+// stripes along the view
+float pl_palette_var_dir(vec3 dir){
+  return pv_noise(dir * 40.0, 0x5a17u);
+}
 vec3 pl_palette(float t, float slope, float lat, float wet, float snow_line, float var){
   const vec3 sand    = vec3(0.60, 0.53, 0.40);
   const vec3 grass   = vec3(0.17, 0.27, 0.08);

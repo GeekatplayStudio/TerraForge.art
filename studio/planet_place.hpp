@@ -87,6 +87,12 @@ struct PlaceResult {
   // tile's material toward the planet's own palette by it, so the skirt
   // where the tile gives way to the planet looks like the planet.
   gpx::Heightmap weight;
+  // The planet's own wetness under the tile, 0..1 - how much of a valley
+  // floor or lake bed each point is. The palette darkens toward wet soil by
+  // it, and the surround has always had it; the tile passed 0 instead, so
+  // every drainage line on the planet stopped at the tile's edge. Carried
+  // beside the weight, in the same texture.
+  gpx::Heightmap wet;
 };
 
 // The planet relief under the tile, in heightmap units relative to `ground`
@@ -95,7 +101,8 @@ struct PlaceResult {
 void planet_relief_under_tile(const std::vector<gpx::planet::Layer> &layers,
                               int w, int h, std::vector<float> &relief,
                               std::vector<float> &smooth,
-                              const PlaceSettings *where = nullptr);
+                              const PlaceSettings *where = nullptr,
+                              std::vector<float> *wet = nullptr);
 
 // Composite `tile` onto the planet described by `layers`. Returns the map to
 // upload; with placement off or no layers, a copy of the tile. Deterministic:
@@ -105,6 +112,11 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
                                  const PlaceSettings &s, PlaceResult *out);
 
 // The last result the app uploaded, for the Properties panel.
+// The placement as the GPU takes it: weight and wetness interleaved, ready
+// for an RG32F upload the tile's shader reads as .r and .g. Empty when the
+// result carries no weight map of that size.
+std::vector<float> planet_place_rg(const PlaceResult &r, int w, int h);
+
 const PlaceResult &planet_place_last();
 void planet_place_set_last(const PlaceResult &r);
 

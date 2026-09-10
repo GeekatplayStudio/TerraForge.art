@@ -114,6 +114,53 @@ void test_clip_join_is_rounded_not_creased() {
             std::to_string((int)rounded.v.size()) + " texels)");
 }
 
+// The palette darkens toward wet soil along valley floors and lake beds.
+// The surround has always had that number; the tile passed 0 for it, so
+// every drainage line on the planet stopped dead at the tile's edge - the
+// square drawn again, in another colour. The placement carries the planet's
+// wetness under the tile now, in the same texture as the blend weight.
+void test_placement_carries_the_planets_wetness() {
+  std::printf("placement: the planet's wetness under the tile...\n");
+  const int n = 96;
+  auto L = layers_realistic();
+  gpx::Heightmap tile = tile_with_bump(n, 0.12f, 0.5f, 0.7f);
+  studio::PlaceSettings s;
+  s.ground = 0.12f;
+  studio::PlaceResult r;
+  studio::planet_place_tile(tile, L, s, &r);
+
+  check(r.wet.w == n && r.wet.h == n, "the wetness map is the tile's size");
+  float mn = 2.f, mx = -1.f;
+  for (float v : r.wet.v) { mn = std::min(mn, v); mx = std::max(mx, v); }
+  check(mn >= 0.f && mx <= 1.f,
+        "wetness is a fraction (" + std::to_string(mn) + ".." +
+            std::to_string(mx) + ")");
+  check(mx > 0.05f, "a realistic planet has wet ground somewhere under the tile");
+  // and it is the planet's, not a constant: it has to vary, or the valley
+  // floors it exists to darken are not there
+  check(mx - mn > 0.05f, "the wetness varies across the tile");
+
+  // it matches what the relief pass reports at the same points, because the
+  // tile must darken along the same valleys the surround does
+  std::vector<float> relief, smooth, wet;
+  studio::planet_relief_under_tile(L, n, n, relief, smooth, &s, &wet);
+  check(wet.size() == r.wet.v.size() && wet == r.wet.v,
+        "the tile's wetness is the surround's, at the same points");
+
+  // the GPU takes them interleaved: r the weight, g the wetness
+  const std::vector<float> rg = studio::planet_place_rg(r, n, n);
+  check(rg.size() == (size_t)n * n * 2, "the placement uploads two channels");
+  bool paired = true;
+  for (size_t i = 0; i < r.weight.v.size(); ++i)
+    if (rg[i * 2] != r.weight.v[i] || rg[i * 2 + 1] != r.wet.v[i]) paired = false;
+  check(paired, "weight in red, wetness in green");
+  check(studio::planet_place_rg(r, n + 1, n).empty(),
+        "a size that does not match uploads nothing at all");
+  studio::PlaceResult none;
+  check(studio::planet_place_rg(none, n, n).empty(),
+        "a tile that was never placed uploads nothing at all");
+}
+
 void test_flat_tile_is_the_planet() {
   std::printf("placement: a flat tile shows the planet...\n");
   const int n = 96;
@@ -451,6 +498,7 @@ void test_deterministic_and_off() {
 int test_planet_place_run() {
   g_fail = 0;
   test_flat_tile_is_the_planet();
+  test_placement_carries_the_planets_wetness();
   test_clip_join_is_rounded_not_creased();
   test_feature_stands_on_levelled_ground();
   test_blend_controls();

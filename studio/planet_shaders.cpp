@@ -593,10 +593,9 @@ void main(){
   float wl_pal = u_wl < -1.0e8 ? 0.0 : u_wl;
   float t = (proc - wl_pal) / max(u_hscale - wl_pal, 0.02);
   // the shell's variation is at the world's scale, by direction like its
-  // relief: the tile's 37 per tile is speckle from thousands of tiles off,
-  // and a grain scaled by distance smears into stripes along the view
-  float var = u_shell == 1 ? pl_vnoise(pl_shell_dir(v_uv, u_curve) * 40.0, 0x5a17u)
-                           : pl_vnoise(vec3(v_uv.x, 0.37, v_uv.y) * 37.0, 0x5a17u);
+  // relief; on the ground it is the grain the tile shares (PL_PALETTE)
+  float var = u_shell == 1 ? pl_palette_var_dir(pl_shell_dir(v_uv, u_curve))
+                           : pl_palette_var(v_uv);
   vec3 alb = pl_palette(t, slope, u_lat, hw0.y, u_snow_line, var);
   // No colour is borrowed from the tile any more: across the placement's
   // skirt the tile's own shader gives its material way to this same

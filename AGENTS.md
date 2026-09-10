@@ -1185,6 +1185,33 @@ belongs to; do not fake a field node with a 1×1 buffer.
     fog of its own painted it pale right up to the tile's border, which read
     as a cliff around the tile.
 
+## One palette, from the same numbers, on both sides of a tile's border
+
+The tile (shaders_terrain_frag.cpp) and the surround (planet_shaders.cpp
+FS_INF) are different programs painting the same ground, and every input
+`pl_palette` takes has to be the same at the border or it draws the square -
+a blend that is smooth in shape but discontinuous in colour is still an
+edge. The inputs, and where each side gets it:
+
+- **var**, the variation grain. It picks between grass and meadow outright
+  and weights the forest, so it is the ground's colour, not a garnish. Both
+  sides call `pl_palette_var(flat world xz)` - it lives in PL_PALETTE, with
+  the palette, because the tile's program has no PL_FN to take `pl_vnoise`
+  from. It carries its own hash under its own name for that reason: the
+  programs that do have PL_FN would otherwise define it twice. The tile
+  passes `v_wxz`, set in `terrain_place` after `tile_xform` and before the
+  curvature - the same number the surround indexes by, transform and all.
+- **wet**, the planet's valley floors and lake beds. The surround reads it
+  from `pl_relief_w`; the tile cannot (no layer stack in that program), so
+  the placement computes it on the CPU and it rides in the green channel of
+  the placement texture beside the blend weight - `planet_place_rg` builds
+  the pair, and both upload sites go through it so they cannot drift.
+- **t**, the altitude. Still not exactly shared: the tile ignores `u_txi_y`,
+  so a tile with a vertical scale or offset paints at the wrong altitude.
+- **The lighting is not shared at all.** The tile is Cook-Torrance with
+  shadows, AO and a specular lobe; the surround is Lambert with none of
+  them. What is left of the step at a high sun is mostly that specular.
+
 ## The ground has to end somewhere, and it must not be a line
 
 Three things have to agree, or the surround ends on a hard edge against the

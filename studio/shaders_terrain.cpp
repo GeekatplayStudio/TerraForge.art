@@ -30,6 +30,11 @@ TILE_XFORM_PLACEHOLDER
 out vec2 v_uv;
 out vec3 v_world;
 out float v_detail;
+// where this point stands on the flat world, in tile units, before the
+// curvature bends it onto the shape: the very number the surround indexes
+// its palette grain by (planet_shaders.cpp), so the two agree across the
+// tile's border instead of each mottling the ground its own way
+out vec2 v_wxz;
 // The tile on a planet. The sphere's centre is R below the tile's centre;
 // a tile point at (s, t) from that centre travels s and t along the surface,
 // i.e. through angles s/R and t/R. When the tile is wider than the whole
@@ -81,6 +86,7 @@ void terrain_place(vec2 uv){
   // bank, size per axis, deformers - then the planetary curvature, so a
   // moved tile lies on the sphere where it was moved to
   p = tile_xform(p);
+  v_wxz = p.xz;
   p = gpx_sphere_place(p.xz, p.y);
   v_uv = uv; v_world = p;
   gl_Position = u_mvp * vec4(p,1.0);

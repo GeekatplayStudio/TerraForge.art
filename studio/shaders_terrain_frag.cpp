@@ -9,10 +9,17 @@ namespace studio {
 const char *const FS_TERRAIN_SRC = R"GLSL(#version 430 core
 in vec2 v_uv;
 in vec3 v_world;
+in vec2 v_wxz;   // where this point stands on the flat world (shaders_terrain.cpp)
 out vec4 frag;
 uniform sampler2D u_height;
 TILE_XFORM_FS_PLACEHOLDER
-uniform sampler2D u_place_w; // the placement's blend weight, 1 tile .. 0 planet
+// The placement, two channels: r is the blend weight, 1 tile .. 0 planet;
+// g is the planet's own wetness under the tile (planet_place.hpp). The
+// palette darkens toward wet soil along valley floors and lake beds, and
+// the tile used to pass 0 for it while the surround passed the real thing -
+// so every drainage line on the planet stopped at the tile's edge, which is
+// the square drawn again in another colour.
+uniform sampler2D u_place_w;
 uniform int u_place_on;
 uniform vec3 u_layer_tint;   // 1: as it is; the layer's colour when the tree paints by layer
 uniform sampler2D u_albedo;
@@ -232,8 +239,9 @@ void main(){
   vec3 pal;
   {
     float t = (h * u_hscale - u_water_level) / max(u_hscale - u_water_level, 0.02);
-    float var = gp_detail(v_uv, 5.0, 2, 0.5);
-    pal = pl_palette(t, slope_local, u_lat, 0.0, u_snow_line, var);
+    float var = pl_palette_var(v_wxz);
+    float wet = u_place_on == 1 ? texture(u_place_w, v_uv).g : 0.0;
+    pal = pl_palette(t, slope_local, u_lat, wet, u_snow_line, var);
   }
   if (u_textured == 0) {
     // Solid: one neutral surface, so the form is readable without any
