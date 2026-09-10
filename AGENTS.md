@@ -1208,9 +1208,32 @@ edge. The inputs, and where each side gets it:
   the pair, and both upload sites go through it so they cannot drift.
 - **t**, the altitude. Still not exactly shared: the tile ignores `u_txi_y`,
   so a tile with a vertical scale or offset paints at the wrong altitude.
-- **The lighting is not shared at all.** The tile is Cook-Torrance with
-  shadows, AO and a specular lobe; the surround is Lambert with none of
-  them. What is left of the step at a high sun is mostly that specular.
+- **The lighting is not shared, so it is handed over instead.** The tile is
+  Cook-Torrance with shadows, ambient occlusion, a specular lobe and a sky
+  reflection; the surround is Lambert with none of them, and no choice of
+  constants reconciles two different models. So the tile's `direct` and
+  `ambient` are each mixed toward the surround's own expression by the same
+  placement weight its albedo uses, and its reflection and translucency are
+  scaled by it - the tile keeps its quality where it is the tile and lets go
+  exactly where its colour lets go. The two terms stay separate through the
+  mix, because the render passes want the direct and ambient shares apart
+  (`aov_out`), and the fade goes **before** the point-light loop: a lantern
+  by the tile's edge lights the ground beyond it and must not fade with the
+  skirt.
+
+Measured on the default scene, straight down on the tile, as how much
+sharper the border column is than ordinary ground: 1.99x with none of this,
+1.48x once the palette agreed, 1.28x once the lighting was handed over. What
+is left is the tile's own normal against the planet's - the tile carries
+fractal micro-relief the analytic relief does not - which shows most at a
+grazing sun, where a degree of normal is worth several per cent of light.
+
+A warning about measuring this. Two strips of ground either side of the
+border are not comparable at a low sun: they hold different slopes, and at
+8 degrees of elevation the slope decides the brightness, so the measurement
+reports the terrain rather than the seam. It said the seam had got three
+times worse when it had not moved. Measure the seam as a peak in |dI/dx|
+against the same quantity on ordinary ground nearby.
 
 ## The ground has to end somewhere, and it must not be a line
 

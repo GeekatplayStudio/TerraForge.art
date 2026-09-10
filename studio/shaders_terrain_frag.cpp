@@ -335,6 +335,31 @@ void main(){
   // translucency (light bleeding through thin material toward the viewer)
   vec3 translucent = mat_translucent(albedo, V, L, sun_c);
 
+  // Across the placement's skirt the tile's shading gives way to the
+  // surround's, the same way its colour did a few lines up.
+  //
+  // The two are different models and no choice of constants will reconcile
+  // them: this is Cook-Torrance with shadows, ambient occlusion, a specular
+  // lobe and a sky reflection, and the ground beyond the tile is plain
+  // Lambert with none of them. Left alone, the whole tile sits a few per
+  // cent off the ground around it with a hard line where they meet - which
+  // is the square again, drawn in light this time rather than in colour. So
+  // the tile keeps its quality where it is the tile and lets go of it
+  // exactly where its colour lets go. The two terms stay apart, because the
+  // render passes want the direct and ambient shares separately (aov_out),
+  // and the point lights are added after this: a lantern by the tile's edge
+  // lights the ground beyond it too, and must not fade with the skirt.
+  if (u_place_on == 1 && u_textured == 1) {
+    float place_w = texture(u_place_w, v_uv).r;
+    if (place_w < 0.999) {
+      float day_f = clamp(u_sun.y * 4.0 + 0.35, 0.035, 1.0);
+      direct = mix(albedo * sun_c * NdL * 0.92 / PI, direct, place_w);
+      ambient = mix(albedo * sky_amb * (0.45 + 0.55*N.y) * day_f, ambient, place_w);
+      reflection *= place_w;
+      translucent *= place_w;
+    }
+  }
+
   // scene point lights: diffuse with a smooth radius falloff; cheap and
   // enough for lanterns, windows and fill lights
   for (int li = 0; li < u_light_count; ++li) {

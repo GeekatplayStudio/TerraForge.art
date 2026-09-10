@@ -672,8 +672,14 @@ wanted his students to have.
   wet soil along valley floors and lake beds: the surround has always had
   that number, the tile passed zero for it, so every drainage line on the
   planet stopped dead at the tile's edge. Both come from one place now. The
-  colour step across the border falls by a third at noon and to a fiftieth
-  of the ground's own brightness at a low sun.
+  colour step across the border falls by a third. And the shading is handed
+  over the same way: the tile is drawn with shadows, ambient occlusion, a
+  specular lobe and a sky reflection, the ground beyond it with none of
+  those, and no two such models can be made to agree by choosing constants -
+  so the tile keeps its quality where it is the tile and gives way to the
+  ground's own light exactly where its colour does. Straight down on a tile
+  at noon, the border went from twice as sharp as ordinary ground to a
+  quarter sharper.
 - **The ground runs out over a horizon, not at a line.** A free
   perspective view used to draw the world flat, which is a world with an
   edge: the ground reached the end of the surround, about thirty tiles out,
