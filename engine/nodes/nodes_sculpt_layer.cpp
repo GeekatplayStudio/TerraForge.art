@@ -15,6 +15,35 @@
 #include <vector>
 
 namespace gpx {
+namespace {
+
+// A soft clip is not a ramp below the mark. The old one blended from "left
+// alone" at the mark to "flattened" a softness under it: it arrives at the
+// floor with the slope still climbing, so the surface folds back on itself
+// and leaves a ridge ringing the flat, and the mark itself keeps its crease
+// because nothing above it ever moves. Real ground has neither - a shore,
+// a salt pan, a mesa top all round into their flat from both sides.
+//
+// The polynomial smooth maximum is exactly max() outside a band k wide and
+// a parabola across it, with the slopes matching where the two meet. k = 0
+// is std::max to the bit, so a clip with the softness off is the step it
+// always was.
+inline float clip_smax(float a, float b, float k) {
+  if (k <= 1e-9f) return a > b ? a : b;
+  const float h = std::clamp(0.5f + 0.5f * (a - b) / k, 0.f, 1.f);
+  return b + (a - b) * h + k * h * (1.f - h);
+}
+inline float clip_smin(float a, float b, float k) {
+  return -clip_smax(-a, -b, k);
+}
+// which side of the mark a height is on, smoothly across the same band
+inline float clip_side(float v, float mark, float k) {
+  if (k <= 1e-9f) return v < mark ? 0.f : 1.f;
+  const float h = std::clamp(0.5f + 0.5f * (v - mark) / k, 0.f, 1.f);
+  return h * h * (3.f - 2.f * h);
+}
+
+} // namespace
 
 // the small helpers the effect family shares; duplicated as statics
 // rather than exported, since they are three short functions
@@ -85,8 +114,13 @@ REGISTER_NODE(
           .tooltip = "What happens above the high mark. Flatten cuts the summits\n"
                      "off level, which is what makes a mesa or a plateau out of\n"
                      "a hill.";
-      add_float(n.attrs, "softness", "Edge softness", 0.f, 0.f, 0.2f, "Clipping")
-          .tooltip = "Blends the cut instead of leaving a hard step.";
+      add_float(n.attrs, "softness", "Edge softness", 0.04f, 0.f, 0.2f, "Clipping")
+          .tooltip = "How far either side of the mark the cut is rounded, as a\n"
+                     "fraction of the terrain's own range. Nothing in a\n"
+                     "landscape meets a flat at a crease - a shore, a pan, a\n"
+                     "mesa top all round into it - and 0 is that crease: the\n"
+                     "old hard step, kept for when you want the terrain cut\n"
+                     "exactly on the mark.";
     },
     [](Node &n) {
       const Heightmap *in = require_in(n, "input");
@@ -103,26 +137,26 @@ REGISTER_NODE(
       if (hi < lo) std::swap(lo, hi);
       int lmode = n.attrs.get_choice("low_mode");
       int hmode = n.attrs.get_choice("high_mode");
-      float soft = n.attrs.get_f("softness", 0.f);
+      float soft = n.attrs.get_f("softness", 0.04f);
       float lo_v = mn + lo * d, hi_v = mn + hi * d;
+      // The shoulder cannot be rounded deeper than the cut goes: there is
+      // no ground down there to round it into. So a mark sitting on the
+      // terrain's own floor or ceiling rounds by nothing at all, and the
+      // wide-open range every clip starts with stays what it always was -
+      // an identity, to the bit.
+      const float k_lo = std::min(soft * d, std::max(lo_v - mn, 0.f));
+      const float k_hi = std::min(soft * d, std::max(mx - hi_v, 0.f));
       parallel_index(out.v.size(), [&](size_t i0, size_t i1) {
         for (size_t i = i0; i < i1; ++i) {
-          float v = in->v[i];
-          if (v < lo_v) {
-            float t = soft > 1e-6f
-                          ? std::clamp((lo_v - v) / (soft * d), 0.f, 1.f)
-                          : 1.f;
-            if (lmode == 1) out.v[i] = v + (lo_v - v) * t;
-            else if (lmode == 2) {
-              out.v[i] = v + (lo_v - v) * t;
-              mask.v[i] = 1.f - t; // 0 where the terrain is cut away
-            }
-          } else if (v > hi_v) {
-            float t = soft > 1e-6f
-                          ? std::clamp((v - hi_v) / (soft * d), 0.f, 1.f)
-                          : 1.f;
-            if (hmode == 1) out.v[i] = v + (hi_v - v) * t;
+          const float v = in->v[i];
+          if (lmode != 0 && v < lo_v + k_lo) {
+            out.v[i] = clip_smax(v, lo_v, k_lo);
+            // 0 where the ground is cut away, 1 where it is kept, and a
+            // smooth edge between - the same edge the height takes
+            if (lmode == 2) mask.v[i] = clip_side(v, lo_v, k_lo);
           }
+          if (hmode == 1 && v > hi_v - k_hi)
+            out.v[i] = clip_smin(out.v[i], hi_v, k_hi);
         }
       });
       apply_mask_blend(n.in_hmap("mask"), *in, out);

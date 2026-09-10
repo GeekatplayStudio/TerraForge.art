@@ -4107,6 +4107,88 @@ static void test_selector_softness_is_live_and_default_is_identity() {
   }
 }
 
+// TerrainClip's soft edge used to be a ramp under the mark: untouched at the
+// mark itself, fully flattened a softness below it. That cannot be monotone -
+// a function that starts and ends at the floor with the ground still falling
+// between has to turn round somewhere - so the surface folded back on itself
+// and left a ridge ringing every flat, and the mark kept its crease because
+// nothing above it ever moved. A landscape has neither: a shore, a salt pan
+// and a mesa top all round into their flat from both sides.
+//
+// So the clip is a smooth maximum now, and the three things that must hold
+// are: taller ground never comes out lower, the softness off is the old hard
+// step to the bit, and a range left wide open is still an identity - which is
+// what keeps every project made before today reading the same.
+static void test_terrain_clip_rounds_without_folding() {
+  std::printf("terrain clip: rounded, not folded...\n");
+  gpx::Heightmap src;
+  auto clipped = [&](float soft, float lo, float hi) {
+    gpx::Graph g;
+    g.resolution = 96;
+    gpx::Node *noise = g.add_node("Noise");
+    gpx::Node *clip = g.add_node("TerrainClip");
+    g.add_link(noise->id, "output", clip->id, "input");
+    clip->attrs.find("clip")->v2[0] = lo;
+    clip->attrs.find("clip")->v2[1] = hi;
+    clip->attrs.find("softness")->f = soft;
+    g.evaluate();
+    src = *noise->port("output", gpx::PortDir::Out)->hmap;
+    return *clip->port("output", gpx::PortDir::Out)->hmap;
+  };
+
+  // ground sorted by its own height: the clip's output along that order is
+  // the clip read as a function, and it must never come back down
+  auto worst_fold = [&](const gpx::Heightmap &out) {
+    std::vector<size_t> idx(src.v.size());
+    for (size_t i = 0; i < idx.size(); ++i) idx[i] = i;
+    std::sort(idx.begin(), idx.end(),
+              [&](size_t a, size_t b) { return src.v[a] < src.v[b]; });
+    float mn, mx;
+    src.minmax(mn, mx);
+    const float d = (mx - mn) > 1e-9f ? (mx - mn) : 1.f;
+    float worst = 0.f;
+    for (size_t k = 1; k < idx.size(); ++k)
+      worst = std::max(worst, (out.v[idx[k - 1]] - out.v[idx[k]]) / d);
+    return worst;
+  };
+
+  const gpx::Heightmap soft = clipped(0.08f, 0.3f, 0.8f);
+  CHECK(worst_fold(soft) < 1e-6f,
+        "a soft clip never returns lower ground for higher ground (fold " +
+            std::to_string(worst_fold(soft)) + ")");
+
+  // the softness off is exactly the step it always was
+  const gpx::Heightmap hard = clipped(0.f, 0.3f, 0.8f);
+  float mn, mx;
+  src.minmax(mn, mx);
+  const float d = (mx - mn) > 1e-9f ? (mx - mn) : 1.f;
+  const float lo_v = mn + 0.3f * d, hi_v = mn + 0.8f * d;
+  bool step_exact = true;
+  for (size_t i = 0; i < src.v.size(); ++i) {
+    const float want = std::min(std::max(src.v[i], lo_v), hi_v);
+    if (std::fabs(hard.v[i] - want) > 1e-6f) step_exact = false;
+  }
+  CHECK(step_exact, "softness 0 is the hard step, unchanged");
+
+  // and the softness does something: the shoulders are rounded, so the
+  // output no longer sits flat on the two marks
+  size_t on_mark_hard = 0, on_mark_soft = 0;
+  for (size_t i = 0; i < src.v.size(); ++i) {
+    if (std::fabs(hard.v[i] - lo_v) < 1e-6f) ++on_mark_hard;
+    if (std::fabs(soft.v[i] - lo_v) < 1e-6f) ++on_mark_soft;
+  }
+  CHECK(on_mark_hard > 0 && on_mark_soft < on_mark_hard,
+        "the softness lifts the floor away from the mark (" +
+            std::to_string(on_mark_hard) + " -> " +
+            std::to_string(on_mark_soft) + " pixels sitting on it)");
+
+  // A clip with its range wide open cuts nothing, and rounds nothing: there
+  // is no ground past the mark to round it into. Projects that never touched
+  // the range must read exactly as they did.
+  const gpx::Heightmap open = clipped(0.08f, 0.f, 1.f);
+  CHECK(open.v == src.v, "a wide-open clip is an identity, softness or not");
+}
+
 static void test_material_layer_slope_reads_real_degrees() {
   std::printf("material layer slope reads real degrees...\n");
   gpx::Graph g;
@@ -5444,6 +5526,7 @@ int main() {
   test_displacement_layers();
   test_material_layers();
   test_selector_softness_is_live_and_default_is_identity();
+  test_terrain_clip_rounds_without_folding();
   test_material_layer_slope_reads_real_degrees();
   test_fractal_color();
   test_vue_fractals();

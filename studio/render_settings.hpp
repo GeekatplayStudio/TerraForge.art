@@ -126,8 +126,13 @@ struct RenderSettings {
     // scene object index that is a camera
     int scene_camera = -2;
     // The world's curvature in this view. A camera view always curves (it
-    // is the picture); a free view is flat unless this is on - a modelling
-    // view wants no distortion. Last, so positional initialisers stay put.
+    // is the picture). A free perspective view curves too, because a world
+    // that does not is a world with an edge: the ground runs to the end of
+    // the surround and stops, and none of the far shell overhead is drawn.
+    // The sag over a tile is 1/2R - four ten-thousandths of a tile on the
+    // default world - so nothing about modelling on it changes. The
+    // orthographic views stay flat: a plan is a plan. Last, so positional
+    // initialisers stay put.
     bool curved = false;
     bool operator==(const ViewConfig &) const = default;
   };
@@ -139,11 +144,11 @@ struct RenderSettings {
   // each one shows lives here.
   static constexpr int MAX_VIEWS = 8;
   ViewConfig views[MAX_VIEWS] = {
-      {0, 2, true, true, false, true, 1.2f, 0.5f, 0.5f},
+      {0, 2, true, true, false, true, 1.2f, 0.5f, 0.5f, -2, true},
       {1, 2, false, true, true, true, 1.2f, 0.5f, 0.5f},
       {2, 1, false, true, true, true, 1.2f, 0.5f, 0.5f},
       {3, 1, false, true, true, true, 1.2f, 0.5f, 0.5f},
-      {0, 1, true, true, false, true, 1.2f, 0.5f, 0.5f},
+      {0, 1, true, true, false, true, 1.2f, 0.5f, 0.5f, -2, true},
       {1, 0, false, false, true, true, 1.2f, 0.5f, 0.5f},
       {2, 2, false, true, true, true, 1.2f, 0.5f, 0.5f},
       {3, 2, false, true, true, true, 1.2f, 0.5f, 0.5f},

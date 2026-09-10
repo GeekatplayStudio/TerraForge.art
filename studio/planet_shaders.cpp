@@ -475,6 +475,13 @@ uniform vec3 u_grade;
 // its curvature, and whether the sun is a body inside it
 uniform int u_shell, u_sun_mode, u_world_outline;
 uniform float u_shell_w, u_curve;
+// The surround's outer rim, and whether anything stands behind it: 1 when
+// this is the last ground in that direction and its edge would otherwise be
+// a line drawn across the sky. u_atmo is the sky's own scattering, so the
+// colour the ground fades into is the colour the sky pass would have put
+// there.
+uniform int u_horizon;
+uniform float u_atmo;
 // the far shell's cloud band: the sky's own cloud shape, sampled at the
 // cloud altitude over the far surface - the cloud layer is a band on the
 // world (world_shape.hpp), and the far side of a ring shows it too
@@ -669,6 +676,25 @@ void main(){
     return;
   }
   col = apply_fog_terms(col, fog_f, fog_c);
+  // The horizon. The surround's grid stops at about 30 tiles out. On a
+  // curved world that is far under the horizon and nobody ever sees it,
+  // but drawn flat - or with the eye too low for the far shell to have
+  // taken over - the ground used to end on a hard line against the sky.
+  // The last few tiles fade into the very sky that would be seen through
+  // them, so the ground runs out the way distance runs out rather than the
+  // way a sheet of paper does. The fade is radial, not on the grid's own
+  // square: keyed on the square it would draw one, which is the same trap
+  // the tile's border fell into.
+  if (u_shell == 0 && u_horizon == 1){
+    float hz = 1.0 - smoothstep(23.0, 30.2, length(v_uv - vec2(0.5)));
+    if (hz < 1.0){
+      if (u_curve > 0.0) g_sky_up = pl_world_up_at(u_cam, u_curve);
+      vec3 sky = sky_color(normalize(v_world - u_cam), u_sky_zenith, u_sky_horizon,
+                           u_sun_mode == 1 ? vec3(0.0, 1.0, 0.0) : u_sun,
+                           u_sun_color, u_atmo);
+      col = mix(sky, col, hz);
+    }
+  }
   col = aces(col * u_exposure);
   col = pow(col, vec3(1.0/2.2));
   frag = vec4(col, 1.0);

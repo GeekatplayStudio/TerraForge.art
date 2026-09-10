@@ -662,6 +662,30 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **The ground runs out over a horizon, not at a line.** A free
+  perspective view used to draw the world flat, which is a world with an
+  edge: the ground reached the end of the surround, about thirty tiles out,
+  and stopped dead against the sky, with none of the far shell overhead
+  drawn at all. Free perspective views curve now - the sag over a tile is
+  four ten-thousandths of it, so nothing about modelling on one changes -
+  and the plan views stay flat, because a plan is a plan. The far shell
+  takes over as soon as the eye is high enough for the horizon to reach
+  past the surround, which is a height that depends on the world's size and
+  used to be a fixed tile up; on a large world that left a band of heights
+  with the ground stopping short of a horizon that was still further out.
+  And where nothing stands behind the surround at all, its last few tiles
+  now fade into the very sky that would be seen through them.
+- **A clip rounds into its flat instead of creasing.** Nothing in a
+  landscape meets a flat surface at a crease: a shore, a salt pan, a mesa
+  top all round into theirs. TerrainClip's *Edge softness* was a ramp under
+  the mark, which cannot be monotone - it arrived at the floor with the
+  ground still climbing, so the surface folded back and left a low ridge
+  ringing every flat, while the mark itself kept its crease. It is a smooth
+  maximum now, rounded from both sides, and it defaults to a light rounding
+  rather than to none. It cannot round deeper than it actually cuts, so a
+  clip with its range left wide open is still an identity, to the bit. The
+  same join is rounded where a placed tile is clipped against the planet's
+  own ground.
 - **The air thins with height, as air does.** The atmosphere was a slab of
   one density between the ground and a ceiling, so it ended on a line -
   which is why a planet seen from space had a drawn edge instead of a band.

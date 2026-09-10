@@ -55,6 +55,65 @@ gpx::Heightmap tile_with_bump(int n, float ground, float height, float radius) {
   return t;
 }
 
+// Clip modes (3 and 4): the tile stands only where it is higher, or only
+// where it is lower, than the planet's own ground. Taking the plain maximum
+// of the two surfaces is continuous but its slope is not - the join is a
+// knife crease running along wherever they cross, and no landscape has one.
+// The smooth maximum rounds it over half the presence band, the same band
+// the material weight already fades across.
+//
+// A rounded max differs from a hard one only near the crossing, and only
+// upwards: max(a,b) <= smax(a,b,k) <= max(a,b) + k/4, back to equality once
+// the surfaces are k apart. So the test is the difference between placing
+// with the presence and placing with almost none - it must be a swelling
+// that sits on the join and is absent everywhere else.
+void test_clip_join_is_rounded_not_creased() {
+  std::printf("placement: a clipped tile joins without a crease...\n");
+  const int n = 128;
+  auto L = layers_realistic();
+  // ground that rolls above and below the planet several times across the
+  // tile, so the two surfaces cross well inside it - a tile that is simply
+  // higher in the middle crosses out at its own rim, where the border
+  // feather has taken the weight to nothing and nothing is drawn anyway
+  gpx::Heightmap dome(n, n, 0.12f);
+  for (int y = 0; y < n; ++y)
+    for (int x = 0; x < n; ++x)
+      dome.at(x, y) = 0.12f + 0.20f * std::sin(6.2831853f * 3.f * x / float(n));
+
+  auto place = [&](float presence) {
+    studio::PlaceSettings s;
+    s.ground = 0.12f;
+    s.mode = 3;               // the tile stands only where it is higher
+    s.presence = presence;
+    return studio::planet_place_tile(dome, L, s, nullptr);
+  };
+  const float pw = 0.04f;                        // the default presence
+  const float k = pw * 0.5f;                     // the band the join rounds over
+  const gpx::Heightmap creased = place(1.0e-6f); // the old hard max, in effect
+  const gpx::Heightmap rounded = place(pw);
+
+  float lowest = 0.f, highest = 0.f;
+  int lifted = 0;
+  for (size_t i = 0; i < rounded.v.size(); ++i) {
+    const float d = rounded.v[i] - creased.v[i];
+    lowest = std::min(lowest, d);
+    highest = std::max(highest, d);
+    if (d > k * 0.05f) ++lifted;
+  }
+  check(lowest > -1e-6f,
+        "rounding the join never digs into the ground (worst " +
+            std::to_string(lowest) + ")");
+  check(highest > k * 0.15f && highest < k * 0.26f,
+        "the join is lifted by about a quarter of the band (" +
+            std::to_string(highest) + " against " + std::to_string(k * 0.25f) +
+            ")");
+  // and it is a join, not a general lift: most of the tile is nowhere near
+  // the crossing and must come out exactly as it did
+  check(lifted > 0 && lifted < (int)rounded.v.size() / 3,
+        "the rounding stays at the join (" + std::to_string(lifted) + " of " +
+            std::to_string((int)rounded.v.size()) + " texels)");
+}
+
 void test_flat_tile_is_the_planet() {
   std::printf("placement: a flat tile shows the planet...\n");
   const int n = 96;
@@ -392,6 +451,7 @@ void test_deterministic_and_off() {
 int test_planet_place_run() {
   g_fail = 0;
   test_flat_tile_is_the_planet();
+  test_clip_join_is_rounded_not_creased();
   test_feature_stands_on_levelled_ground();
   test_blend_controls();
   test_clip_modes();

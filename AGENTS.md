@@ -1185,6 +1185,53 @@ belongs to; do not fake a field node with a 1×1 buffer.
     fog of its own painted it pale right up to the tile's border, which read
     as a cliff around the tile.
 
+## The ground has to end somewhere, and it must not be a line
+
+Three things have to agree, or the surround ends on a hard edge against the
+sky - the thing people report as "clipping":
+
+1. **The view has to curve.** `view_planet_radius` (render_settings.hpp)
+   returns 0 for a flat view, and a flat world has no horizon at all: the
+   surround simply stops at its outer ring. Free *perspective* views curve
+   by default now; the orthographic ones do not, and a camera view always
+   does. Saved layouts wrote `"curved": false` into every view, so
+   layout_record.cpp migrates version 1 files - a default that changed is
+   not a preference anyone expressed.
+2. **The far shell has to take over in time.** planet_renderer.cpp draws it
+   once the eye is high enough that the horizon reaches past the surround's
+   ~30 tiles. That height is `d*d/(2R)`, not a fixed number of tiles: a
+   fixed tile up left a band of heights on every world larger than the
+   default where the ground stopped short of a horizon still further out.
+3. **What is left has to fade.** Where no shell stands behind it
+   (`u_horizon`), FS_INF blends its last few tiles into `sky_color()` in the
+   fragment's own direction. Fog used to be the only thing hiding that edge,
+   so turning fog off exposed it. The fade is **radial**, not on the grid's
+   own square - keyed on the square it draws one, which is exactly the trap
+   the tile's border fell into.
+
+## Smooth maximum, not a ramp
+
+Wherever two surfaces meet along "whichever is higher" - TerrainClip's
+flatten (nodes_sculpt_layer.cpp), a placed tile clipped against the planet
+(planet_place.cpp) - use the polynomial smooth maximum, never a ramp under
+the mark. A ramp from "untouched at the mark" to "flat a softness below it"
+cannot be monotone: it starts and ends at the floor with the ground still
+falling in between, so it turns round somewhere and leaves a ridge ringing
+the flat, and the mark keeps its crease because nothing above it moves.
+`smax(a,b,k)` is exactly `max` outside a band k wide, a parabola across it,
+and `k = 0` is `std::max` to the bit - which is what lets the softness be
+switched off and reproduce every older project.
+
+Two things it needs watching for. It lifts the join by `k/4` even where the
+surfaces merely touch, so **k must never exceed the depth of the cut**:
+TerrainClip clamps k to `mark - min` (and `max - mark`), which is what keeps
+a clip with its range wide open an identity and stops a default softness
+quietly changing every project. And a tile that is simply higher in the
+middle crosses the planet out at its own rim, where the border feather has
+already taken the weight to nothing - so a test of the rounding needs ground
+that rolls above and below the planet *inside* the tile, or it measures
+nothing at all.
+
 ## The air, and the clouds on it
 
 The atmosphere is an exponential density profile, not a slab

@@ -181,8 +181,11 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
     ImGui::Checkbox("Planet curvature", &vc.curved);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Draw the world's curvature in this free view. Off,\n"
-                        "a modelling view is flat and undistorted; a camera\n"
-                        "view always curves, because that is the picture.");
+                        "the ground is a flat sheet that runs out at the edge\n"
+                        "of the surround with nothing overhead; on, it falls\n"
+                        "away over a horizon and the rest of the world is\n"
+                        "drawn beyond it. A camera view always curves,\n"
+                        "because that is the picture.");
   }
   ImGui::TextDisabled("Each view is a normal window: drag its tab to\n"
                       "move, split, float or re-dock it. The\n"

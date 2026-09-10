@@ -486,6 +486,7 @@ void infinite_draw(const InfiniteFrame &f) {
   puni1(prog_inf, "u_tile_octf", f.tile_octf);
   upload_water_uniforms(prog_inf, render_settings(), f.time); // the tile's water, continued
   puni1(prog_inf, "u_curve", f.planet_radius);
+  puni1(prog_inf, "u_atmo", render_settings().atmosphere_density);
   upload_fog_uniforms(prog_inf, render_settings(), f.atmosphere);
   punii(prog_inf, "u_object_id", 1);
   // the surround's relief budget follows the tile's own height scale
@@ -546,18 +547,35 @@ void infinite_draw(const InfiniteFrame &f) {
     puni1(prog_inf, "u_frac_amount", nl == 0 ? 0.f : f.frac_amount);
     punii(prog_inf, "u_sun_mode", (rsw.world_sun_inside && S.inside) ? 1 : 0);
     puni1(prog_inf, "u_shell_w", rsw.world_width);
-    punii(prog_inf, "u_shell", 0);
-    glBindVertexArray(inf_vao);
-    glDrawElements(GL_TRIANGLES, inf_count, GL_UNSIGNED_INT, nullptr);
-    // the far grid: the whole shape for a face that faces the centre or
+    // The far grid: the whole shape for a face that faces the centre or
     // for a body's other face, the rest of a flat world past the surround
-    // ... and an outside face once the eye is up off the ground: the
-    // world from above and from space, and no edge to the surround
-    const bool aloft = f.eye[1] > 1.0f || std::fabs(f.eye[0] - 0.5f) > 20.f || std::fabs(f.eye[2] - 0.5f) > 20.f;
+    // ... and an outside face once the eye is high enough for the surround
+    // to end this side of the horizon.
+    //
+    // That height is not a round number of tiles: a horizon d away sits at
+    // d*d/2R, so on a small world the surround runs out at head height and
+    // on a large one only from an aeroplane. Taking it as a fixed tile up
+    // left a band of heights on every world where the ground stopped at 30
+    // tiles with the horizon still further out and nothing drawn between -
+    // the hard line against the sky.
+    const float shell_h = f.planet_radius > 0.f
+                              ? 29.f * 29.f / (2.f * f.planet_radius)
+                              : 1.0e9f;
+    const bool aloft = f.eye[1] > shell_h * 0.5f ||
+                       std::fabs(f.eye[0] - 0.5f) > 20.f ||
+                       std::fabs(f.eye[2] - 0.5f) > 20.f;
     const bool far_shell = flat ? rsw.world_width > 58.f
                                 : (f.planet_radius > 0.f &&
                                    (gpx::planet::shape_faces_centre(S) || body_face ||
                                     (nl > 0 && aloft)));
+    // ... and where nothing stands behind it, the surround fades out into
+    // the sky over its last few tiles rather than ending on its own rim.
+    // Never on a flat world: that one has a real edge, cut to its outline
+    // in the fragment stage, and softening it would hide the point of it.
+    punii(prog_inf, "u_horizon", (far_shell || flat) ? 0 : 1);
+    punii(prog_inf, "u_shell", 0);
+    glBindVertexArray(inf_vao);
+    glDrawElements(GL_TRIANGLES, inf_count, GL_UNSIGNED_INT, nullptr);
     if (far_shell) {
       punii(prog_inf, "u_shell", 1);
       glBindVertexArray(shell_vao);

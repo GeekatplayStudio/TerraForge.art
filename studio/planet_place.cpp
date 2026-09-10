@@ -68,6 +68,15 @@ float border_noise(float u, float v) {
   return bn_value(u * 5.f, v * 5.f) * 0.68f + bn_value(u * 13.f + 7.f, v * 13.f + 3.f) * 0.32f;
 }
 
+// The polynomial smooth maximum: exactly max() outside a band k wide, a
+// parabola across it, and the slopes match where the two meet. k = 0 is
+// std::max to the bit.
+float place_smax(float a, float b, float k) {
+  if (k <= 1e-9f) return a > b ? a : b;
+  const float h = std::clamp(0.5f + 0.5f * (a - b) / k, 0.f, 1.f);
+  return b + (a - b) * h + k * h * (1.f - h);
+}
+
 float smoothstep01(float e0, float e1, float x) {
   return gpx::planet::pl_smoothstep(e0, e1, x);
 }
@@ -242,10 +251,11 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
   const bool zero_edge = s.mode == 2;
   // Clipping: the tile stands only where it is higher (mode 3, +1) or lower
   // (mode 4, -1) than the planet's own ground; the other way the planet
-  // shows. The height is a hard max/min, so the join is where the two
-  // surfaces cross and nothing is dented near it; the material weight
-  // fades over `presence` either side of the crossing, so the tile's
-  // texture does not end on a hairline.
+  // shows. A plain max of the two surfaces is continuous but its slope is
+  // not - the join is a knife crease along wherever they cross, and no
+  // landscape has one. It is a smooth maximum instead, rounded over the
+  // same `presence` band the material weight fades across, so the shape
+  // and the texture give way together.
   const int clip = s.mode == 3 ? 1 : (s.mode == 4 ? -1 : 0);
   const gpx::Heightmap *mask = s.mask && !s.mask->empty() ? s.mask.get() : nullptr;
   gpx::parallel_rows(h, [&](int y0, int y1) {
@@ -321,7 +331,8 @@ gpx::Heightmap planet_place_tile(const gpx::Heightmap &tile,
         const float feature = seat + (tile.v[i] - tile_ground);
         if (clip != 0) {
           // where the tile loses, the planet is what stands there
-          const float kept = clip > 0 ? std::max(feature, pb) : std::min(feature, pb);
+          const float kept = clip > 0 ? place_smax(feature, pb, pw * 0.5f)
+                                      : -place_smax(-feature, -pb, pw * 0.5f);
           outm.v[i] = pb + (kept - pb) * wgt;
           wgt *= smoothstep01(0.f, pw, (feature - pb) * (float)clip);
         } else {

@@ -37,7 +37,7 @@ std::filesystem::path layouts_dir() {
 
 std::string layout_to_json(const LayoutRecord &r) {
   json j;
-  j["version"] = 1;
+  j["version"] = 2;
   j["name"] = r.name;
   j["ini"] = r.ini;
   j["view_mask"] = r.view_mask;
@@ -78,6 +78,7 @@ bool layout_from_json(const std::string &text, LayoutRecord &r,
     err = "not a layout file";
     return false;
   }
+  const int ver = j.value("version", 1);
   r.name = j.value("name", r.name);
   r.ini = j.value("ini", std::string());
   if (j.contains("view_mask") && j["view_mask"].is_number())
@@ -95,6 +96,11 @@ bool layout_from_json(const std::string &text, LayoutRecord &r,
     out.grid = v.value("grid", out.grid);
     out.outlines = v.value("outlines", out.outlines);
     out.curved = v.value("curved", out.curved);
+    // Version 1 wrote "curved": false into every view, so a saved layout
+    // would hold the free perspective view flat for ever. It is a default
+    // that changed, not a preference anyone expressed - so on the way in,
+    // once, a perspective view from an older layout takes the new one.
+    if (ver < 2 && out.camera == 0) out.curved = true;
     out.ortho_zoom = v.value("ortho_zoom", out.ortho_zoom);
     out.ortho_cx = v.value("ortho_cx", out.ortho_cx);
     out.ortho_cy = v.value("ortho_cy", out.ortho_cy);

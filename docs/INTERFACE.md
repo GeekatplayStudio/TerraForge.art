@@ -207,6 +207,13 @@ with `side`.
 
 ## Atmosphere height and deep space
 
+A viewport's **Planet curvature** (the gear menu, free views only) draws the
+world round. It is on for a free perspective view and off for the plan
+views; a camera view always curves, because that is the picture. Turned off,
+the ground is a flat sheet that runs out at the edge of the surround with
+nothing overhead - useful for judging a tile undistorted, misleading for
+judging a landscape.
+
 Environment ▸ Atmosphere ▸ **Height** is how high the air reaches over the
 world's surface, whatever its shape; beyond it is space. **Thins by** is the
 scale height as a fraction of that: how far up the air thins by a factor of
