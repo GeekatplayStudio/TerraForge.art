@@ -328,8 +328,18 @@ void object_properties_nebula_ui(App &a, SceneObject &o); // panel_properties_ob
 // A viewport's point of view into a camera (cam -1 = a new one named
 // `name`), and a camera into a viewport - linked, so the view looks
 // through it, or copied into the free orbit (layout_store.cpp).
+//
+// `lens` carries the framing over as well as the place: a view that looks
+// through another camera hands its whole lens across, and a free view sets
+// the focal length that frames the same picture on whatever sensor the
+// camera already has. Without it only the eye and the aim move, which is
+// what this did before there was anywhere to say otherwise.
 int view_to_camera(App &a, int slot, int cam, const std::string &name, bool activate,
-                   std::string &err);
+                   bool lens, std::string &err);
+// Which camera "copy this view" writes to: the one selected in the Objects
+// tree when that is a camera, else the active one, else the last one used,
+// else the first there is. -1 when the scene holds no camera at all.
+int view_target_camera();
 bool camera_to_view(App &a, int cam, int slot, bool link);
 void camera_apply_film();
 void studio_api_tick(App &a); // scripting / MCP bridge

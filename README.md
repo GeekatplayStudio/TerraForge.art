@@ -662,6 +662,12 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **A view becomes a shot in one press.** Flying around until something
+  looks right and then rebuilding it by typing numbers into a camera is the
+  long way round. Every viewport carries a *Copy this view to the camera*
+  button beside its gear: where the view looks from and at, and the lens
+  that frames what is on screen, written into the selected camera. A view
+  already looking through another camera hands its whole lens across.
 - **Deep space is generated, not a photograph.** Beyond the air there is a
   star field of a quarter of a million stars - laid out on a grid of the
   sky, coloured along the Planckian locus from a red dwarf's orange to a

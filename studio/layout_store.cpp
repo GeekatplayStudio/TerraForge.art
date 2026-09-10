@@ -14,6 +14,7 @@
 #include "prefs.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "gpx/camera_math.hpp"
 #include <imgui.h>
 #include <cmath>
 #include <algorithm>
@@ -120,11 +121,35 @@ bool layout_load_named(App &a, const std::string &name, std::string &err) {
 // ------------------------------------------------- views and cameras
 // Where a viewport is looking from and at: the camera it looks through,
 // the active one, or the free orbit.
+// The camera a view is looking through, or -1 for the free orbit.
+static int view_source_camera(const RenderSettings::ViewConfig &vc) {
+  const SceneState &sc = scene();
+  const int src = vc.scene_camera >= 0 ? vc.scene_camera
+                : (vc.scene_camera == -2 ? scene_active_camera() : -1);
+  if (src >= 0 && src < (int)sc.objects.size() &&
+      sc.objects[(size_t)src].type == SceneObject::Camera)
+    return src;
+  return -1;
+}
+
+int view_target_camera() {
+  const SceneState &sc = scene();
+  auto is_cam = [&](int i) {
+    return i >= 0 && i < (int)sc.objects.size() &&
+           sc.objects[(size_t)i].type == SceneObject::Camera;
+  };
+  if (is_cam(sc.selected)) return sc.selected;
+  if (is_cam(scene_active_camera())) return scene_active_camera();
+  if (is_cam(scene_last_used_camera())) return scene_last_used_camera();
+  for (int i = 0; i < (int)sc.objects.size(); ++i)
+    if (is_cam(i)) return i;
+  return -1;
+}
+
 static void view_eye_target(const RenderSettings::ViewConfig &vc, float eye[3], float target[3]) {
   SceneState &sc = scene();
-  int src = vc.scene_camera >= 0 ? vc.scene_camera
-          : (vc.scene_camera == -2 ? scene_active_camera() : -1);
-  if (src >= 0 && src < (int)sc.objects.size() && sc.objects[(size_t)src].type == SceneObject::Camera) {
+  int src = view_source_camera(vc);
+  if (src >= 0) {
     const CameraData &cd = sc.objects[(size_t)src].cam;
     for (int k = 0; k < 3; ++k) { eye[k] = cd.eye[k]; target[k] = cd.target[k]; }
     return;
@@ -138,12 +163,13 @@ static void view_eye_target(const RenderSettings::ViewConfig &vc, float eye[3], 
 }
 
 int view_to_camera(App &a, int slot, int cam, const std::string &name, bool activate,
-                   std::string &err) {
+                   bool lens, std::string &err) {
   RenderSettings &rs = render_settings();
   SceneState &sc = scene();
   slot = std::clamp(slot, 0, RenderSettings::MAX_VIEWS - 1);
   float eye[3], target[3];
   view_eye_target(rs.views[slot], eye, target);
+  const int src = view_source_camera(rs.views[slot]);
   if (cam < 0) cam = scene_add_camera(name);
   if (cam < 0 || cam >= (int)sc.objects.size() || sc.objects[(size_t)cam].type != SceneObject::Camera) {
     err = "no such camera";
@@ -151,6 +177,30 @@ int view_to_camera(App &a, int slot, int cam, const std::string &name, bool acti
   }
   CameraData &cd = sc.objects[(size_t)cam].cam;
   for (int k = 0; k < 3; ++k) { cd.eye[k] = eye[k]; cd.target[k] = target[k]; }
+  // Where it stands is half of a shot; what it frames is the other half. A
+  // camera given only an eye and an aim shows a different picture from the
+  // one that was on screen, which is not what "copy this view" means.
+  if (lens && src != cam) {
+    if (src >= 0) {
+      // looking through another camera: hand the whole lens across
+      const CameraData &s = sc.objects[(size_t)src].cam;
+      cd.focal_mm = s.focal_mm;
+      cd.format = s.format;
+      cd.aperture = s.aperture;
+      cd.shutter = s.shutter;
+      cd.iso = s.iso;
+      cd.film = s.film;
+      cd.optics = s.optics;
+    } else {
+      // a free orbit has no lens, only a field of view: keep this camera's
+      // own sensor and give it the focal length that frames the same picture
+      int nf = 0;
+      const gpx::cam::SensorFormat *F = gpx::cam::sensor_formats(&nf);
+      const gpx::cam::SensorFormat &f = F[std::clamp(cd.format, 0, nf - 1)];
+      cd.focal_mm = gpx::cam::focal_mm_for_fov_y(
+          renderer_free_fovy_rad() * 57.29577951f, f.height_mm);
+    }
+  }
   sc.selected = cam;
   scene_last_used_camera() = cam;
   if (activate) scene_active_camera() = cam;
@@ -208,7 +258,8 @@ int ai_layout_op(App &a, const std::string &op, const json &act,
         return 0;
       }
       const std::string name = act.value("name", cname);
-      return view_to_camera(a, slot, cam, name, act.value("activate", false), err) >= 0 ? 1 : 0;
+      return view_to_camera(a, slot, cam, name, act.value("activate", false),
+                            act.value("lens", true), err) >= 0 ? 1 : 0;
     }
     if (cam < 0) cam = scene_active_camera();
     if (!camera_to_view(a, cam, slot, act.value("link", true))) {

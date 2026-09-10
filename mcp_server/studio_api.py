@@ -424,11 +424,16 @@ MCP_TOOLS = {
                    "height": "int", "samples": "int", "output": "str"},
     },
     "studio_view_to_camera": {
-        "description": "Write a viewport's point of view (where it looks from and "
-                       "at) into a camera: an existing one by name, or a new one. "
-                       "Fields: view (1-based, default the focused view), camera, "
-                       "name, activate.",
-        "params": {"view": "int", "camera": "str", "name": "str", "activate": "bool"},
+        "description": "Write a viewport's point of view into a camera: an "
+                       "existing one by name, or a new one. Where it looks from "
+                       "and at, and - unless lens is false - the lens that frames "
+                       "it, so the camera shows the picture that was on screen. A "
+                       "view looking through another camera hands its whole lens "
+                       "across; a free view sets the focal length that frames the "
+                       "same field of view. Fields: view (1-based, default the "
+                       "focused view), camera, name, activate, lens.",
+        "params": {"view": "int", "camera": "str", "name": "str", "activate": "bool",
+                   "lens": "bool"},
     },
     "studio_camera_to_view": {
         "description": "Put a camera into a viewport: link=true makes the view look "

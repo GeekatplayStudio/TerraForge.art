@@ -237,8 +237,14 @@ void renderer_orbit_set(const float target[3], float yaw, float pitch, float dis
   CAM.dist = std::clamp(dist, 1e-8f, 100000.f);
 }
 
+// The free orbit's own field of view. Named here because two places need
+// to agree on it: the projection this view draws with, and the focal length
+// "copy this view to a camera" gives that camera so it frames the same
+// picture (layout_store.cpp).
+float renderer_free_fovy_rad() { return 0.9f; }
+
 float perspective_eye_target(float *eye, float *target, float *up_out) {
-  float fovy_rad = 0.9f;
+  float fovy_rad = renderer_free_fovy_rad();
   SceneState &sc = scene();
   int ov = renderer_camera_override();
   int active = ov != -2 ? ov : scene_active_camera();

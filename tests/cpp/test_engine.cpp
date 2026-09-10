@@ -650,6 +650,25 @@ static void test_camera_math() {
   // a smaller sensor crops the same lens
   CHECK(fov_y_deg(50.f, 15.7f) < fov_y_deg(50.f, 24.f), "APS-C crops");
 
+  // The lens that frames a given field of view: the inverse, which is what
+  // turns a viewport's framing into a camera when a view is copied to one
+  // (studio/layout_store.cpp view_to_camera).
+  for (float f : {14.f, 24.f, 50.f, 135.f, 400.f})
+    for (float h : {24.f, 15.7f, 18.66f}) {
+      const float back = focal_mm_for_fov_y(fov_y_deg(f, h), h);
+      CHECK(std::fabs(back - f) < f * 0.001f, "a focal length survives the round trip");
+    }
+  // the free orbit's own field of view, 0.9 rad, is a wide-ish lens
+  const float free_mm = focal_mm_for_fov_y(0.9f * 57.29577951f, 24.f);
+  CHECK(free_mm > 20.f && free_mm < 30.f, "the free view frames like a 25mm lens");
+  // a smaller sensor needs a shorter lens for the same view
+  CHECK(focal_mm_for_fov_y(50.f, 15.7f) < focal_mm_for_fov_y(50.f, 24.f),
+        "the same view on a smaller sensor is a shorter lens");
+  // nothing degenerate at either end
+  CHECK(focal_mm_for_fov_y(0.f, 24.f) > 0.f && std::isfinite(focal_mm_for_fov_y(0.f, 24.f)),
+        "a zero field of view is clamped, not divided by");
+  CHECK(focal_mm_for_fov_y(1000.f, 24.f) > 0.f, "a field of view past 180 is clamped too");
+
   // exposure: the reference triangle is neutral
   float m = exposure_multiplier(8.f, 1.f / 125.f, 100.f);
   CHECK(std::fabs(m - 1.f) < 0.05f, "f/8 1/125 ISO100 is the neutral exposure");

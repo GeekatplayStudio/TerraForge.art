@@ -19,9 +19,12 @@ std::string ai_action_schema(AiDomain domain) {
    "azimuth_deg":210, "activate":true}
 - {"op":"set_camera","name":"Hero", ...same fields...}   (edits the selected
    or named camera instead of creating one)
-- {"op":"view_to_camera","view":1,"camera":"Hero","name":"Hero","activate":true}
+- {"op":"view_to_camera","view":1,"camera":"Hero","name":"Hero","activate":true,"lens":true}
    (a viewport's point of view written into a camera - the named one, or a new
-    one called `name` when there is none)
+    one called `name` when there is none. lens (default true) carries the
+    framing over as well as the place: a view looking through another camera
+    hands its whole lens across, a free view sets the focal length that frames
+    the same picture. lens false moves only the eye and the aim.)
 - {"op":"camera_to_view","camera":"Hero","view":2,"link":true}   (link: the view
    looks through the camera from now on; link false: the free orbit moves there)
 - {"op":"render","camera":"Hero","preset":"Final 4K"}   (the active camera when

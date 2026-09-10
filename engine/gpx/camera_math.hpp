@@ -33,6 +33,17 @@ inline float fov_y_deg(float focal_mm, float sensor_h_mm) {
   return 2.0f * std::atan(sensor_h_mm * 0.5f / focal_mm) * 57.29577951f;
 }
 
+// The lens that frames a given vertical field of view on a sensor: the
+// inverse of fov_y_deg, for turning what a viewport shows into a focal
+// length a camera can be set to.
+inline float focal_mm_for_fov_y(float fov_deg, float sensor_h_mm) {
+  if (fov_deg < 0.1f) fov_deg = 0.1f;
+  if (fov_deg > 179.0f) fov_deg = 179.0f;
+  const float half = fov_deg * 0.5f * 0.01745329252f;
+  const float t = std::tan(half);
+  return sensor_h_mm * 0.5f / (t > 1e-4f ? t : 1e-4f);
+}
+
 // horizontal fov, for completeness
 inline float fov_x_deg(float focal_mm, float sensor_w_mm) {
   return fov_y_deg(focal_mm, sensor_w_mm);

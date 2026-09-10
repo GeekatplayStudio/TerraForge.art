@@ -391,6 +391,8 @@ void renderer_view_input(RenderSettings::ViewConfig &vc, float dx, float dy,
                          float wheel, bool rotating, bool panning, int view_w);
 float renderer_view_width_m(const RenderSettings::ViewConfig &vc);
 void renderer_get_camera(float eye[3], float target[3], float *fovy_deg);
+// the field of view a free orbit draws with (renderer_camera.cpp)
+float renderer_free_fovy_rad();
 // pick a scene object under normalized view coords (0..1); -1 = nothing
 int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float v,
                   int w, int h);

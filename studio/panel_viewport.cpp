@@ -139,15 +139,16 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
     ImGui::SetNextItemWidth(W);
     if (ImGui::BeginCombo("##view2cam", "Save this view as camera...")) {
       std::string err;
-      if (ImGui::Selectable("New camera")) view_to_camera(a, slot, -1, "", false, err);
+      if (ImGui::Selectable("New camera")) view_to_camera(a, slot, -1, "", false, true, err);
       for (int i : cams)
         if (ImGui::Selectable((scn.objects[(size_t)i].name + "##v2c" + std::to_string(i)).c_str()))
-          view_to_camera(a, slot, i, "", false, err);
+          view_to_camera(a, slot, i, "", false, true, err);
       ImGui::EndCombo();
     }
     if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Where this view looks from and at, written into a camera:\n"
-                        "a new one, or one that exists.");
+      ImGui::SetTooltip("Where this view looks from and at, and the lens that\n"
+                        "frames it, written into a camera: a new one, or one\n"
+                        "that exists.");
     ImGui::SetNextItemWidth(W);
     if (ImGui::BeginCombo("##cam2view", "Look through camera here...")) {
       for (int i : cams)
@@ -267,9 +268,10 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
   const float bw = tool_size();
   const float gap = 3.f, air = 7.f;
   const float full = bw * 12.f + gap * 9.f + (air * 2.f + 1.f) * 3.f;
-  // the float / dock button owns the far corner; the strip stops short of it
+  // the float / dock button owns the far corner; the strip stops short of
+  // it, of the view-options gear, and of the copy-to-camera button beside it
   const float float_w = ImGui::GetFontSize() + 6.f + 8.f;
-  const float right = ImGui::GetContentRegionMax().x - float_w - bw - 6.f;
+  const float right = ImGui::GetContentRegionMax().x - float_w - bw * 2.f - gap - 6.f;
 
   auto pick = [&](Icon ic, const char *id, const char *tip, int *value, int on) {
     if (IconButton(ic, id, tip, *value == on, bw) && *value != on) {
@@ -333,6 +335,34 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
     } else {
       ImGui::SetCursorPosX(right - bw); // room for the gear and nothing else
     }
+  }
+  // This view into a camera, in one press. Flying around until something
+  // looks right and then rebuilding it by typing numbers into a camera is
+  // the long way round; this is the short one.
+  {
+    const SceneState &scn = scene();
+    const int cam = view_target_camera();
+    const bool ortho = vc.camera != 0;
+    std::string tip;
+    if (ortho)
+      tip = "Copy this view to a camera\n\nA camera sees in perspective, so there is nothing\n"
+            "here for one to copy. Switch this view to Perspective.";
+    else if (cam >= 0)
+      tip = "Copy this view to " + scn.objects[(size_t)cam].name +
+            "\n\nIts eye, its aim and the lens that frames this picture\n"
+            "are written into that camera, which is the one selected in\n"
+            "the Objects tree - or the active one when the selection is\n"
+            "something else.";
+    else
+      tip = "Copy this view to a camera\n\nThere is no camera in the scene yet, so this makes\n"
+            "one where you are standing.";
+    ImGui::BeginDisabled(ortho);
+    if (IconButton(Icon::Camera, "##v2camnow", tip.c_str(), false, bw)) {
+      std::string err;
+      if (view_to_camera(a, slot, cam, "", false, true, err) < 0) a.status = err;
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine(0, gap);
   }
   if (IconButton(Icon::Views, "##vopt",
                  "View options: arrange the viewports, engine, background, units", false, bw))

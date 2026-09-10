@@ -121,9 +121,21 @@ Unfold all.
 
 Each viewport has, at the right of its title: the projection group
 (perspective, top, front, right), the shading group (wireframe, shaded,
-textured, ID colours), the overlay group (sky, water, grid, outlines) and
-the gear for that view's settings. When the viewport is too narrow the
-groups collapse to two combos, then to the gear alone.
+textured, ID colours), the overlay group (sky, water, grid, outlines),
+**Copy this view to the camera**, and the gear for that view's settings.
+When the viewport is too narrow the groups collapse to two combos, then to
+the gear alone; the camera button and the gear stay whatever happens.
+
+**Copy this view to the camera** writes where the view looks from and at,
+and the lens that frames what is on screen, into a camera - so it shows the
+picture you were looking at rather than a different one from the same
+place. It writes to the camera selected in the Objects tree, or the active
+one when the selection is something else, or the last one used; with no
+camera in the scene it makes one. The tooltip names which. It is off on an
+orthographic view, which has no equivalent for a camera to take. The gear's
+*Save this view as camera...* does the same for a camera you name, and
+`view_to_camera` does it from a script, with `lens: false` to move only the
+eye and the aim.
 
 **Navigating.** Left drag orbits. Shift+left drag, middle drag or right
 drag pans. Ctrl+left drag, Alt+right drag or the wheel dollies. The Maya
