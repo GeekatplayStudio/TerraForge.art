@@ -55,6 +55,7 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
       s += R"(- {"op":"set_sun","azimuth_deg":220,"altitude_deg":12,"intensity":3.0,
    "color":[1,0.85,0.6]}
 - {"op":"set_sky","density":1.2,"ambient":0.7,"zenith":[r,g,b],"horizon":[r,g,b]}
+- set_sun also takes "size_deg" (the sun's angular width, 0.53 is our own Sun), "glow" (the aureole the air makes round it, 0..4) and "glow_size" (how far that halo spreads, degrees).
 - {"op":"set_fog","type":"off"|"haze"|"fog"|"pollution","density":1.2,
    "level":0.3,"color":[r,g,b]}
 - set_fog also takes "falloff", "absorb":[r,g,b], "sun_scatter", "albedo" (scattering albedo 0..1), "anisotropy" (HG g, -0.95..0.95), "heterogeneity" (0..1, noise-broken fog) and "steps" (1..64 ray-march samples; 1 = closed form). The fog is a participating medium: Beer-Lambert extinction, single scattering, self-shadowed when marched.

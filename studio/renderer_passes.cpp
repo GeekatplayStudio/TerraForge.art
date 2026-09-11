@@ -239,6 +239,9 @@ void pass_sky(const FrameCtx &F) {
     uni3(prog_sky, "u_sky_zenith", RS.sky_zenith);
     uni3(prog_sky, "u_sky_horizon", RS.sky_horizon);
     uni1(prog_sky, "u_atmo", RS.atmosphere_density);
+    uni1(prog_sky, "u_sun_angle", RS.sun_angle_deg);
+    uni1(prog_sky, "u_sun_glow", RS.sun_glow);
+    uni1(prog_sky, "u_sun_glow_size", RS.sun_glow_size);
     unii(prog_sky, "u_fog_type", RS.fog_type);
     uni3(prog_sky, "u_fog_color", RS.fog_color);
     uni1(prog_sky, "u_fog_density", RS.fog_density);

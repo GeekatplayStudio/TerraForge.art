@@ -127,6 +127,13 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       // below the horizon is allowed: that is what night is
       if (act.contains("altitude_deg")) rs.sun_altitude = std::clamp(act["altitude_deg"].get<float>(), -35.f, 89.f);
       if (act.contains("intensity")) rs.sun_intensity = act["intensity"].get<float>();
+      // the sun as a body: how wide it is, and the halo the air makes round it
+      if (act.contains("size_deg"))
+        rs.sun_angle_deg = std::clamp(act["size_deg"].get<float>(), 0.01f, 60.f);
+      if (act.contains("glow"))
+        rs.sun_glow = std::clamp(act["glow"].get<float>(), 0.f, 4.f);
+      if (act.contains("glow_size"))
+        rs.sun_glow_size = std::clamp(act["glow_size"].get<float>(), 0.5f, 90.f);
       read_vec3(act, "color", rs.sun_color);
       ++applied;
     } else if (op == "set_sky") {

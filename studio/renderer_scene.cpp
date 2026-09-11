@@ -296,12 +296,20 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   draw_scene_meshes(F, sun, atmosphere);
 
 
-  // sun gizmo (a real, selectable scene object)
-  if (sun_on && g_aov == 0) {
+  // The sun's handle: a real, selectable scene object, and a *handle* - a
+  // ball two units away and three degrees across, where the sun itself is
+  // half a degree and a hundred and fifty million kilometres off. It is
+  // furniture for grabbing the sun with, so it belongs to a view that shows
+  // its furniture and not to a photograph. Drawn into the picture it put a
+  // second sun there, in a different place and six times the size, that no
+  // render could ever agree with.
+  if (sun_on && g_aov == 0 && vc.outlines) {
     float gd = 1.9f;
     float gpos[3] = {0.5f + sun[0] * gd, RS.height_scale + sun[1] * gd,
                      0.5f + sun[2] * gd};
-    float radius = 0.055f;
+    // small enough to read as a marker rather than as a second sun: three
+    // degrees across was six times the real one and stole the eye
+    float radius = 0.018f;
     glUseProgram(prog_gizmo);
     glUniformMatrix4fv(uniform_location(prog_gizmo, "u_mvp"), 1, GL_FALSE, mvp);
     glUniform4f(uniform_location(prog_gizmo, "u_xform"), gpos[0], gpos[1],
@@ -346,8 +354,9 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     }
   }
 
-  // light gizmos: a small glowing ball where each point light sits
-  for (size_t li = 0; li < sc.objects.size(); ++li) {
+  // light gizmos: a small glowing ball where each point light sits - the
+  // same rule as the sun's handle, for the same reason
+  for (size_t li = 0; vc.outlines && li < sc.objects.size(); ++li) {
     const SceneObject &o = sc.objects[li];
     if (o.type != SceneObject::Light || !sc.object_visible(o)) continue;
     glUseProgram(prog_gizmo);

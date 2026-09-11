@@ -32,6 +32,26 @@ static void section_sun(RenderSettings &rs) {
   }
   ImGui::ColorEdit3("Sun color", rs.sun_color);
   studio::SliderFloatW("Sun intensity", &rs.sun_intensity, 0.2f, 8.f);
+  studio::SliderFloatW("Sun size", &rs.sun_angle_deg, 0.05f, 20.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How wide the sun is in the sky, in degrees. Our own Sun\n"
+                      "is 0.53 - about a little finger at arm's length - and so\n"
+                      "is the Moon, which is why an eclipse fits. A bigger sun\n"
+                      "is a nearer or larger star; it spreads the same light\n"
+                      "over more sky rather than adding any, and it softens\n"
+                      "every shadow edge in the scene.");
+  studio::SliderFloatW("Sun glow", &rs.sun_glow, 0.f, 3.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The aureole: the bright halo around the sun that is not\n"
+                      "the sun but the air in front of it, throwing light\n"
+                      "forward past the dust and droplets it meets. It is what\n"
+                      "makes a hazy sky glare and a clear one not, so it grows\n"
+                      "with the atmosphere's density and disappears in vacuum.");
+  studio::SliderFloatW("Glow spread", &rs.sun_glow_size, 1.f, 60.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How far the halo reaches from the sun, in degrees. Small\n"
+                      "and tight is clean mountain air; wide and soft is haze,\n"
+                      "smoke or a damp afternoon.");
 }
 
 static void section_atmosphere(RenderSettings &rs) {

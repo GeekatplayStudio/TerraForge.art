@@ -17,6 +17,7 @@ out vec4 frag;
 uniform mat4 u_inv_vp;
 uniform vec3 u_cam, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_exposure, u_atmo;
+uniform float u_sun_angle, u_sun_glow, u_sun_glow_size;
 uniform int u_fog_type;
 uniform vec3 u_fog_color;
 uniform float u_fog_density;
@@ -513,10 +514,33 @@ void main(){
   // twice
   bool bd_sun_hidden = u_bd_on == 1 && u_bd_hide_sun == 1 && g_bd_weight > 0.0;
   vec3 sun_disc = vec3(0.0);
+  vec3 sun_glow = vec3(0.0);
   float atm_scat = 1.0; // how much air the pixel looks through, 0..1
-  if (u_no_sun == 0 && !bd_sun_hidden) {
-    float s = max(dot(dir, u_sun), 0.0);
-    sun_disc = u_sun_color * pow(s, 700.0) * 8.0;
+  {
+    // The angle from the sun, which is what both the disc and the halo are
+    // really functions of. acos is exact near zero where a dot product's
+    // resolution runs out, and near zero is the whole sun.
+    float ang = acos(clamp(dot(dir, u_sun), -1.0, 1.0));
+    float half_w = max(u_sun_angle, 0.01) * 0.0087266; // degrees -> radians, halved
+    if (u_no_sun == 0 && !bd_sun_hidden) {
+      // A disc with a soft rim one part in forty of its width: the limb of
+      // a star is not a step, and a hard edge aliases into a polygon at any
+      // resolution. Its brightness is per solid angle, so making the sun
+      // larger spreads the same light rather than adding more.
+      float edge = half_w * 0.025;
+      float d = 1.0 - smoothstep(half_w - edge, half_w + edge, ang);
+      float ref = 0.0046;  // our own Sun's half-width, radians
+      sun_disc = u_sun_color * u_sun_intensity * 6.0 * d *
+                 (ref * ref) / (half_w * half_w);
+    }
+    // The aureole. Forward scattering piles light up around the sun, over
+    // degrees rather than the arc-minutes of the disc, and it is air doing
+    // it - so it fades with the air on the ray and dies in vacuum.
+    if (u_sun_glow > 0.0 && !bd_sun_hidden) {
+      float w = max(u_sun_glow_size, 0.5) * 0.0174533;
+      float halo = exp(-ang / w) * 0.65 + exp(-ang / (w * 4.0)) * 0.35;
+      sun_glow = u_sun_color * u_sun_intensity * u_sun_glow * 0.12 * halo * u_atmo;
+    }
   }
   // Deep space: the stars, the galaxy and the nebulas, behind the air. How
   // much of it reaches the eye is worked out first, because the backdrop is
@@ -542,12 +566,13 @@ void main(){
     float scat = 1.0 - exp(-5.0 * u_atmo * path);
     float T = exp(-0.35 * u_atmo * path);
     atm_scat = scat;
-    col = space * sp_w + sun_disc * T + col * scat;
+    // the disc is seen through the air, the halo is made by it
+    col = space * sp_w + sun_disc * T + col * scat + sun_glow * scat;
   } else {
     // the old rule: sky everywhere, thinning to space with the camera's
     // distance from the tile (u_space), stars coming out at night
     float night = smoothstep(0.03, -0.12, u_sun.y);
-    col += sun_disc;
+    col += sun_disc + sun_glow;
     if (night > 0.0 && dir_up > 0.0) col += space * night * clamp(dir_up * 4.0, 0.0, 1.0);
   }
   vec4 cl = march_clouds(u_cam, dir, col);

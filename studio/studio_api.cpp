@@ -161,7 +161,10 @@ static void publish_state(App &a) {
   j["sun"] = {{"azimuth_deg", rs.sun_azimuth},
               {"altitude_deg", rs.sun_altitude},
               {"intensity", rs.sun_intensity},
-              {"color", {rs.sun_color[0], rs.sun_color[1], rs.sun_color[2]}}};
+              {"color", {rs.sun_color[0], rs.sun_color[1], rs.sun_color[2]}},
+              {"size_deg", rs.sun_angle_deg},
+              {"glow", rs.sun_glow},
+              {"glow_size", rs.sun_glow_size}};
   j["sky"] = {{"density", rs.atmosphere_density},
               {"ambient", rs.ambient_intensity}};
   j["fog"] = {{"type", rs.fog_type}, {"density", rs.fog_density},

@@ -666,6 +666,22 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **The sun is a body, and the air glows around it.** It was a falloff
+  about ten degrees wide - a bright blob rather than the sun. It has an
+  angular size now, half a degree by default, which is what our own Sun and
+  the Moon both are; making it larger spreads the same light over more sky
+  rather than adding any. Around it is the aureole: the halo that is not the
+  sun but the air in front of it throwing light forward past the dust it
+  meets, which is why a hazy sky glares and a clear one does not. It grows
+  with the atmosphere's density and dies in vacuum. *Sun size*, *Sun glow*
+  and *Glow spread* in Environment ▸ Sun.
+- **The sun's handle stays out of the picture.** A ball two units away and
+  three degrees across, where the sun is half a degree and a hundred and
+  fifty million kilometres off, is furniture for grabbing the sun with - and
+  it was being drawn into every capture and every viewport, a second sun in
+  a different place that no render could agree with. It belongs to views
+  that show their furniture now, along with the light handles, and a
+  photograph never has any.
 - **The sky's light is measured, not guessed.** What a surface takes from
   the sky is the sky's radiance integrated against the cosine of the angle
   from its normal. The viewport substituted the average of the two sky

@@ -46,6 +46,17 @@ struct RenderSettings {
   float hour = 14.f;           // local time, fractional
   float sun_color[3] = {1.f, 0.93f, 0.82f};
   float sun_intensity = 2.6f;
+  // The sun as a body in the sky rather than a direction. Its angular
+  // diameter is half a degree for our own Sun - about the width of a little
+  // finger at arm's length - and the disc used to be twenty times that,
+  // which is why it read as a bright blob rather than as the sun.
+  float sun_angle_deg = 0.53f;
+  // The aureole: the bright halo that is not the sun but the air in front of
+  // it, forward-scattering the light past the dust and droplets it meets.
+  // It is what makes a hazy sky glare and a clear one not, so it is scaled
+  // by how much air the ray goes through.
+  float sun_glow = 1.f;        // strength
+  float sun_glow_size = 14.f;  // degrees the halo spreads over
 
   // atmosphere
   float atmosphere_density = 1.f;   // sky scattering strength

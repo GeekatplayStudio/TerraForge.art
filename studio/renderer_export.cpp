@@ -144,6 +144,9 @@ static bool sky_render_pano(int w, int h, int pano, const float *from,
     uni3(prog_sky, "u_sky_zenith", RS.sky_zenith);
     uni3(prog_sky, "u_sky_horizon", RS.sky_horizon);
     uni1(prog_sky, "u_atmo", RS.atmosphere_density);
+    uni1(prog_sky, "u_sun_angle", RS.sun_angle_deg);
+    uni1(prog_sky, "u_sun_glow", RS.sun_glow);
+    uni1(prog_sky, "u_sun_glow_size", RS.sun_glow_size);
     uni1(prog_sky, "u_atm_h", RS.atmosphere_height);
     uni1(prog_sky, "u_atm_falloff", RS.atmosphere_falloff);
     upload_world_shape(prog_sky, world_shape(RS));
@@ -270,6 +273,8 @@ bool renderer_render_to_file(const std::string &path, int w, int h) {
   vc.display = 2;
   vc.atmosphere = true;
   vc.grid = false;
+  // a photograph, not the editing view: no grid, no gizmos, no outlines
+  vc.outlines = false;
   float eye[3], mvp[16], inv_vp[16];
   camera_matrices(rw, rh, eye, mvp, inv_vp);
   draw_scene(5, vc, rw, rh, 0.f, eye, mvp, inv_vp);

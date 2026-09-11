@@ -182,6 +182,22 @@ one by description.
 
 The Atmosphere workspace.
 
+**The sun** has a size as well as a direction. *Sun size* is its angular
+width in degrees — our own Sun is 0.53, about a little finger held at arm's
+length, and so is the Moon, which is why an eclipse fits so exactly. A larger
+sun is a nearer or bigger star: it spreads the same light over more sky
+rather than adding any, and it softens every shadow edge in the scene.
+
+*Sun glow* is the aureole — the bright halo that is not the sun but the air
+in front of it, throwing light forward past the dust and droplets it meets.
+It is what makes a hazy sky glare and a clear one not, so it grows with the
+atmosphere's density and disappears in vacuum. *Glow spread* is how far it
+reaches: tight is clean mountain air, wide is haze or smoke.
+
+The ball you can grab to move the sun is a handle, not the sun. It shows in
+views that draw their furniture — the same switch as the selection outlines
+— and never in a capture or a render.
+
 **Water** is a level, not an object: everywhere the ground is below it fills.
 Depth colour, clarity, roughness and foam are in its properties.
 
