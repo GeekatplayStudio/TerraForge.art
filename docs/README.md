@@ -2,6 +2,12 @@
 
 Start here. `index.html` is the public website; the Markdown is the manual.
 
+## Start here
+- [MANUAL.md](MANUAL.md) — **the user manual**: what the application is, the
+  first five minutes, the window, the world, terrain, materials, air, water,
+  cameras, rendering and what to do when something looks wrong. Read once,
+  from the top; everything below goes deeper on one part of it.
+
 ## Orientation
 - [AUDIT.md](AUDIT.md) — the system audit (10 Sep 2026): modularity, the three scripting surfaces, what an AI can build from the docs, what was fixed.
 - [roadmaps/README.md](roadmaps/README.md) — one roadmap per module with the integration map: terrain, erosion, planets, space, materials, atmosphere, water, distribution, cameras, clouds, objects, lighting, render, viewports, animation.

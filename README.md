@@ -66,6 +66,10 @@ MCP tools use, then photographs it.
 
 **[terraforge.art](https://geekatplaystudio.github.io/TerraForge.art/)** — the
 gallery and the studio, in pictures.
+**[The manual](docs/MANUAL.md)** — the book to read once, from the top: the
+first five minutes, the window, the world and its shape, terrain, materials,
+air and water, cameras, rendering, and what to do when something looks
+wrong.
 **[Install guide](docs/INSTALL.md)** — Windows, macOS and Linux, from a
 one-click installer to building it yourself.
 **[Node reference](docs/NODES.md)** — every node, port and parameter,

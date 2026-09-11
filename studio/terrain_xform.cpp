@@ -103,9 +103,18 @@ vec3 tile_xform(vec3 p){
 // the outline instead (planet_place.cpp), which is the same picture.
 const char *const TERRAIN_XFORM_FS_GLSL = R"GLSL(
 uniform int u_tx_on, u_tx_cut, u_tx_shape;
-uniform vec3 u_tx_scl;
+uniform vec3 u_tx_scl, u_tx_pos;
 uniform mat3 u_tx_rot;
 uniform float u_tx_aspect;
+// Where a height of the tile's own map ends up in the world. The transform's
+// yaw leaves y alone, so the vertical part is the scale and the offset - the
+// same pair the surround reads as u_txi_y. The palette is keyed on altitude,
+// so a tile raised or scaled in Y and painted without this comes out with
+// its snow line and its colour bands at the wrong height while the ground
+// around it has them at the right one.
+float tile_world_y(float h){
+  return u_tx_on == 1 ? h * u_tx_scl.y + u_tx_pos.y : h;
+}
 vec3 tile_xform_normal(vec3 n){
   if (u_tx_on == 0) return n;
   return normalize(u_tx_rot * (n / max(abs(u_tx_scl), vec3(1e-4))));

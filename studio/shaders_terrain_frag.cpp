@@ -238,7 +238,8 @@ void main(){
   // gives way to across the placement's skirt.
   vec3 pal;
   {
-    float t = (h * u_hscale - u_water_level) / max(u_hscale - u_water_level, 0.02);
+    float t = (tile_world_y(h * u_hscale) - u_water_level) /
+              max(u_hscale - u_water_level, 0.02);
     float var = pl_palette_var(v_wxz);
     float wet = u_place_on == 1 ? texture(u_place_w, v_uv).g : 0.0;
     pal = pl_palette(t, slope_local, u_lat, wet, u_snow_line, var);
