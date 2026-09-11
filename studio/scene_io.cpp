@@ -27,6 +27,9 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"hour", 'f', &rs.hour},
       {"sun_color", 'c', rs.sun_color},
       {"sun_intensity", 'f', &rs.sun_intensity},
+      {"sun_size_deg", 'f', &rs.sun_angle_deg},
+      {"sun_glow", 'f', &rs.sun_glow},
+      {"sun_glow_size", 'f', &rs.sun_glow_size},
       // atmosphere
       {"atmosphere_density", 'f', &rs.atmosphere_density},
       {"atmosphere_height", 'f', &rs.atmosphere_height},
