@@ -198,6 +198,22 @@ void anim_autokey_world(App &a, const AnimProp &p, int comp) {
   anim_record_world(render_settings(), p, comp, a.graph.time);
 }
 
+// A camera flown with the mouse is a camera moved, and a moved camera with
+// a track on it takes a key - exactly as it would from dragging its numbers
+// in the Properties panel. Every window that flies one calls this, so a
+// drag writes the same keys whichever window it happened in.
+void camera_flown(App &a, int cam) {
+  SceneState &sc = scene();
+  if (cam < 0 || cam >= (int)sc.objects.size() ||
+      sc.objects[(size_t)cam].type != SceneObject::Camera)
+    return;
+  SceneObject &o = sc.objects[(size_t)cam];
+  if (const AnimProp *pe = anim_find_prop(o, "cam.eye")) anim_autokey(a, o, *pe, -1);
+  if (const AnimProp *pt = anim_find_prop(o, "cam.target")) anim_autokey(a, o, *pt, -1);
+  a.scene_selection_serial++;
+  renderer_invalidate_views();
+}
+
 void anim_set_time(App &a, float t) {
   a.graph.time = t;
   a.request_eval();

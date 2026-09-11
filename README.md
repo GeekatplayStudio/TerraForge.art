@@ -662,6 +662,16 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **The mouse moves whatever the window under it is showing.** Every
+  viewport read the mouse, but the camera it moved was whichever one the
+  scene had made active - so a drag in a free view swung the active camera
+  instead of the view, a drag in a view locked to some other camera swung
+  the active one anyway, and the picture that changed was rarely the one
+  under the pointer. Each window now flies the camera it is actually
+  showing, and a free view flies the free orbit and leaves every camera
+  alone. The Preview panel is the same code rather than a second copy of it,
+  so a drag of the same distance moves a camera by the same amount wherever
+  it happens, and with Auto-key on it writes the same keys.
 - **The tile and the ground beyond it are painted by one palette, from the
   same numbers.** Rounding the tile's border took the shape of the square
   away, but two of the palette's own inputs still changed at it. The

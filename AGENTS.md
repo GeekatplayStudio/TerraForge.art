@@ -188,6 +188,23 @@ tool and its schema line in the same commit, or the audit fails and names
 it. Views in ops are 1-based everywhere (`view:1` is View 1) - `shading`
 used to be 0-based on its own.
 
+## The mouse belongs to the window it is in
+
+Viewport input is routed by **which view the pointer is over**, and the
+camera that moves is the one **that view is showing** - `view_camera_index`
+in the panel, passed down to `camera_fly` (renderer_camera.cpp). Never look
+the camera up inside the input code: it used to drive
+`scene_active_camera()`, so a drag in a free view swung the active camera
+instead of the view, and a drag in a view locked to another camera swung the
+active one anyway. Whatever the pointer is over is what has to move.
+
+`renderer_camera_input` and `renderer_pan_screen` both return true when they
+flew a scene camera, which is the caller's cue to call `camera_flown` - the
+one place that writes the auto-key and invalidates the views. Every window
+that flies a camera (the viewports, the Preview panel) goes through these
+three, so the bindings, the distances and the keys are the same everywhere
+rather than a second copy that drifts.
+
 ## Viewports come back where they were left
 
 layout_workspace.cpp `workspace_layout_restore` runs on the first frame

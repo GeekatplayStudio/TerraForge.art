@@ -1,5 +1,6 @@
 // Geekatplay TerraForge — viewport windows. Each view is its own dockable,
 // resizable, floatable window with a Blender-style header toolbar.
+#include "anim_widgets.hpp"
 #include "app.hpp"
 #include "wheel_widgets.hpp"
 #include "console.hpp"
@@ -574,13 +575,15 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
       if (dragging && !was_dragging) {
         char line[200];
         std::snprintf(line, sizeof line,
-                      "view %d drag: %s, camera %s, scene camera %d, gizmo owns %d, sculpt %d",
+                      "view %d drag: %s, camera %s, this view flies %d "
+                      "(active camera %d), gizmo owns %d, sculpt %d",
                       slot + 1,
                       pan ? (shift_pan ? "pan (shift+left)"
                                        : ImGui::IsMouseDown(ImGuiMouseButton_Right) ? "pan (right)"
                                                                                      : "pan (middle)")
                           : "orbit (left)",
-                      vc.camera == 0 ? "perspective" : "ortho", scene_active_camera(),
+                      vc.camera == 0 ? "perspective" : "ortho",
+                      view_camera_index(vc), scene_active_camera(),
                       (int)xform_owns, (int)sculpting);
         log_trace("viewport", line);
       }
@@ -589,14 +592,23 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
     // Ctrl+drag dollies (moves the camera along its view axis)
     bool dolly = (io.KeyCtrl && ImGui::IsMouseDown(ImGuiMouseButton_Left)) || alt_dolly;
     float wheel = sculpting ? 0.f : io.MouseWheel;
+    // Whatever this view is showing is what the mouse moves. A view locked
+    // to a camera flies that camera; a free view flies the free orbit and
+    // leaves every camera where it is. Both used to go to whichever camera
+    // happened to be active, so the picture that changed was rarely the one
+    // under the pointer.
+    const int vcam = view_camera_index(vc);
+    bool flew = false;
     if (vc.camera == 0 && pan_view)
-      renderer_pan_screen(io.MouseDelta.x, io.MouseDelta.y);
+      flew = renderer_pan_screen(vcam, io.MouseDelta.x, io.MouseDelta.y);
     else if (vc.camera == 0)
-      renderer_camera_input(io.MouseDelta.x, io.MouseDelta.y, wheel,
-                            rot && !dolly, pan, dolly);
+      flew = renderer_camera_input(vcam, io.MouseDelta.x, io.MouseDelta.y,
+                                   wheel, rot && !dolly, pan, dolly);
     else
       renderer_view_input(vc, io.MouseDelta.x, io.MouseDelta.y, wheel, rot,
                           pan, w);
+    // and a camera that moved takes its keys, the same as from its numbers
+    if (flew) camera_flown(a, vcam);
     // A click is a press that did not travel. IsMouseDragging is already
     // false on the release frame, so it cannot tell a click from the end of
     // an orbit; the distance the pointer covered while the button was down

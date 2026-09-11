@@ -28,16 +28,23 @@
 namespace studio {
 
 
-// Drives whichever camera is active. Scene cameras store an explicit
-// eye/target, so orbit/pan/dolly operate on that pair directly.
-bool camera_object_input(float dx, float dy, float wheel, bool rotating,
-                                bool panning, bool dolly) {
+// Flies one named scene camera. A scene camera stores an explicit
+// eye/target pair, so orbit, pan and dolly operate on that pair directly.
+//
+// The camera is named by the caller rather than looked up here, and that is
+// the whole point: it used to drive `scene_active_camera()` whatever window
+// the mouse was in, so a drag in a free viewport moved the active camera
+// instead of the view, and a drag in a viewport locked to some other camera
+// moved the active one - the picture that changed was never the one under
+// the pointer. Each viewport passes the camera it is actually showing
+// (view_camera_index), and -1 for a free orbit.
+bool camera_fly(int cam, float dx, float dy, float wheel, bool rotating,
+                bool panning, bool dolly, bool screen_pan) {
   SceneState &sc = scene();
-  int active = scene_active_camera();
-  if (active < 0 || active >= (int)sc.objects.size() ||
-      sc.objects[active].type != SceneObject::Camera)
+  if (cam < 0 || cam >= (int)sc.objects.size() ||
+      sc.objects[(size_t)cam].type != SceneObject::Camera)
     return false;
-  CameraData &cd = sc.objects[active].cam;
+  CameraData &cd = sc.objects[(size_t)cam].cam;
   float d[3] = {cd.eye[0] - cd.target[0], cd.eye[1] - cd.target[1],
                 cd.eye[2] - cd.target[2]};
   float dist = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
@@ -48,10 +55,23 @@ bool camera_object_input(float dx, float dy, float wheel, bool rotating,
     yaw += dx * 0.01f;
     pitch = std::clamp(pitch + dy * 0.01f, -1.5707963f, 1.5707963f);
   }
-  if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.12f), 1e-8f, 400.f);
-  if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 1e-8f, 400.f);
-  if (panning) {
-    // pan moves eye and target together, across the view plane
+  // 400 tile units is two thousand kilometres on the default world, which
+  // is nowhere near far enough to back a camera off a planet
+  if (wheel != 0.f) dist = std::clamp(dist * (1.f - wheel * 0.12f), 1e-8f, 1.0e9f);
+  if (dolly) dist = std::clamp(dist * (1.f + dy * 0.005f), 1e-8f, 1.0e9f);
+  if (screen_pan) {
+    // up, down, left and right on the screen: the camera's own right and up
+    // axes, so the ground slides under the pointer whichever way it is
+    // tipped. The same two axes the free orbit pans along, because a person
+    // who has learned one viewport should not have to learn the next.
+    const float s = dist * 0.0015f;
+    const float cp2 = std::cos(pitch), sp2 = std::sin(pitch);
+    const float cy = std::cos(yaw), sy = std::sin(yaw);
+    const float R[3] = {cy, 0.f, -sy};
+    const float U[3] = {-sp2 * sy, cp2, -sp2 * cy};
+    for (int i = 0; i < 3; ++i) cd.target[i] += (-dx * R[i] + dy * U[i]) * s;
+  } else if (panning) {
+    // across the ground, as the middle and right buttons have always done
     float s = dist * 0.0015f;
     float cy = std::cos(yaw), sy = std::sin(yaw);
     float mx = (-dx * cy - dy * sy) * s, mz = (dx * sy - dy * cy) * s;
@@ -68,9 +88,10 @@ bool camera_object_input(float dx, float dy, float wheel, bool rotating,
 
 static void zoom_toward_ground(float before); // below
 
-void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
-                           bool panning, bool dolly) {
-  if (camera_object_input(dx, dy, wheel, rotating, panning, dolly)) return;
+bool renderer_camera_input(int cam, float dx, float dy, float wheel,
+                           bool rotating, bool panning, bool dolly) {
+  if (camera_fly(cam, dx, dy, wheel, rotating, panning, dolly, false))
+    return true;
   if (dolly) {
     const float before = CAM.dist;
     CAM.dist = std::fmin(
@@ -78,6 +99,7 @@ void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
     zoom_toward_ground(before); // a dolly in converges on the ground too
   }
   renderer_handle_input(dx, dy, wheel, rotating, panning);
+  return false;
 }
 
 
@@ -132,8 +154,9 @@ static void zoom_toward_ground(float before) {
   CAM.target[1] = g + (CAM.target[1] - g) * k;
 }
 
-void renderer_pan_screen(float dx, float dy) {
-  if (camera_object_input(dx, dy, 0.f, false, true, false)) return; // a scene camera pans its own plane
+bool renderer_pan_screen(int cam, float dx, float dy) {
+  // a scene camera pans its own view plane, by the same axes as the free one
+  if (camera_fly(cam, dx, dy, 0.f, false, false, false, true)) return true;
   const float s = CAM.dist * 0.0015f;
   const float cp = std::cos(CAM.pitch), sp = std::sin(CAM.pitch);
   const float cy = std::cos(CAM.yaw), sy = std::sin(CAM.yaw);
@@ -143,6 +166,7 @@ void renderer_pan_screen(float dx, float dy) {
   const float R[3] = {cy, 0.f, -sy};
   const float U[3] = {-sp * sy, cp, -sp * cy};
   for (int i = 0; i < 3; ++i) CAM.target[i] += (-dx * R[i] + dy * U[i]) * s;
+  return false;
 }
 
 void renderer_handle_input(float dx, float dy, float wheel, bool rotating,

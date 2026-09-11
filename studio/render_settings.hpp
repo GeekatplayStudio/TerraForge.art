@@ -467,12 +467,16 @@ std::string renderer_tess_status();
 std::string renderer_cull_status();
 int renderer_patches_visible();
 void renderer_view_size(int &w, int &h);
-// camera navigation for the active camera (scene camera or free viewport)
-void renderer_camera_input(float dx, float dy, float wheel, bool rotating,
-                           bool panning, bool dolly);
+// Camera navigation for one named scene camera, or the free orbit when
+// `cam` names none. The caller says which, because the window under the
+// mouse is the one that has to move: see camera_fly in renderer_camera.cpp.
+// Both return true when a scene camera moved, which is the caller's cue to
+// auto-key it.
+bool renderer_camera_input(int cam, float dx, float dy, float wheel,
+                           bool rotating, bool panning, bool dolly);
 // Pan in the view plane - up, down, left, right on the screen - as opposed
 // to across the ground. Shift+left drag; Cinema 4D's and Maya's hand.
-void renderer_pan_screen(float dx, float dy);
+bool renderer_pan_screen(int cam, float dx, float dy);
 void renderer_camera_look_at(const float target[3], float distance);
 
 // The height the ground outside the tile settles to, in world units - what

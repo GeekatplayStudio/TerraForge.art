@@ -51,54 +51,21 @@ static void preview_navigate(App &a, int cam) {
                         (io.MouseDelta.x != 0.f || io.MouseDelta.y != 0.f);
   if (!dragging && wheel == 0.f) return;
 
-  CameraData &cd = sc.objects[(size_t)cam].cam;
-  float d[3] = {cd.eye[0] - cd.target[0], cd.eye[1] - cd.target[1],
-                cd.eye[2] - cd.target[2]};
-  float dist = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-  if (!(dist > 1e-7f)) dist = 1e-7f;
-  float yaw = std::atan2(d[0], d[2]);
-  float pitch = std::asin(std::clamp(d[1] / dist, -1.f, 1.f));
   const bool shift_pan = io.KeyShift && !io.KeyCtrl && !io.KeyAlt && l;
   const bool alt_dolly = io.KeyAlt && r;
   const bool dolly = (io.KeyCtrl && l) || alt_dolly;
-  const bool pan = m || (r && !alt_dolly) || shift_pan;
-
-  if (wheel != 0.f) dist *= std::pow(0.88f, wheel);
-  if (dragging) {
-    if (dolly) {
-      dist *= std::pow(1.006f, io.MouseDelta.y);
-    } else if (pan) {
-      // across the screen, in the camera's own frame, scaled by how far
-      // away it is - so panning feels the same at any distance
-      const float cp = std::cos(pitch);
-      const float rx = std::cos(yaw), rz = -std::sin(yaw);   // screen right
-      const float ux = -std::sin(yaw) * std::sin(pitch);     // screen up
-      const float uy = cp;
-      const float uz = -std::cos(yaw) * std::sin(pitch);
-      const float k = dist * 0.0022f;
-      const float mx = -io.MouseDelta.x * k, my = io.MouseDelta.y * k;
-      const float off[3] = {rx * mx + ux * my, uy * my, rz * mx + uz * my};
-      for (int i = 0; i < 3; ++i) {
-        cd.target[i] += off[i];
-        cd.eye[i] += off[i];
-      }
-    } else if (l) {
-      yaw -= io.MouseDelta.x * 0.008f;
-      pitch = std::clamp(pitch + io.MouseDelta.y * 0.008f, -1.5533f, 1.5533f);
-    }
-  }
-  dist = std::clamp(dist, 1e-6f, 1e9f);
-  const float cp = std::cos(pitch);
-  cd.eye[0] = cd.target[0] + dist * cp * std::sin(yaw);
-  cd.eye[1] = cd.target[1] + dist * std::sin(pitch);
-  cd.eye[2] = cd.target[2] + dist * std::cos(yaw);
-  // Auto-key: a camera flown here is a camera moved, and a moved camera
-  // with a track on it takes a key, exactly as it would from its numbers.
-  SceneObject &o = sc.objects[(size_t)cam];
-  if (const AnimProp *pe = anim_find_prop(o, "cam.eye")) anim_autokey(a, o, *pe, -1);
-  if (const AnimProp *pt = anim_find_prop(o, "cam.target")) anim_autokey(a, o, *pt, -1);
-  a.scene_selection_serial++;
-  renderer_invalidate_views();
+  const bool pan = m || (r && !alt_dolly);
+  const bool rot = l && !shift_pan && !dolly;
+  // The motion itself is the viewport's (renderer_camera.cpp), not a second
+  // copy of it: a drag of the same distance has to move a camera by the
+  // same amount whichever window it happened in.
+  bool flew = false;
+  if (shift_pan)
+    flew = renderer_pan_screen(cam, io.MouseDelta.x, io.MouseDelta.y);
+  else
+    flew = renderer_camera_input(cam, io.MouseDelta.x, io.MouseDelta.y, wheel,
+                                 rot, pan, dolly);
+  if (flew) camera_flown(a, cam);
 }
 
 namespace {

@@ -27,6 +27,10 @@ bool anim_circle_node(App &a, gpx::Node &n, gpx::Attribute &at, int comp = -1);
 // Called by a property widget after ImGui reports an edit: with Autokey on
 // and the property animated, the new value is keyed at the current time.
 void anim_autokey(App &a, SceneObject &o, const AnimProp &p, int comp = -1);
+// The mouse flew a camera in some viewport: key its eye and target if it
+// has tracks, and let every view know it moved. Shared by every window that
+// flies one, so that a drag writes the same keys wherever it happened.
+void camera_flown(App &a, int cam);
 void anim_autokey_world(App &a, const AnimProp &p, int comp = -1);
 
 // The navigator for the whole document (previous/next over every track).
