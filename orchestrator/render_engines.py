@@ -120,6 +120,16 @@ def render_mitsuba(sc: dict) -> int:
     else:
         bsdf["base_color"] = {"type": "rgb", "value": [0.35, 0.32, 0.28]}
 
+    # The ground beyond the tile, out to the horizon. Without it a render is
+    # one square of terrain floating in a void while the viewport through the
+    # same camera shows a landscape - the single loudest difference between
+    # the two pictures. Its own albedo, because its UVs are the surround
+    # grid's and not the tile's.
+    surround_bsdf: dict = dict(bsdf)
+    if sc.get("surround_albedo"):
+        surround_bsdf["base_color"] = {"type": "bitmap",
+                                       "filename": sc["surround_albedo"]}
+
     scene_dict: dict = {
         "type": "scene",
         "integrator": {"type": "path", "max_depth": 8},
@@ -142,6 +152,10 @@ def render_mitsuba(sc: dict) -> int:
                            "value": [c * sun["intensity"] for c in sun["color"]]},
         },
     }
+    if sc.get("surround_obj") and os.path.isfile(sc["surround_obj"]):
+        scene_dict["surround"] = {"type": "obj",
+                                  "filename": sc["surround_obj"],
+                                  "bsdf": surround_bsdf}
 
     # the viewport's own sky + volumetric clouds, as the environment light
     if sc.get("sky_hdr") and os.path.isfile(sc["sky_hdr"]):
@@ -213,16 +227,28 @@ def render_mitsuba(sc: dict) -> int:
 
     water = sc.get("water", {})
     if water.get("enabled"):
-        scene_dict["water"] = {
-            "type": "rectangle",
-            "to_world": mi.ScalarTransform4f()
-            .translate([0.5, water["level"], 0.5])
-            .rotate([1, 0, 0], -90).scale(0.5),
-            "bsdf": {"type": "roughplastic", "distribution": "ggx",
-                     "alpha": float(water.get("roughness", 0.02)),
-                     "diffuse_reflectance": {"type": "rgb",
-                                             "value": water["deep"]}},
-        }
+        # as wide as the ground it lies in: a sea cut off at the tile's edge
+        # is a puddle, and the horizon behind it is empty sky
+        water_bsdf = {"type": "roughplastic", "distribution": "ggx",
+                      "alpha": float(water.get("roughness", 0.02)),
+                      "diffuse_reflectance": {"type": "rgb",
+                                              "value": water["deep"]}}
+        if water.get("mesh") and os.path.isfile(water["mesh"]):
+            # the sea on the world's own curve; a flat plane rises through
+            # the land in the distance and draws a bright band at the horizon
+            scene_dict["water"] = {"type": "obj", "filename": water["mesh"],
+                                   "bsdf": water_bsdf}
+        else:
+            # mitsuba's rectangle is two units across before scaling, so the
+            # scale is the half-width: the ground reaches `extent` either way
+            half = max(float(water.get("extent", 0.5)), 0.5)
+            scene_dict["water"] = {
+                "type": "rectangle",
+                "to_world": mi.ScalarTransform4f()
+                .translate([0.5, water["level"], 0.5])
+                .rotate([1, 0, 0], -90).scale(half),
+                "bsdf": water_bsdf,
+            }
 
     # panorama: no spherical sensor plugin ships with pip mitsuba, so render
     # six 90-degree cube faces at the same eye and remap them to one

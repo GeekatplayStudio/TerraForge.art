@@ -662,6 +662,17 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **A render is the picture the camera was showing.** It was not. The
+  offline renderers were handed the graph's raw heightmap over one flat
+  square: not placed on the planet, nothing around it, no curvature and no
+  colour at all - so a path-traced frame was a grey slab in a void while the
+  viewport through that same camera showed a landscape running to the
+  horizon. They now get what the viewport draws: the placed tile, the ground
+  beyond it out to thirty tiles, the sea, all on the world's curve, each
+  painted by the same palette the viewport paints with. The palette has a
+  second implementation for this (the engines have no shaders of ours to
+  run), and the two are compared sample for sample against the real shader
+  by the GPU agreement check, the same way the terrain maths already was.
 - **The mouse moves whatever the window under it is showing.** Every
   viewport read the mouse, but the camera it moved was whichever one the
   scene had made active - so a drag in a free view swung the active camera

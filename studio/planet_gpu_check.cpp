@@ -12,6 +12,7 @@
 #include "glsl_version.hpp"
 #include "gpx/field_glsl.hpp"
 #include "gpx/planet_math.hpp"
+#include "gpx/planet_palette.hpp"
 #include <glad/gl.h>
 #include <algorithm>
 #include <cmath>
@@ -24,6 +25,7 @@ namespace studio {
 
 extern const char *PL_FN;         // planet_shaders.cpp
 extern const char *PL_FIELD_STUB; // planet_shaders.cpp
+extern const char *PL_PALETTE;    // planet_shaders_common.cpp
 
 static const char *VS_PLANET_CHECK = R"GLSL(#version 430 core
 void main(){
@@ -183,6 +185,120 @@ static void planet_check_stack(const char *name,
   out += buf;
 }
 
+
+// The palette over a grid of (altitude, slope), with the grain taken at a
+// spread of world positions so the noise is exercised over whole cells
+// rather than one corner of one.
+static const char *FS_PALETTE_CHECK = R"GLSL(#version 430 core
+out vec4 frag;
+uniform int u_grid;
+PL_PALETTE_PLACEHOLDER
+void main(){
+  int x = int(gl_FragCoord.x);
+  int y = int(gl_FragCoord.y);
+  float u = float(x) / float(u_grid - 1);
+  float v = float(y) / float(u_grid - 1);
+  float var = pl_palette_var(vec2(u * 3.1 - 1.4, v * 2.7 - 0.9));
+  float wet = u * v;
+  vec3 c = pl_palette(u, v, 0.35, wet, 0.62, var);
+  frag = vec4(c, var);
+})GLSL";
+
+// The palette is written twice - once in GLSL for the viewport, once in
+// gpx/planet_palette.hpp for the offline renderers, which have no shader to
+// ask. A difference between them is a rendered frame that does not match the
+// camera's own picture, so it is checked the same way the relief is.
+static void palette_check(std::string &out) {
+  const int GRID = 64;
+  std::string fs = FS_PALETTE_CHECK;
+  size_t p = fs.find("PL_PALETTE_PLACEHOLDER");
+  fs.replace(p, strlen("PL_PALETTE_PLACEHOLDER"), PL_PALETTE);
+  std::string err;
+  GLuint vs = compile_stage(GL_VERTEX_SHADER, VS_PLANET_CHECK, err);
+  GLuint fsh = compile_stage(GL_FRAGMENT_SHADER, fs, err);
+  if (!vs || !fsh) {
+    out += "palette: shader did not compile: " + err + "\n";
+    if (vs) glDeleteShader(vs);
+    if (fsh) glDeleteShader(fsh);
+    return;
+  }
+  GLuint prg = glCreateProgram();
+  glAttachShader(prg, vs);
+  glAttachShader(prg, fsh);
+  glLinkProgram(prg);
+  glDeleteShader(vs);
+  glDeleteShader(fsh);
+  GLint linked = 0;
+  glGetProgramiv(prg, GL_LINK_STATUS, &linked);
+  if (!linked) {
+    char log[4096];
+    glGetProgramInfoLog(prg, sizeof log, nullptr, log);
+    out += std::string("palette: program did not link: ") + log + "\n";
+    glDeleteProgram(prg);
+    return;
+  }
+  GLuint fbo = 0, tex = 0;
+  glGenTextures(1, &tex);
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, GRID, GRID, 0, GL_RGBA, GL_FLOAT, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glGenFramebuffers(1, &fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    out += "palette: float framebuffer unavailable\n";
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &tex);
+    glDeleteProgram(prg);
+    return;
+  }
+  GLint prev_vp[4];
+  glGetIntegerv(GL_VIEWPORT, prev_vp);
+  glViewport(0, 0, GRID, GRID);
+  glDisable(GL_DEPTH_TEST);
+  glUseProgram(prg);
+  glUniform1i(glGetUniformLocation(prg, "u_grid"), GRID);
+  // the palette block declares the backdrop uniforms it never uses here
+  GLuint vao = 0;
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+  std::vector<float> px((size_t)GRID * GRID * 4);
+  glReadPixels(0, 0, GRID, GRID, GL_RGBA, GL_FLOAT, px.data());
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(prev_vp[0], prev_vp[1], prev_vp[2], prev_vp[3]);
+  glDeleteVertexArrays(1, &vao);
+  glDeleteFramebuffers(1, &fbo);
+  glDeleteTextures(1, &tex);
+  glDeleteProgram(prg);
+
+  float worst_c = 0.f, worst_v = 0.f;
+  for (int y = 0; y < GRID; ++y)
+    for (int x = 0; x < GRID; ++x) {
+      const float u = x / float(GRID - 1), v = y / float(GRID - 1);
+      const float var = gpx::planet::palette_var(u * 3.1f - 1.4f, v * 2.7f - 0.9f);
+      float c[3];
+      gpx::planet::palette(u, v, 0.35f, u * v, 0.62f, var, c);
+      const float *g = &px[((size_t)y * GRID + x) * 4];
+      for (int k = 0; k < 3; ++k) worst_c = std::max(worst_c, std::fabs(c[k] - g[k]));
+      worst_v = std::max(worst_v, std::fabs(var - g[3]));
+    }
+  // GLSL's mix() may be a*(1-t)+b*t or a+(b-a)*t, and it may fuse the
+  // multiply and add; through a cubic on the fraction and three nested
+  // mixes that is worth a few parts in a hundred thousand. A 24-bit
+  // display step is 4e-3, so the bar is 40 times finer than anything
+  // that could be seen - a real divergence is a wrong constant or a
+  // wrong seed, and those land orders of magnitude above this.
+  const bool ok = worst_c < 1e-4f && worst_v < 1e-4f;
+  char buf[256];
+  std::snprintf(buf, sizeof buf,
+                "palette: %d samples, max |cpu-gpu| colour = %.3e, grain = %.3e -> %s\n",
+                GRID * GRID, worst_c, worst_v, ok ? "AGREE" : "DIVERGE");
+  out += buf;
+}
+
 // The planet maths against the GPU: the three classic styles stacked with
 // partial coverage, and the realistic landscape at a fractional octave
 // budget (where the top octave's fade weight must match too).
@@ -203,6 +319,7 @@ std::string planet_gpu_verify() {
     planet_check_stack("planet: realistic terrain x9", L, 9.f, out);
     planet_check_stack("planet: realistic terrain x6.5", L, 6.5f, out);
   }
+  palette_check(out);
   return out;
 }
 

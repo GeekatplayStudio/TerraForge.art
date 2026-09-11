@@ -4,6 +4,7 @@
 // panel_render.cpp for the 500-line module rule.
 #include "app.hpp"
 #include "render_settings.hpp"
+#include "render_terrain_bake.hpp"
 #include "scene.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/heightmap.hpp"
@@ -72,29 +73,20 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
     }
   }
 
-  // terrain mesh with UVs (denser than the preview grid for close-ups)
-  int side = std::min(hm.w, 768);
-  gpx::Heightmap m = hm.resampled(side, side);
-  m.remap(0.f, rs.height_scale);
-  {
-    std::ofstream f(dir / "terrain.obj");
-    f << "# Geekatplay TerraForge render mesh\n";
-    for (int y = 0; y < side; ++y)
-      for (int x = 0; x < side; ++x)
-        f << "v " << x / float(side - 1) << ' ' << m.at(x, y) << ' '
-          << y / float(side - 1) << '\n';
-    for (int y = 0; y < side; ++y)
-      for (int x = 0; x < side; ++x)
-        f << "vt " << x / float(side - 1) << ' ' << 1.f - y / float(side - 1) << '\n';
-    for (int y = 0; y < side - 1; ++y)
-      for (int x = 0; x < side - 1; ++x) {
-        int i = y * side + x + 1;
-        f << "f " << i << '/' << i << ' ' << i + side << '/' << i + side << ' '
-          << i + 1 << '/' << i + 1 << '\n';
-        f << "f " << i + 1 << '/' << i + 1 << ' ' << i + side << '/' << i + side
-          << ' ' << i + side + 1 << '/' << i + side + 1 << '\n';
-      }
+  // The world the viewport draws, as meshes and albedo maps: the tile placed
+  // on its planet, the ground beyond it out to the horizon, both bent by the
+  // world's curvature and painted by the same palette. What used to go out
+  // was the graph's raw heightmap over one flat square, uncoloured - which
+  // is why a render through a camera and the viewport through that same
+  // camera were two different pictures.
+  const BakedTerrain baked =
+      render_bake_terrain(a, dir.string(), 512, 384, 1024);
+  if (!baked.ok) {
+    err = baked.err;
+    return false;
   }
+  // A material assigned to the terrain still wins over the palette: that is
+  // the picture the viewport shows too.
   if (!albedo_u8.empty())
     stbi_write_png((dir / "albedo.png").string().c_str(), alb_w, alb_w, 4,
                    albedo_u8.data(), alb_w * 4);
@@ -136,8 +128,11 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
   render_set_preview_paths(preview_path, progress_path);
   j["preview"] = preview_path;
   j["progress_file"] = progress_path;
-  j["terrain_obj"] = (dir / "terrain.obj").string();
-  j["albedo"] = albedo_u8.empty() ? "" : (dir / "albedo.png").string();
+  j["terrain_obj"] = baked.tile_obj;
+  j["albedo"] = baked.tile_albedo;
+  j["surround_obj"] = baked.surround_obj;
+  j["surround_albedo"] = baked.surround_albedo;
+  j["ground_extent"] = baked.extent;
   j["sky_hdr"] = sky_ok ? sky_path : "";
   j["exposure"] = rs.exposure;
   j["camera"] = {{"eye", {eye[0], eye[1], eye[2]}},
@@ -166,6 +161,10 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
               {"heterogeneity", rs.fog_heterogeneity},
               {"steps", rs.fog_steps}};
   j["water"] = {{"enabled", rs.show_water},
+                // as wide as the ground it lies in, not the one tile it used
+                // to be: a sea that stops at the tile's edge is a puddle
+                {"extent", baked.extent},
+                {"mesh", baked.water_obj},
                 {"level", rs.water_level * rs.height_scale},
                 {"roughness", std::max(rs.mat_roughness * 0.05f, 0.01f)},
                 {"deep", {rs.water_deep_color[0], rs.water_deep_color[1],

@@ -8,6 +8,8 @@
 #include "gpx/deform.hpp"
 #include "gpx/material_params.hpp"
 #include "gpx/node_graph.hpp"
+#include "gpx/planet_palette.hpp"
+#include <array>
 #include "gpx/parallel.hpp"
 #include "gpx/serialization.hpp"
 #include <cctype>
@@ -4189,6 +4191,81 @@ static void test_terrain_clip_rounds_without_folding() {
   CHECK(open.v == src.v, "a wide-open clip is an identity, softness or not");
 }
 
+// The landscape palette is written twice: in GLSL for the viewport, and in
+// gpx/planet_palette.hpp for the offline renderers, which have no shader to
+// ask and used to paint the terrain a flat grey because of it. The two are
+// compared sample for sample against the real shader by the GPU agreement
+// check (studio/planet_gpu_check.cpp, "verify_field_gpu"); what is checked
+// here is everything that does not need a GL context - that the thing is a
+// colour at all, that it is reproducible, and that each of its inputs still
+// does what its name says.
+static void test_planet_palette_cpu() {
+  std::printf("planet palette (cpu twin)...\n");
+  auto col = [](float t, float slope, float wet, float var) {
+    float c[3];
+    gpx::planet::palette(t, slope, 0.f, wet, 0.62f, var, c);
+    return std::array<float, 3>{c[0], c[1], c[2]};
+  };
+  auto lum = [](std::array<float, 3> c) {
+    return 0.299f * c[0] + 0.587f * c[1] + 0.114f * c[2];
+  };
+
+  // it is a colour everywhere over the whole domain, and reproducible
+  bool in_range = true, same = true;
+  for (int i = 0; i <= 20; ++i)
+    for (int j = 0; j <= 20; ++j) {
+      const float a = i / 20.f, b = j / 20.f;
+      const auto c = col(a, b, b, a);
+      for (int k = 0; k < 3; ++k)
+        if (!(c[k] >= 0.f && c[k] <= 1.f)) in_range = false;
+      if (col(a, b, b, a) != c) same = false;
+    }
+  CHECK(in_range, "the palette is a colour for every altitude and slope");
+  CHECK(same, "the palette is reproducible");
+
+  // The grain picks between grass and meadow: it is the colour, not a
+  // garnish. Low down, below where the forest band starts, that is all it
+  // does and the pale end is meadow.
+  const auto dark = col(0.04f, 0.f, 0.f, 0.f), pale = col(0.04f, 0.f, 0.f, 1.f);
+  CHECK(lum(pale) > lum(dark) + 0.02f,
+        "the grain moves the ground between grass and meadow (" +
+            std::to_string(lum(dark)) + " -> " + std::to_string(lum(pale)) + ")");
+  // and through the forest band it also decides how much forest, which is
+  // darker than either - so up there the same dial runs the other way
+  CHECK(lum(col(0.2f, 0.f, 0.f, 1.f)) < lum(col(0.2f, 0.f, 0.f, 0.f)),
+        "in the forest band the grain brings trees, which are darker");
+
+  // wetness darkens toward wet soil, which is why a tile that passed zero
+  // for it stopped every drainage line at its own edge
+  CHECK(lum(col(0.3f, 0.f, 1.f, 0.5f)) < lum(col(0.3f, 0.f, 0.f, 0.5f)) - 0.02f,
+        "wet ground is darker than dry");
+
+  // a flat summit above the snow line is snow; the same height on a cliff is
+  // not, because snow does not lie on rock that steep
+  CHECK(lum(col(0.95f, 0.f, 0.f, 0.5f)) > 0.8f, "a flat summit is snow");
+  CHECK(lum(col(0.95f, 1.f, 0.f, 0.5f)) < 0.5f, "a cliff at that height is not");
+
+  // the shore is sand, and steep ground is rock whatever grows beside it
+  CHECK(lum(col(0.0f, 0.f, 0.f, 0.5f)) > lum(col(0.2f, 0.f, 0.f, 0.5f)),
+        "the water's edge is sand, lighter than the grass above it");
+  CHECK(lum(col(0.3f, 1.f, 0.f, 0.5f)) > lum(col(0.3f, 0.f, 0.f, 0.5f)),
+        "a cliff face is bare rock, not grass");
+
+  // the grain itself: it varies over the ground, and repeats exactly for the
+  // same point - the tile and the surround both index it by world position
+  float mn = 2.f, mx = -1.f;
+  for (int i = 0; i < 64; ++i)
+    for (int j = 0; j < 64; ++j) {
+      const float v = gpx::planet::palette_var(i * 0.031f, j * 0.029f);
+      mn = std::min(mn, v);
+      mx = std::max(mx, v);
+    }
+  CHECK(mn >= 0.f && mx <= 1.f, "the grain is a fraction");
+  CHECK(mx - mn > 0.5f, "the grain actually varies across the ground");
+  CHECK(gpx::planet::palette_var(0.3f, 0.7f) == gpx::planet::palette_var(0.3f, 0.7f),
+        "the grain is the same number at the same place");
+}
+
 static void test_material_layer_slope_reads_real_degrees() {
   std::printf("material layer slope reads real degrees...\n");
   gpx::Graph g;
@@ -5527,6 +5604,7 @@ int main() {
   test_material_layers();
   test_selector_softness_is_live_and_default_is_identity();
   test_terrain_clip_rounds_without_folding();
+  test_planet_palette_cpu();
   test_material_layer_slope_reads_real_degrees();
   test_fractal_color();
   test_vue_fractals();

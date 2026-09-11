@@ -1202,6 +1202,44 @@ belongs to; do not fake a field node with a 1×1 buffer.
     fog of its own painted it pale right up to the tile's border, which read
     as a cliff around the tile.
 
+## A render is the viewport's world, not the graph's heightmap
+
+The offline engines get meshes and textures, never our shaders, so anything
+the viewport draws in a shader has to be baked for them
+(studio/render_terrain_bake.cpp). What used to go out was the graph's raw
+heightmap over one flat unit square - no placement, no surround, no
+curvature, no albedo - which is why a render through a camera and the
+viewport through that same camera were two different pictures.
+
+What goes out now, all through the CPU twins the placement already uses:
+
+- **terrain.obj** - the tile, placed on the planet (`planet_place_tile`),
+  bent by the world's shape (`sphere_place`).
+- **surround.obj** - the ground beyond it, out to 30.5 tiles, on the same
+  cubic vertex concentration the surround shader uses, so both sample the
+  relief in the same places.
+- **water.obj** - the sea on the world's curve. A flat rectangle is right on
+  a flat world and wrong on a round one: the land falls away with the curve
+  and the plane does not, so it rises through the ground and draws a bright
+  band along the horizon.
+- **albedo.png / surround_albedo.png** - painted by `gpx::planet::palette`,
+  the CPU twin of PL_PALETTE. Baked linear and written gamma-encoded,
+  because the engines sRGB-decode an 8-bit texture on the way in.
+
+Two rules for this path. **The palette's twin is checked, not trusted**:
+planet_gpu_check.cpp runs the real shader over a grid and compares, exactly
+as it does for `heightf`; if you change PL_PALETTE, change
+gpx/planet_palette.hpp and watch that line say AGREE. And **watch the size**:
+six fixed decimals over half a million vertices is a hundred and twenty
+megabytes of OBJ per frame - five significant digits is a quarter of a metre
+on the default world and a quarter of the cost.
+
+What still differs, and is not a bug: the path tracer lights the ground from
+the whole sky dome, and the viewport multiplies one averaged sky colour by
+`ambient_intensity`. The physical answer is several times brighter. The two
+will not agree until one of them changes, and changing either changes how
+every existing scene looks.
+
 ## One palette, from the same numbers, on both sides of a tile's border
 
 The tile (shaders_terrain_frag.cpp) and the surround (planet_shaders.cpp
