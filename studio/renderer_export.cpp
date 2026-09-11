@@ -68,6 +68,7 @@ unsigned renderer_material_preview(int size, int shape, float spin) {
   uni3(prog_matprev, "u_sky_zenith", RS.sky_zenith);
   uni3(prog_matprev, "u_sky_horizon", RS.sky_horizon);
   uni1(prog_matprev, "u_ambient", RS.ambient_intensity);
+  uni3(prog_matprev, "u_sky_light", sky_light_rgb());
   uni1(prog_matprev, "u_exposure", (RS.exposure) * g_exposure_mult);
     uni3(prog_matprev, "u_grade", g_grade);
     uni1(prog_matprev, "u_sat", g_saturation);
@@ -101,10 +102,13 @@ unsigned renderer_material_preview(int size, int shape, float spin) {
 }
 
 
-// Renders the live sky (gradient + sun tint + volumetric clouds) into an
-// equirectangular HDR so the offline path tracer lights the scene with the
-// exact same environment the viewport shows.
-bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
+// Renders the live sky - gradient, sun tint and volumetric clouds - into a
+// float image, in whatever projection `pano` asks for: 1 the equirectangular
+// panorama the offline path tracer lights the scene with, 2 the irradiance
+// probe whose plain average is the light the sky casts (shaders_sky.cpp).
+// Linear radiance either way, never tonemapped: it is light, not a picture.
+static bool sky_render_pano(int w, int h, int pano, const float *from,
+                            std::vector<float> &px) {
   RenderSettings &RS = render_settings();
   float sun[3];
   compute_sun_dir(RS, sun);
@@ -122,7 +126,14 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     glViewport(0, 0, w, h);
     glDisable(GL_DEPTH_TEST);
     glUseProgram(prog_sky);
+    // Where the panorama is shot from. A cloud layer is at a finite
+    // altitude, so an environment map is only right for the point it was
+    // taken at: shot from the middle of the world and used by a camera a
+    // mile away, the clouds sit in the wrong part of the sky and the render
+    // shows a different sky from the one the camera was looking at. A
+    // camera render passes its own eye.
     float eye[3] = {0.5f, RS.cloud_altitude * 0.35f, 0.5f};
+    if (from) { eye[0] = from[0]; eye[1] = from[1]; eye[2] = from[2]; }
     uni3(prog_sky, "u_cam", eye);
     uni3(prog_sky, "u_sun", sun);
     uni3(prog_sky, "u_sun_color", RS.sun_color);
@@ -202,29 +213,52 @@ bool renderer_export_sky_hdr(const std::string &path, int w, int h) {
     uni1(prog_sky, "u_cl_ms_depth", std::clamp(RS.cloud_scatter_depth, 0.05f, 0.99f));
     backdrop_bind(prog_sky); // the dome is part of the environment too
     unii(prog_sky, "u_aov", 0);
-    unii(prog_sky, "u_panorama", 1);
+    unii(prog_sky, "u_panorama", pano);
     unii(prog_sky, "u_hdr", 1);
     unii(prog_sky, "u_no_sun", 1); // the sun is emitted separately
     uni1(prog_sky, "u_space", 0.f); // panoramas are always shot from the ground
     glBindVertexArray(vao_quad);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    std::vector<float> px((size_t)w * h * 4);
+    px.assign((size_t)w * h * 4, 0.f);
     glReadPixels(0, 0, w, h, GL_RGBA, GL_FLOAT, px.data());
-    // flip vertically into RGB for the HDR writer (row 0 = top = +90 deg)
-    std::vector<float> rgb((size_t)w * h * 3);
-    for (int y = 0; y < h; ++y)
-      for (int x = 0; x < w; ++x) {
-        const float *s = &px[(((size_t)y * w) + x) * 4];
-        float *d = &rgb[(((size_t)(h - 1 - y) * w) + x) * 3];
-        d[0] = s[0]; d[1] = s[1]; d[2] = s[2];
-      }
-    ok = stbi_write_hdr(path.c_str(), w, h, 3, rgb.data()) != 0;
     glEnable(GL_DEPTH_TEST);
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDeleteFramebuffers(1, &f);
   glDeleteTextures(1, &t);
   return ok;
+}
+
+bool renderer_export_sky_hdr(const std::string &path, int w, int h,
+                             const float *from) {
+  std::vector<float> px;
+  if (!sky_render_pano(w, h, 1, from, px)) return false;
+  // flip vertically into RGB for the HDR writer (row 0 = top = +90 deg)
+  std::vector<float> rgb((size_t)w * h * 3);
+  for (int y = 0; y < h; ++y)
+    for (int x = 0; x < w; ++x) {
+      const float *s = &px[(((size_t)y * w) + x) * 4];
+      float *d = &rgb[(((size_t)(h - 1 - y) * w) + x) * 3];
+      d[0] = s[0]; d[1] = s[1]; d[2] = s[2];
+    }
+  return stbi_write_hdr(path.c_str(), w, h, 3, rgb.data()) != 0;
+}
+
+// The light the sky casts on level ground, as one radiance: reflected
+// radiance is albedo times this, because the cosine-weighted integral and
+// the division by pi cancel. Small on purpose - 32 x 16 is 512 rays through
+// the cloud march, which is nothing beside a frame, and it is only taken
+// again when the sky itself changes (renderer_passes.cpp).
+bool renderer_sky_light(float out_rgb[3]) {
+  std::vector<float> px;
+  if (!sky_render_pano(32, 16, 2, nullptr, px)) return false;
+  double s[3] = {0, 0, 0};
+  const size_t n = px.size() / 4;
+  if (!n) return false;
+  for (size_t i = 0; i < n; ++i)
+    for (int k = 0; k < 3; ++k) s[k] += px[i * 4 + (size_t)k];
+  for (int k = 0; k < 3; ++k) out_rgb[k] = (float)(s[k] / (double)n);
+  return true;
 }
 
 

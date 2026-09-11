@@ -71,6 +71,7 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
   uni3(prog_mesh, "u_sky_zenith", RS.sky_zenith);
   uni3(prog_mesh, "u_sky_horizon", RS.sky_horizon);
   uni1(prog_mesh, "u_ambient", RS.ambient_intensity);
+  uni3(prog_mesh, "u_sky_light", sky_light_rgb());
   uni1(prog_mesh, "u_sun_intensity", RS.sun_intensity);
   // Scene meshes, in two passes: surfaces first, with the depth they write,
   // then the volumes - meshes whose material is a medium - blended over

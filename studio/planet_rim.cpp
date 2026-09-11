@@ -122,7 +122,7 @@ void main(){
   float sun_elev = u_sun_mode == 1 ? 1.0 : sun.y;
   float day_f = clamp(sun_elev * 4.0 + 0.35, 0.035, 1.0);
   vec3 direct = alb * u_sun_color * u_sun_i * NdL * 0.92 / 3.14159;
-  vec3 ambient = alb * mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient * 0.6 * day_f;
+  vec3 ambient = alb * u_sky_light * u_ambient * 0.6 * day_f;
   vec3 col = direct + ambient;
   float fog_f; vec3 fog_c;
   fog_terms(v_world, u_cam, cam_d, u_hscale, u_sun_mode == 1 ? vec3(0.0, 1.0, 0.0) : sun,
@@ -170,6 +170,7 @@ void planet_rim_draw(const InfiniteFrame &f, unsigned grid_vao, int grid_count) 
   puni3(g_prog, "u_sun_color", f.sun_color);
   puni1(g_prog, "u_sun_i", f.sun_intensity);
   puni1(g_prog, "u_ambient", f.ambient);
+  puni3(g_prog, "u_sky_light", sky_light_rgb());
   puni3(g_prog, "u_sky_zenith", f.sky_zenith);
   puni3(g_prog, "u_sky_horizon", f.sky_horizon);
   puni1(g_prog, "u_exposure", f.exposure);

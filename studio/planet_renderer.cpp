@@ -21,6 +21,7 @@
 namespace studio {
 
 // The GLSL lives in planet_shaders.cpp; these are its exports.
+const float *sky_light_rgb(); // sky_light.cpp
 extern const char *PL_FN;
 extern const char *PL_PALETTE;
 extern const char *PL_SPHERE_FN;
@@ -475,6 +476,7 @@ void infinite_draw(const InfiniteFrame &f) {
   puni3(prog_inf, "u_sun_color", f.sun_color);
   puni1(prog_inf, "u_sun_i", f.sun_intensity);
   puni1(prog_inf, "u_ambient", f.ambient);
+  puni3(prog_inf, "u_sky_light", sky_light_rgb());
   puni3(prog_inf, "u_sky_zenith", f.sky_zenith);
   puni3(prog_inf, "u_sky_horizon", f.sky_horizon);
   puni1(prog_inf, "u_exposure", f.exposure);

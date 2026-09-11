@@ -428,6 +428,7 @@ set(STUDIO_SOURCES
     studio/terrain_cull.cpp
     studio/planet_place.cpp
     studio/render_terrain_bake.cpp
+    studio/sky_light.cpp
     studio/panel_properties_object_planet.cpp
     studio/planet_pick.cpp
     studio/planet_shaders_common.cpp

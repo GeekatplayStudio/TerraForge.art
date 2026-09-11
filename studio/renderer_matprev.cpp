@@ -143,6 +143,7 @@ unsigned renderer_material_preview_of(const MaterialPreviewSpec &spec, int size,
   uni3(prog_matprev, "u_sky_zenith", RS.sky_zenith);
   uni3(prog_matprev, "u_sky_horizon", RS.sky_horizon);
   uni1(prog_matprev, "u_ambient", RS.ambient_intensity);
+  uni3(prog_matprev, "u_sky_light", sky_light_rgb());
   uni1(prog_matprev, "u_exposure", RS.exposure * g_exposure_mult);
   uni3(prog_matprev, "u_grade", g_grade);
   uni1(prog_matprev, "u_sat", g_saturation);

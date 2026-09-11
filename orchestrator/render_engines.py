@@ -313,7 +313,8 @@ def render_mitsuba(sc: dict) -> int:
         m = (major == 2) & (dz < 0); put(m, imgs[3], -dx / np.abs(dz), dy / np.abs(dz))
         m = (major == 1) & (dy > 0); put(m, imgs[4], -dz / np.abs(dy), -dx / np.abs(dy))
         m = (major == 1) & (dy < 0); put(m, imgs[5], -dz / np.abs(dy), dx / np.abs(dy))
-        tonemap.save_png(out, sc["output"], sc.get("exposure", 1.0))
+        tonemap.save_png(out, sc["output"], sc.get("exposure", 1.0),
+                         sc.get("grade"), sc.get("saturation", 1.0))
         _progress(sc, "panorama done")
         print("wrote", sc["output"])
         return 0
@@ -329,7 +330,9 @@ def render_mitsuba(sc: dict) -> int:
             out = tonemap.apply_height_fog(out, depth, cam["eye"], cam["target"],
                                            cam["fov"], sc["width"], sc["height"],
                                            fog, sun)
-        tonemap.save_png(out, path, sc.get("exposure", 1.0))
+        # developed by the camera that took it: its exposure and its film
+        tonemap.save_png(out, path, sc.get("exposure", 1.0),
+                         sc.get("grade"), sc.get("saturation", 1.0))
 
     import time
     total_spp = int(sc["spp"])

@@ -385,6 +385,7 @@ static void draw_terrain_tile(const FrameCtx &F) {
     uni3(PT, "u_sky_zenith", RS.sky_zenith);
     uni3(PT, "u_sky_horizon", RS.sky_horizon);
     uni1(PT, "u_ambient", RS.ambient_intensity);
+    uni3(PT, "u_sky_light", sky_light_rgb());
     uni1(PT, "u_atmo", RS.atmosphere_density);
     uni3(PT, "u_cam", view_eye);
     uni3(PT, "u_lod_cam", view_eye);

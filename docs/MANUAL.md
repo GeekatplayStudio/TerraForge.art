@@ -239,11 +239,13 @@ tile placed on its planet, the ground beyond it out to the horizon, the sea,
 all on the world's curve, painted by the same palette. A render through a
 camera frames exactly what that camera's viewport framed.
 
-**One honest difference.** The path tracer lights the ground from the whole
-sky; the viewport multiplies one averaged sky colour by the ambient dial.
-The physical answer is several times brighter, so a path-traced frame comes
-out lighter than its preview. The preview is the approximation, not the
-render.
+**What you see is what you get.** The viewport and the render are developed
+the same way: the same measured skylight, the same camera exposure and film,
+the same sky. What remains is that the path tracer bounces light between
+surfaces and the viewport does not, so a bright landscape is a little
+brighter in the render. Environment ▸ Atmosphere ▸ **Skylight** is how much
+of the sky's measured light reaches the ground - 1 is all of it, which is
+what the render uses.
 
 **Passes.** Depth, normal, albedo, direct, ambient, specular, shadow,
 atmosphere and more, as EXR. **Panorama** renders a full sphere.

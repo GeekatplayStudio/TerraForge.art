@@ -1202,6 +1202,40 @@ belongs to; do not fake a field node with a 1×1 buffer.
     fog of its own painted it pale right up to the tile's border, which read
     as a cliff around the tile.
 
+## What you see is what you get
+
+The viewport and the offline render have to be one picture. Four things had
+to agree, and none of them did:
+
+1. **The sky's light.** A diffuse surface takes the sky's radiance
+   integrated against the cosine from its normal; the viewport used the
+   average of the two sky *colours*, which is between 0 and 1 where the real
+   number is several times larger. `sky_light.cpp` measures it - 512 rays
+   through the same sky and cloud march the viewport draws, in a mapping
+   whose plain average *is* the integral (`u_panorama == 2`: sin^2 of the
+   elevation spread evenly, so there are no weights to get wrong in the
+   reduction). Re-measured only when the sky changes, so a still frame pays
+   nothing. **Every shader that lights a surface with skylight reads
+   `u_sky_light`** - there were eight copies of the old expression, and
+   eight places to forget.
+2. **The exposure.** A camera view is developed by its own aperture, shutter
+   and ISO and by its film stock; the export sent the bare scene exposure,
+   so a render was developed differently from the picture it came from.
+3. **The panorama's convention.** The sky HDR is read back as an environment
+   map, and ours was written with the azimuth the other way round, so the
+   render's sky was the viewport's sky turned a quarter turn - the camera
+   looked at cloud and the render put clear blue there. It is
+   `atan(d.x, -d.z)` now, which is both the engines' convention and
+   `bd_uv`'s own for a lat-long backdrop.
+4. **Where the panorama is shot from.** A cloud layer is at a finite
+   altitude, so an environment map is only right for the point it was taken
+   at. A camera render shoots it from that camera's eye.
+
+What is left is honest: the path tracer has interreflection and the viewport
+has none, so a bright landscape bounces light onto itself in the render and
+not in the preview. Measured on the default scene, the two frames now sit
+about 7% apart where they were a different picture entirely.
+
 ## A render is the viewport's world, not the graph's heightmap
 
 The offline engines get meshes and textures, never our shaders, so anything

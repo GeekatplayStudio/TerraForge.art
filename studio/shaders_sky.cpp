@@ -480,8 +480,24 @@ vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
 void main(){
   vec3 dir;
   if (u_panorama == 1) {
+    // Latitude-longitude, in the convention everything else here reads one
+    // in: u through atan(d.x, -d.z), v down from +Y. That is bd_uv's mapping
+    // for a lat-long backdrop, and it is the environment map convention the
+    // offline engines use - written the other way round, the render's sky
+    // came out as the viewport's sky turned a quarter turn, so the camera
+    // looked at cloud and the render put clear blue there.
     float az = v_ndc.x * PI;
     float el = v_ndc.y * PI * 0.5;
+    dir = vec3(cos(el)*sin(az), sin(el), -cos(el)*cos(az));
+  } else if (u_panorama == 2) {
+    // The irradiance probe. What a diffuse surface takes from the sky is
+    // the integral of radiance against the cosine of the angle from its
+    // normal, and with sin^2(elevation) spread evenly up the image that
+    // integral is just the average of the pixels - no weights to get wrong
+    // in the reduction, and only the upper half of the sky, which is the
+    // half the ground can see.
+    float az = v_ndc.x * PI;
+    float el = asin(sqrt(clamp(v_ndc.y * 0.5 + 0.5, 0.0, 1.0)));
     dir = vec3(cos(el)*cos(az), sin(el), cos(el)*sin(az));
   } else {
     vec4 w = u_inv_vp * vec4(v_ndc, 1.0, 1.0);

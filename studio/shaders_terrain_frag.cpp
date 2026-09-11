@@ -321,7 +321,7 @@ void main(){
   vec3 kd = (1.0 - F) * (1.0 - u_metallic);
   vec3 direct = (kd * albedo / PI + spec) * sun_c * NdL * shadow * (u_m_diffuse / 0.6);
 
-  vec3 sky_amb = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
+  vec3 sky_amb = u_sky_light * u_ambient;
   vec3 ambient = albedo * sky_amb * (0.5 + 0.5*N.y) * ao;
   ambient += albedo * vec3(0.25,0.22,0.18) * 0.25 * u_ambient * (1.0 - N.y) * ao;
   ambient *= u_m_ambient / 0.4;

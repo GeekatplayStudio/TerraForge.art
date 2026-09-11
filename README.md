@@ -666,6 +666,15 @@ wanted his students to have.
   the tile is flat, is levelled underneath the tile's features (or kept
   beneath them: *Flatten beneath*), and every join is feathered. A hole dug
   below the water level fills with water. Terrain ▸ Placement on planet.
+- **The sky's light is measured, not guessed.** What a surface takes from
+  the sky is the sky's radiance integrated against the cosine of the angle
+  from its normal. The viewport substituted the average of the two sky
+  *colours* for that - a number between 0 and 1 where the real one is several
+  times larger - so a path-traced frame, which integrates the real sky, came
+  out far brighter than its own preview. The sky is now measured through the
+  same sky and cloud march the viewport draws, once, and again only when the
+  sky itself changes, so a still frame costs nothing. Every surface in the
+  application reads that one number, and the viewport and the render agree.
 - **A render is the picture the camera was showing.** It was not. The
   offline renderers were handed the graph's raw heightmap over one flat
   square: not placed on the planet, nothing around it, no curvature and no

@@ -280,6 +280,9 @@ uniform sampler2D u_albedo_tex; // the part's picture, when u_has_tex
 uniform int u_has_tex;
 uniform vec3 u_color, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_exposure, u_sun_intensity, u_ambient;
+// the light the sky casts, measured (sky_light.cpp); these two shaders
+// carry no SKY_FN of their own, so they declare it themselves
+uniform vec3 u_sky_light;
 uniform int u_light_count;
 uniform vec4 u_lights[8];
 uniform vec3 u_light_col[8];
@@ -359,7 +362,7 @@ void main(){
     vec3 S = vec3(0.0);
     float phase = fog_hg(dot(normalize(v_world - u_cam), normalize(u_sun)), u_v_g) * 12.566;
     vec3 sun_c = u_sun_color * u_sun_intensity;
-    vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
+    vec3 sky = u_sky_light * u_ambient;
     for (int i = 0; i < steps; ++i) {
       vec3 p = v_local + dir_l * ((float(i) + 0.5) * dt);
       float dens = u_v_density * mix(1.0, fog_noise3(p * 6.0) * 1.7, u_v_hetero);
@@ -411,7 +414,7 @@ void main(){
   vec3 sun_c = u_sun_color * u_sun_intensity;
   float shadow = mesh_shadow(v_world, NdL);
   vec3 lit = (kd * albedo / PI + spec) * sun_c * NdL * shadow * (u_m_diffuse / 0.6);
-  vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
+  vec3 sky = u_sky_light * u_ambient;
   lit += albedo * sky * (0.45 + 0.55 * N.y) * (u_m_ambient / 0.4);
   vec3 R = reflect(-V, N);
   vec3 refl = mix(u_sky_horizon, u_sky_zenith, clamp(R.y * 0.5 + 0.5, 0.0, 1.0));
@@ -511,6 +514,9 @@ uniform int u_has_albedo, u_has_normal, u_has_rough;
 MATERIAL_UNIFORMS_PLACEHOLDER
 uniform vec3 u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_exposure, u_sun_intensity, u_ambient;
+// the light the sky casts, measured (sky_light.cpp); these two shaders
+// carry no SKY_FN of their own, so they declare it themselves
+uniform vec3 u_sky_light;
 const float PI = 3.14159265;
 MATERIAL_FN_PLACEHOLDER
 uniform vec3 u_grade;
@@ -554,7 +560,7 @@ void main(){
   if (u_m_phong == 1) spec = F * mat_phong(NdH, rough);
   spec += mat_clearcoat(NdH, NdV, NdL);
   vec3 kd = (1.0-F)*(1.0-u_metallic);
-  vec3 sky = mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient;
+  vec3 sky = u_sky_light * u_ambient;
   vec3 sun_c = u_sun_color * u_sun_intensity;
   vec3 col = (kd*albedo/PI + spec) * sun_c * NdL * (u_m_diffuse / 0.6)
            + albedo * sky * (0.45 + 0.55*N.y) * (u_m_ambient / 0.4);

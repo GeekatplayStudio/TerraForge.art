@@ -67,7 +67,12 @@ struct RenderSettings {
   SpaceSettings space; // deep space (studio/space_settings.hpp)
   float sky_zenith[3] = {0.18f, 0.32f, 0.58f};
   float sky_horizon[3] = {0.62f, 0.65f, 0.70f};
-  float ambient_intensity = 0.7f;
+  // How much of the skylight reaches the ground. 1 is all of it - the light
+  // the sky was measured to be casting (sky_light.cpp), which is what the
+  // path tracer uses, so the viewport and the render agree. Below 1 is a
+  // deliberate darkening; it used to default to 0.7 against a sky colour
+  // that was itself several times too dim.
+  float ambient_intensity = 1.f;
 
   // fog / haze / pollution
   int fog_type = 1;                 // 0 off, 1 haze, 2 fog, 3 pollution
@@ -525,6 +530,14 @@ unsigned renderer_material_thumbnail(const MaterialPreviewSpec &spec, int size,
 
 // computes sun direction from settings (handles geographic mode)
 void compute_sun_dir(const RenderSettings &rs, float out_dir[3]);
+// The light the sky casts on level ground, as one radiance (sky_light.cpp).
+// Reflected radiance is albedo times this - the cosine-weighted integral
+// over the sky and the division by pi cancel. Measured through the same sky
+// and cloud march the viewport draws, and only re-measured when the sky
+// changes; `update` needs a live GL context, `rgb` does not.
+void sky_light_update();
+void sky_light_invalidate();
+const float *sky_light_rgb();
 
 // The render editor's outputs (renderer_aov.cpp): the beauty in `format`
 // (0 PNG, 1 EXR, 2 HDR) plus one linear EXR per RenderPass bit in

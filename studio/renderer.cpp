@@ -268,6 +268,11 @@ const float *renderer_last_mvp(int slot) {
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int h,
                             float dt) {
   slot = std::clamp(slot, 0, SLOT_COUNT - 1);
+  // What the sky is casting on the ground, re-measured only when the sky
+  // itself moved (sky_light.cpp). Here for the same reason the relink below
+  // is here: the main thread with a context current, once before the first
+  // view, so every view this frame is lit by the same number.
+  sky_light_update();
   // Relink here rather than where the graph changed: this is the main thread
   // with the context current, and doing it once before the first view means
   // all six views draw the same program in the same frame.

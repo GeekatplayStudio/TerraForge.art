@@ -11,6 +11,7 @@
 #include "gpx/material_params.hpp"
 #include "gpx/node_graph.hpp"
 #include <json.hpp>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include "stb_image_write.h"
@@ -21,7 +22,8 @@ namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 fs::path render_workdir();
-bool renderer_export_sky_hdr(const std::string &path, int w, int h);
+bool renderer_export_sky_hdr(const std::string &path, int w, int h,
+                             const float *from);
 void renderer_get_camera(float *eye, float *target, float *fov);
 void render_set_preview_paths(const std::string &preview,
                               const std::string &progress);
@@ -91,10 +93,6 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
     stbi_write_png((dir / "albedo.png").string().c_str(), alb_w, alb_w, 4,
                    albedo_u8.data(), alb_w * 4);
 
-  // the viewport's own sky + clouds, as an HDR environment map
-  std::string sky_path = (dir / "sky.hdr").string();
-  bool sky_ok = renderer_export_sky_hdr(sky_path, 2048, 1024);
-
   // a camera-requested render frames from THAT camera's own optics; only a
   // bare panel render falls back to whatever the viewport is doing
   float eye[3], target[3], fov;
@@ -110,8 +108,36 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
   } else {
     renderer_get_camera(eye, target, &fov);
   }
+  // The viewport's own sky and clouds, as an HDR environment map - shot
+  // from the camera's own eye, because a cloud layer is at a finite
+  // altitude and an environment map is only right for the point it was
+  // taken at.
+  std::string sky_path = (dir / "sky.hdr").string();
+  bool sky_ok = renderer_export_sky_hdr(sky_path, 2048, 1024, eye);
+
   float sun[3];
   compute_sun_dir(rs, sun);
+  // the film of the camera being rendered, or of whatever the viewport is
+  // developing with when a bare panel render has no camera of its own
+  float film_mult = 1.f, film_sat = 1.f;
+  float film_tint[3] = {1.f, 1.f, 1.f};
+  if (cam_index >= 0 && cam_index < (int)scn.objects.size() &&
+      scn.objects[cam_index].type == SceneObject::Camera) {
+    const CameraData &cd = scn.objects[cam_index].cam;
+    int nf = 0;
+    const gpx::cam::FilmStock *F = gpx::cam::film_stocks(&nf);
+    const gpx::cam::FilmStock &fs = F[std::clamp(cd.film, 0, nf - 1)];
+    // the same composition panel_camera.cpp hands the viewport: the camera's
+    // own exposure and film, with the PostProcess grade on top
+    film_mult = gpx::cam::exposure_multiplier(cd.aperture, cd.shutter, cd.iso) *
+                rs.post_exposure;
+    film_sat = fs.saturation * rs.post_saturation;
+    for (int k = 0; k < 3; ++k) film_tint[k] = fs.tint[k] * rs.post_tint[k];
+  } else {
+    film_mult = rs.post_exposure;
+    film_sat = rs.post_saturation;
+    for (int k = 0; k < 3; ++k) film_tint[k] = rs.post_tint[k];
+  }
   json j;
   j["engine"] = engine;
   j["width"] = width;
@@ -134,7 +160,14 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
   j["surround_albedo"] = baked.surround_albedo;
   j["ground_extent"] = baked.extent;
   j["sky_hdr"] = sky_ok ? sky_path : "";
-  j["exposure"] = rs.exposure;
+  // How the frame is developed: the camera's own exposure from its
+  // aperture, shutter and ISO, and the film's tint and saturation. The
+  // viewport has always applied these - a camera view is exposed by its
+  // optics - and the export sent the bare scene exposure, so a render came
+  // out developed differently from the picture the camera was showing.
+  j["exposure"] = rs.exposure * film_mult;
+  j["grade"] = {film_tint[0], film_tint[1], film_tint[2]};
+  j["saturation"] = film_sat;
   j["camera"] = {{"eye", {eye[0], eye[1], eye[2]}},
                  {"target", {target[0], target[1], target[2]}},
                  {"fov", fov}};

@@ -50,7 +50,12 @@ def apply_height_fog(rgb: np.ndarray, depth, eye, target, fov_deg: float,
     if dist.ndim == 3:
         dist = dist[:, :, 0]
     sky = dist <= 0
-    dist = np.where(sky, 1e3, dist)
+    # A sky pixel is not a surface a thousand units away. Marching one that
+    # far through the fog profile saturates it and paints the whole sky the
+    # fog colour, which is why a render's sky came out flat and dim beside
+    # the viewport's. The sky shader fogs the sky by how near the horizon it
+    # looks, not by distance, and this is that same profile (shaders_sky.cpp).
+    dist = np.where(sky, 0.0, dist)
     world_y = eye[1] + dirs[:, :, 1] * dist
 
     level = float(fog.get("level", 0.0))
@@ -67,13 +72,18 @@ def apply_height_fog(rgb: np.ndarray, depth, eye, target, fov_deg: float,
     with np.errstate(divide="ignore", invalid="ignore"):
         od = np.abs(dist * (a - b) / (falloff * dY))
     od = np.where(np.abs(falloff * dY) < 1e-3, dist * a, od)
-    f = np.clip(1.0 - np.exp(-od * density), 0.0, 1.0)[..., None]
+    f = np.clip(1.0 - np.exp(-od * density), 0.0, 1.0)
+    horizon = np.clip(1.0 - np.clip(dirs[:, :, 1], 0.0, 1.0), 0.0, 1.0) ** 8.0
+    f = np.where(sky, np.clip(horizon * float(fog.get("density", 0.0)) * 0.6,
+                              0.0, 1.0), f)[..., None]
 
     sun_dir = np.asarray(sun["dir"], dtype=np.float32)
     sunward = np.clip(np.sum(dirs * sun_dir[None, None, :], axis=2), 0, 1) ** 6
     fog_color = np.asarray(fog.get("color", [0.55, 0.63, 0.75]), dtype=np.float32)
     sun_color = np.asarray(sun.get("color", [1, 1, 1]), dtype=np.float32)
     scatter = float(fog.get("scatter", 0.5))
+    fog_day = float(np.clip(sun_dir[1] * 4.0 + 0.35, 0.035, 1.0))
+    fog_color = fog_color * fog_day
     fogc = fog_color[None, None, :] * (
         1.0 + (sun_color[None, None, :] * 1.6 - 1.0) * (sunward * scatter)[..., None])
     if ftype == 3:
@@ -85,9 +95,19 @@ def apply_height_fog(rgb: np.ndarray, depth, eye, target, fov_deg: float,
     return rgb3 * (1.0 - f) + fogc * f
 
 
-def save_png(rgb: np.ndarray, path: str, exposure: float = 1.0) -> None:
+def save_png(rgb: np.ndarray, path: str, exposure: float = 1.0,
+             grade=None, saturation: float = 1.0) -> None:
     img = np.asarray(rgb, dtype=np.float32)[:, :, :3]
-    img = aces(img * float(exposure))
+    img = img * float(exposure)
+    # the film, before the curve, exactly as the viewport's aces() does it:
+    # tint the channels, then pull toward luminance by the saturation
+    if grade is not None:
+        img = img * np.asarray(grade, dtype=np.float32).reshape(1, 1, 3)
+    if abs(float(saturation) - 1.0) > 1e-6:
+        lum = (img * np.asarray([0.299, 0.587, 0.114], dtype=np.float32)).sum(
+            axis=2, keepdims=True)
+        img = lum + (img - lum) * float(saturation)
+    img = aces(img)
     img = np.clip(img, 0.0, 1.0) ** (1.0 / 2.2)
     out = (img * 255.0 + 0.5).astype(np.uint8)
     try:

@@ -613,15 +613,14 @@ void main(){
   float sun_elev = u_sun_mode == 1 ? 1.0 : sun.y;
   float day_f = clamp(sun_elev * 4.0 + 0.35, 0.035, 1.0);
   vec3 direct = alb * u_sun_color * u_sun_i * NdL * 0.92 / 3.14159;
-  vec3 ambient = alb * mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient
-                     * (0.45 + 0.55*n_up) * day_f;
+  vec3 ambient = alb * u_sky_light * u_ambient * (0.45 + 0.55*n_up) * day_f;
   vec3 col = direct + ambient;
   if (water && u_shell == 1){
     // far water is a colour, not waves: at thousands of tiles a wave
     // normal is speckle
     alb = u_wdeep;
     col = alb * (u_sun_color * u_sun_i * NdL * 0.92 / 3.14159 +
-                 mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient * day_f);
+                 u_sky_light * u_ambient * day_f);
   } else if (water){
     // the tile's own water shader - waves, foam, the translucent shore -
     // over the bed shaded above, so a lake crossing the tile's border is
@@ -640,7 +639,7 @@ void main(){
     float shape = clamp((sn.r - (fbm - 1.0)) / max(2.0 - fbm, 1e-3), 0.0, 1.0);
     float cc = clamp((shape - (1.0 - u_fc_cov)) / max(u_fc_cov, 1e-3), 0.0, 1.0);
     vec3 cloud = u_sun_color * u_sun_i * 0.5 * (0.55 + 0.45 * NdL) * day_f
-               + mix(u_sky_horizon, u_sky_zenith, 0.5) * u_ambient * day_f;
+               + u_sky_light * u_ambient * day_f;
     col = mix(col, cloud, cc * 0.85);
   }
   float fog_f; vec3 fog_c;

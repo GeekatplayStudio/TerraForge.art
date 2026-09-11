@@ -301,6 +301,17 @@ int gp_octaves(float dist, float max_oct){
 // sees the same picture. renderer_backdrop.cpp binds the sampler and uniforms
 // in every program that carries this block.
 const char *const SKY_FN = R"GLSL(
+// The light the sky casts on level ground, measured through the same sky and
+// cloud march the viewport draws (studio/sky_light.cpp). Reflected radiance
+// is albedo times this: the cosine-weighted integral over the sky and the
+// division by pi cancel, which is why one number does the whole job.
+//
+// It replaced the average of the two sky *colours* - a number between 0 and
+// 1 where the real one is several times larger. That substitution is why a
+// path-traced frame, which integrates the real sky, came out far brighter
+// than its own preview. A uniform never set reads as zero, so a shader that
+// forgets to upload it goes black rather than quietly wrong.
+uniform vec3 u_sky_light;
 uniform sampler2D u_backdrop;
 uniform int u_bd_on, u_bd_mode, u_bd_flip, u_bd_hide_sun;
 uniform float u_bd_aspect, u_bd_yaw, u_bd_pitch, u_bd_tanhalf, u_bd_gain;
