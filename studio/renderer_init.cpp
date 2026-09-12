@@ -159,7 +159,9 @@ bool renderer_init() {
   std::string fs_mesh = inject_sky(FS_MESH); // fog and the pass writer
   prog_mesh = link_prog(inject_sky(VS_MESH).c_str(), fs_mesh.c_str());
   prog_gizmo = link_prog(VS_GIZMO, FS_GIZMO);
-  prog_billboard = link_prog(VS_BILLBOARD, inject_sky(FS_BILLBOARD).c_str());
+  // The card's vertex stage leans with the wind like the mesh's, so it needs
+  // the same splices - it was the one program taking its source raw.
+  prog_billboard = link_prog(inject_sky(VS_BILLBOARD).c_str(), inject_sky(FS_BILLBOARD).c_str());
   prog_matprev = link_prog(VS_MATPREV, inject_sky(FS_MATPREV).c_str());
   make_preview_shapes();
   planet_renderer_init();

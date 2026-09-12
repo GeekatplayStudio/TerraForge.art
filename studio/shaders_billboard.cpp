@@ -28,6 +28,7 @@ uniform vec3 u_card_centre; // model-space centre the card stands about
 uniform vec2 u_card_size;   // world width and height of the card at scale 1
 uniform float u_inst_grow;  // thinned cells grow their survivors
 uniform float u_inst_sway, u_inst_time;
+WIND_GUST_PLACEHOLDER
 out vec2 v_uv;
 out float v_tint;
 out vec3 v_world;
@@ -49,10 +50,11 @@ void main(){
   if (u_inst_sway > 0.0) {
     // the same lean the geometry has, so a copy does not jump as it
     // crosses the distance where it becomes a card
-    float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0 + in_instance_rot.w * 6.2831853;
-    float lean = sin(ph) * u_inst_sway * max(world.y - I.y, 0.0);
-    world.x += lean;
-    world.z += lean * 0.35;
+    vec2 gl = wind_gust_lean(I.xz);
+    float ph = u_inst_time * 1.7 + in_instance_rot.w * 6.2831853;
+    float lean = u_inst_sway * max(world.y - I.y, 0.0) * (0.55 + 0.45 * sin(ph));
+    world.x += gl.x * lean;
+    world.z += gl.y * lean;
   }
   v_uv = vec2(q.x + 0.5, 0.5 - q.y); // the card is stored top row first
   v_tint = in_instance_rot.z;

@@ -90,6 +90,8 @@ void pass_shadow_meshes(const FrameCtx &F) {
                     instance_lod_params(), runs);
       unii(prog_depth_mesh, "u_inst_on", 1);
       uni1(prog_depth_mesh, "u_inst_sway", o.scatter_sway);
+      // the weather this copy stands in (studio/wind_field.cpp)
+      wind_field_upload(prog_depth_mesh, render_settings(), F.time_acc);
       uni1(prog_depth_mesh, "u_inst_time", F.time_acc);
       glUniform3f(uniform_location(prog_depth_mesh, "u_inst_base"), model[12], model[13], model[14]);
     } else {

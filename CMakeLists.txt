@@ -593,6 +593,7 @@ set(STUDIO_SOURCES
     studio/render_settings.cpp
     studio/cloud_noise.cpp
     studio/cloud_shape_map.cpp
+    studio/wind_field.cpp
     studio/scene_nodes.cpp
     studio/graph_lease.cpp
     studio/id_audit.cpp

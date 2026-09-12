@@ -22,19 +22,43 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 namespace studio {
 
 inline float relief_fract(float x) { return x - std::floor(x); }
 
-// gp_hash
+// gp_mix / gp_hash. Integer work, so the number here is the number the GPU
+// computes rather than nearly it; the mixer is Wellons' lowbias32, as
+// cloud_noise.cpp already uses. The old hash ended in fract(x * y), symmetric
+// about the diagonal, and laid a weave over everything built on it.
+inline uint32_t relief_mix(uint32_t x) {
+  x ^= x >> 16; x *= 0x7feb352du;
+  x ^= x >> 15; x *= 0x846ca68bu;
+  x ^= x >> 16;
+  return x;
+}
 inline float relief_hash(float px, float py) {
-  px = relief_fract(px * 123.34f);
-  py = relief_fract(py * 456.21f);
-  const float d = px * (px + 45.32f) + py * (py + 45.32f);
-  px += d;
-  py += d;
-  return relief_fract(px * py);
+  const uint32_t ix = (uint32_t)(int32_t)std::floor(px);
+  const uint32_t iy = (uint32_t)(int32_t)std::floor(py);
+  const uint32_t h = relief_mix(ix * 0x9E3779B9u ^ relief_mix(iy * 0x85EBCA77u));
+  return (float)h * (1.f / 4294967296.f);
+}
+
+// gp_turn: turn and scale in one, `cs` being (cos, sin) already scaled. The
+// constants are written out, not computed - a cos() evaluated at runtime need
+// not give this the same bits as the shader.
+struct ReliefTurn {
+  float c, s;
+};
+inline constexpr ReliefTurn RELIEF_BASE{0.81964802f, 0.57286746f};   // 0.61 rad
+inline constexpr ReliefTurn RELIEF_WARPA{-0.08788221f, 0.23404426f}; // 1.93, quarter
+inline constexpr ReliefTurn RELIEF_WARPB{-0.21068984f, -0.13457263f};// 3.71, quarter
+inline constexpr ReliefTurn RELIEF_ROUGH{0.02910383f, -0.04666869f}; // 5.27, a twentieth
+inline constexpr ReliefTurn RELIEF_OCT{-1.49685882f, 1.37124530f};   // golden angle * 2.03
+inline void relief_turn(float px, float py, const ReliefTurn &t, float &ox, float &oy) {
+  ox = px * t.c - py * t.s;
+  oy = px * t.s + py * t.c;
 }
 
 // gp_vnoise
@@ -49,19 +73,51 @@ inline float relief_vnoise(float px, float py) {
   return top + (bottom - top) * fy;
 }
 
-// gp_detail: ridged fBm, 0..1
+// The base position every band is read from: turned off the raw grid once,
+// so nothing downstream is axis aligned.
+inline void relief_base(float u, float v, float base_freq, float &bx, float &by) {
+  relief_turn(u * base_freq, v * base_freq, RELIEF_BASE, bx, by);
+}
+
+// The large band: how rough the ground is here, 0.25..1. Read from the turned
+// base like everything else.
+inline float relief_rough(float bx, float by) {
+  float rx, ry;
+  relief_turn(bx + 53.9f, by + 17.2f, RELIEF_ROUGH, rx, ry);
+  return 0.25f + 0.75f * relief_vnoise(rx, ry);
+}
+
+// The medium band: the push on the sample position that actually breaks the
+// repeat. Modulating amplitude alone only makes a modulated grid.
+inline void relief_warped(float bx, float by, float &px, float &py) {
+  float ax, ay, cx, cy;
+  relief_turn(bx, by, RELIEF_WARPA, ax, ay);
+  relief_turn(bx + 31.7f, by + 9.4f, RELIEF_WARPB, cx, cy);
+  px = bx + (relief_vnoise(ax, ay) - 0.5f) * 2.2f;
+  py = by + (relief_vnoise(cx, cy) - 0.5f) * 2.2f;
+}
+
+// gp_detail: ridged fBm at three scales, 0..1. See FRACTAL_FN in
+// studio/shaders_terrain.cpp for why each octave is turned as well as scaled.
 inline float relief_detail(float u, float v, float base_freq, int octaves, float gain) {
-  float sum = 0.f, amp = 1.f, norm = 0.f, freq = base_freq;
+  float bx, by;
+  relief_base(u, v, base_freq, bx, by);
+  float px, py;
+  relief_warped(bx, by, px, py);
+  float sum = 0.f, amp = 1.f, norm = 0.f;
   for (int i = 0; i < std::min(octaves, 12); ++i) {
-    const float o = float(i) * 17.3f;
-    float n = relief_vnoise(u * freq + o, v * freq + o);
+    float n = relief_vnoise(px, py);
     n = 1.f - std::fabs(n * 2.f - 1.f);
     sum += n * amp;
     norm += amp;
     amp *= gain;
-    freq *= 2.03f;
+    float rx, ry;
+    relief_turn(px, py, RELIEF_OCT, rx, ry);
+    px = rx;
+    py = ry;
   }
-  return norm > 0.f ? sum / norm : 0.f;
+  if (!(norm > 0.f)) return 0.f;
+  return 0.5f + (sum / norm - 0.5f) * relief_rough(bx, by);
 }
 
 // gp_gain: the uploaded gain, or the 0.5 a program that never set it reads
@@ -85,19 +141,39 @@ inline float relief_at(float u, float v, float amount, float scale, float gain, 
   const float g = relief_gain(gain);
   const bool fading = ft > 0.001f && o0 < 9;
   const int n = o0 + (fading ? 1 : 0);
-  float sum = 0.f, amp = 1.f, norm = 0.f, freq = scale, whole = 0.f;
+  float bx, by;
+  relief_base(u, v, scale, bx, by);
+  float px, py;
+  relief_warped(bx, by, px, py);
+  float sum = 0.f, amp = 1.f, norm = 0.f, whole = 0.f, whole_norm = 1.f;
   for (int i = 0; i < n; ++i) {
-    const float o = float(i) * 17.3f;
-    float nz = relief_vnoise(u * freq + o, v * freq + o);
+    float nz = relief_vnoise(px, py);
     nz = 1.f - std::fabs(nz * 2.f - 1.f);
     sum += nz * amp;
     norm += amp;
     amp *= g;
-    freq *= 2.03f;
-    if (i + 1 == o0) whole = sum / norm;
+    float rx, ry;
+    relief_turn(px, py, RELIEF_OCT, rx, ry);
+    px = rx;
+    py = ry;
+    if (i + 1 == o0) {
+      whole = sum;
+      whole_norm = norm;
+    }
   }
-  float f = o0 > 0 ? whole - 0.5f : 0.f;
-  if (fading) f += (sum / norm - 0.5f - f) * ft;
+  // The two sums shaped exactly as relief_detail shapes them - the 0.5 added
+  // and taken away again is not redundant. relief_detail returns
+  // 0.5 + (mean - 0.5) * rough and terrain_place subtracts 0.5 from that;
+  // going straight to (mean - 0.5) * rough rounds differently for small
+  // values, and this has to agree with it to the bit or a bake would move
+  // under the plants standing on it.
+  const float rough = relief_rough(bx, by);
+  const float d0 = o0 > 0 ? (0.5f + (whole / whole_norm - 0.5f) * rough) - 0.5f : 0.f;
+  float f = d0;
+  if (fading) {
+    const float d1 = (0.5f + (sum / norm - 0.5f) * rough) - 0.5f;
+    f += (d1 - f) * ft;
+  }
   return f * amount;
 }
 

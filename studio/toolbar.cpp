@@ -29,7 +29,6 @@ namespace studio {
 std::string dialog_open_file(const char *filter, const char *def_ext);
 std::string dialog_save_file(const char *filter, const char *def_ext,
                              const char *suggested);
-bool renderer_render_to_file(const std::string &path, int w, int h);
 
 static const char *PROJECT_FILTER =
     "TerraForge project (*.gpxt)\0*.gpxt\0All files\0*.*\0";

@@ -584,7 +584,9 @@ The graph, by single steps (the "graph" op builds a whole graph at once):
    node to follow the Terrain output again)
 - {"op":"select_node","node":"n1","properties":true}  {"op":"open_node_editor","domain":"materials"}
 - {"op":"set_workspace","workspace":"terrain"|"materials"|"atmosphere"|"render"|"objects"|"lighting"|"cameras"|"animation"|"plants"}
-- {"op":"evaluate"}   (recompute the graph now)  {"op":"capture","path":"D:/out/view.png","width":1280,"height":720}
+- {"op":"evaluate"}   (recompute the graph now)  {"op":"capture","path":"D:/out/view.png","width":1280,"height":720,"camera":"Hero"}
+   (the first viewport's own point of view when no camera is named; with one,
+    that camera's picture, which is how a script photographs a named view)
 Project, painting, meshes, diagnostics:
 - {"op":"save_project","path":"D:/scenes/valley.gpxt"}  {"op":"open_project","path":"..."}
 - {"op":"paint_save","path":"D:/out/paint.png"}  {"op":"paint_load","path":"..."}  {"op":"paint_clear"}

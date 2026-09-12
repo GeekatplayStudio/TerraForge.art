@@ -270,10 +270,20 @@ void main(){ tc_uv = in_uv; }
 // baked heightmap carries the large forms, these octaves keep resolving as
 // the camera closes in, so the terrain is fractal rather than a fixed grid.
 const char *const FRACTAL_FN = R"GLSL(
+// A hash with nothing in it. The old one ended in fract(p.x * p.y), which is
+// symmetric about the diagonal, so it laid a weave over everything built on
+// it. This is integer work - exact, and the same number on the CPU
+// (studio/terrain_relief.hpp) as here, which float hashing only nearly is.
+// The mixer is Wellons' lowbias32, as cloud_noise.cpp already uses.
+uint gp_mix(uint x){
+  x ^= x >> 16; x *= 0x7feb352du;
+  x ^= x >> 15; x *= 0x846ca68bu;
+  x ^= x >> 16; return x;
+}
 float gp_hash(vec2 p){
-  p = fract(p * vec2(123.34, 456.21));
-  p += dot(p, p + 45.32);
-  return fract(p.x * p.y);
+  ivec2 i = ivec2(floor(p));
+  uint h = gp_mix(uint(i.x) * 0x9E3779B9u ^ gp_mix(uint(i.y) * 0x85EBCA77u));
+  return float(h) * (1.0 / 4294967296.0);
 }
 float gp_vnoise(vec2 p){
   vec2 i = floor(p), f = fract(p);
@@ -286,20 +296,55 @@ float gp_vnoise(vec2 p){
 // relief always had, so the tile and the ground round it cannot disagree.
 uniform float u_frac_gain;
 float gp_gain(){ return u_frac_gain > 0.0 ? clamp(u_frac_gain, 0.05, 0.95) : 0.5; }
-// ridged fBm; `octaves` is chosen from camera distance so cost scales with
-// how much detail is actually visible
+// Turn and scale together: `cs` is (cos, sin) already multiplied by the
+// scale, so a band costs four multiplies and no trigonometry. The constants
+// are written out rather than computed, because a cos() evaluated at runtime
+// need not give the CPU twin the same bits as the GPU.
+vec2 gp_turn(vec2 p, vec2 cs){ return vec2(p.x * cs.x - p.y * cs.y, p.x * cs.y + p.y * cs.x); }
+const vec2 GP_BASE  = vec2( 0.81964802,  0.57286746); // 0.61 rad
+const vec2 GP_WARPA = vec2(-0.08788221,  0.23404426); // 1.93 rad, quarter frequency
+const vec2 GP_WARPB = vec2(-0.21068984, -0.13457263); // 3.71 rad, quarter frequency
+const vec2 GP_ROUGH = vec2( 0.02910383, -0.04666869); // 5.27 rad, a twentieth
+const vec2 GP_OCT   = vec2(-1.49685882,  1.37124530); // golden angle, lacunarity 2.03 folded in
+
+// Ridged fBm at three scales, which is what stops a fractal reading as a
+// pattern:
+//
+//   large  - where the ground is rough and where it is calm. Without it the
+//            relief is the same everywhere, which is the one thing real
+//            ground never is.
+//   medium - a push on the sample position. This is what actually breaks the
+//            repeat: modulating amplitude alone only makes a modulated grid.
+//   small  - the octaves, each TURNED as well as scaled.
+//
+// The turn is the whole difference. Octaves that are only scaled keep their
+// lattices parallel, and a value noise's lattice is visible - its extrema sit
+// on the grid points - so nine parallel octaves reinforced into one square
+// mesh. That mesh was the relief, everywhere its amplitude showed, and under
+// water most of all, where depth maps a few metres of height onto the whole
+// colour range. At the golden angle nine octaves head 0, 138, 275, 53, 190,
+// 328, 105, 243 and 20 degrees: no two of them within twelve.
+//
+// `octaves` is chosen from camera distance, so cost follows visible detail.
+// Result stays inside 0..1, which the culling pad depends on (terrain_cull).
 float gp_detail(vec2 uv, float base_freq, int octaves, float gain){
-  float sum = 0.0, amp = 1.0, norm = 0.0, freq = base_freq;
+  vec2 b = gp_turn(uv * base_freq, GP_BASE);
+  vec2 w = vec2(gp_vnoise(gp_turn(b, GP_WARPA)),
+                gp_vnoise(gp_turn(b + vec2(31.7, 9.4), GP_WARPB))) - 0.5;
+  vec2 p = b + w * 2.2;
+  float sum = 0.0, amp = 1.0, norm = 0.0;
   for (int i = 0; i < 12; ++i){
     if (i >= octaves) break;
-    float n = gp_vnoise(uv * freq + float(i) * 17.3);
+    float n = gp_vnoise(p);
     n = 1.0 - abs(n * 2.0 - 1.0);      // ridged
     sum += n * amp;
     norm += amp;
     amp *= gain;
-    freq *= 2.03;                       // slightly irrational: avoids banding
+    p = gp_turn(p, GP_OCT);
   }
-  return norm > 0.0 ? sum / norm : 0.0;
+  if (norm <= 0.0) return 0.0;
+  float rough = 0.25 + 0.75 * gp_vnoise(gp_turn(b + vec2(53.9, 17.2), GP_ROUGH));
+  return 0.5 + (sum / norm - 0.5) * rough;
 }
 // How much detail is worth evaluating at this distance, as a continuous
 // value. A generated field graph must get this rather than the truncated

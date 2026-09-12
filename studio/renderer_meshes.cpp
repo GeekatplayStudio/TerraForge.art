@@ -236,6 +236,8 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere, boo
       // drawn from the reduced mesh, off-screen cells not at all.
       unii(prog_mesh, "u_inst_on", 1);
       uni1(prog_mesh, "u_inst_sway", o.scatter_sway);
+      // the weather this copy stands in (studio/wind_field.cpp)
+      wind_field_upload(prog_mesh, RS, time_acc);
       uni1(prog_mesh, "u_inst_time", time_acc);
       glUniform3f(uniform_location(prog_mesh, "u_inst_base"), model[12],
                   model[13], model[14]);

@@ -112,6 +112,7 @@ uniform float u_leaf_through;
 uniform vec4 u_pw_a, u_pw_b, u_pw_c;
 PLANT_WIND_PLACEHOLDER
 DEFORM_FN_PLACEHOLDER
+WIND_GUST_PLACEHOLDER
 INSTANCE_FN_PLACEHOLDER
 out vec3 v_nrm;
 out float v_tint;
@@ -147,12 +148,18 @@ void main(){
     vec4 p = instance_place(pos, nrm, I, in_instance_rot, in_instance_axes, in_instance_ground, u_model);
     p.xyz += I.xyz - u_inst_base;
     if (u_inst_sway > 0.0) {
-      // each copy leans on its own phase; the lean grows with height above
-      // the copy's foot so trunks stay planted and crowns ride the wind
-      float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0 + in_instance_rot.w * 6.2831853;
-      float lean = sin(ph) * u_inst_sway * max(p.y - I.y, 0.0);
-      p.x += lean;
-      p.z += lean * 0.35;
+      // The gust this copy is STANDING IN, not a number of its own. Each
+      // copy used to take a random phase from its position, which hid the
+      // fact that the wind was one number for the whole world by making a
+      // tree unrelated to the tree beside it - as wrong as the thing it hid.
+      // Now neighbours share a gust and a squall crosses the wood
+      // (studio/wind_field.hpp). The copy keeps its own phase for the sway
+      // about that lean, because a tree answers the wind at its own rate.
+      vec2 gl = wind_gust_lean(I.xz);
+      float ph = u_inst_time * 1.7 + in_instance_rot.w * 6.2831853;
+      float lean = u_inst_sway * max(p.y - I.y, 0.0) * (0.55 + 0.45 * sin(ph));
+      p.x += gl.x * lean;
+      p.z += gl.y * lean;
     }
     v_nrm = normalize(u_nrm * nrm);
     v_world = p.xyz;

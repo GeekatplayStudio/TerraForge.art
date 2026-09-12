@@ -19,7 +19,6 @@
 
 namespace studio {
 
-bool renderer_render_to_file(const std::string &path, int w, int h); // renderer_export.cpp
 
 int g_aov = 0; // 0 beauty; 1..RENDER_PASS_COUNT a pass; AOV_BEAUTY_LINEAR
 

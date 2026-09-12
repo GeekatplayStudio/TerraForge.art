@@ -14,7 +14,6 @@
 
 namespace studio {
 
-bool renderer_render_to_file(const std::string &path, int w, int h);
 
 // the last heightmap handed to the renderer, kept so overlays and
 // camera paths can sample real elevations without re-walking the graph

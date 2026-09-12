@@ -42,6 +42,8 @@ void instances_draw_billboards(SceneObject &o, const std::vector<InstanceRun> &r
   glUniform2f(uniform_location(prog_billboard, "u_card_size"),
               o.card_size[0] * col_len(0), o.card_size[1] * col_len(1));
   uni1(prog_billboard, "u_inst_sway", o.scatter_sway);
+  // the weather this copy stands in (studio/wind_field.cpp)
+  wind_field_upload(prog_billboard, render_settings(), bp.time_acc);
   uni1(prog_billboard, "u_inst_time", bp.time_acc);
   uni3(prog_billboard, "u_cam", bp.view_eye);
   uni3(prog_billboard, "u_sun", bp.sun);

@@ -213,6 +213,11 @@ void upload_fog_uniforms(GLuint prog, const RenderSettings &RS, bool atmosphere)
 // so the shadow is cast by the cloud that is actually there
 // (cloud_shape_map.cpp). Unit 11 everywhere; nothing else uses it.
 void cloud_shape_map_bind(GLuint prog, const RenderSettings &RS, int unit);
+// The wind as a field over the ground (studio/wind_field.cpp): spliced into
+// every vertex shader that sways a scattered copy, and uploaded by
+// wind_field_upload so the three of them cannot disagree about the weather.
+extern const char *const WIND_GUST_GLSL;
+void wind_field_upload(GLuint prog, const RenderSettings &RS, float t);
 static const int CLOUD_SHAPE_MAP_UNIT = 11;
 
 

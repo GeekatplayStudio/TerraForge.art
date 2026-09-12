@@ -1,5 +1,8 @@
 # Module roadmaps
 
+> Looking for what is **broken** rather than what is planned?
+> [`../TODO.md`](../TODO.md) is the list of known defects and gaps.
+
 One file per module, written 10 September 2026 from the audit in
 [`../AUDIT.md`](../AUDIT.md). Each has the same shape:
 

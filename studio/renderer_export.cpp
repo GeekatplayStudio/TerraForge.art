@@ -192,7 +192,13 @@ bool renderer_sky_light(float out_rgb[3]) {
 }
 
 
-bool renderer_render_to_file(const std::string &path, int w, int h) {
+// `camera` says whose picture this is: a scene camera's index, or -3 to take
+// the first view's own choice, which is what the File menu wants. The matrices
+// come from renderer_camera_override the way a drawn view's do - without
+// setting it the capture built its matrices from whichever camera happened to
+// be active, so a view locked to one camera, and every scripted request for a
+// named one, photographed something else.
+bool renderer_render_to_file(const std::string &path, int w, int h, int camera) {
   int rw = w * 2, rh = h * 2;
   const int slot = SLOT_CAPTURE;
   ensure_fbo(slot, rw, rh);
@@ -203,9 +209,13 @@ bool renderer_render_to_file(const std::string &path, int w, int h) {
   vc.grid = false;
   // a photograph, not the editing view: no grid, no gizmos, no outlines
   vc.outlines = false;
+  if (camera != -3) vc.scene_camera = camera;
+  const int was = renderer_camera_override();
+  renderer_camera_override() = vc.scene_camera;
   float eye[3], mvp[16], inv_vp[16];
   camera_matrices(rw, rh, eye, mvp, inv_vp);
   draw_scene(slot, vc, rw, rh, renderer_anim_time(), eye, mvp, inv_vp);
+  renderer_camera_override() = was;
   // The lens applies to the file too. A capture that skipped it would be a
   // picture of a scene the user is not looking at: the whole point of the
   // optical simulation is that the viewport and the output agree.

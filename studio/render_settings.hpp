@@ -663,6 +663,10 @@ float renderer_ground_base();
 float renderer_ground_under(float x, float z, float octaves);
 // Set for the duration of one view's draw (see ViewConfig::scene_camera).
 int &renderer_camera_override();
+// The viewport as a PNG (renderer_export.cpp). `camera` is a scene camera's
+// index, or -3 for the first view's own choice. Declared here because six
+// files wanted it and six copies of a signature is five chances to forget one.
+bool renderer_render_to_file(const std::string &path, int w, int h, int camera = -3);
 // world-space right/up/forward of a view, for the corner orientation gizmo
 void renderer_view_basis(const RenderSettings::ViewConfig &vc, float *right,
                          float *up, float *fwd);

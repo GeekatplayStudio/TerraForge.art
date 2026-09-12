@@ -64,6 +64,7 @@ out vec2 v_uv;
 uniform mat4 u_light_mvp, u_model;
 uniform int u_inst_on;
 uniform float u_inst_sway, u_inst_time;
+WIND_GUST_PLACEHOLDER
 uniform vec3 u_inst_base;
 uniform int u_plant_on;
 uniform float u_plant_time;
@@ -82,10 +83,12 @@ void main(){
     p = instance_place(pos, nrm, I, in_instance_rot, in_instance_axes, in_instance_ground, u_model);
     p.xyz += I.xyz - u_inst_base;
     if (u_inst_sway > 0.0) {
-      float ph = u_inst_time * 1.7 + I.x * 37.0 + I.z * 53.0 + in_instance_rot.w * 6.2831853;
-      float lean = sin(ph) * u_inst_sway * max(p.y - I.y, 0.0);
-      p.x += lean;
-      p.z += lean * 0.35;
+      // the shadow leans with the thing casting it (studio/wind_field.hpp)
+      vec2 gl = wind_gust_lean(I.xz);
+      float ph = u_inst_time * 1.7 + in_instance_rot.w * 6.2831853;
+      float lean = u_inst_sway * max(p.y - I.y, 0.0) * (0.55 + 0.45 * sin(ph));
+      p.x += gl.x * lean;
+      p.z += gl.y * lean;
     }
   } else p = u_model * vec4(pos, 1.0);
   v_uv = in_uv;

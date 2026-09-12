@@ -49,7 +49,6 @@ std::string dialog_save_file(const char *filter, const char *def_ext,
                              const char *suggested);
 // file_dialogs.cpp — hands the finished image to the desktop's own viewer
 void open_in_desktop(const std::string &path);
-bool renderer_render_to_file(const std::string &path, int w, int h);
 bool renderer_export_sky_hdr(const std::string &path, int w, int h,
                              const float *from = nullptr);
 

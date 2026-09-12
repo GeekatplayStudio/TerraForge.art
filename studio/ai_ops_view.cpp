@@ -56,7 +56,6 @@ bool take_b(const json &j, const char *key, bool &dst) {
 } // namespace
 
 // Renders the active camera's view straight to a PNG (renderer.cpp).
-bool renderer_render_to_file(const std::string &path, int w, int h);
 
 // Returns 1 when handled and something changed, 0 when handled but nothing
 // did, -1 when the op is not ours.
@@ -138,7 +137,26 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     }
     int w = std::clamp(act.value("width", 1280), 16, 8192);
     int h = std::clamp(act.value("height", 720), 16, 8192);
-    if (!renderer_render_to_file(path, w, h)) {
+    // Whose picture. Without a camera it is the first view's own, which is
+    // what the File menu's Capture gives; with one it is that camera's, which
+    // is the only way a script can photograph a named point of view.
+    int cam = -3;
+    if (act.contains("camera")) {
+      const SceneState &sc = scene();
+      if (act["camera"].is_number()) {
+        cam = act["camera"].get<int>();
+      } else {
+        const std::string want = act.value("camera", std::string());
+        cam = -1;
+        for (int i = 0; i < (int)sc.objects.size(); ++i)
+          if (sc.objects[(size_t)i].type == SceneObject::Camera && sc.objects[(size_t)i].name == want) cam = i;
+        if (cam < 0) {
+          err = "capture: no camera named '" + want + "'";
+          return 0;
+        }
+      }
+    }
+    if (!renderer_render_to_file(path, w, h, cam)) {
       err = "capture: could not write " + path;
       return 0;
     }

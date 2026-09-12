@@ -65,6 +65,7 @@ std::string inject_sky(const char *src) {
     extern const char *const DEFORM_FN_GLSL; // shaders_scene.cpp
     sub("DEFORM_FN_PLACEHOLDER", DEFORM_FN_GLSL);
     sub("PLANT_WIND_PLACEHOLDER", gpx::plant_wind_glsl()); // engine/plant/plant_wind.cpp
+    sub("WIND_GUST_PLACEHOLDER", WIND_GUST_GLSL);          // studio/wind_field.cpp
     extern const char *const INSTANCE_FN; // shaders_scene.cpp
     sub("INSTANCE_FN_PLACEHOLDER", INSTANCE_FN);
   }

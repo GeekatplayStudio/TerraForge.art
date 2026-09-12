@@ -288,6 +288,24 @@ function has a `_locked` twin that assumes the lock is held
 under a lease calls that one. Adding a function that takes `graph_mtx`
 means adding its `_locked` twin and checking every panel that calls it.
 
+## Anything found wrong goes on the list, the moment it is found
+
+`docs/TODO.md` is the standing list of known defects and gaps. Anything found
+to be broken, missing, or not built the way it should be goes on it **when it
+is found**, whether or not it is what you were working on - and say so in the
+reply as well, so the person knows. A defect noticed in passing and not
+written down is a defect found again six months later at full price.
+
+Record the evidence you already have: what you saw, what you measured, what
+you ruled out. Do not go investigating to make the entry tidy; "suspect X,
+ruled out Y" is worth more than a polished guess. Move an entry to Closed when
+it is fixed and verified, and name it in the commit.
+
+This includes things you find out about your own earlier claims. Closed #3 on
+that list is a note recording that a previous session reported an op as
+missing when it was implemented all along - the correction belongs there for
+the same reason the defects do.
+
 ## Hangs leave a report; a session starts by reading it
 
 studio/hang_watch.cpp watches the frame loop from a second thread. Six
