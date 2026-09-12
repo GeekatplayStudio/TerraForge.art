@@ -24,6 +24,37 @@ void apply_scene_nodes(App &a) {
   // by adding nodes - low stratus, cumulus, a cirrus veil - with no limit but
   // the eight the sky pass marches.
   rs.cloud_layers.clear();
+  // A sky has the clouds someone put in it and no others. Without this the
+  // default scene came up overcast with nothing in the tree to account for
+  // it, and no way to be rid of it but to find a checkbox.
+  bool any_cloud_layer = false;
+  // And the picture that says where the cloud is, from whichever layer names
+  // one. It shapes the cover every layer reads, so it is a property of the
+  // sky rather than of one deck - taking it from the first layer that has
+  // one means it works wherever it was set, instead of silently only on the
+  // deck that happens to drive the main settings.
+  rs.cloud_shape_map.clear();
+  rs.cloud_shape_amount = 1.f;
+  rs.cloud_shape_size = 4.f;
+  rs.cloud_shape_tiled = false;
+  rs.cloud_shape_center[0] = 0.5f;
+  rs.cloud_shape_center[1] = 0.5f;
+  for (const auto &np : a.graph.nodes) {
+    if (np->type != "CloudLayer" || !np->attrs.get_b("enabled", true)) continue;
+    any_cloud_layer = true;
+    const std::string map = np->attrs.get_s("shape_map");
+    if (map.empty() || !rs.cloud_shape_map.empty()) continue;
+    rs.cloud_shape_map = map;
+    rs.cloud_shape_amount = np->attrs.get_f("shape_amount", 1.f);
+    // the attribute is in kilometres, the shader works in world units
+    rs.cloud_shape_size = np->attrs.get_f("shape_size_km", 40.f) * 1000.f /
+                          (rs.terrain_size_m > 1.f ? rs.terrain_size_m : 1.f);
+    rs.cloud_shape_tiled = np->attrs.get_b("shape_tiled", false);
+    const float to_world = 1000.f / (rs.terrain_size_m > 1.f ? rs.terrain_size_m : 1.f);
+    rs.cloud_shape_center[0] = 0.5f + np->attrs.get_f("shape_x_km", 0.f) * to_world;
+    rs.cloud_shape_center[1] = 0.5f + np->attrs.get_f("shape_z_km", 0.f) * to_world;
+  }
+  rs.clouds_on = any_cloud_layer;
   // FogLayer nodes: every one is a band of air, and the sky and the surfaces
   // see all of them at once - haze to the horizon under a valley fog under a
   // brown layer over a town. The AtmosphereSettings node's own fog is still

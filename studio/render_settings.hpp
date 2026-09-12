@@ -355,6 +355,21 @@ struct RenderSettings {
   // read at. Lower is bigger cloud and a longer repeat.
   float cloud_scale = 0.10f;
   float cloud_anvil = 0.3f;       // cumulonimbus top spread
+  // A picture that says where the cloud is, laid flat over the world and
+  // centred on the origin. White is cloud, black is clear sky, mid grey
+  // leaves the coverage to decide - the same form the procedural weather
+  // takes, so the two are interchangeable and `amount` fades between them.
+  // Empty is the plain procedural sky. Taken from the first CloudLayer node
+  // that names one; loaded and cached by cloud_shape_map.cpp.
+  std::string cloud_shape_map;
+  float cloud_shape_amount = 1.f;
+  float cloud_shape_size = 4.f;  // world units across, not metres
+  bool  cloud_shape_tiled = false;
+  // Where its middle is, in world units. The terrain tile runs 0..1, so its
+  // middle is 0.5 - the world origin is the tile's CORNER, and a picture laid
+  // there would miss the landscape entirely. The layer's east/north offsets
+  // move it from there.
+  float cloud_shape_center[2] = {0.5f, 0.5f};
   // Multiple-scattering octaves. 1 is single scattering, which stops light at
   // its first hit and makes dense cloud read as plastic; each further octave
   // re-evaluates the shadow ray we already have with lower extinction, a more

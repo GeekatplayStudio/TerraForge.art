@@ -217,6 +217,7 @@ void upload_sky_uniforms(GLuint prog, const RenderSettings &RS, const SkyUpload 
   glActiveTexture(GL_TEXTURE4);
   glBindTexture(GL_TEXTURE_3D, tex_cloud_detail);
   unii(prog, "u_cl_detail", 4);
+  cloud_shape_map_bind(prog, RS, CLOUD_SHAPE_MAP_UNIT);
   // The ray-march dither. An unbound sampler reads black, which would give
   // every ray the same zero offset and put the banding straight back.
   glActiveTexture(GL_TEXTURE9);

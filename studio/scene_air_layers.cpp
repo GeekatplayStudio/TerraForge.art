@@ -46,10 +46,17 @@ int atmosphere_for(const SceneState &s, int selected) {
             s.objects[(size_t)i].parent == selected)
           return i;
   }
-  for (int i = 0; i < (int)s.objects.size(); ++i)
-    if (s.objects[(size_t)i].type == SceneObject::Atmosphere && s.objects[(size_t)i].parent < 0)
-      return i;
-  return -1;
+  // Any atmosphere, preferring one at the root. The scene's own Atmosphere is
+  // a CHILD of the home planet, so looking only for a root-level one found
+  // nothing and every layer was parented to the root - which is why they did
+  // not appear under the Atmosphere in the Objects tree.
+  int any = -1;
+  for (int i = 0; i < (int)s.objects.size(); ++i) {
+    if (s.objects[(size_t)i].type != SceneObject::Atmosphere) continue;
+    if (s.objects[(size_t)i].parent < 0) return i;
+    if (any < 0) any = i;
+  }
+  return any;
 }
 
 } // namespace
@@ -109,7 +116,11 @@ int scene_add_air_layer_locked(App &a, int kind, int atmosphere_idx, const std::
   o.air.kind = fog ? SceneObject::AirLayerData::Fog : SceneObject::AirLayerData::Cloud;
   o.parent = parent;
   o.driver_node = n->id;
-  const int nth = (int)scene_air_layers(parent).size() + 1;
+  // Numbered among its own kind: the second fog under an atmosphere that
+  // already holds two cloud decks is "Fog 2", not "Fog 3".
+  int nth = 1;
+  for (int i : scene_air_layers(parent))
+    if (s.objects[(size_t)i].air.kind == o.air.kind) ++nth;
   o.name = !name.empty() ? name
                          : (fog ? "Fog " : "Clouds ") + std::to_string(nth);
   s.objects.push_back(o);

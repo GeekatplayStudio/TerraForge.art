@@ -25,7 +25,8 @@ materials — `FOG_FN` in `studio/shaders_terrain.cpp`, `march_clouds` in
 | Early exit at ~1% transmittance | yes | every march |
 | Empty-space skipping / adaptive step | **no → added** | the cloud march stepped uniformly; now coarse in clear air, fine on contact |
 | Depth termination of the cloud march | partial | clouds draw in the sky pass behind the terrain; a cloud *in front of* a mountain is not composited against its depth |
-| Multiple cloud layers | **no → added** | one slab (`cloud_altitude` / `cloud_thickness`); a second layer with its own type, height, coverage, density |
+| Multiple cloud layers | yes | every CloudLayer node is a deck of its own, marched far to near, eight beside the two the settings carry; authored as objects in the scene tree under an Atmosphere (`studio/scene_air_layers.cpp`), not as a list on a panel |
+| Painted cloud shape | yes | a layer may name an image, laid flat over the land: white is cloud, black is clear, mid grey leaves the coverage to decide - the same form the procedural weather takes, so one strength dial fades between them (`studio/cloud_shape_map.cpp`). Held still while the cloud's own texture drifts through it, and read by mip level like every other lookup in the march |
 | Temporal reconstruction (quarter-res + reprojection) | no | needs motion vectors and a history buffer; the governor's render scale does the resolution half without the reprojection |
 | Density baked to a 3D texture per weather change | no | the shape/detail textures are baked once; density is remapped per sample (cheap) |
 | Planet-wrapped layers (spherical shells) | yes | `layer_span` in shaders_sky.cpp: the band between two shells about the world's centre or a ring's axis, cut at a ring's rim; a flat world keeps the slab |

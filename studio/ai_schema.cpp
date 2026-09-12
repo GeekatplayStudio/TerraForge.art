@@ -66,7 +66,14 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
     itself be a child of a Planet, so a band can belong to that planet's sky
     rather than to the world the camera stands on. A cloud band takes type,
     coverage, density, altitude, thickness; a fog band takes type, density,
-    level, falloff, colour, scattering and drift.)
+    level, falloff, colour, scattering and drift. A cloud band may also be
+    shaped by a picture: set "shape_map" to an image path and the layer takes
+    its shape from it - white is cloud, black is clear sky, mid grey leaves
+    the coverage to decide - with "shape_amount" 0..1 for how completely the
+    picture decides, "shape_size_km" for how wide it is laid, "shape_x_km" /
+    "shape_z_km" to slide it off the middle of the land, and "shape_tiled" to
+    repeat it to the horizon. This is how to put one cloud in a named place,
+    lay a front along a coast, or match a photograph.)
 - {"op":"air_layers"}   (every band, what it is, and what it hangs under)
 - {"op":"set_wind","speed_ms":7,"direction_deg":210,"gust_strength":0.5,
    "gust_frequency":0.12,"gust_size_m":250,"turbulence_deg":12,"shear":2.5}

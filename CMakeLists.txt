@@ -592,6 +592,7 @@ set(STUDIO_SOURCES
     studio/anim_targets.cpp
     studio/render_settings.cpp
     studio/cloud_noise.cpp
+    studio/cloud_shape_map.cpp
     studio/scene_nodes.cpp
     studio/graph_lease.cpp
     studio/id_audit.cpp
@@ -901,6 +902,11 @@ add_executable(layout_tests tests/cpp/test_layout.cpp studio/layout_record.cpp
 target_include_directories(layout_tests PRIVATE studio)
 target_link_libraries(layout_tests PRIVATE third_party_headers)
 
+# The buffer a dropdown is built from. Header-only, and tested because the
+# hand-built version shipped with the labels separated by the letter '0'.
+add_executable(combo_tests tests/cpp/test_combo_items.cpp)
+target_include_directories(combo_tests PRIVATE studio)
+
 # The configuration manager and the shortcut table: JSON round trips with
 # protected secrets, provider defaults, chord parse/format, table sanity.
 add_executable(config_tests tests/cpp/test_config.cpp studio/config.cpp studio/shortcuts.cpp)
@@ -987,6 +993,7 @@ add_test(NAME EngineTests COMMAND engine_tests)
 add_test(NAME UndoTests COMMAND undo_tests)
 add_test(NAME RenderTests COMMAND render_tests)
 add_test(NAME LayoutTests COMMAND layout_tests)
+add_test(NAME ComboTests COMMAND combo_tests)
 add_test(NAME MeshTests COMMAND mesh_tests)
 add_test(NAME MeshCsgTests COMMAND mesh_csg_tests)
 add_test(NAME MaterialEditorTests COMMAND material_editor_tests)

@@ -422,6 +422,8 @@ static void draw_terrain_tile(const FrameCtx &F) {
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_3D, tex_cloud_shape);
     unii(PT, "u_cl_shape", 3);
+    // the shadow is cast by the cloud that is there, painted shape and all
+    cloud_shape_map_bind(PT, RS, CLOUD_SHAPE_MAP_UNIT);
     glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, tex_normal);
     unii(PT, "u_normal_map", 5);

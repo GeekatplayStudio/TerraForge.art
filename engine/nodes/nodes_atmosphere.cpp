@@ -153,6 +153,44 @@ REGISTER_NODE(
       add_float(n.attrs, "anvil", "Anvil spread", 0.3f, 0.f, 1.f, "Shape")
           .tooltip = "How far the cloud spreads out at its top, the way a storm\n"
                      "cell flattens against the top of the troposphere.";
+      // A picture instead of the weather. Everything above makes cloud the
+      // way weather makes it - noise opening and closing a cover - and there
+      // was no way to say "a cloud THERE, that shape". This is that: a map
+      // laid flat over the world, read where each sample stands.
+      add_filename(n.attrs, "shape_map", "Shape image", "", "Shape")
+          .tooltip = "A picture that says where this cloud is. White is cloud,\n"
+                     "black is clear sky, mid grey leaves the coverage slider to\n"
+                     "decide - so a painted blob becomes a cloud of that shape,\n"
+                     "and a drawn coastline becomes a front lying along it.\n"
+                     "It is laid flat over the middle of the land, and held\n"
+                     "still while the cloud's own texture drifts through it -\n"
+                     "which is what a standing lenticular does over a mountain.\n"
+                     "A hard-edged mask makes a hard-edged cloud: paint the\n"
+                     "edge soft, or lower the strength, to let the sky's own\n"
+                     "shape back in.";
+      add_float(n.attrs, "shape_amount", "Shape strength", 1.f, 0.f, 1.f, "Shape")
+          .tooltip = "How completely the picture decides. At 1 it replaces the\n"
+                     "weather that opens and closes the cover; below that the\n"
+                     "procedural sky shows through underneath it.";
+      add_float(n.attrs, "shape_size_km", "Shape size (km)", 40.f, 0.05f, 40000.f,
+                "Shape")
+          .tooltip = "How wide the picture is laid, in kilometres. Small puts one\n"
+                     "cloud over the valley; large lays a weather map over a\n"
+                     "continent.";
+      add_float(n.attrs, "shape_x_km", "Shape east (km)", 0.f, -20000.f, 20000.f,
+                "Shape")
+          .tooltip = "Slide the picture east or west of the middle of the land.\n"
+                     "It is laid over the landscape by default, which is where\n"
+                     "you want it when you are matching a photograph; this is\n"
+                     "for putting the cloud somewhere else.";
+      add_float(n.attrs, "shape_z_km", "Shape north (km)", 0.f, -20000.f, 20000.f,
+                "Shape")
+          .tooltip = "Slide the picture north or south of the middle of the land.";
+      add_bool(n.attrs, "shape_tiled", "Tile the image", false, "Shape")
+          .tooltip = "Off: the picture is laid once and beyond its edge the sky\n"
+                     "is clear, which is how you place a single cloud. On: it\n"
+                     "repeats to the horizon, for cloud streets and a pattern\n"
+                     "that covers a world.";
       add_float(n.attrs, "wind_speed", "Wind speed", 0.02f, 0.f, 0.3f, "Motion")
           .tooltip = "How fast the layer drifts. Cloud is the only thing in a\n"
                      "still landscape that moves, so this is what makes a\n"

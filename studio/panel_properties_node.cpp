@@ -5,6 +5,7 @@
 // mirrored rather than read live: evaluation holds the graph lock for its
 // whole run, and a panel that blocks on it blinks out while you are dragging
 // a value.
+#include "combo_items.hpp"
 #include "app.hpp"
 #include "wheel_widgets.hpp"
 #include "console.hpp"
@@ -65,11 +66,7 @@ bool draw_attribute(gpx::Attribute &at) {
       changed = studio::Checkbox("##v", &at.b);
       break;
     case gpx::AttrType::Choice: {
-      std::string items;
-      for (auto &l : at.labels) {
-        items += l;
-        items += '\0';
-      }
+      const std::string items = combo_items(at.labels);
       changed = ImGui::Combo("##v", &at.i, items.c_str());
     } break;
     case gpx::AttrType::Seed: {

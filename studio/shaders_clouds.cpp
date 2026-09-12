@@ -88,6 +88,14 @@ bool shell_hits(vec3 ro, vec3 rd, float r, out float t0, out float t1){
 // that casts it.
 const char *const CLOUD_SHAPE_GLSL = R"GLSL(
 uniform sampler3D u_cl_shape;
+// The picture that says where the cloud is, laid flat over the world and
+// centred on the origin (cloud_shape_map.cpp). White is cloud, black is clear
+// sky, mid grey leaves the coverage to decide - the same form the procedural
+// weather below takes, which is why u_cl_map_amt can fade between them.
+uniform sampler2D u_cl_map;
+uniform int u_cl_map_on;
+uniform float u_cl_map_amt, u_cl_map_size, u_cl_map_texels;
+uniform vec2 u_cl_map_center;
 uniform float u_cl_time, u_cl_weather, u_cl_weather_scale, u_cl_scale;
 uniform vec2 u_cl_wind;
 uniform vec2 u_cl_drift;
@@ -136,6 +144,21 @@ float cloud_shape_at(vec3 p, float cover, float foot, out float cov){
     // volume - grain. By then the repeat it hides is averaged away anyway.
     warp = (w.gba - 0.5) * k * 1.8 * (1.0 - smoothstep(0.5, 2.5, lod_s));
   }
+  // The picture, where there is one. It is read at the sample's own place in
+  // the world and NOT at the drifted one: a painted shape stays where it was
+  // put while the cloud's own texture keeps moving through it, which is what
+  // a wave cloud standing over a ridge in a gale actually does. Beyond its
+  // edge the wrap mode returns 0 - clear sky - so one cloud can be one cloud.
+  if (u_cl_map_on == 1){
+    float ms = max(u_cl_map_size, 1e-4);
+    vec2 uv = (p.xz - u_cl_map_center) / ms + 0.5;
+    // by level, like every other lookup in the march: a sample far off covers
+    // hundreds of the picture's pixels and its finest level there is grain
+    // that crawls as the camera moves
+    float lod_m = max(log2(max(foot / ms * u_cl_map_texels, 1e-6)), 0.0);
+    float m = textureLod(u_cl_map, uv, lod_m).r;
+    cov = mix(cov, clamp(cover * m * 2.0, 0.0, 1.0), clamp(u_cl_map_amt, 0.0, 1.0));
+  }
   // And past a few texels a pixel the shape itself goes to its mean: its
   // coarse levels still hold the lowest octave, and the cover's threshold
   // turns that into a hard pattern repeating every few pixels - the volume's
@@ -152,12 +175,18 @@ float cloud_shape_at(vec3 p, float cover, float foot, out float cov){
 // the ray meets the layer. Without it the layer seen from orbit lay over the
 // whole world as one even fleece.
 float cloud_systems(vec3 p, float foot){
-  if (u_cl_weather <= 0.0) return 1.0;
+  // Where a picture decides the cover, it decides it: a front hundreds of
+  // kilometres across has no business thinning a cloud somebody drew, and
+  // without this the painted shape came out at a strength that depended on
+  // where in the procedural weather it happened to be standing.
+  float sys_k = 1.0 - (u_cl_map_on == 1 ? clamp(u_cl_map_amt, 0.0, 1.0) : 0.0);
+  if (u_cl_weather <= 0.0 || sys_k <= 0.0) return 1.0;
   vec3 wp = p;
   wp.xz += u_cl_drift;
   float f = max(u_cl_weather_scale, 1e-4) * 0.14;
   float s = textureLod(u_cl_shape, wp * f + vec3(0.71, 0.13, 0.29), cl_lod(foot, f, 96.0)).r;
-  return mix(1.0, 0.45 + 1.1 * smoothstep(0.35, 0.65, s), clamp(u_cl_weather, 0.0, 1.0));
+  return mix(1.0, 0.45 + 1.1 * smoothstep(0.35, 0.65, s),
+             clamp(u_cl_weather, 0.0, 1.0) * sys_k);
 }
 )GLSL";
 

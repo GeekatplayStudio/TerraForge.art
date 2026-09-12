@@ -24,6 +24,15 @@ ENGINE = ROOT / "engine"
 EXEMPT_FIELDS = {
     "views", "matp", "backdrop", "sun_color", "MAX_VIEWS", "MAX_CLOUD_LAYERS",
     "cloud_layers",  # derived from CloudLayer nodes every frame
+    # The picture a cloud is shaped by, and how it is laid: read off whichever
+    # CloudLayer node names one, every evaluation. Saving these in the
+    # settings table would restore them and then have them overwritten a
+    # moment later, and set_setting on them would appear to work and do
+    # nothing. They are reached the way every other node property is - by
+    # setting the attribute on the node, which scripts, the assistant and MCP
+    # all already do.
+    "cloud_shape_amount", "cloud_shape_size", "cloud_shape_tiled",
+    "cloud_shape_center",
     # where the air has drifted to this session, advanced from the clock a
     # frame at a time like time_acc: state, not a setting, and worked out
     # again from the wind when a project is opened

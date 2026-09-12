@@ -1,12 +1,12 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 255 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 273 across 33 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
 | [Analysis](#analysis) | 7 |
 | [Animation](#animation) | 6 |
-| [Atmosphere](#atmosphere) | 4 |
+| [Atmosphere](#atmosphere) | 5 |
 | [Camera](#camera) | 6 |
 | [Cloud](#cloud) | 4 |
 | [Effect](#effect) | 11 |
@@ -29,6 +29,7 @@ Every node in Geekatplay TerraForge — 255 across 32 categories. Generated from
 | [Material](#material) | 27 |
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
+| [Plant](#plant) | 17 |
 | [Points](#points) | 12 |
 | [Primitive](#primitive) | 23 |
 | [Render](#render) | 8 |
@@ -297,6 +298,12 @@ Volumetric cloud layer: type, coverage, altitude, wind
 | Thickness | float, 0.05 to 2, default 0.8 | How deep the layer is from base to top. Depth is what lets a cloud be lit brightly on top and dark underneath. |
 | Detail erosion | float, 0 to 1, default 0.6 | How much fine structure the cloud has. Low gives soft blobs; high gives the wispy, torn edges of real cloud. |
 | Anvil spread | float, 0 to 1, default 0.3 | How far the cloud spreads out at its top, the way a storm cell flattens against the top of the troposphere. |
+| Shape image | file path | A picture that says where this cloud is. White is cloud, black is clear sky, mid grey leaves the coverage slider to decide - so a painted blob becomes a cloud of that shape, and a drawn coastline becomes a front lying along it. It is laid flat over the middle of the land, and held still while the cloud's own texture drifts through it - which is what a standing lenticular does over a mountain. A hard-edged mask makes a hard-edged cloud: paint the edge soft, or lower the strength, to let the sky's own shape back in. |
+| Shape strength | float, 0 to 1, default 1 | How completely the picture decides. At 1 it replaces the weather that opens and closes the cover; below that the procedural sky shows through underneath it. |
+| Shape size (km) | float, 0.05 to 40000, default 40 | How wide the picture is laid, in kilometres. Small puts one cloud over the valley; large lays a weather map over a continent. |
+| Shape east (km) | float, -20000 to 20000, default 0 | Slide the picture east or west of the middle of the land. It is laid over the landscape by default, which is where you want it when you are matching a photograph; this is for putting the cloud somewhere else. |
+| Shape north (km) | float, -20000 to 20000, default 0 | Slide the picture north or south of the middle of the land. |
+| Tile the image | toggle, default off | Off: the picture is laid once and beyond its edge the sky is clear, which is how you place a single cloud. On: it repeats to the horizon, for cloud streets and a pattern that covers a world. |
 | Wind speed | float, 0 to 0.3, default 0.02 | How fast the layer drifts. Cloud is the only thing in a still landscape that moves, so this is what makes a sequence read as time passing. |
 | Wind direction | float, 0 to 360, default 45 | Which way the layer drifts. |
 | Sky light | float, 0 to 2, default 0.55 | How much sky light the cloud picks up where the sun does not reach it directly, which sets how dark its underside goes. |
@@ -304,6 +311,30 @@ Volumetric cloud layer: type, coverage, altitude, wind
 | Color G | float, 0 to 1, default 1 | The green component of the cloud, linear rather than sRGB. |
 | Color B | float, 0 to 1, default 1 | The blue component of the cloud, linear rather than sRGB. |
 | Quality | choice: Draft / Normal / High | How many samples the raymarcher takes through the cloud. This is the direct trade between how solid the cloud looks and how fast the frame draws. |
+
+### FogLayer
+
+A band of air: haze, fog or pollution at its own height
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| fog | in (optional) | heightmap |
+| fog | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Enabled | toggle, default on | Turns the layer off without losing its settings. |
+| Type | choice: Off / Haze / Fog / Pollution | What the air is. Haze is thin and blue and reaches to the horizon; fog is dense and white and lies low; pollution is fog with the blue taken out of it, so it browns what is seen through it. |
+| Density | float, 0 to 6, default 0.6 | How thick the air is. Distance does the rest: thin air still closes a far horizon. |
+| Height | float, -1 to 4, default 0.2 | The height the band sits at, in the same units as the terrain: 0 is the ground, 1 the top of its range. A fog at 0.15 fills the valleys and leaves the ridges standing out of it. |
+| Falloff | float, 0.1 to 40, default 6 | How sharply the band thins above its height. High values give a fog with a definite top you can look down on; low ones give a haze that fades out gradually. |
+| Color R | float, 0 to 1, default 0.62 | The red of the light this air scatters, linear rather than sRGB. |
+| Color G | float, 0 to 1, default 0.68 | The green of the light this air scatters. |
+| Color B | float, 0 to 1, default 0.76 | The blue of the light this air scatters. More blue than red reads as distance; the other way round reads as dust. |
+| Sun scattering | float, 0 to 1, default 0.5 | How much the sun lights the air from within, so looking toward it through the band glares and away from it does not. |
+| Albedo | float, 0 to 1, default 0.85 | How much of the light this air scatters rather than swallows. Water droplets scatter nearly all of it; smoke absorbs, and darkens what is behind it. |
+| Anisotropy | float, -0.95 to 0.95, default 0.55 | Which way the air throws light. Positive scatters it onward, so the sun glares through; 0 scatters evenly. |
+| Drift with the wind | float, 0 to 2, default 0.6 | How fast this band travels with the scene's wind, as a share of the wind's own speed. Air near the ground is held back by it; a high sheet runs with it. |
 
 ### SunLight
 
@@ -2783,23 +2814,40 @@ Ecosystem layer: a population placed by the layer's presence, reacting to the la
 | Repulsion from layer below | float, -1 to 1, default 0 | Sudden. Positive: a void around each instance below (no grass under the canopy). Negative: only inside that void (small stones at the foot of the boulder). Use both: near the trees but not under them. |
 | Repulsion radius (m) | float, 0.1 to 2000, default 8 | How far this population is pushed back from the one below it, in metres - the bare ring around the base of a tree. |
 | Avoid overlapping instances | toggle, default on | No two instances closer than their footprints allow. |
+| Ecology group | text | The group this population stands for: boulder, conifer, moss, grass... The rules about where a thing goes are written about groups, not about models, so anything assigned to a group is placed by those rules. |
 | Species | int, 1 to 8, default 1 | How many kinds of object this layer places. Each scene object bound to the layer picks the species it stands for. |
 | Species 1 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 1 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 1 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 1 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 2 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 2 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 2 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 2 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 3 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 3 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 3 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 3 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 4 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 4 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 4 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 4 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 5 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 5 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 5 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 5 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 6 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 6 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 6 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 6 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 7 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 7 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 7 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 7 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 8 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 8 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 8 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 8 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Overall scaling | float, 0.05 to 10, default 1 | The size of one copy, as a multiple of the mesh's own size. |
 | Size variation | float, 0 to 1, default 0.3 | 1: instances range from half to twice the size. |
 | Keep proportions | float, 0 to 1, default 1 | 1: the three axes scale together. 0: each on its own. |
@@ -3466,6 +3514,1764 @@ Order a point cloud into a path
 | points | in | ? |
 | path | out | ? |
 
+## Plant
+
+### PlantBall
+
+A sphere: a berry, an apple, a bud
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| radius | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| child 2 | in (optional) | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Radius (m) | value | The ball's radius, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pivot offset | value | Shifts the ball's pivot point along its axis, changing where it attaches and rotates from. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Squash (height / width) | value | The ball's height relative to its width; below 1 flattens it, above 1 stretches it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Disable texture baking | toggle, default off | Skips baking this ball's texture detail into vertex data, keeping it live instead. |
+| Boost | float, -3 to 3, default 0 | Raises or lowers the ball's mesh resolution on top of its minimum. |
+| Minimum subdivisions | int, 3 to 64, default 6 | The fewest subdivisions the ball's mesh is ever allowed to have. |
+| Wind strength | value | How hard the constant wind pushes this part, as a multiple of the species wind strength. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Override breeze response | toggle, default off | Ignores the ambient-motion settings inherited from the species and uses this part's own breeze strength instead. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Orientation tropism: vertical | value | How strongly the part turns to face up or down instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation tropism: horizontal | value | How strongly the part turns to lie flat instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantBias
+
+A global bias the root applies to every segment: a lean, a cone, an attractor, a swirl
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| plant | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | The bias' name, shown where it is listed among the species' global biases. |
+| Bias type | choice: Direction / Conic / Attractor / Axis repeller / Swirl / Curl / Twist | The kind of pull this bias applies: a fixed direction, a cone, an attractor point, an axis repeller, a swirl, a curl, or a twist. |
+| Direction X | float, -100 to 100, default 0 | The X component of the direction this bias pulls growth toward. |
+| Direction Y | float, -100 to 100, default 1 | The Y component of the direction this bias pulls growth toward. |
+| Direction Z | float, -100 to 100, default 0 | The Z component of the direction this bias pulls growth toward. |
+| Strength | value | How strongly this bias pulls growth toward its direction or point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the bias direction in the plant's local frame instead of the world, so it turns with the plant. |
+| Relative to segment length | toggle, default on | Scales the bias' pull by each segment's own length, so it affects short and long segments proportionally. |
+| Apply | choice: Only to free floating parts / To entire segment / Only to parts growing on object | Which parts feel this bias: only free-floating ones, the entire segment, or only parts growing on an object. |
+| Cone angle (deg) | float, 0 to 180, default 90 | For a conic bias, the half-angle of the cone growth is pulled toward, in degrees. |
+| Repeller | toggle, default off | Reverses a conic bias into a repeller that pushes growth away instead of pulling it in. |
+| Base length (m) | float, 0.01 to 100, default 1 | For a conic or attractor bias, the reference length, in metres, its falloff is measured against. |
+| Origin X (m) | float, -1000 to 1000, default 0 | The X position of this bias' origin point, in metres. |
+| Origin Y (m) | float, -1000 to 1000, default 0 | The Y position of this bias' origin point, in metres. |
+| Origin Z (m) | float, -1000 to 1000, default 0 | The Z position of this bias' origin point, in metres. |
+
+### PlantChildSelect
+
+Which of its children grow: at random by presence, alternately, in a sequence, by a threshold, or by level of detail
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| level | in (optional) | field (number) |
+| value | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| child 2 | in (optional) | ? |
+| child 3 | in (optional) | ? |
+| child 4 | in (optional) | ? |
+| child 5 | in (optional) | ? |
+| child 6 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Mode | choice: Random children / Spread children / Sequence children / Select 2 children / LOD selector / Random inputs | How children are chosen to grow: at random by presence, spread across a range, in a fixed sequence, between two children by a value, by level of detail, or picking among random inputs. |
+| Sequence | text | The letters naming which child input plays at each step, read left to right, for Sequence mode. |
+| Level | value | The value the LOD selector compares against each child's level range to choose which one grows. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Value | value | The threshold value used by Select 2 children to choose between its two inputs. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantCutoutLeaf
+
+A leaf cut to the outline of its picture, bent along an axis with a mid-rib and a twist
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| length | in (optional) | field (number) |
+| gravitropism | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Mode | choice: Single plane / Two crossed planes / Three crossed planes | How many crossed planes the cut-out leaf is built from: one, two, or three. |
+| Length (as scale, m) | value | The leaf's length, used as its overall scale, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Width tweak | value | Stretches or narrows the leaf's width relative to what its picture's outline implies. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axis bend (deg) | value | How far the leaf's axis bends from straight, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axis (sideways by primal) | value | The leaf's axis sideways offset, read off the horizontal axis as position along the leaf 0..1. |
+| Twist (turns) | value | How many turns the leaf twists along its length. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Midrib angle (deg) | value | How far the leaf folds along its mid-rib, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Midrib angle along the leaf | value | How much the mid-rib fold varies along the leaf's length, read off the horizontal axis as position 0..1. |
+| Smooth rib normals | toggle, default on | Smooths the normals across the mid-rib fold instead of leaving it faceted. |
+| Lateral profile | value | The leaf's outline width from its centre line outward, read off the horizontal axis as position along the leaf 0..1. |
+| Gravitropism | value | How strongly the leaf droops toward gravity as it grows. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Grid resolution boost X | int, -8 to 8, default 0 | Extra mesh grid resolution across the leaf's width, on top of the minimum needed. |
+| Grid resolution boost Y | int, -8 to 8, default 0 | Extra mesh grid resolution along the leaf's length, on top of the minimum needed. |
+| LOD affects grid boost | toggle, default on | Lets the level of detail reduce this leaf's grid resolution boost at a distance. |
+| Catmull-Clark resolution boost | int, -8 to 8, default 0 | Extra Catmull-Clark smoothing resolution applied to the leaf's mesh. |
+| LOD affects Catmull-Clark boost | toggle, default on | Lets the level of detail reduce the Catmull-Clark smoothing boost at a distance. |
+| Mixed quad triangle | toggle, default on | Builds the mesh from a mix of quads and triangles instead of quads alone, where that gives a cleaner cut-out. |
+| Subdivision scale X | float, 0.02 to 2, default 0.25 | The mesh grid's cell size across the leaf's width. |
+| Subdivision scale Y | float, 0.02 to 2, default 0.25 | The mesh grid's cell size along the leaf's length. |
+| Cut-out | int, 0 to 15, default 0 | Which cut-out outline in the material's library this leaf uses. |
+| Material distribution mode | choice: Per plane / Per billboard / Per material groups | How materials are assigned across the leaf's planes: per plane, per whole billboard, or per material group. |
+| Disable texture baking | toggle, default off | Skips baking this leaf's texture detail into vertex data, keeping it live instead. |
+| Colour shift: hue (turns) | value | Randomly shifts this leaf's colour hue from the material's base, in turns of the colour wheel. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Colour shift: luminosity | value | Randomly shifts this leaf's colour luminosity from the material's base. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Colour shift: saturation | value | Randomly shifts this leaf's colour saturation from the material's base. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Breeze strength | value | How far this leaf sways in the ambient breeze. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Flexibility distribution | value | How loosely different points of the leaf follow the breeze relative to each other, read off the horizontal axis as position along the leaf 0..1. |
+| Override breeze response | toggle, default off | Ignores the species' inherited ambient-motion settings and uses this leaf's own. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Inherit LOD | toggle, default on | Clamps this part's own LOD range to fall inside its parent's, so it never outlives the branch that carries it. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantFlower
+
+A flower: a lathe of a lobed profile - disc, cup, bell, trumpet, tube
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| length | in (optional) | field (number) |
+| radius | in (optional) | field (number) |
+| disp_amount | in (optional) | field (number) |
+| gravitropism | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| child 2 | in (optional) | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Length (m) | value | The flower's length along its axis, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius (m) | value | The flower's overall radius, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Plug radius (m) | value | The radius of the hole left at the flower's centre for a plugged-in part like a Ball. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Modify normals and displacement | toggle, default on | Lets the plugged-in part reshape the flower's normals and displacement around the hole. |
+| Plug influence (m) | value | How far the plugged-in part's influence reaches into the flower's surface, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axis bend (deg) | value | How far the flower's axis bends from straight, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Twist (turns) | value | How many turns the flower's lathe twists along its axis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axis influence on sections | float, 0 to 1, default 0.5 | How much the axis bend affects the shape of individual cross-sections along the flower. |
+| Profile | choice: Lobed (inner / outer) / Cylinder / Disc / Cup / Bell / Trumpet / Custom | The lathe's overall shape family: lobed inner/outer profiles, a cylinder, a disc, a cup, a bell, a trumpet, or a fully custom profile. |
+| Inner profile (radius by height) | value | The lobed profile's inner radius from base to tip, read off the horizontal axis as height 0..1. |
+| Outer profile (radius by height) | value | The lobed profile's outer radius from base to tip, read off the horizontal axis as height 0..1. |
+| In/Out filter | value | How much the lobed profile blends between its inner and outer radius around each lobe, read off the horizontal axis as angle across the lobe 0..1. |
+| Lobes | int, 1 to 64, default 5 | How many lobes the flower's rim is divided into. |
+| Custom profile (radius by height) | value | The custom profile's radius from base to tip, read off the horizontal axis as height 0..1, used when Profile is set to Custom. |
+| Disable texture baking | toggle, default off | Skips baking this flower's texture detail into vertex data, keeping it live instead. |
+| Displacement amount | value | How far the flower's surface is displaced. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Gravitropism | value | How strongly the flower droops toward gravity as it grows. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Mode | choice: Parametric / By unit length | How the flower's mesh resolution along its axis is decided: parametric, or driven by a unit length. |
+| Use geometric twist | toggle, default on | Computes the lathe's twist from the built geometry instead of the parametric angle, for a more even look at extreme twist. |
+| Normal computation | choice: Parametric / Geometric | How surface normals are computed: parametric from the profile, or geometric from the built mesh. |
+| Radial continuity | toggle, default on | Keeps the lathe's normals continuous around the ring instead of seaming at the wrap point. |
+| Invert front/back | toggle, default off | Flips the flower's surface to face inward instead of outward. |
+| Axial subdivisions | float, 1 to 200, default 8 | The number of subdivisions along the flower's axis. |
+| Minimum axial subdivisions | int, 1 to 64, default 3 | The fewest axial subdivisions the flower is ever allowed to have. |
+| Symmetry factor | int, 1 to 64, default 1 | Repeats the flower's cross-section in this many identical wedges, for a faceted look. |
+| Angular subdivisions | float, 3 to 400, default 32 | The number of subdivisions around the flower's ring. |
+| Minimum angular subdivisions | int, 3 to 128, default 8 | The fewest angular subdivisions the flower is ever allowed to have. |
+| UV mode | choice: Disc - Native / Disc - Projected / Cylinder - Native / Cylinder - Projected | How the flower's texture coordinates are projected: disc or cylinder, each either native to the lathe or projected flat. |
+| Use geometric twist | toggle, default on | Computes the texture coordinates' twist from the built geometry instead of the parametric angle. |
+| UV twist (turns) | value | How many turns the texture coordinates twist along the flower's axis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angular mapping | int, 1 to 64, default 1 | How many times the texture repeats around the flower's ring. |
+| Axial mapping | choice: Linear / Custom | How the texture's V coordinate is spaced along the axis: linear, or a custom mapping curve. |
+| Custom axial mapping | value | The custom axial texture mapping, read off the horizontal axis as height along the flower 0..1. |
+| Wind strength | value | How hard the constant wind pushes this part, as a multiple of the species wind strength. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Override breeze response | toggle, default off | Ignores the ambient-motion settings inherited from the species and uses this part's own breeze strength instead. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Orientation tropism: vertical | value | How strongly the part turns to face up or down instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation tropism: horizontal | value | How strongly the part turns to lie flat instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantGrowth
+
+A branch system grown bud by bud from light, gravity and apical dominance, carrying leaves
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| iterations | in (optional) | field (number) |
+| favor_up | in (optional) | field (number) |
+| favor_sides | in (optional) | field (number) |
+| angle_with_parent | in (optional) | field (number) |
+| phyllotaxis | in (optional) | field (number) |
+| angular_noise | in (optional) | field (number) |
+| growth_speed | in (optional) | field (number) |
+| apical | in (optional) | field (number) |
+| decay | in (optional) | field (number) |
+| light_influence | in (optional) | field (number) |
+| shedding | in (optional) | field (number) |
+| gravitropism_influence | in (optional) | field (number) |
+| gravitropism_angle | in (optional) | field (number) |
+| phototropism | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| child 2 | in (optional) | ? |
+| child 3 | in (optional) | ? |
+| child 4 | in (optional) | ? |
+| child 5 | in (optional) | ? |
+| child 6 | in (optional) | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Iterations | value | How many bud-by-bud growth cycles are simulated. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Input | choice: From the root / Over the parent segment | Where growth begins: from the root, or spread over the parent segment's length. |
+| Bud placement: favor up | value | How strongly new buds are biased to form on the upward-facing side of a branch. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bud placement: favor sides | value | How strongly new buds are biased to form on the sides of a branch rather than its top or bottom. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Internode length (m) | float, 0.001 to 5, default 0.2 | The length of one internode segment between buds, in metres. |
+| Bud radius (m) | float, 0.0001 to 1, default 0.006 | The radius a new bud starts at, in metres. |
+| Angle with parent (deg) | value | The angle a new branch forms with the branch it grows from, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Phyllotaxis angle (deg) | value | The angle added around the parent from one new bud to the next, in degrees; 137.5 gives the golden-angle spiral. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angular noise (deg) | value | How much each bud's angle around the parent is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Growth speed | value | How quickly a branch elongates per iteration, relative to the others. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Apical | value | How much the tip of a branch dominates and suppresses the buds behind it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Decay | value | How quickly a branch's vigour fades the further it grows from the trunk. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shadowing: strength | float, 0 to 4, default 0.5 | How strongly nearby growth shades a bud and suppresses it. |
+| Shadowing: shadow size (m) | float, 0.01 to 10, default 0.3 | How far, in metres, one bud's shading reaches to affect its neighbours. |
+| Light influence | value | How strongly the amount of light a bud receives affects its growth. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shedding threshold | value | The light level below which a shaded bud stops growing and is shed. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Gravitropism influence | value | How strongly branches bend to follow the gravitropism angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Gravitropism angle (deg) | value | The angle, in degrees, branches are pulled toward by gravitropism. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Phototropism influence | value | How strongly branches bend to grow toward the light. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Vertical trunk | toggle, default on | Keeps the main trunk growing straight up rather than following the other tropisms. |
+| Bottom cut: parameter type | choice: Absolute / Relative to height | How Bottom cut's height is measured: an absolute value, or relative to the plant's total height. |
+| Bottom cut: rank | int, 0 to 6, default 0 | Removes branch orders below this rank from the bottom of the plant, clearing the lower trunk. |
+| Bottom cut: height | value | The height below which growth is cut away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Profile cut | toggle, default off | Cuts the grown plant down to fit inside a profile silhouette instead of growing freely. |
+| Profile cut: parameter type | choice: Absolute / Relative to height | How the profile cut's height values are measured: absolute, or relative to the plant's total height. |
+| Profile cut: profile | value | The silhouette growth is cut down to fit inside, read off the horizontal axis as height 0..1 and the vertical axis as radius. |
+| Profile cut: bottom height | value | The height the profile cut's silhouette starts at. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Profile cut: top height | value | The height the profile cut's silhouette ends at. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Profile cut: radius | value | The overall radius the profile cut's silhouette is scaled to. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axial subdivisions (per m) | float, 0.5 to 200, default 6 | The number of subdivisions along the grown branches, per metre. |
+| Angular subdivisions (per m) | float, 1 to 400, default 12 | The number of subdivisions around the grown branches, per metre. |
+| Boost | float, -3 to 3, default 0 | Raises or lowers the grown mesh's resolution on top of its own setting. |
+| Wind and gust: flexibility | value | How easily the grown branches bend under wind and gusts. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind and gust: gravity | value | How strongly gravity pulls the grown branches back after a gust. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind and gust: wind | value | How strongly gusts push the grown branches, on top of the steady wind. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bone boost | float, -3 to 3, default 0 | Raises or lowers how many skinning bones the grown branches' wind animation uses. |
+| Ambient motion: strength | value | How far the grown branches sway in the ambient breeze. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Override breeze response | toggle, default off | Ignores the species' inherited ambient-motion settings and uses the growth's own. |
+| Material distribution | choice: Random / First | How the body material is assigned across the grown branches: at random, or always the first. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantHydra
+
+Children spread around a circle: a clump, a rosette, a tuft
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| child_count | in (optional) | field (number) |
+| radius | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| child 2 | in (optional) | ? |
+| child 3 | in (optional) | ? |
+| child 4 | in (optional) | ? |
+| child 5 | in (optional) | ? |
+| child 6 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Number | value | How many children are spread around the circle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius (m) | value | The radius of the circle the children are spread around, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | The scale applied to each child in the spread. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Distribution around the circle | value | How thickly children cluster around the circle, read off the horizontal axis as angle 0..1. |
+| Angle 1: orthogonal to the plane (deg) | value | Tilts each child away from the circle's plane, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle 2: tangential (deg) | value | Tilts each child sideways, tangential to the circle, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle 3: around the axis (deg) | value | Rotates each child around its own outward direction, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Number of children: rounded off, scaled down, or resolved at random. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Orientation tropism: vertical | value | How strongly the part turns to face up or down instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation tropism: horizontal | value | How strongly the part turns to lie flat instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantLeaf
+
+A leaf card: one plane, crossed planes or a diamond, with a mid-rib, curvature and a picture
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| length | in (optional) | field (number) |
+| width | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Orientation | choice: Fixed, user defined / Fixed, facing current camera / Fixed, outwards / Fixed, facing X axis / Dynamic, facing camera | How the leaf plane faces: a fixed direction set here, facing the current camera, facing outward from the plant, along the X axis, or dynamically tracking the camera. |
+| Mesh | choice: Single plane / Two crossed planes / Three crossed planes / Diamond plane | The leaf's geometry: a single flat plane, two or three crossed planes, or a diamond-shaped plane. |
+| Length (m) | value | The leaf's length, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Width (m) | value | The leaf's width, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Subdivision boost W | int, 0 to 3, default 0 | Extra mesh subdivisions across the leaf's width, on top of the minimum needed. |
+| Subdivision boost H | int, 0 to 3, default 1 | Extra mesh subdivisions along the leaf's length, on top of the minimum needed. |
+| Mid rib angle (deg) | value | How far the leaf folds along its mid-rib, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Curvature W (deg) | value | How much the leaf curves across its width, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Curvature H (deg) | value | How much the leaf curves along its length, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normals | choice: Geometric / Leaf dir / Plant sphere / Local sphere | How the leaf's surface normal is computed: from its own geometry, from the leaf's own direction, or blended toward a sphere around the plant or the local part. |
+| Normal hazard | float, 0 to 1, default 0 | How much randomness is mixed into the leaf's normal, for a less uniform look under lighting. |
+| Basic rib orientation | choice: Horizontal / Vertical | Which way the leaf's basic mid-rib runs: horizontal or vertical. |
+| UV mode | choice: Normal UV mode / Diamond UV mode | How the leaf's texture coordinates are laid out: the normal mode, or a diamond mode for diamond-shaped planes. |
+| Hooking point (u,v) | x/y pair | The point on the leaf's own picture (u,v) that is anchored to its attachment point. |
+| Material distribution mode | choice: Per plane / Per billboard / Per material groups | How materials are assigned across the leaf's planes: per plane, per whole billboard, or per material group. |
+| Disable texture baking | toggle, default off | Skips baking this leaf's texture detail into vertex data, keeping it live instead. |
+| Colour shift: hue (turns) | value | Randomly shifts this leaf's colour hue from the material's base, in turns of the colour wheel. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Colour shift: luminosity | value | Randomly shifts this leaf's colour luminosity from the material's base. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Colour shift: saturation | value | Randomly shifts this leaf's colour saturation from the material's base. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Breeze strength | value | How far this part sways in the constant ambient motion that runs even without wind. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Breeze flexibility | value | How loosely this part follows the ambient motion relative to its neighbours; higher lags and overshoots more. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Override breeze response | toggle, default off | Ignores the ambient-motion settings inherited from the species and uses this part's own breeze strength instead. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Global offset: axial | value | An extra offset applied to every leaf along the parent's axis direction, useful for nudging a whole batch at once. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Global offset: radial | value | An extra offset applied to every leaf along the parent's radial direction, useful for nudging a whole batch at once. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantMaterial
+
+What a part wears: a colour, pictures, a cut-out, seasonal looks, or a picture made from rules
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| plant | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | The material's name, shown wherever it is picked for a part. |
+| Colour | color | The base colour of the material where no picture overrides it. |
+| Roughness | float, 0 to 1, default 0.7 | How matte or glossy the surface is; 0 is a mirror finish, 1 is fully matte. |
+| Metallic | float, 0 to 1, default 0 | How metallic the surface reads; 0 is a dielectric like bark or leaf, 1 is a bare metal look. |
+| Translucency | float, 0 to 1, default 0 | How much light passes through the material, as if it were thin and backlit. |
+| Backlight | float, 0 to 1, default 0 | How much brighter the material looks when lit from behind, on top of its translucency. |
+| Two sided | toggle, default off | Shades both faces of the surface instead of only the one the normal points from. |
+| Alpha is a cut-out | toggle, default on | Uses the alpha channel to cut holes in the surface instead of blending it. |
+| Colour picture | file path | The picture used for the base colour, replacing the flat Colour where it has content. |
+| Alpha picture | file path | The picture whose alpha channel controls transparency or cut-out shape. |
+| Normal picture | file path | The picture that perturbs the surface normal for fine bump detail. |
+| Roughness picture | file path | The picture that varies roughness across the surface. |
+| U tile | float, 0.01 to 64, default 1 | How many times the pictures repeat across the surface along U. |
+| V tile | float, 0.01 to 64, default 1 | How many times the pictures repeat across the surface along V. |
+| Cut-out outline (u,v;...) | text | A hand-authored cut-out outline, as a list of u,v points, used instead of tracing one from the alpha picture. |
+| Trace cut-out from alpha | toggle, default on | Traces the cut-out outline automatically from the alpha picture instead of using a hand-authored one. |
+| Made from rules | choice: None (colour or pictures above) / Leaf / Bark / Petal | Builds the colour and alpha pictures from procedural rules instead of loaded files: none, a leaf, bark, or a petal. |
+| Leaf shape | choice: Ovate / Lanceolate / Lobed / Palmate / Needle / Scale / Pinnate / Heart / Linear / Round / Elliptic / Frond / Blade / Needle spray | The outline family the procedural leaf picture is drawn from. |
+| Serration | float, 0 to 1, default 0 | How jagged the procedural leaf's edge is. |
+| Lobe depth | float, 0 to 1, default 0.5 | How deeply the procedural leaf's lobes cut in. |
+| Lobe count | int, 3 to 11, default 5 | How many lobes the procedural leaf has. |
+| Width / length | float, 0.05 to 1.5, default 0.55 | The procedural leaf's width relative to its length. |
+| Vein strength | float, 0 to 1, default 0.5 | How strongly the procedural leaf's veins show. |
+| Vein colour | color | The colour of the procedural leaf's veins. |
+| Mottle | float, 0 to 1, default 0.3 | How much random mottling is added to the procedural leaf's colour. |
+| Bark | choice: Fissured / Plated / Smooth / Birch / Ringed / Peeling / Scaly / Fibrous | The pattern family the procedural bark picture is drawn from: fissured, plated, smooth and so on. |
+| Crack colour | color | The colour of the cracks or seams in the procedural bark. |
+| Bark scale | float, 0.1 to 8, default 1 | How large the procedural bark's pattern reads relative to the surface. |
+| Picture size | choice: 256 / 512 / 1024 / 2048 | The pixel resolution the procedural picture is generated at. |
+| Picture seed | seed | The random seed the procedural picture is generated from. |
+| Number of seasonal looks | int, 0 to 4, default 0 | How many of the four seasonal looks below are actually used. |
+| Look by season | value | Which seasonal look is shown at each point of the year, read off the horizontal axis as season 0..1 and the vertical axis as the look index. |
+| Colour shift mask | file path | A picture whose value scales how far the season's hue/luminosity/saturation shift is applied across the surface. |
+| Look 1: name | text | The name of this seasonal look, shown in the season curve's picker. |
+| Look 1: colour picture | file path | The colour picture used while this seasonal look is active, replacing the base one. |
+| Look 1: alpha picture | file path | The alpha picture used while this seasonal look is active, replacing the base one. |
+| Look 1: normal picture | file path | The normal picture used while this seasonal look is active, replacing the base one. |
+| Look 1: hue shift (turns) | float, -0.5 to 0.5, default 0 | How far the base colour's hue is shifted while this look is active, in turns of the colour wheel. |
+| Look 1: luminosity shift | float, -1 to 1, default 0 | How far the base colour's luminosity is shifted while this look is active. |
+| Look 1: saturation shift | float, -1 to 1, default 0 | How far the base colour's saturation is shifted while this look is active. |
+| Look 1: presence | float, 0 to 1, default 1 | How strongly this look is blended in where the season curve selects it. |
+| Look 2: name | text | The name of this seasonal look, shown in the season curve's picker. |
+| Look 2: colour picture | file path | The colour picture used while this seasonal look is active, replacing the base one. |
+| Look 2: alpha picture | file path | The alpha picture used while this seasonal look is active, replacing the base one. |
+| Look 2: normal picture | file path | The normal picture used while this seasonal look is active, replacing the base one. |
+| Look 2: hue shift (turns) | float, -0.5 to 0.5, default 0 | How far the base colour's hue is shifted while this look is active, in turns of the colour wheel. |
+| Look 2: luminosity shift | float, -1 to 1, default 0 | How far the base colour's luminosity is shifted while this look is active. |
+| Look 2: saturation shift | float, -1 to 1, default 0 | How far the base colour's saturation is shifted while this look is active. |
+| Look 2: presence | float, 0 to 1, default 1 | How strongly this look is blended in where the season curve selects it. |
+| Look 3: name | text | The name of this seasonal look, shown in the season curve's picker. |
+| Look 3: colour picture | file path | The colour picture used while this seasonal look is active, replacing the base one. |
+| Look 3: alpha picture | file path | The alpha picture used while this seasonal look is active, replacing the base one. |
+| Look 3: normal picture | file path | The normal picture used while this seasonal look is active, replacing the base one. |
+| Look 3: hue shift (turns) | float, -0.5 to 0.5, default 0 | How far the base colour's hue is shifted while this look is active, in turns of the colour wheel. |
+| Look 3: luminosity shift | float, -1 to 1, default 0 | How far the base colour's luminosity is shifted while this look is active. |
+| Look 3: saturation shift | float, -1 to 1, default 0 | How far the base colour's saturation is shifted while this look is active. |
+| Look 3: presence | float, 0 to 1, default 0 | How strongly this look is blended in where the season curve selects it; defaults to off for the bare look. |
+| Look 4: name | text | The name of this seasonal look, shown in the season curve's picker. |
+| Look 4: colour picture | file path | The colour picture used while this seasonal look is active, replacing the base one. |
+| Look 4: alpha picture | file path | The alpha picture used while this seasonal look is active, replacing the base one. |
+| Look 4: normal picture | file path | The normal picture used while this seasonal look is active, replacing the base one. |
+| Look 4: hue shift (turns) | float, -0.5 to 0.5, default 0 | How far the base colour's hue is shifted while this look is active, in turns of the colour wheel. |
+| Look 4: luminosity shift | float, -1 to 1, default 0 | How far the base colour's luminosity is shifted while this look is active. |
+| Look 4: saturation shift | float, -1 to 1, default 0 | How far the base colour's saturation is shifted while this look is active. |
+| Look 4: presence | float, 0 to 1, default 1 | How strongly this look is blended in where the season curve selects it. |
+
+### PlantObject
+
+An imported mesh grown as a part of the plant: a fruit, a cone, a scanned leaf
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| material | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Object | file path | The imported mesh file this part instances. |
+| Double sided | toggle, default off | Shades both faces of the imported mesh's surface. |
+| Size (m) | value | Scales the imported mesh to this size, in metres, overriding its own file scale. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Disable texture baking | toggle, default off | Skips baking this object's texture detail into vertex data, keeping it live instead. |
+| Wind strength | value | How hard the constant wind pushes this part, as a multiple of the species wind strength. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Override breeze response | toggle, default off | Ignores the ambient-motion settings inherited from the species and uses this part's own breeze strength instead. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Orientation tropism: vertical | value | How strongly the part turns to face up or down instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation tropism: horizontal | value | How strongly the part turns to lie flat instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantRepeat
+
+The subtree on its body input grown into itself, iteration after iteration; the tail grows on the last
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| iterations | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| tail | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Iterations | value | How many times the subtree on the body input is grown into itself. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tail on every iteration | toggle, default off | Grows the tail input at every iteration instead of only after the last one. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantSegment
+
+A segment: a trunk, branch, stem, twig or root along an axis, with caps, root flares and blades, carrying children
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| length | in (optional) | field (number) |
+| radius | in (optional) | field (number) |
+| tropism | in (optional) | field (number) |
+| blade_width | in (optional) | field (number) |
+| perturb_frequency | in (optional) | field (number) |
+| bias_strength | in (optional) | field (number) |
+| rdisp_amount | in (optional) | field (number) |
+| disp3_amount | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| child 2 | in (optional) | ? |
+| child 3 | in (optional) | ? |
+| child 4 | in (optional) | ? |
+| child 5 | in (optional) | ? |
+| child 6 | in (optional) | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+| cap material | in (optional) | ? |
+| blade material | in (optional) | ? |
+| blade material 2 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Simple segment | toggle, default off | Builds a lightweight cylinder instead of the full segment pipeline, for distant or minor parts. |
+| Skin | choice: Standard / From object / None | How the segment's surface is built: the standard generated skin, a skin copied from an object, or none. |
+| Length (m) | value | The length of the segment, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Minimum length (m) | float, 0 to 50, default 0 | The shortest this segment is ever allowed to shrink to, in metres. |
+| Radius mode | choice: Inherit / User defined / Inherit, clamped to radius | How the radius is decided: inherited from the parent, set here, or inherited but clamped to the value here. |
+| Radius (m) | value | The segment's radius, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Inherit ratio | value | How much of the parent's radius carries over when radius is inherited. |
+| Minimum radius (m) | float, 0 to 5, default 0 | The thinnest this segment is ever allowed to taper to, in metres. |
+| Radius along the segment | value | How the radius tapers along the segment's length, read off the horizontal axis as position 0..1. |
+| Tropism | value | How strongly this segment bends toward its tropism direction as it grows. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Section | choice: Circle / Ellipse / Triangle / Square / Star / Flat blade / Custom | The cross-section shape: circle, ellipse, triangle, square, star, a flat blade, or a custom profile. |
+| Custom section (radius by angle) | value | The custom cross-section's radius, read off the horizontal axis as angle around the section 0..1. |
+| Section squash | value | Flattens or stretches the cross-section on one axis relative to the other. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Section twist (turns) | value | How many turns the cross-section rotates along the segment's length. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axis | choice: Straight / Curve up / Curve down / S curve / Spiral / Custom | The shape of the segment's central axis: straight, curved up, curved down, an S curve, a spiral, or a custom curve. |
+| Axis bend (deg) | value | How far the axis bends from straight, in degrees, for the built-in curved axis modes. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Custom axis (sideways by primal) | value | The custom axis' sideways offset, read off the horizontal axis as position along the segment 0..1. |
+| Sampling boost | int, 0 to 4, default 0 | How many extra points the axis is sampled at, for a smoother curve on demanding shapes. |
+| Prevent back folds | toggle, default on | Stops the axis curve from folding back on itself, which would otherwise pinch the mesh. |
+| Shift to short side | toggle, default off | Shifts the axis toward the side with less material, to balance an asymmetric cross-section. |
+| Smoothing | float, 0 to 1, default 0 | How much the generated axis is smoothed after being built. |
+| Cap | toggle, default on | Whether the top of the segment is capped, closing it off instead of leaving it open. |
+| Mode | choice: Cut & Top / Only cut / Only top | What the cap covers: the cut at the end and the top surface, only the cut, or only the top. |
+| Cap profile | value | The cap's shape from its centre outward, read off the horizontal axis as distance from the centre 0..1. |
+| Offset | value | Shifts the cap up or down along the segment's axis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothing | toggle, default on | Smooths the cap's normals so it does not read as faceted. |
+| Secondary cap profile | value | The secondary cap's shape from its centre outward, read off the horizontal axis as distance from the centre 0..1. |
+| Offset | value | Shifts the secondary cap up or down along the segment's axis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothing | toggle, default on | Smooths the secondary cap's normals so it does not read as faceted. |
+| Bottom cap | toggle, default off | Whether the bottom of the segment is capped. |
+| Bottom cap profile | value | The bottom cap's shape from its centre outward, read off the horizontal axis as distance from the centre 0..1. |
+| Offset | value | Shifts the bottom cap up or down along the segment's axis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothing | toggle, default on | Smooths the bottom cap's normals so it does not read as faceted. |
+| Number | int, 0 to 24, default 0 | How many root-flare ridges swell out around the base of the segment. |
+| Randomness | value | How irregular the flares' spacing and size are. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Height (m) | value | How far up the segment the flares reach, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Base swell | value | How much the flares bulge the base radius outward. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Depth (m) | value | How deep the grooves between flares cut in, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Width | value | How wide each flare ridge is around the base. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shape | value | The flare's swell from base to tip, read off the horizontal axis as height along the flare 0..1. |
+| Number | int, 0 to 12, default 0 | How many flat blades grow along this segment (for grasses and blade-like stems). |
+| Start | value | Where the blades begin along the segment. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End | value | Where the blades end along the segment. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Spread (deg) | value | How wide an angle the blades are spread across around the segment, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Spread offset (deg) | value | Rotates the whole spread of blades around the segment, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Width (m) | value | The width of each blade, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Style | choice: Single / Symmetrical / Full width / Simple flat | How the blades are built: a single plane, symmetrical pairs, a full-width wrap, or a simple flat shape. |
+| Auto-size | toggle, default off | Scales each blade's width automatically to the segment's own radius instead of using a fixed width. |
+| From axis | toggle, default on | Grows the blades from the segment's central axis rather than from its surface. |
+| Section | value | The blade's cross-section shape, read off the horizontal axis as position across its width 0..1. |
+| Section height | value | How much the blade's cross-section rises out of flat. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Profile | value | The blade's width along its length, read off the horizontal axis as position from base to tip 0..1. |
+| Pinching | value | How much the blade narrows and folds inward toward its tip. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Follow axis | toggle, default on | Lets the blades bend along with the segment's own axis curve instead of staying straight. |
+| Boost | float, -3 to 3, default 0 | Raises or lowers this segment's mesh resolution on top of the species-wide setting. |
+| Normal computation | choice: Parametric / Geometric | How surface normals are computed: parametric from the profile, or geometric from the built mesh. |
+| Double sided | toggle, default off | Shades both faces of the segment's surface. |
+| Axial subdivision mode | choice: Fixed value / By length unit / Curve threshold | How the number of subdivisions along the segment's length is decided: a fixed count, one per unit length, or driven by a curve threshold. |
+| Axial subdivisions | float, 1 to 200, default 4 | The number of subdivisions along the segment's length. |
+| Axial density | value | Where subdivisions along the length concentrate, read off the horizontal axis as position 0..1. |
+| Adaptiveness | toggle, default on | Lets the axial subdivision count adjust itself to the segment's curvature and length instead of staying fixed. |
+| Minimum axial | int, 1 to 64, default 3 | The fewest subdivisions the segment's length is ever allowed to have. |
+| Radial subdivision mode | choice: Fixed value / By radius unit / Curve threshold | How the number of subdivisions around the segment's cross-section is decided: a fixed count, one per unit radius, or driven by a curve threshold. |
+| Radial subdivisions | float, 3 to 128, default 24 | The number of subdivisions around the segment's cross-section. |
+| Symmetry factor | int, 1 to 12, default 1 | Repeats the cross-section's subdivisions in this many identical wedges, for a faceted look. |
+| Minimum radial | int, 3 to 64, default 5 | The fewest subdivisions the segment's cross-section is ever allowed to have. |
+| Blending: minimum subdivisions | int, 0 to 16, default 2 | The fewest subdivisions kept across a blended join to a child. |
+| Cap radial subdivisions | int, 1 to 32, default 3 | The number of subdivisions across the cap's radius. |
+| Cap body displacement transition | value | How the segment's body displacement fades out as it approaches the cap, read off the horizontal axis as distance from the cap 0..1. |
+| Blade radial subdivisions | int, 1 to 32, default 3 | The number of subdivisions across a blade's cross-section. |
+| Axis perturbation: strength | value | How strongly the segment's axis is perturbed with noise, away from its clean curve. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axis perturbation: make planar | float, -1 to 1, default 0 | Biases the axis perturbation to stay within one plane instead of wandering in every direction. |
+| Axis perturbation: frequency | value | How finely the axis perturbation noise oscillates along the segment. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Axis perturbation: keep tip | toggle, default off | Keeps the segment's very tip fixed in place while the rest of the axis is perturbed. |
+| Axis perturbation: smooth start | toggle, default on | Eases the perturbation in gradually from the segment's base instead of applying it at full strength immediately. |
+| Axis perturbation: apply | choice: Before biases / After biases | Whether the axis perturbation is applied before or after the global biases. |
+| Wind sensitivity: flexibility | value | How easily the segment bends under wind, independent of its thickness. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind sensitivity: influence of blades | value | How much of the segment's blades' own area adds to how much wind catches the segment. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ambient motion: strength | value | How far this segment sways in the ambient breeze. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ambient motion: override breeze settings | toggle, default off | Ignores the species' inherited ambient-motion settings and uses this segment's own. |
+| Ambient motion of blades: amplitude | value | How far the segment's blades sway in the ambient breeze, separate from the segment body. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ambient motion of blades: frequency | value | How fast the segment's blades oscillate in the ambient breeze. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind and gust: gravity | value | How strongly gravity pulls this segment back after a gust passes. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind and gust: wind | value | How strongly gusts push this segment, on top of the steady wind. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind and gust: bone boost | float, -3 to 3, default 0 | Raises or lowers how many skinning bones this segment's wind animation uses. |
+| Blades wind and gust: flexibility | value | How easily the segment's blades bend under wind and gusts. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blades wind and gust: gravity | value | How strongly gravity pulls the blades back after a gust. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blades wind and gust: wind | value | How strongly gusts push the blades, on top of the steady wind. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Global biases: strength | value | How much the species' global biases affect this segment, on top of each bias' own strength. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local bias: type | choice: None / Direction / Conic / Attractor / Axis repeller / Swirl / Curl / Twist | The kind of local pull this segment adds on its own: none, direction, conic, attractor, axis repeller, swirl, curl, or twist. |
+| Strength | value | How strongly this segment's local bias pulls its growth. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Direction X | float, -100 to 100, default 0 | The X component of this segment's local bias direction. |
+| Direction Y | float, -100 to 100, default 1 | The Y component of this segment's local bias direction. |
+| Direction Z | float, -100 to 100, default 0 | The Z component of this segment's local bias direction. |
+| Local coordinates | toggle, default off | Measures the local bias direction in the segment's own frame instead of the world. |
+| Length agnostic | toggle, default off | Keeps the local bias' pull independent of the segment's own length. |
+| Apply | choice: Only to free floating parts / To entire segment / Only to parts growing on object | Which parts feel this segment's local bias: only free-floating ones, the entire segment, or only parts growing on an object. |
+| Conic: repeller | toggle, default off | Reverses a conic local bias into a repeller that pushes away instead of pulling in. |
+| Conic: cone angle (deg) | float, 0 to 180, default 90 | For a conic local bias, the half-angle of the cone growth is pulled toward, in degrees. |
+| Conic: base length (m) | float, 0.01 to 100, default 1 | For a conic local bias, the reference length, in metres, its falloff is measured against. |
+| Origin X (m) | float, -1000 to 1000, default 0 | The X position of the local bias' origin point, in metres. |
+| Origin Y (m) | float, -1000 to 1000, default 0 | The Y position of the local bias' origin point, in metres. |
+| Origin Z (m) | float, -1000 to 1000, default 0 | The Z position of the local bias' origin point, in metres. |
+| Twist: planar | toggle, default off | Keeps a twist local bias' rotation confined to one plane. |
+| Twist: symmetry order | int, 1 to 12, default 2 | How many repeating lobes a twist local bias' rotation is folded into. |
+| Twist: target angle (deg) | float, -180 to 180, default 0 | The angle, in degrees, a twist local bias tries to rotate the segment toward. |
+| Interact with | choice: None / Ground / Object / Ground and Object | What this segment reacts to physically: nothing, the ground, an object, or both. |
+| Prune after (m) | float, 0 to 100, default 0 | Cuts the segment short once it has grown past this length, in metres, as if pruned. |
+| Perturbation ratio | float, 0 to 4, default 1 | How much the collision reaction with the ground or an object perturbs the segment's axis. |
+| Body material distribution | choice: Unique per segment / Unique per section / Sequential | How the body material is assigned across segments: one material per segment, per cross-section, or cycling in sequence. |
+| Disable texture baking | toggle, default off | Skips baking this segment's texture detail into vertex data, keeping it live instead. |
+| Disable blade texture baking | toggle, default off | Skips baking the blades' texture detail into vertex data, keeping it live instead. |
+| Body UV: mapping mode | choice: Standard / Parametric U / Parametric UV | How the body's texture coordinates are laid out: standard, parametric along U only, or parametric on both axes. |
+| Body UV: U tile | float, 0.01 to 64, default 1 | How many times the body material repeats around the segment. |
+| Body UV: V tile | float, 0.01 to 64, default 1 | How many times the body material repeats along the segment's length. |
+| Body UV: U offset | float, -4 to 4, default 0 | Shifts the body material's texture coordinates around the segment. |
+| Body UV: V offset | float, -4 to 4, default 0 | Shifts the body material's texture coordinates along the segment's length. |
+| Body UV: twist | float, -4 to 4, default 0 | Twists the body material's texture coordinates along the segment's length. |
+| Body UV: keep aspect ratio | toggle, default on | Keeps the body material's texture undistorted in aspect ratio as the segment tapers. |
+| Body UV: map V from end | toggle, default off | Measures the body material's V coordinate from the tip instead of the base. |
+| Body UV: extend to top cap | toggle, default off | Extends the body material's texture coordinates onto the top cap instead of giving the cap its own mapping. |
+| Body UV: extend to bottom cap | toggle, default off | Extends the body material's texture coordinates onto the bottom cap instead of giving it its own mapping. |
+| Detail UV: mapping mode | choice: Standard / Parametric U / Parametric UV | How texture coordinates for a secondary detail layer are laid out: standard, parametric along U only, or parametric on both axes. |
+| Detail UV: U tile | float, 0.01 to 64, default 1 | How many times the detail layer repeats around the segment. |
+| Detail UV: V tile | float, 0.01 to 64, default 1 | How many times the detail layer repeats along the segment's length. |
+| Radial displacement: source | choice: None / Noise / Bark ridges / Knots / Field | What drives the radial (bark-like) surface displacement: none, noise, bark ridges, knots, or an input field. |
+| Radial displacement: relative | toggle, default on | Scales the radial displacement by the segment's own radius, so thin and thick segments displace proportionally. |
+| Radial displacement: amount | value | How far the surface is pushed in and out radially. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radial displacement: offset | float, -1 to 1, default 0 | Shifts the radial displacement pattern up or down before it is applied. |
+| Radial displacement: scale | float, 0.05 to 20, default 1 | How large the radial displacement pattern reads on the surface. |
+| 3D displacement: amount | value | How far the surface is pushed by the free-form 3D displacement. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| 3D displacement: offset | float, -1 to 1, default 0 | Shifts the 3D displacement pattern before it is applied. |
+| 3D displacement: scale | float, 0.05 to 20, default 1 | How large the 3D displacement pattern reads on the surface. |
+| Cap: UV angle (deg) | float, -180 to 180, default 0 | Rotates the cap's material texture, in degrees. |
+| Cap: UV scale | float, 0.01 to 16, default 1 | Scales the cap's material texture. |
+| Cap: border | float, 0 to 1, default 0 | How much of the cap near its edge is treated separately for material blending. |
+| Cap: displacement amount | value | How far the cap's surface is displaced. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cap: displacement offset | float, -1 to 1, default 0 | Shifts the cap's displacement pattern before it is applied. |
+| Blades: distribution mode | choice: Unique per segment / Unique per blade / Sequential AAABBB / Sequential ABCABC / Sequential ABCA | How materials are assigned across blades: one per segment, one per blade, or cycling in sequence. |
+| Blades: mapping mode | choice: Standard / Parametric U / Parametric UV | How texture coordinates on the blades are laid out: standard, parametric along U only, or parametric on both axes. |
+| Blades: UV extension | toggle, default off | Extends the blade's texture coordinates so the material continues smoothly from the segment body. |
+| Blades: map V from end | toggle, default off | Measures the blade material's V coordinate from the tip instead of the base. |
+| Blades: U tile | float, 0.01 to 64, default 1 | How many times the blade material repeats across the blade's width. |
+| Blades: V tile | float, 0.01 to 64, default 1 | How many times the blade material repeats along the blade's length. |
+| Blades: U offset | float, -4 to 4, default 0 | Shifts the blade material's texture coordinates across its width. |
+| Blades: V offset | float, -4 to 4, default 0 | Shifts the blade material's texture coordinates along its length. |
+| Blades: displacement amount | value | How far the blade's surface is displaced along its normal. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blades: radial amount | value | How far the blade's surface is displaced radially, curling it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blades: displacement offset | float, -1 to 1, default 0 | Shifts the blade's displacement pattern before it is applied. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Orientation tropism: vertical | value | How strongly the part turns to face up or down instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation tropism: horizontal | value | How strongly the part turns to lie flat instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Inherit LOD | toggle, default on | Clamps this part's own LOD range to fall inside its parent's, so it never outlives the branch that carries it. |
+| Inherit sap | toggle, default on | How much of the parent's sap (vigour) this segment inherits, which feeds its own growth. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantSpecies
+
+A plant species: its trunk grows into this root, which builds one individual per seed with an age, a season, a health and a wind
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| trunk | in | ? |
+| bias 1 | in (optional) | ? |
+| bias 2 | in (optional) | ? |
+| bias 3 | in (optional) | ? |
+| bias 4 | in (optional) | ? |
+| plant | out | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Species name | text | The species' name, shown in the library and the Objects list. |
+| Seed | seed | The random seed the whole individual is grown from; a new value grows a different plant of the same species. |
+| Max age (years) | float, 1 to 1000, default 80 | The age, in years, at which this species reaches full maturity. |
+| Age (years) | float, 0 to 1000, default 30 | The age of this individual, in years; drives its size and how far its seasonal and growth curves have progressed. |
+| Health | float, 0 to 1, default 1 | How healthy this individual is, from wilted to thriving; drives the health-based presence and tint curves on its parts. |
+| Season | float, 0 to 1, default 0.5 | Where in the yearly cycle this individual sits, 0 to 1; drives the season-based presence, tint and material look curves. |
+| Time from the scene | toggle, default on | Reads age and season from the scene's own time of year instead of the values set here. |
+| Gravity strength | float, -2 to 4, default 1 | How strongly gravity pulls on the growth simulation and its tropisms, as a multiple of normal. |
+| Scale | float, 0.01 to 100, default 1 | Overall size multiplier applied to the whole plant on top of its natural dimensions. |
+| True dimensions | toggle, default on | Builds the plant at its real, physically meaningful dimensions rather than a stylised size. |
+| Object name | text | The name the driven scene object is given, so other nodes and the Objects list can find it. |
+| X (m) | float, -1e+07 to 1e+07, default 2500 | The plant's position along X, in metres. |
+| Y (m) | float, -1e+06 to 1e+06, default 0 | The plant's position along Y, in metres. |
+| Z (m) | float, -1e+07 to 1e+07, default 2500 | The plant's position along Z, in metres. |
+| Heading (deg) | float, -180 to 180, default 0 | The plant's rotation around its vertical axis, in degrees. |
+| Visible | toggle, default on | Whether the plant is drawn in the viewport and render. |
+| Stand on the ground | toggle, default on | Drops the plant onto the ground surface at its X/Z position instead of using Y directly. |
+| Receive wind effect | toggle, default on | Whether this plant responds to the scene's wind at all. |
+| Follow the world's wind | toggle, default on | Take the direction the wind blows, how strong it is and how it gusts from the scene's own weather, so this plant leans the way the clouds go and the waves run. Its strength below is then how hard it answers. Turn it off to blow this one plant by its own settings alone. |
+| Constant wind: strength | float, 0 to 1, default 0.3 | How hard the steady, constant wind bends the plant. |
+| Constant wind: direction (deg) | float, -180 to 180, default 0 | The compass direction the constant wind blows from, in degrees. |
+| Wind on breeze: influence | float, 0 to 1, default 0.5 | How much the constant wind adds to the ambient breeze motion, on top of its own steady bend. |
+| Wind on breeze: speed | float, 0 to 1, default 0.5 | How much the constant wind speeds up the breeze animation. |
+| Gusts: amplitude | float, 0 to 1, default 0.3 | How strongly sudden gusts push the plant beyond the steady wind. |
+| Gusts: frequency (per s) | float, 0 to 2, default 0.15 | How often gusts occur, in cycles per second. |
+| Segments: breeze influence | float, 0 to 2, default 0.5 | How much the ambient breeze sways trunks, branches and stems. |
+| Segments: breeze speed | float, 0 to 4, default 1 | How fast the ambient breeze animation runs on segments. |
+| Segments: breeze randomness | float, 0 to 1, default 0.5 | How much each segment's breeze motion is offset from its neighbours, so they do not sway in lockstep. |
+| Segments: fluttering influence | float, 0 to 2, default 0.3 | How much fast, small fluttering motion is added to segments on top of the breeze sway. |
+| Segments: fluttering speed | float, 0 to 8, default 2 | How fast the fluttering motion on segments runs. |
+| Segments: wind influence | float, 0 to 2, default 1 | How much the steady wind, as opposed to the breeze, bends segments. |
+| Flexibility: boost on thin segments | float, 0 to 2, default 0.5 | Makes thinner segments flex more in the wind than thicker ones, on top of their natural stiffness. |
+| Flexibility: boost on long segments | float, 0 to 2, default 0.5 | Makes longer segments flex more in the wind than shorter ones, on top of their natural stiffness. |
+| Blades: breeze influence | float, 0 to 2, default 0.5 | How much the ambient breeze sways blades (grass-like flat sections). |
+| Blades: wind influence | float, 0 to 2, default 1 | How much the steady wind bends blades. |
+| Flexibility: boost on large blades | float, 0 to 2, default 0.5 | Makes larger blades flex more in the wind than smaller ones. |
+| Leaves: breeze influence | float, 0 to 2, default 0.6 | How much the ambient breeze sways leaves. |
+| Leaves: breeze speed | float, 0 to 6, default 1.5 | How fast the ambient breeze animation runs on leaves. |
+| Leaves: breeze randomness | float, 0 to 1, default 0.6 | How much each leaf's breeze motion is offset from its neighbours. |
+| Leaves: fluttering influence | float, 0 to 2, default 0.5 | How much fast, small fluttering motion is added to leaves on top of the breeze sway. |
+| Leaves: fluttering speed | float, 0 to 10, default 3 | How fast the fluttering motion on leaves runs. |
+| Flexibility: boost on top of plant | float, 0 to 2, default 0.5 | Makes parts near the top of the plant flex more in the wind than parts lower down. |
+| Flexibility: boost on outer parts | float, 0 to 2, default 0.5 | Makes parts near the outside of the plant's envelope flex more in the wind than parts closer to the trunk. |
+| Geometry target | choice: Offline / Realtime / Stylized | The overall meshing strategy: Offline for the densest quality mesh, Realtime for a lighter mesh built for game engines, Stylized for a simplified look. |
+| Meshing type | choice: Triangles / Quads / Automatic adaptative / Automatic uniform / Manual | How segments are tessellated: triangles, quads, an adaptive or uniform automatic choice, or a manual setting per part. |
+| Optimization mode | choice: Optimize for quality / Optimize for animation | Whether the mesh is built to look its best still, or to deform cleanly when the plant is animated. |
+| Resolution boost | float, -3 to 3, default 0 | Raises or lowers the mesh resolution across the whole plant, on top of each part's own setting. |
+| Skinning: bone boost | float, -3 to 3, default 0 | Raises or lowers how many skinning bones the wind animation uses across the plant. |
+| Skinning: structural bones limit | int, 1 to 8192, default 512 | The maximum number of skinning bones the whole plant's animation rig may use. |
+| Camera-facing leaves bake | choice: Fixed, user defined / Fixed, facing current camera / Fixed, outwards / Fixed, facing X axis | How camera-facing leaves are baked when their orientation is fixed: to a set direction, to the current camera, outward from the plant, or along the X axis. |
+| Number of simplified LOD | int, 0 to 6, default 2 | How many progressively simplified versions of the plant are built for distant viewing. |
+| Simplification boost | int, 1 to 3, default 1 | How aggressively each simplified level reduces the mesh, on top of the normal falloff. |
+| Trigger for LOD 1 (px) | float, 8 to 4000, default 400 | The on-screen size, in pixels, below which the plant switches to its first simplified level. |
+| Trigger for impostor (px) | float, 1 to 1000, default 40 | The on-screen size, in pixels, below which the plant is replaced by a flat impostor image. |
+| Use LOD for rendering | toggle, default on | Lets the render use the same simplified levels as the viewport, instead of always rendering full detail. |
+| LOD selection method | choice: Bounding sphere / Reference length | How distance to the camera decides which level of detail to show: by the plant's bounding sphere, or by a reference length. |
+| Ecosystems quality | float, 0 to 1, default 0.5 | The detail level used when this species is scattered in bulk as part of an ecosystem, separate from its close-up quality. |
+| Envelope resolution | int, 20 to 5000, default 200 | How finely the plant's outer envelope (used for collision and fast previews) is sampled. |
+| Envelope smoothing | toggle, default on | Smooths the envelope so it does not follow every small bump of the growth. |
+| Envelope convexity | toggle, default off | Forces the envelope to stay convex (bulging outward everywhere) rather than following concave dips. |
+| Residual geometry size limit (m) | float, 0 to 10, default 0.3 | Parts smaller than this, in metres, are dropped from the final geometry as negligible. |
+| Ambient occlusion: min | float, 0 to 1, default 0.25 | The darkest value the baked ambient occlusion is allowed to reach. |
+| Ambient occlusion: max | float, 0 to 1, default 1 | The brightest value the baked ambient occlusion is allowed to reach. |
+| Ambient occlusion: brightness | float, -1 to 1, default 0 | Shifts the baked ambient occlusion brighter or darker overall. |
+| Ambient occlusion: falloff | float, 0.1 to 4, default 1 | How quickly the ambient occlusion darkens with proximity; higher concentrates the shadowing into tighter creases. |
+| Ground influence: strength | float, 0 to 1, default 0.4 | How strongly the plant is darkened near the ground, as if shadowed by it. |
+| Ground influence: height (%) | float, 0 to 100, default 15 | How high above the ground the ground-contact darkening reaches, as a percentage of the plant's height. |
+| Ground influence: transition | float, 0.01 to 1, default 0.5 | How gradually the ground-contact darkening fades out with height. |
+| Flagged seeds | text | Seeds of individuals worth keeping, separated by commas. Flag this plant adds the current seed; picking one in the Plant Editor grows that individual again. |
+| Presets (JSON) | text | Named presets of this species as JSON: each keeps an age, a health, a season and the values of the published parameters, so one species gives a sapling, a veteran and a winter form without copying its graph. |
+
+### PlantUrchin
+
+A sphere that carries children on its skin: a seed head, a thistle, a cactus body
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| radius | in (optional) | field (number) |
+| disp_amount | in (optional) | field (number) |
+| child_count | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| child 1 | in (optional) | ? |
+| child 2 | in (optional) | ? |
+| child 3 | in (optional) | ? |
+| child 4 | in (optional) | ? |
+| child 5 | in (optional) | ? |
+| child 6 | in (optional) | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Radius (m) | value | The urchin's own radius, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Skin | choice: Standard / None | Whether the urchin's own sphere surface is built at all, or omitted so only its children show. |
+| Normal computation | choice: Parametric / Geometric | How surface normals are computed: parametric from the profile, or geometric from the built mesh. |
+| Double sided | toggle, default off | Shades both faces of the urchin's surface. |
+| Profile (radius by height) | value | The urchin's radius from bottom to top, read off the horizontal axis as height 0..1. |
+| Section (radius by angle) | value | The urchin's radius around its cross-section, read off the horizontal axis as angle 0..1. |
+| Pivot offset | value | Shifts the urchin's pivot point along its axis, changing where it attaches and rotates from. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Boost | float, -3 to 3, default 0 | Raises or lowers the urchin's mesh resolution on top of its minimum. |
+| Subdivision mode | choice: Parametric / By unit length/radius | How the urchin's subdivision counts are decided: parametric, or driven by a unit length/radius. |
+| Axial subdivisions | float, 2 to 200, default 12 | The number of subdivisions from bottom to top of the urchin. |
+| Minimum axial subdivisions | int, 2 to 64, default 4 | The fewest axial subdivisions the urchin is ever allowed to have. |
+| Axial subdivision density | value | Where axial subdivisions concentrate, read off the horizontal axis as height 0..1. |
+| Angular subdivisions | float, 3 to 200, default 16 | The number of subdivisions around the urchin's cross-section. |
+| Minimum angular subdivisions | int, 3 to 64, default 6 | The fewest angular subdivisions the urchin is ever allowed to have. |
+| Adaptiveness | toggle, default on | Lets the urchin's subdivision counts adjust themselves to its size instead of staying fixed. |
+| Parametric UV | toggle, default on | Lays out the urchin's texture coordinates parametrically over its surface instead of projecting them. |
+| U tile | float, 0.01 to 64, default 1 | How many times the material repeats around the urchin. |
+| V tile | float, 0.01 to 64, default 1 | How many times the material repeats from bottom to top of the urchin. |
+| U offset | float, -4 to 4, default 0 | Shifts the material's texture coordinates around the urchin. |
+| V offset | float, -4 to 4, default 0 | Shifts the material's texture coordinates from bottom to top of the urchin. |
+| Displacement source | choice: None / Noise / Bumps / Field | What drives the urchin's surface displacement: none, noise, bumps, or an input field. |
+| Displacement relative | toggle, default on | Scales the displacement by the urchin's own radius, so small and large urchins displace proportionally. |
+| Displacement amount | value | How far the urchin's surface is pushed in and out. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Displacement offset | float, -1 to 1, default 0 | Shifts the displacement pattern before it is applied. |
+| Number | value | How many children grow on the urchin's skin. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Start | value | Where on the urchin, from bottom to top, children begin growing. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End | value | Where on the urchin, from bottom to top, children stop growing. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How thickly children cluster over the urchin's surface, read off the horizontal axis as height 0..1. |
+| Soft insert | choice: None, use rounded number / None, use rounded up number / Scale down fractional part / Random | What happens to a fractional Number of children: rounded down, rounded up, scaled down, or resolved at random. |
+| Orthogonal | toggle, default on | Orients each child perpendicular to the urchin's surface at its growing point. |
+| Angle (deg) | value | Tilts each child away from perpendicular, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | The scale applied to each child growing on the urchin. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale shift | value | How much each child's scale is randomised from the average. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Phi (deg) | value | The angle added around the urchin from one child to the next, in degrees; 137.5 gives the golden-angle spiral. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind sensitivity: flexibility | value | How easily the urchin bends under wind, independent of its size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ambient motion: strength | value | How far the urchin sways in the ambient breeze. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ambient motion: override breeze settings | toggle, default off | Ignores the species' inherited ambient-motion settings and uses the urchin's own. |
+| Wind and gust: gravity | value | How strongly gravity pulls the urchin back after a gust. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Wind and gust: wind | value | How strongly gusts push the urchin, on top of the steady wind. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Orientation tropism: vertical | value | How strongly the part turns to face up or down instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation tropism: horizontal | value | How strongly the part turns to lie flat instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
+### PlantVariable
+
+A number about the primitive being grown - where on it, its age, season, health, depth - as a field
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| value | out | field (number) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Variable | choice: Primal / Section angle / Radial / Age / Maturity / Health / Season / Time / Hierarchy depth / Distance to root / Height fraction / Iteration / Position on parent / Parent radius / Parent length / Remaining length / Parent tilt / Length / Radius / Horizontropic azimuth / Random per primitive / Random per plant / LOD level / LOD max / Pruned / Pruning ratio | Which number about the primitive being grown this field reads: its position along the parent, its age, depth, size, and so on. |
+| Scale | float, -100 to 100, default 1 | Multiplies the chosen variable before it is output, since the GPU always sees this variable as zero and outputs Scale times 0 plus Offset. |
+| Offset | float, -100 to 100, default 0 | Added to the chosen variable after scaling, since the GPU always sees this variable as zero and outputs Scale times 0 plus Offset. |
+
+### PlantVector
+
+A direction or position of the primitive being grown, as a field vector
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| vector | out | field (vector) |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Vector | choice: Primitive position / Primitive direction / Axis direction / Radial direction / Parent direction | Which direction or position about the primitive being grown this field reads: its position, its own direction, the axis direction, the radial direction, or its parent's direction. |
+
+### PlantWarpboard
+
+A curled rectangle: the simplest leaf or petal
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| width | in (optional) | field (number) |
+| length | in (optional) | field (number) |
+| scale | in (optional) | field (number) |
+| count | in (optional) | field (number) |
+| pruning | in (optional) | field (number) |
+| angle | in (optional) | field (number) |
+| cut_probability | in (optional) | field (number) |
+| cut_length | in (optional) | field (number) |
+| plant | out | ? |
+| material | in (optional) | ? |
+| material 2 | in (optional) | ? |
+| material 3 | in (optional) | ? |
+| material 4 | in (optional) | ? |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Name | text | What this part is called: shown in the species' parts tree, and written as the group name when the plant is exported. |
+| Curl | value | How much the board curls along its length, like a drying petal. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Flexibility | value | How much the board bends away from flat under its own shape rules. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much the board's curl and flexibility vary at random from the average. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Width (m) | value | The board's width, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Length (m) | value | The board's length, in metres. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Disable texture baking | toggle, default off | Skips baking this board's texture detail into vertex data, keeping it live instead. |
+| Boost | float, -3 to 3, default 0 | Raises or lowers the board's mesh resolution on top of its minimum. |
+| Minimum subdivisions | int, 1 to 32, default 2 | The fewest subdivisions the board's mesh is ever allowed to have. |
+| Wind strength | value | How hard the constant wind pushes this part, as a multiple of the species wind strength. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Override breeze response | toggle, default off | Ignores the ambient-motion settings inherited from the species and uses this part's own breeze strength instead. |
+| Scale | value | Overall size multiplier for this part, applied before the per-axis scales below. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale X | value | Extra scale along the part's local X axis, on top of Scale. |
+| Scale Y | value | Extra scale along the part's local Y axis, on top of Scale. |
+| Scale Z | value | Extra scale along the part's local Z axis, on top of Scale. |
+| Inherit scale | toggle, default on | Lets this part's size follow its parent's scale, so scaling the plant scales every child with it. |
+| Offset X (m) | value | Sideways shift from the attachment point, in metres. |
+| Offset Y (m) | value | Shift along the attachment axis, in metres. |
+| Offset Z (m) | value | Shift out of the attachment plane, in metres. |
+| Rotation X (deg) | value | Extra rotation around the local X axis, in degrees, on top of the attachment orientation. |
+| Rotation Y (deg) | value | Extra rotation around the local Y axis, in degrees, on top of the attachment orientation. |
+| Rotation Z (deg) | value | Extra rotation around the local Z axis, in degrees, on top of the attachment orientation. |
+| Orientation tropism: vertical | value | How strongly the part turns to face up or down instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation tropism: horizontal | value | How strongly the part turns to lie flat instead of following its parent's orientation. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Min LOD | int, 0 to 8, default 0 | The coarsest level of detail this part still appears at; it is dropped from levels rougher than this. |
+| Max LOD | int, 0 to 8, default 8 | The finest level of detail this part is drawn at; it is dropped once the view is closer than this level needs. |
+| Presence | value | The fraction of the instances at this position that actually grow; below 1 thins the distribution at random. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Number | value | How many of this child grow on the parent, before presence and pruning thin them. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Count mode | choice: Fixed value / Per metre / Per length (legacy) | How Number is read: a fixed count, a count per metre of the parent's length, or the legacy per-length convention. |
+| Soft insert | choice: None, use rounded number / Offset fractional part / Scale down fractional part / Random | What happens to the fractional part of Number when it is not a whole number: rounded off, turned into an offset, scaled down, or resolved at random. |
+| Start mode | choice: Relative / Absolute from start / Absolute from end | How Start is measured: relative to the parent's length, or an absolute distance from one end. |
+| Start | value | Where the distribution of children begins along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| End mode | choice: Relative / Absolute from start / Absolute from end | How End is measured: relative to the parent's length, or an absolute distance from one end. |
+| End | value | Where the distribution of children ends along the parent. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Pair offset mode | choice: Relative / Absolute | How Pair offset is measured: relative to the spacing between children, or an absolute distance. |
+| Pair offset | value | Shifts alternating children apart along the parent, for a staggered rather than aligned pair. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Margin before cut (m) | float, 0 to 5, default 0 | Keeps children off the very tip of the parent, in metres, so pruning cuts do not leave a stub with nothing on it. |
+| Density along the parent | value | How thickly children cluster along the parent, read off the horizontal axis as position 0..1; high stretches of the curve gather more children. |
+| Pruning | value | The fraction of children removed after placement, as if cut away by hand. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How much each child's position is nudged off its regular slot, from perfectly even to scattered. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Arrangement | choice: Spiral / Alternate / Opposite / Pairs (decussate) / Simple | The pattern children are laid out in around the parent: spiral, alternating sides, opposite pairs, decussate pairs, or one per slot. |
+| Positioning method | choice: Tip / Axis / Skin / Dummy / Orthogonal to surface / Automatic transition / Bottom | How a child is anchored to the parent's surface: at the tip, on the axis, on the skin, on a dummy point, orthogonal to the surface, blended automatically, or at the bottom. |
+| Move out | value | Pushes the child away from the parent's axis, along its own outward direction. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll (deg) | value | Rotates the child around the direction it points in, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Coil (deg) | value | The angle added around the parent's axis from one child to the next, in degrees; 137.5 is the golden-angle spiral seen in real phyllotaxis. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Avoid mesh | toggle, default off | Nudges children so they do not grow through an obstacle mesh in the scene. |
+| Influenced by twist | toggle, default on | Lets the segment's own twist carry its children around with it, instead of holding their placement fixed. |
+| Use subdivision surfaces | toggle, default off | Builds the join between this part and its parent with a subdivision surface, for a smoother blend than the regular mesh gives. |
+| Upper width | value | How far up the child the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Lower width | value | How far down the parent the blended join reaches. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Child width | value | How far the blend reaches up the child, counted in the parent's radii, so one setting suits a trunk and a twig alike. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Move away | value | Pushes the blended join outward from the parent, to avoid it looking sunken. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Blend materials | value | How far the parent's material bleeds into the child across the blended join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Normal blend | value | How the surface normal is blended across the join, read off the horizontal axis as position along the blend 0..1. |
+| Post blending offset | value | Shifts the blended surface after it is built, to fix any remaining gap or overlap. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending force | value | How strongly the parent's surface bends to meet the child at the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Ignore displacement | value | Leaves surface displacement out of the blended area, so bark detail does not fight with the join. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink parent radius | value | How much the parent's radius is pinched in around each child, as if the child were pulling material with it. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Bending (zig-zag) | value | How sharply the parent kinks sideways at the child's attachment point, giving a zig-zag look. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Smoothness | value | How gradually the zig-zag kink eases in and out around the attachment point. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Angle (deg) | value | How far the child tilts away from its parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation (deg) | value | Rotates the child's attachment angle around the parent's axis, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Tropism direction X | float, -1 to 1, default 0 | The X component of the direction this child's tropism pulls it toward. |
+| Tropism direction Y | float, -1 to 1, default 1 | The Y component of the direction this child's tropism pulls it toward. |
+| Tropism direction Z | float, -1 to 1, default 0 | The Z component of the direction this child's tropism pulls it toward. |
+| Cone angle (deg) | value | How wide a cone around the tropism direction the child is allowed to settle within, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Local coordinates | toggle, default off | Measures the tropism direction in the parent's local frame instead of the world, so it turns with the parent. |
+| Angle strength | value | How much of the child's tilt the tropism controls, versus its own natural attachment angle. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Rotation strength | value | How much of the child's rotation around the parent the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Roll strength | value | How much of the child's roll the tropism controls. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Per whorl | value | How many children sit in one ring before the pattern steps to the next whorl. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Soft insert | choice: None, use rounded number / Scale down fractional part / Random | What happens to a fractional Per whorl count: rounded off, scaled down, or resolved at random. |
+| Spread (deg) | value | How much of the full circle one whorl's children are spread across, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Randomness | value | How far each child within a whorl is nudged off its even slot. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Orientation angle randomness (deg) | value | How much a whorl child's tilt angle is randomised, in degrees. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Position randomness | value | How much a whorl child's position along the parent is randomised. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Density | value | How much of the parent's own density this child carries into its own distribution. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Scale | value | How much of the parent's scale this child inherits on top of its own. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Sap | value | How much of the parent's sap (vigour) this child inherits, which feeds growth and shadowing elsewhere. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Probability of cut | value | The chance that this child is pruned away entirely. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Cut length (m) | value | The length, in metres, that a pruned child is cut down to instead of removed outright. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Radius reduction | value | How much the radius shrinks at a pruning cut. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Presence over the year | value | How much of this part exists over the course of a year, read off the horizontal axis as the season 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint over the year | gradient | The colour this part is tinted at each point of the year, read along the season 0..1. |
+| Presence by health | value | How much of this part survives as health drops, read off the horizontal axis as health 0..1; 0 sheds the part, 1 keeps it in full. |
+| Tint by health | gradient | The colour this part is tinted toward as its health changes, read along health 0..1. |
+| Presence by maturity | value | How much of this part exists as the plant matures, read off the horizontal axis as maturity 0..1; young or old plants can carry less of it. |
+| Droop when dry (deg) | value | How far the part droops downward, in degrees, when the plant is dry. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+| Shrink when dry | value | How much smaller the part gets when the plant is dry, as a fraction of its full size. The value may be given a spread and shaped along the part / by the hierarchy curve. |
+
 ## Points
 
 ### PointsFilter
@@ -3613,23 +5419,40 @@ Species, size, rotation, lean and tint per instance
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
+| Ecology group | text | The group this population stands for: boulder, conifer, moss, grass... The rules about where a thing goes are written about groups, not about models, so anything assigned to a group is placed by those rules. |
 | Species | int, 1 to 8, default 1 | How many kinds of object this layer places. Each scene object bound to the layer picks the species it stands for. |
 | Species 1 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 1 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 1 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 1 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 2 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 2 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 2 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 2 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 3 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 3 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 3 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 3 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 4 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 4 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 4 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 4 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 5 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 5 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 5 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 5 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 6 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 6 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 6 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 6 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 7 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 7 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 7 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 7 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Species 8 presence | float, 0 to 1, default 1 | Relative to the other species: raising every presence places no more instances. |
 | Species 8 scale | float, 0.05 to 10, default 1 | This species' size, as a multiple of the layer's own overall scaling. A population of one mesh at several sizes reads as a stand of different ages; every copy identical reads as instancing. |
+| Species 8 size variation | float, 0 to 1, default 0 | How much this kind varies in size about its own scale: 0 takes the layer's overall variation, 1 ranges from half to twice. Rocks vary far more than nursery trees do. |
+| Species 8 lean to slope | float, -1 to 1, default -1 | How far this kind tips with the ground it stands on: 0 grows straight up whatever the slope, 1 lies flat along it. A boulder sits on the hillside; a tree stands up out of it. Below 0 takes the layer's own setting. |
 | Overall scaling | float, 0.05 to 10, default 1 | The size of one copy, as a multiple of the mesh's own size. |
 | Size variation | float, 0 to 1, default 0.3 | 1: instances range from half to twice the size. |
 | Keep proportions | float, 0 to 1, default 1 | 1: the three axes scale together. 0: each on its own. |

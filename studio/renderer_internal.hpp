@@ -208,6 +208,12 @@ static const int AOV_BEAUTY_LINEAR = 13;
 // SKY_FN / FOG_FN (renderer_backdrop.cpp)
 void backdrop_bind(GLuint prog);
 void upload_fog_uniforms(GLuint prog, const RenderSettings &RS, bool atmosphere);
+// The picture a cloud layer is shaped by, bound on `unit` into any program
+// carrying CLOUD_SHAPE_GLSL - the sky march and the terrain's cloud shadows,
+// so the shadow is cast by the cloud that is actually there
+// (cloud_shape_map.cpp). Unit 11 everywhere; nothing else uses it.
+void cloud_shape_map_bind(GLuint prog, const RenderSettings &RS, int unit);
+static const int CLOUD_SHAPE_MAP_UNIT = 11;
 
 
 // One frame's shared inputs, built once in draw_scene and handed to each
