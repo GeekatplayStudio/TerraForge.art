@@ -38,7 +38,7 @@ static const char *icon_name(int i) {
       "Dot", "DotRing", "Check", "Cross", "Layer", "Tag", "Filter", "Home", "Up",
       "Sun", "Atmosphere", "Group", "Null", "Expression", "Modifier", "Bake",
       "Fit", "Snap", "Magnet", "Key", "Raise", "Flatten", "Smooth", "Terrace",
-      "Noise", "Erase", "Console", "Views", "Transform"};
+      "Noise", "Erase", "Console", "Views", "Transform", "Plant"};
   static_assert(sizeof(names) / sizeof(names[0]) == (size_t)Icon::Count,
                 "name every icon id");
   return names[i];

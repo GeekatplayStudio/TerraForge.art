@@ -222,6 +222,7 @@ FieldGpuResult field_gpu_verify(const gpx::Node &node, const std::string &port,
 // Called from the API so it can be exercised against the live app.
 void field_gpu_verify_converters(std::string &out); // field_gpu_check_convert.cpp
 std::string planet_gpu_verify();                      // planet_gpu_check.cpp
+std::string water_gpu_verify();                       // water_gpu_check.cpp
 
 std::string field_gpu_verify_all(App &a) {
   std::string out;
@@ -577,9 +578,10 @@ std::string field_gpu_verify_all(App &a) {
   // mode is an unmirrored one. The frame (direction projection, centre) is
   // shared, so one rotated case exercises it for all.
   {
-    const char *shape_name[8] = {"sine", "square", "triangle", "sawtooth",
-                                 "gauss", "cone", "band", "step"};
-    for (int m = 0; m < 8; ++m) {
+    const char *shape_name[12] = {"sine", "square", "triangle", "sawtooth",
+                                  "gauss", "cone", "band", "step",
+                                  "square falloff", "diamond falloff", "angular", "spiral"};
+    for (int m = 0; m < 12; ++m) {
       gpx::Graph g;
       gpx::Node *n = g.add_node("FieldShape");
       n->attrs.find("mode")->i = m;
@@ -660,8 +662,10 @@ std::string field_gpu_verify_all(App &a) {
     }
   }
   (void)a;
-  // the planet maths, hand-mirrored in planet_shaders.cpp
+  // the planet maths, hand-mirrored in planet_shaders.cpp, and the sea's
+  // waves, hand-mirrored in shaders_water.cpp
   out += planet_gpu_verify();
+  out += water_gpu_verify();
   return out;
 }
 

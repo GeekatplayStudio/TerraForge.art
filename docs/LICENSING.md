@@ -76,9 +76,26 @@ that adds it.
 | Eigen (QuadriFlow only) | 3.4.0 | MPL-2.0, built `EIGEN_MPL2_ONLY` | `external/eigen/COPYING.MPL2` |
 | pcg32 (QuadriFlow only) | master | Apache-2.0 | header comment |
 | ambientCG material sets | downloaded on request | CC0 1.0 | ambientcg.com terms |
+| Poly Haven plant models (`orchestrator/plant_fetch.py`) | downloaded on request | CC0 1.0 | polyhaven.com/license; a `LICENSE.txt` naming the source and authors beside each plant |
 
 All permissive. None impose obligations beyond carrying their notice, which
 `THIRD-PARTY-NOTICES.md` does.
+
+**Plants from proprietary plant tools are never bundled** (decided
+2026-09-11, from the reference manual of a commercial plant modeller kept in
+`docs_private/`). Its licence forbids public redistribution of anything
+derived from the vendor's own assets - catalogue plants, materials, texture
+maps - and excludes building asset collections for other authoring and
+scene-assembly tools, which TerraForge is; its plant formats are
+undocumented and node-locked, and reverse engineering and automated
+translation are forbidden. So: no such content in the repository or the
+installer, no reader for those formats, no presets recreated from a
+vendor's catalogue, no vendor names in shipped UI. A user may export their
+own plants to a generic format (glTF, FBX, OBJ) and record them in the plant
+library - `plant_record` leaves the file where it is and copies nothing -
+under the terms of their own licence, not ours. "Free" plants offered by
+such a vendor are treated the same way until their own licence says
+otherwise.
 
 ---
 

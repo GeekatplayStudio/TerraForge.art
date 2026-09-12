@@ -52,6 +52,10 @@ static void apply_nebula_fields(NebulaData &N, const json &act) {
   f("glow", N.glow, 0.f, 2.f);
   if (act.contains("sources") && act["sources"].is_number())
     N.sources = std::clamp(act["sources"].get<int>(), 1, 4);
+  f("turbulence", N.turbulence, 0.f, 1.f);
+  f("lanes", N.lanes, 0.f, 1.f);
+  f("core_glow", N.core_glow, 0.f, 2.f);
+  f("source_stars", N.source_stars, 0.f, 2.f);
   if (act.contains("seed") && act["seed"].is_number()) N.seed = act["seed"].get<uint32_t>();
   // "palette":"auto" takes both colours from the realism dial
   if (act.value("palette", std::string()) == "auto")
@@ -59,6 +63,7 @@ static void apply_nebula_fields(NebulaData &N, const json &act) {
   if (act.contains("arms") && act["arms"].is_number()) N.arms = std::clamp(act["arms"].get<int>(), 1, 6);
   read_vec3(act, "color1", N.color1);
   read_vec3(act, "color2", N.color2);
+  read_vec3(act, "color3", N.color3);
 }
 
 bool ai_scene_object_op(App &a, const std::string &op, const json &act,
@@ -233,9 +238,14 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         if (gpx::Node *pn = a.graph.find_node(nc.node))
           if (gpx::Attribute *d = pn->attrs.find("detail"))
             d->i = act.value("detail", 24);
+      // another plant of the same kind (the Primitive node's Plant seed)
+      if (idx >= 0 && act.contains("seed") && act["seed"].is_number())
+        if (gpx::Node *pn = a.graph.find_node(nc.node))
+          if (gpx::Attribute *s = pn->attrs.find("seed"))
+            s->seed = act["seed"].get<uint32_t>();
       if (idx < 0) {
         err = "unknown primitive '" + kind +
-              "' (cube, sphere, plane, cylinder, cone)";
+              "' (cube, sphere, plane, cylinder, cone, pine, juniper, palm, fern, grass, bush, boulder)";
       } else {
         SceneObject &o = sc.objects[idx];
         read_vec3(act, "position", o.pos);
@@ -314,6 +324,7 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       if (act.contains("sea_level")) P.sea_level = act["sea_level"].get<float>();
       if (act.contains("snow_line")) P.snow_line = act["snow_line"].get<float>();
       if (act.contains("atmosphere")) P.atmo_density = act["atmosphere"].get<float>();
+      if (act.contains("clouds")) P.clouds = std::clamp(act["clouds"].get<float>(), 0.f, 1.f);
       read_vec3(act, "water_color", P.water_color);
       read_vec3(act, "rock_low", P.rock_low);
       read_vec3(act, "rock_high", P.rock_high);
@@ -336,6 +347,7 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
         if (act.contains("sea_level")) P.sea_level = act["sea_level"].get<float>();
         if (act.contains("snow_line")) P.snow_line = act["snow_line"].get<float>();
         if (act.contains("atmosphere")) P.atmo_density = act["atmosphere"].get<float>();
+        if (act.contains("clouds")) P.clouds = std::clamp(act["clouds"].get<float>(), 0.f, 1.f);
         read_vec3(act, "water_color", P.water_color);
         read_vec3(act, "rock_low", P.rock_low);
         read_vec3(act, "rock_high", P.rock_high);
@@ -398,6 +410,14 @@ bool ai_scene_object_op(App &a, const std::string &op, const json &act,
       f("star_halo", rs.space.star_halo, 0.f, 4.f);
       f("star_clump", rs.space.star_clump, 0.f, 1.f);
       i("star_seed", rs.space.star_seed, 1, 1 << 24);
+      i("star_spike_points", rs.space.star_spike_points, 4, 8);
+      f("star_spike_angle", rs.space.star_spike_angle, -180.f, 180.f);
+      f("star_spike_chroma", rs.space.star_spike_chroma, 0.f, 1.f);
+      f("star_saturation", rs.space.star_saturation, 0.f, 2.f);
+      f("star_glow", rs.space.star_glow, 0.f, 2.f);
+      f("star_bright_share", rs.space.star_bright_share, 0.f, 1.f);
+      f("star_clusters", rs.space.star_clusters, 0.f, 1.f);
+      f("star_cluster_size", rs.space.star_cluster_size, 0.2f, 5.f);
       b("galaxy", rs.space.galaxy_on);
       f("galaxy_intensity", rs.space.galaxy_intensity, 0.f, 10.f);
       f("galaxy_width", rs.space.galaxy_width, 0.5f, 90.f);

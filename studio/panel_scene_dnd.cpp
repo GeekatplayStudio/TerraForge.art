@@ -11,6 +11,8 @@
 #include "theme_colors.hpp"
 #include "undo.hpp"
 #include <algorithm>
+#include <chrono>
+#include <mutex>
 #include <string>
 
 namespace studio {
@@ -164,42 +166,68 @@ void apply_group(App &a, SceneState &sc) {
 }
 
 void apply_delete(App &a, SceneState &sc) {
+  (void)sc;
   TreeState &g = tree_state();
-  std::vector<int> want = g.req_delete;
+  const std::vector<int> want = g.req_delete;
   g.req_delete.clear();
-  // the whole subtree of each; nothing is exempt, a deleted builtin is
+  // the whole subtree of each; nothing is exempt here, a deleted builtin is
   // simply gone (the Add tile makes another)
-  std::vector<int> del;
-  for (int i = 0; i < (int)sc.objects.size(); ++i) {
-    for (int w : want)
-      if (scene_is_descendant(sc, i, w)) { del.push_back(i); break; }
-  }
-  if (del.empty()) return;
-  undo_push(a, tr("om.undo.delete"));
-  std::sort(del.rbegin(), del.rend());
-  for (int d : del) {
-    auto fix = [&](int &v) {
-      if (v > d) v--;
-      else if (v == d) v = -1;
-    };
-    for (auto &o : sc.objects) {
-      if (o.parent > d) o.parent--;
-      else if (o.parent == d) o.parent = -1;
-    }
-    fix(scene_active_camera());
-    fix(scene_last_used_camera());
-    if (g.root == d) g.root = -1;
-    else if (g.root > d) g.root--;
-    sc.objects.erase(sc.objects.begin() + d);
-  }
-  if (sc.selected >= (int)sc.objects.size()) sc.selected = 0;
-  sc.selection = {sc.selected};
-  g.rename = -1;
-  a.scene_selection_serial++;
-  g.seen_serial = a.scene_selection_serial;
+  std::string why;
+  if (!scene_delete_objects(a, want, false, why) && !why.empty()) a.status = why;
 }
 
 } // namespace
+
+int scene_delete_objects(App &a, const std::vector<int> &objects, bool keep_builtin,
+                         std::string &why) {
+  SceneState &sc = scene();
+  TreeState &g = tree_state();
+  // The graph is part of the edit - the driving nodes go with their objects
+  // and the undo step holds both - so the lock is waited for briefly rather
+  // than half the edit done. An evaluation holds it for its whole run.
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::defer_lock);
+  if (!lk.try_lock_for(std::chrono::milliseconds(1500))) {
+    why = "the graph is busy computing; delete again in a moment";
+    return 0;
+  }
+  // what would go, before anything is recorded: an empty delete is no undo step
+  std::string first;
+  int count = 0;
+  for (int w : objects)
+    if (w >= 0 && w < (int)sc.objects.size() && !(keep_builtin && sc.objects[(size_t)w].builtin)) {
+      if (first.empty()) first = sc.objects[(size_t)w].name;
+      ++count;
+    }
+  if (!count) {
+    bool builtin = false;
+    for (int w : objects)
+      builtin = builtin || (w >= 0 && w < (int)sc.objects.size() && sc.objects[(size_t)w].builtin);
+    why = builtin ? "the world's own pieces (planet, terrain, sea, air, sun) are deleted from the Objects tree"
+                  : "nothing selected to delete";
+    return 0;
+  }
+  undo_push_locked(a, count == 1 ? "Delete " + first : std::string(tr("om.undo.delete")));
+  const SceneDeleteResult r = scene_delete_with_drivers(sc, &a.graph, objects, keep_builtin);
+  for (int d : r.objects) { // highest first, as the indices moved
+    if (g.root == d) g.root = -1;
+    else if (g.root > d) g.root--;
+  }
+  for (uint64_t id : r.nodes) {
+    if (a.selected_node == id) a.selected_node = 0;
+    if (a.view_node == id) a.view_node = 0;
+  }
+  if (!r.nodes.empty()) {
+    a.graph_layout_serial++;
+    a.request_eval();
+  }
+  g.rename = -1;
+  a.scene_selection_serial++;
+  g.seen_serial = a.scene_selection_serial;
+  const int extra = (int)r.objects.size() - count;
+  a.status = (count == 1 ? "deleted " + first : "deleted " + std::to_string(count) + " objects") +
+             (extra > 0 ? " and " + std::to_string(extra) + " under them" : "");
+  return (int)r.objects.size();
+}
 
 void tree_apply_edits(App &a, SceneState &sc) {
   TreeState &g = tree_state();

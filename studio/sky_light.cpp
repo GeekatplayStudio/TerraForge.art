@@ -14,6 +14,7 @@
 // sky itself changes, so a still frame costs nothing at all, and every
 // shader that lights a surface with skylight reads the one number.
 #include "render_settings.hpp"
+#include "scene.hpp"
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -80,6 +81,36 @@ uint64_t sky_key(const RenderSettings &rs) {
     mix_in(h, L.density);
     mix_in(h, L.altitude);
     mix_in(h, L.thickness);
+  }
+  // Deep space lights a night: the band and the nebulas are in the probe, so
+  // a change to them has to take it again. Field by field, never the
+  // structs' bytes, whose padding is not theirs to hash.
+  const SpaceSettings &sp = rs.space;
+  mix_in(h, sp.on);
+  mix_in(h, sp.brightness);
+  mix_in(h, sp.realism);
+  mix_in(h, sp.galaxy_on);
+  mix_in(h, sp.galaxy_intensity);
+  mix_in(h, sp.galaxy_width);
+  mix_in(h, sp.galaxy_yaw);
+  mix_in(h, sp.galaxy_pitch);
+  mix_in(h, sp.galaxy_core);
+  mix_in(h, sp.galaxy_dust);
+  mix_in(h, sp.galaxy_color);
+  mix_in(h, sp.galaxy_seed);
+  for (int i : scene_nebula_indices()) {
+    const SceneObject &o = scene().objects[(size_t)i];
+    const NebulaData &nd = o.nebula;
+    mix_in(h, scene().object_visible(o));
+    mix_in(h, nd.type);
+    mix_in(h, nd.azimuth);
+    mix_in(h, nd.elevation);
+    mix_in(h, nd.size_deg);
+    mix_in(h, nd.brightness);
+    mix_in(h, nd.density);
+    mix_in(h, nd.glow);
+    mix_in(h, nd.color1);
+    mix_in(h, nd.color2);
   }
   return h;
 }

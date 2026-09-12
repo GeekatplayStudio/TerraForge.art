@@ -19,6 +19,7 @@ void install_emitters() {
   if (done) return;
   done = true;
   install_emitters_convert();
+  install_emitters_plant();
 
   // ---- inputs
   reg("FieldPosition", [](const Node &, const InputFn &, EmitCtx &ctx) {

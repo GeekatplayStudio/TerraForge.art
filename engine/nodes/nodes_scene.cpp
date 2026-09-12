@@ -71,15 +71,26 @@ REGISTER_NODE(
 
 REGISTER_NODE(
     Primitive, "Scene",
-    "A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene",
+    "A built-in primitive placed in the scene: a cube, sphere, plane, cylinder or cone, "
+    "or a plant or rock built from its kind (pine, juniper, palm, fern, grass tuft, bush, "
+    "boulder)",
     [](Node &n) {
-      add_choice(n.attrs, "kind", "Shape", {"Cube", "Sphere", "Plane", "Cylinder", "Cone"},
+      add_choice(n.attrs, "kind", "Shape",
+                 {"Cube", "Sphere", "Plane", "Cylinder", "Cone", "Pine", "Juniper", "Palm",
+                  "Fern", "Grass tuft", "Bush", "Boulder"},
                  1, "Object")
-          .tooltip = "Which primitive shape this is.";
+          .tooltip = "Which shape this is. The plants and the boulder are built\n"
+                     "from their kind - bark and foliage in their own colours -\n"
+                     "and come at their own size; scatter them over the terrain\n"
+                     "with a Scatter points or Ecosystem layer node.";
       add_text(n.attrs, "object", "Scene object", "", "Object").tooltip =
           "Name in the Objects tree. Empty: the shape's name.";
       add_color(n.attrs, "color", "Colour", 0.62f, 0.60f, 0.57f, 1.f, "Object")
           .tooltip = "The object's colour, where no material is assigned to it.";
+      add_seed(n.attrs, "seed", "Plant seed", 0, "Object").tooltip =
+          "The plants and the boulder: another one of the same kind -\n"
+          "its branches, fronds and lumps laid out afresh. 0 is the one\n"
+          "it has always been. The other shapes ignore it.";
       add_transform(n, 400.f);
     },
     [](Node &) {})
@@ -112,6 +123,10 @@ REGISTER_NODE(
           .tooltip = "The colour of the air, seen from outside.";
       add_float(n.attrs, "atmo_density", "Atmosphere density", 0.6f, 0.f, 2.f, "Atmosphere")
           .tooltip = "0 = airless rim.";
+      add_float(n.attrs, "clouds", "Cloud cover", 0.4f, 0.f, 1.f, "Atmosphere")
+          .tooltip = "How much of the planet a deck of cloud covers, seen from\n"
+                     "space: 0 clear, 1 overcast. It drifts with the scene's\n"
+                     "clouds. A planet with no atmosphere has no clouds.";
       add_float(n.attrs, "spin", "Spin °", 0.f, -180.f, 180.f, "Atmosphere")
           .tooltip = "How far the planet is turned about its axis, which chooses\n"
                      "which face is toward the camera.";

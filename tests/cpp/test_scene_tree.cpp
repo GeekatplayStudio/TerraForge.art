@@ -4,6 +4,7 @@
 #include "scene.hpp"
 #include "scene_io.hpp"
 #include "gpx/camera_math.hpp"
+#include "gpx/node_graph.hpp"
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -124,6 +125,70 @@ static void test_move_object() {
   scene_last_used_camera() = -1;
 }
 
+// Deleting an object takes the node that would build it again: a Primitive
+// re-creates its object after the next evaluation when only the object goes,
+// which is how a deleted plant came straight back. A TerrainOutput drives a
+// tile but never re-creates one, so it stays; the world's own pieces stay when
+// asked to; parents and cameras follow; nothing is left selected.
+static void test_delete_with_drivers() {
+  std::printf("object manager: delete takes the rebuilding node, spares the world...\n");
+  scene() = SceneState{};
+  SceneState &sc = scene();
+  gpx::Graph graph;
+  gpx::Node *prim = graph.add_node("Primitive");
+  gpx::Node *out = graph.add_node("TerrainOutput");
+  gpx::Node *light = graph.add_node("LightSource");
+  CHECK(prim && out && light, "the test graph has its nodes");
+  if (!prim || !out || !light) return;
+  const uint64_t prim_id = prim->id, out_id = out->id, light_id = light->id;
+  int world = add(sc, "World", -1, SceneObject::Planet);        // 0
+  sc.objects[(size_t)world].builtin = true;
+  int tile = add(sc, "Tile", world, SceneObject::Terrain);      // 1
+  sc.objects[(size_t)tile].driver_node = out_id;
+  int fern = add(sc, "Fern", tile);                             // 2
+  sc.objects[(size_t)fern].driver_node = prim_id;
+  int leaf = add(sc, "Fern leaf", fern);                        // 3
+  int lamp = add(sc, "Lamp", -1, SceneObject::Light);           // 4
+  sc.objects[(size_t)lamp].driver_node = light_id;
+  int cam = add(sc, "Cam", -1, SceneObject::Camera);            // 5
+  (void)leaf;
+  scene_active_camera() = cam;
+  sc.selected = fern;
+  sc.selection = {fern, world};
+
+  // the viewport's Delete: the world is spared, the fern goes with its node
+  SceneDeleteResult r = scene_delete_with_drivers(sc, &graph, {fern, world}, true);
+  CHECK(r.kept_builtin == 1, "the world is left alone");
+  CHECK(r.objects.size() == 2 && r.objects[0] > r.objects[1], "the fern and its child went, highest first");
+  CHECK(r.nodes.size() == 1 && r.nodes[0] == prim_id, "the Primitive that would rebuild it went");
+  CHECK(graph.find_node(prim_id) == nullptr, "the Primitive is out of the graph");
+  CHECK(graph.find_node(out_id) != nullptr, "the tile's output stays");
+  CHECK(sc.objects.size() == 4, "four objects remain");
+  CHECK(sc.selected == -1 && sc.selection.empty(), "nothing is selected afterwards");
+  CHECK(scene_active_camera() >= 0 && sc.objects[(size_t)scene_active_camera()].name == "Cam",
+        "the active camera follows its object");
+
+  // the tree's Delete: the whole world goes, and the lamp with its node
+  int lamp_now = -1, world_now = -1;
+  for (int i = 0; i < (int)sc.objects.size(); ++i) {
+    if (sc.objects[(size_t)i].name == "Lamp") lamp_now = i;
+    if (sc.objects[(size_t)i].name == "World") world_now = i;
+  }
+  r = scene_delete_with_drivers(sc, &graph, {world_now, lamp_now, 99, -3}, false);
+  CHECK(r.objects.size() == 3 && r.kept_builtin == 0, "world, tile and lamp went; bad indices are ignored");
+  CHECK(graph.find_node(light_id) == nullptr, "the lamp's LightSource went");
+  CHECK(graph.find_node(out_id) != nullptr, "a TerrainOutput is never taken");
+  CHECK(sc.objects.size() == 1 && sc.objects[0].name == "Cam", "only the camera remains");
+  CHECK(scene_active_camera() == 0, "and it is still the active camera");
+
+  // nothing to delete: nothing changes
+  r = scene_delete_with_drivers(sc, &graph, {}, false);
+  CHECK(r.objects.empty() && r.nodes.empty() && sc.objects.size() == 1, "an empty delete does nothing");
+  scene() = SceneState{};
+  scene_active_camera() = -1;
+  scene_last_used_camera() = -1;
+}
+
 static void test_layer_colour_and_old_files() {
   std::printf("object manager: layer colour round trip, old files...\n");
   scene() = SceneState{};
@@ -221,6 +286,7 @@ static void test_camera_optics_default() {
 int test_scene_tree_run() {
   test_visibility_states();
   test_move_object();
+  test_delete_with_drivers();
   test_layer_colour_and_old_files();
   test_nebula_round_trip();
   test_camera_optics_default();

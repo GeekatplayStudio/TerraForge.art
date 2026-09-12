@@ -27,15 +27,41 @@ GLuint prog_post = 0;
 
 const char *POST_VS = R"(#version 430 core
 out vec2 uv;
+flat out float v_vis;
+uniform sampler2D u_src;
+uniform vec2 u_sun;
+uniform float u_sun_radius, u_aspect, u_flare;
 void main(){
   // one oversized triangle: no vertex buffer, no seam down the middle
   vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
   uv = p;
   gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+  // How much of the sun shows, read from the picture itself: twenty-five
+  // points over its disc, each counting where the image is as bright as a
+  // bare sun. A ridge, a planet, a cloud bank or the night in front of it
+  // dims the flare with no knowledge of what is there - the old flare shone
+  // through mountains. Once per frame, here rather than per pixel.
+  v_vis = 0.0;
+  if (u_flare > 0.0 && u_sun.x >= 0.0){
+    float r = max(u_sun_radius * 0.8, 1.5 / float(textureSize(u_src, 0).y));
+    float sum = 0.0;
+    for (int j = -2; j <= 2; ++j)
+      for (int i = -2; i <= 2; ++i){
+        vec2 q = u_sun + vec2(float(i) / u_aspect, float(j)) * r * 0.5;
+        vec3 c = textureLod(u_src, clamp(q, vec2(0.0), vec2(1.0)), 0.0).rgb;
+        sum += smoothstep(0.90, 0.99, max(c.r, max(c.g, c.b)));
+      }
+    v_vis = sum / 25.0;
+    // past the frame's edge the picture cannot say: what the edge shows,
+    // fading with how far out the sun is
+    vec2 off = max(abs(u_sun - 0.5) - 0.5, vec2(0.0));
+    v_vis *= 1.0 - smoothstep(0.0, 0.3, max(off.x, off.y));
+  }
 })";
 
 const char *POST_FS = R"(#version 430 core
 in vec2 uv;
+flat in float v_vis;         // how much of the sun is unblocked (POST_VS)
 out vec4 frag;
 uniform sampler2D u_src;
 uniform vec2  u_texel;       // 1 / resolution
@@ -43,9 +69,12 @@ uniform float u_k1;          // radial distortion; + barrel, - pincushion
 uniform float u_vignette;    // 0 none .. 1 strong
 uniform float u_chromatic;   // lateral fringing, in pixels at the corner
 uniform float u_flare;       // 0 none .. 1 strong
-uniform vec2  u_sun;         // sun in screen space, or (-1,-1) when behind
+uniform vec2  u_sun;         // sun in uv (y up), or (-1,-1) when not near the frame
 uniform vec2  u_blur;        // camera motion, in uv units, 0 when still
 uniform float u_aspect;
+uniform sampler2D u_bloom;   // the glow round what is bright (renderer_post_bloom.cpp)
+uniform float u_bloom_amount; // 0: none
+POST_FLARE_PLACEHOLDER
 
 // The inverse of r' = r(1 + k1 r^2): for the pixel we are writing, where in
 // the source image did that light land? Solved by two Newton steps, which is
@@ -113,30 +142,49 @@ void main(){
     col = sum / n;
   }
 
-  // Lens flare: ghosts along the line from the sun through the centre, plus
-  // a halo. Only when the sun is actually in frame - a flare from a sun
-  // behind the camera is the thing that gives cheap flares away.
-  if (u_flare > 0.0 && u_sun.x >= 0.0) {
+  // Lens flare. Only when the sun is actually near the frame and not hidden
+  // - a flare from a sun behind the camera or behind a mountain is the thing
+  // that gives cheap flares away.
+  if (u_flare > 0.0 && u_sun.x >= 0.0 && v_vis > 0.001) {
     vec2 s = u_sun - 0.5;
-    vec2 dir = -s;
-    vec3 ghosts = vec3(0.0);
-    for (int i = 1; i <= 5; ++i) {
-      vec2 g = s + dir * (float(i) * 0.4);
-      float d = length((c - g) * vec2(u_aspect, 1.0));
-      // Small and tight. The first version used a fifth of the frame per
-      // ghost and a halo half as wide as the picture, which on a long lens
-      // washed the whole frame white instead of reading as a flare.
-      float w = smoothstep(0.075, 0.0, d);
-      // each ghost a different tint, as the coatings make them
-      vec3 tint = vec3(1.0 - 0.12 * float(i), 0.92, 0.78 + 0.05 * float(i));
-      ghosts += tint * w * (0.30 / float(i));
+    if (u_flare_style == 0) {
+      // the classic flare: ghosts along the line through the centre and a halo
+      vec2 dir = -s;
+      vec3 ghosts = vec3(0.0);
+      for (int i = 1; i <= 5; ++i) {
+        vec2 g = s + dir * (float(i) * 0.4);
+        float d = length((c - g) * vec2(u_aspect, 1.0));
+        // Small and tight. The first version used a fifth of the frame per
+        // ghost and a halo half as wide as the picture, which on a long lens
+        // washed the whole frame white instead of reading as a flare.
+        float w = smoothstep(0.075, 0.0, d);
+        // each ghost a different tint, as the coatings make them
+        vec3 tint = vec3(1.0 - 0.12 * float(i), 0.92, 0.78 + 0.05 * float(i));
+        ghosts += tint * w * (0.30 / float(i));
+      }
+      float hd = length((c - s) * vec2(u_aspect, 1.0));
+      float halo = smoothstep(0.16, 0.0, hd) * 0.5 + smoothstep(0.5, 0.1, hd) * 0.06;
+      vec3 add = (ghosts + vec3(1.0, 0.95, 0.85) * halo) * u_flare * v_vis;
+      // A flare adds light; it does not replace the picture. The cap is what
+      // stops a bright sky plus a flare from going flat white.
+      col += min(add, vec3(0.75));
+    } else {
+      // Light added to a picture saturates softly toward white rather than
+      // clipping flat: compressed, then screened over what is there.
+      vec3 add = flare_light(c, s) * u_flare * v_vis;
+      vec3 a = 1.0 - exp(-max(add, vec3(0.0)));
+      col = 1.0 - (1.0 - clamp(col, 0.0, 1.0)) * (1.0 - a);
     }
-    float hd = length((c - s) * vec2(u_aspect, 1.0));
-    float halo = smoothstep(0.16, 0.0, hd) * 0.5 + smoothstep(0.5, 0.1, hd) * 0.06;
-    vec3 add = (ghosts + vec3(1.0, 0.95, 0.85) * halo) * u_flare;
-    // A flare adds light; it does not replace the picture. The cap is what
-    // stops a bright sky plus a flare from going flat white.
-    col += min(add, vec3(0.75));
+  }
+
+  // Bloom: light added round what is bright, read where the lens put that
+  // light (after the warp) and screened over the picture in light, so it
+  // brightens toward white rather than clipping flat.
+  if (u_bloom_amount > 0.0) {
+    vec3 b = texture(u_bloom, clamp(src + 0.5, vec2(0.0), vec2(1.0))).rgb * u_bloom_amount;
+    vec3 lin = pow(clamp(col, 0.0, 1.0), vec3(2.2));
+    lin = 1.0 - (1.0 - lin) * exp(-max(b, vec3(0.0)));
+    col = pow(lin, vec3(1.0 / 2.2));
   }
 
   // Vignette last: it darkens everything the lens produced, flare included.
@@ -171,7 +219,7 @@ void ensure_post_target(int slot, int w, int h) {
 
 bool optics_active(const LensOptics &o) {
   return o.on && (std::fabs(o.k1) > 1e-4f || o.vignette > 0.001f ||
-                  o.chromatic > 0.001f || o.flare > 0.001f ||
+                  o.chromatic > 0.001f || o.flare > 0.001f || o.bloom > 0.001f ||
                   o.blur[0] != 0.f || o.blur[1] != 0.f);
 }
 
@@ -179,9 +227,20 @@ unsigned renderer_post_process(int slot, int w, int h, const LensOptics &o) {
   if (slot < 0 || slot >= SLOT_COUNT || !optics_active(o))
     return fbo_color[slot];
   if (!prog_post) {
-    prog_post = link_prog(POST_VS, POST_FS);
+    extern const char *const POST_FLARE_GLSL; // renderer_post_flare.cpp
+    std::string fs = POST_FS;
+    const std::string tag = "POST_FLARE_PLACEHOLDER";
+    fs.replace(fs.find(tag), tag.size(), POST_FLARE_GLSL);
+    prog_post = link_prog(POST_VS, fs.c_str());
     if (!prog_post) return fbo_color[slot];
   }
+  // the glow, first: it reads the finished picture and draws into targets
+  // of its own (renderer_post_bloom.cpp)
+  int bloom_levels = 0;
+  const unsigned bloom_tex =
+      o.bloom > 0.001f ? renderer_bloom(slot, w, h, fbo_color[slot], o.bloom_threshold,
+                                        o.bloom_size, &bloom_levels)
+                       : 0;
   ensure_post_target(slot, w, h);
   glBindFramebuffer(GL_FRAMEBUFFER, post_fbo[slot]);
   glViewport(0, 0, w, h);
@@ -197,9 +256,34 @@ unsigned renderer_post_process(int slot, int w, int h, const LensOptics &o) {
   uni1(prog_post, "u_vignette", o.vignette);
   uni1(prog_post, "u_chromatic", o.chromatic);
   uni1(prog_post, "u_flare", o.flare);
+  unii(prog_post, "u_flare_style", o.flare_style);
+  uni1(prog_post, "u_flare_rays", o.flare_rays);
+  uni1(prog_post, "u_flare_streak", o.flare_streak);
+  uni1(prog_post, "u_flare_ghosts", o.flare_ghosts);
+  uni1(prog_post, "u_flare_halo", o.flare_halo);
+  uni1(prog_post, "u_flare_core", o.flare_core);
+  unii(prog_post, "u_flare_ray_count", o.flare_ray_count);
+  uni1(prog_post, "u_flare_ray_length", o.flare_ray_length);
+  uni1(prog_post, "u_flare_streak_length", o.flare_streak_length);
+  uni3(prog_post, "u_flare_streak_tint", o.flare_streak_tint);
+  uni1(prog_post, "u_flare_halo_radius", o.flare_halo_radius);
+  unii(prog_post, "u_flare_ghost_count", o.flare_ghost_count);
+  unii(prog_post, "u_flare_blades", o.flare_blades);
+  uni1(prog_post, "u_flare_chroma", o.flare_chroma);
+  uni1(prog_post, "u_flare_seed", (float)(o.flare_seed % 9973));
+  uni3(prog_post, "u_sun_rgb", o.sun_rgb);
+  uni1(prog_post, "u_sun_radius", o.sun_radius);
   glUniform2f(uniform_location(prog_post, "u_sun"), o.sun[0], o.sun[1]);
   glUniform2f(uniform_location(prog_post, "u_blur"), o.blur[0], o.blur[1]);
   uni1(prog_post, "u_aspect", h > 0 ? (float)w / (float)h : 1.f);
+  // every level of the chain adds its own blur of the same light: divided by
+  // their number, the amount means the same however far the glow spreads
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, bloom_tex);
+  unii(prog_post, "u_bloom", 1);
+  glActiveTexture(GL_TEXTURE0);
+  uni1(prog_post, "u_bloom_amount",
+       bloom_tex ? o.bloom / (float)std::max(bloom_levels, 1) : 0.f);
   glBindVertexArray(vao_quad);
   glDrawArrays(GL_TRIANGLES, 0, 3);
   glEnable(GL_DEPTH_TEST);

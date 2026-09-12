@@ -73,11 +73,19 @@ NewComponent component_add_primitive(App &a, const std::string &kind,
   float x = 0, y = 0;
   free_spot(a.graph, x, y);
   if (gpx::Node *n = a.graph.add_node("Primitive", x, y)) {
-    static const char *KINDS[] = {"cube", "sphere", "plane", "cylinder", "cone"};
+    static const char *KINDS[] = {"cube", "sphere", "plane", "cylinder", "cone", "pine",
+                                  "juniper", "palm", "fern", "grass", "bush", "boulder"};
     if (gpx::Attribute *k = n->attrs.find("kind"))
-      for (int i = 0; i < 5; ++i)
+      for (int i = 0; i < 12; ++i)
         if (kind == KINDS[i]) k->i = i;
     if (gpx::Attribute *on = n->attrs.find("object")) on->s = o.name;
+    if (scene_is_plant_kind(kind)) {
+      // the node says the plant's own size and white, so its parts keep
+      // their colours - the node is what drives the object from here on
+      if (gpx::Attribute *s = n->attrs.find("size_m")) s->f = scene_plant_size_m(kind);
+      if (gpx::Attribute *c = n->attrs.find("color"))
+        for (int ch = 0; ch < 3; ++ch) c->col[ch] = 1.f;
+    }
     // the node's transform starts where the object was put, so the first
     // thing the node says about the object is not a jump
     if (gpx::Attribute *p = n->attrs.find("position")) {
@@ -89,8 +97,11 @@ NewComponent component_add_primitive(App &a, const std::string &kind,
     a.selected_node = n->id;
   }
 
-  out.material = component_material(a);
-  o.material_node = out.material;
+  // a plant's colours are its bark and foliage: no grey material over them
+  if (!scene_is_plant_kind(kind)) {
+    out.material = component_material(a);
+    o.material_node = out.material;
+  }
 
   a.graph_layout_serial++;
   a.request_eval();

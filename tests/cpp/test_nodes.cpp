@@ -67,8 +67,10 @@ static bool is_config_node(const std::string &t) {
   if (!d) return false;
   const std::string &c = d->category;
   if (d->description.rfind("[Planned]", 0) == 0) return true;
+  // Plant nodes describe a species; the root grows a mesh for the scene
+  // (gpx/plant.hpp) rather than a buffer, and the parts are data it reads.
   return c == "Light" || c == "Camera" || c == "Scene" || c == "Cloud" ||
-         c == "Render" || (c == "Animation" && t == "AnimationSequence");
+         c == "Render" || c == "Plant" || (c == "Animation" && t == "AnimationSequence");
 }
 // Terminal sinks: they consume and export, so having no output port is correct.
 // TerrainDisplacement and TerrainSurface are sinks too — what they "export" is
@@ -452,9 +454,11 @@ static void check_eval_and_determinism(const std::string &type) {
 // Nodes whose seed only acts under a setting the battery leaves at its
 // default. PointsFilter's seed picks which points a keep fraction below 1
 // drops; at the default keep of 1 nothing is dropped and the seed rightly
-// changes nothing. Listed with the reason, so the exemption is auditable.
+// changes nothing. Gradient's seed is its distortion's noise, and the
+// distortion is 0 by default so the shape comes out exact. Listed with the
+// reason, so the exemption is auditable.
 static bool seed_is_conditional(const std::string &type) {
-  return type == "PointsFilter";
+  return type == "PointsFilter" || type == "Gradient";
 }
 
 static void check_seed_matters(const std::string &type) {

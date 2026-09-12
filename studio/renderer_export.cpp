@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -134,92 +135,18 @@ static bool sky_render_pano(int w, int h, int pano, const float *from,
     // camera render passes its own eye.
     float eye[3] = {0.5f, RS.cloud_altitude * 0.35f, 0.5f};
     if (from) { eye[0] = from[0]; eye[1] = from[1]; eye[2] = from[2]; }
-    uni3(prog_sky, "u_cam", eye);
-    uni3(prog_sky, "u_sun", sun);
-    uni3(prog_sky, "u_sun_color", RS.sun_color);
-    uni1(prog_sky, "u_sun_intensity", RS.sun_intensity);
-    uni1(prog_sky, "u_exposure", (RS.exposure) * g_exposure_mult);
-    uni3(prog_sky, "u_grade", g_grade);
-    uni1(prog_sky, "u_sat", g_saturation);
-    uni3(prog_sky, "u_sky_zenith", RS.sky_zenith);
-    uni3(prog_sky, "u_sky_horizon", RS.sky_horizon);
-    uni1(prog_sky, "u_atmo", RS.atmosphere_density);
-    uni1(prog_sky, "u_sun_angle", RS.sun_angle_deg);
-    uni1(prog_sky, "u_sun_glow", RS.sun_glow);
-    uni1(prog_sky, "u_sun_glow_size", RS.sun_glow_size);
-    uni1(prog_sky, "u_atm_h", RS.atmosphere_height);
-    uni1(prog_sky, "u_atm_falloff", RS.atmosphere_falloff);
-    upload_world_shape(prog_sky, world_shape(RS));
-    uni1(prog_sky, "u_world_r", RS.planet_radius);
-    uni1(prog_sky, "u_world_w", RS.world_width);
-    unii(prog_sky, "u_world_outline", RS.world_outline);
-    unii(prog_sky, "u_sun_mode", (RS.world_sun_inside && RS.world_inside) ? 1 : 0);
-    upload_space_uniforms(prog_sky);
-    unii(prog_sky, "u_fog_type", RS.fog_type);
-    uni3(prog_sky, "u_fog_color", RS.fog_color);
-    uni1(prog_sky, "u_fog_density", RS.fog_density);
-    unii(prog_sky, "u_clouds", RS.clouds_on ? 1 : 0);
-    unii(prog_sky, "u_cl_steps", 72);
-    unii(prog_sky, "u_cl_type", RS.cloud_type);
-    unii(prog_sky, "u_cl_volumetric", RS.cloud_volumetric ? 1 : 0);
-    uni1(prog_sky, "u_cl_weather", RS.cloud_weather);
-    uni1(prog_sky, "u_cl_weather_scale", RS.cloud_weather_scale);
-    uni1(prog_sky, "u_cl_scale", RS.cloud_scale);
-    uni1(prog_sky, "u_cl_cov", RS.cloud_coverage);
-    uni1(prog_sky, "u_cl_den", RS.cloud_density);
-    uni1(prog_sky, "u_cl_alt", RS.cloud_altitude);
-    uni1(prog_sky, "u_cl_thick", RS.cloud_thickness);
-    uni1(prog_sky, "u_cl_detail_amt", RS.cloud_detail);
-    uni1(prog_sky, "u_cl_time", cloud_time);
-    uni1(prog_sky, "u_cl_ambient", RS.cloud_ambient);
-    uni1(prog_sky, "u_cl_anvil", RS.cloud_anvil);
-    unii(prog_sky, "u_cl2", RS.cloud2_on ? 1 : 0);
-    unii(prog_sky, "u_cl2_type", RS.cloud2_type);
-    uni1(prog_sky, "u_cl2_cov", RS.cloud2_coverage);
-    uni1(prog_sky, "u_cl2_den", RS.cloud2_density);
-    uni1(prog_sky, "u_cl2_alt", RS.cloud2_altitude);
-    uni1(prog_sky, "u_cl2_thick", RS.cloud2_thickness);
-    {
-      // the extra layers from CloudLayer nodes, as arrays
-      const int n = std::min((int)RS.cloud_layers.size(), RenderSettings::MAX_CLOUD_LAYERS);
-      int types[RenderSettings::MAX_CLOUD_LAYERS] = {};
-      float cov[RenderSettings::MAX_CLOUD_LAYERS] = {}, den[RenderSettings::MAX_CLOUD_LAYERS] = {},
-            alt[RenderSettings::MAX_CLOUD_LAYERS] = {}, thick[RenderSettings::MAX_CLOUD_LAYERS] = {};
-      for (int i = 0; i < n; ++i) {
-        const auto &L = RS.cloud_layers[(size_t)i];
-        types[i] = L.type; cov[i] = L.coverage; den[i] = L.density; alt[i] = L.altitude; thick[i] = L.thickness;
-      }
-      unii(prog_sky, "u_clx_n", n);
-      glUniform1iv(uniform_location(prog_sky, "u_clx_type"), RenderSettings::MAX_CLOUD_LAYERS, types);
-      glUniform1fv(uniform_location(prog_sky, "u_clx_cov"), RenderSettings::MAX_CLOUD_LAYERS, cov);
-      glUniform1fv(uniform_location(prog_sky, "u_clx_den"), RenderSettings::MAX_CLOUD_LAYERS, den);
-      glUniform1fv(uniform_location(prog_sky, "u_clx_alt"), RenderSettings::MAX_CLOUD_LAYERS, alt);
-      glUniform1fv(uniform_location(prog_sky, "u_clx_thick"), RenderSettings::MAX_CLOUD_LAYERS, thick);
-    }
-    float wr = RS.cloud_wind_dir * 0.017453293f;
-    float wind[2] = {std::cos(wr) * RS.cloud_wind_speed,
-                     std::sin(wr) * RS.cloud_wind_speed};
-    glUniform2fv(uniform_location(prog_sky, "u_cl_wind"), 1, wind);
-    uni3(prog_sky, "u_cl_color", RS.cloud_color);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_3D, tex_cloud_shape);
-    unii(prog_sky, "u_cl_shape", 3);
-    glActiveTexture(GL_TEXTURE4);
-    glBindTexture(GL_TEXTURE_3D, tex_cloud_detail);
-    unii(prog_sky, "u_cl_detail", 4);
-    // The ray-march dither. An unbound sampler reads black, which would give
-    // every ray the same zero offset and put the banding straight back.
-    glActiveTexture(GL_TEXTURE9);
-    glBindTexture(GL_TEXTURE_2D, blue_noise_texture());
-    unii(prog_sky, "u_blue_noise", 9);
-    unii(prog_sky, "u_cl_octaves", std::clamp(RS.cloud_scatter_octaves, 1, 4));
-    uni1(prog_sky, "u_cl_ms_depth", std::clamp(RS.cloud_scatter_depth, 0.05f, 0.99f));
-    backdrop_bind(prog_sky); // the dome is part of the environment too
-    unii(prog_sky, "u_aov", 0);
-    unii(prog_sky, "u_panorama", pano);
-    unii(prog_sky, "u_hdr", 1);
-    unii(prog_sky, "u_no_sun", 1); // the sun is emitted separately
-    uni1(prog_sky, "u_space", 0.f); // panoramas are always shot from the ground
+    SkyUpload u;
+    u.eye = eye;
+    u.sun = sun;
+    u.sun_intensity = RS.sun_intensity;
+    u.world_r = RS.planet_radius;
+    u.space = 0.f; // panoramas are always shot from the ground
+    u.clouds = RS.clouds_on;
+    u.steps = 72;
+    u.panorama = pano;
+    u.hdr = 1;
+    u.no_sun = 1; // the sun is emitted separately
+    upload_sky_uniforms(prog_sky, RS, u);
     glBindVertexArray(vao_quad);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     px.assign((size_t)w * h * 4, 0.f);
@@ -267,7 +194,8 @@ bool renderer_sky_light(float out_rgb[3]) {
 
 bool renderer_render_to_file(const std::string &path, int w, int h) {
   int rw = w * 2, rh = h * 2;
-  ensure_fbo(5, rw, rh);
+  const int slot = SLOT_CAPTURE;
+  ensure_fbo(slot, rw, rh);
   RenderSettings::ViewConfig vc = render_settings().views[0];
   vc.camera = 0;
   vc.display = 2;
@@ -277,15 +205,15 @@ bool renderer_render_to_file(const std::string &path, int w, int h) {
   vc.outlines = false;
   float eye[3], mvp[16], inv_vp[16];
   camera_matrices(rw, rh, eye, mvp, inv_vp);
-  draw_scene(5, vc, rw, rh, 0.f, eye, mvp, inv_vp);
+  draw_scene(slot, vc, rw, rh, renderer_anim_time(), eye, mvp, inv_vp);
   // The lens applies to the file too. A capture that skipped it would be a
   // picture of a scene the user is not looking at: the whole point of the
   // optical simulation is that the viewport and the output agree.
   LensOptics optics = camera_optics_for_view(vc, mvp);
-  GLuint read_fbo = fbo[5];
+  GLuint read_fbo = fbo[slot];
   if (optics.on) {
-    unsigned tex = renderer_post_process(5, rw, rh, optics);
-    if (tex && tex != fbo_color[5]) {
+    unsigned tex = renderer_post_process(slot, rw, rh, optics);
+    if (tex && tex != fbo_color[slot]) {
       // read from whichever target the pass wrote into
       static GLuint grab = 0;
       if (!grab) glGenFramebuffers(1, &grab);
@@ -299,6 +227,20 @@ bool renderer_render_to_file(const std::string &path, int w, int h) {
   glBindFramebuffer(GL_FRAMEBUFFER, read_fbo);
   glReadPixels(0, 0, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, big.data());
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  // GPX_CAPTURE_RAW keeps the picture at the size it was drawn, before the
+  // 2x2 average: that average is the size of anything drawn at half
+  // resolution (the clouds over the ground) and hides exactly what a
+  // comparison of the two is looking for.
+  static const bool raw = [] {
+    const char *e = std::getenv("GPX_CAPTURE_RAW");
+    return e && *e && *e != '0';
+  }();
+  if (raw) {
+    std::vector<unsigned char> flip((size_t)rw * rh * 4);
+    for (int y = 0; y < rh; ++y)
+      std::memcpy(&flip[(size_t)(rh - 1 - y) * rw * 4], &big[(size_t)y * rw * 4], (size_t)rw * 4);
+    return stbi_write_png(path.c_str(), rw, rh, 4, flip.data(), rw * 4) != 0;
+  }
   std::vector<unsigned char> out((size_t)w * h * 4);
   for (int y = 0; y < h; ++y)
     for (int x = 0; x < w; ++x)

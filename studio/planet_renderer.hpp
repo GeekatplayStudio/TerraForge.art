@@ -22,6 +22,7 @@ struct PlanetFrame {
   float saturation;
   int view_h;             // viewport height in pixels, for LOD
   float fovy_rad;
+  float cloud_time = 0.f; // the scene's cloud clock, for the planets' weather
 };
 
 bool planet_renderer_init();
@@ -67,13 +68,12 @@ struct InfiniteFrame {
   // absolute altitude happens to be.
   float base_height;
   float planet_radius;    // curvature (0 = flat)
-  // the water: the surround flattens to this level and shades it as water,
-  // with the tile's own colours; -1e9 when water is off
-  float water_level;      // world units
-  const float *water_deep;
-  const float *water_shallow;
-  float water_clarity;
-  float latitude;         // |latitude| / 90, for the snow line
+  // The water level, world units; -1e9 when the water is off. Near the tile
+  // the ground runs on under the sea, which the water pass draws over it
+  // (renderer_water.cpp); the far shell flattens to it and shades its sea
+  // itself, its vertices being too far apart for waves.
+  float water_level;
+  float latitude;        // |latitude| / 90, for the snow line
   bool atmosphere;        // the view's atmosphere toggle: fog on or off
   bool textured = true; // the view's shading mode, as for the terrain tile
   // Matching the tile's grain at the join. The tile's fractal micro-relief
@@ -86,13 +86,9 @@ struct InfiniteFrame {
   float frac_amount = 0.f;
   float frac_scale = 1.f;
   float tile_octf = 9.f;
-  float time = 0.f; // the animation clock, for the water's waves
-  // the far shell's cloud band: the sky pass's shape texture and the
-  // main layer's coverage, altitude (its middle), wind and clock
-  unsigned tex_cloud_shape = 0;
-  bool clouds_on = false;
-  float cloud_cov = 0.f, cloud_alt = 0.f, cloud_time = 0.f;
-  float cloud_wind[2] = {0.f, 0.f};
+  float time = 0.f; // the animation clock
+  // (The far shell's clouds are the sky's own layers, drawn over it by the
+  // cloud pass - renderer_clouds.cpp - not a band of its own.)
 };
 void infinite_draw(const InfiniteFrame &f);
 // the rim of a thick ring or flat world - the wall between its two faces

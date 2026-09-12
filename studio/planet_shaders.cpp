@@ -241,9 +241,11 @@ void main(){
   v_dir = d;
   v_world = w;
   gl_Position = u_mvp * vec4(w, 1.0);
-  // planets are a sky layer: clamp depth just inside the far plane so no
-  // planet is ever frustum-clipped, however far out the camera zooms
-  gl_Position.z = min(gl_Position.z, gl_Position.w * 0.99999);
+  // Planets are a sky layer: on the far plane, so none is ever frustum-
+  // clipped however far out the camera zooms, and drawn with the sky after
+  // everything solid, onto the pixels nothing covers (renderer_scene.cpp) -
+  // the same result as drawing them first and letting the ground paint over.
+  gl_Position.z = gl_Position.w;
 })GLSL";
 
 const char *FS_PLANET = R"GLSL(#version 430 core
@@ -259,6 +261,7 @@ uniform vec3 u_grade;
 uniform int u_aov, u_object_id; // render pass being drawn, 0 = picture
 PL_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
+PL_CLOUDS_PLACEHOLDER
 vec3 aces(vec3 x){
   x *= u_grade;
   float lum = dot(x, vec3(0.299, 0.587, 0.114));
@@ -308,8 +311,26 @@ void main(){
 
   float NdL = max(dot(N, u_sun), 0.0);
   float day = smoothstep(-0.15, 0.25, dot(d, u_sun));
-  vec3 direct = albedo * NdL * u_sun_i * 0.9 * max(day, 0.06);
-  vec3 col = albedo * (NdL * u_sun_i * 0.9 + 0.035) * max(day, 0.06);
+  // The deck of cloud over it all (planet_clouds.cpp): its shadow on the
+  // ground a little way toward the sun, then the cloud itself, lit round the
+  // smooth sphere and softer at the terminator, where light scatters on into
+  // a cloud's night side.
+  float cloud = 0.0, shade = 0.0;
+  if (u_pl_clouds > 0.001 && u_atmo > 0.0){
+    vec3 sun_p = vec3(u_sun.x*u_spin.x - u_sun.z*u_spin.y, u_sun.y,
+                      u_sun.x*u_spin.y + u_sun.z*u_spin.x);
+    cloud = pl_cloud_deck(rd, octf);
+    shade = pl_cloud_deck(normalize(rd + sun_p * 0.02), u_octf) * 0.6;
+  }
+  vec3 direct = albedo * NdL * (1.0 - shade) * u_sun_i * 0.9 * max(day, 0.06);
+  vec3 col = albedo * (NdL * (1.0 - shade) * u_sun_i * 0.9 + 0.035) * max(day, 0.06);
+  if (cloud > 0.0){
+    const vec3 CL = vec3(0.86);
+    float cl_ndl = clamp(dot(d, u_sun) * 0.85 + 0.15, 0.0, 1.0);
+    albedo = mix(albedo, CL, cloud);
+    direct = mix(direct, CL * cl_ndl * u_sun_i * 0.9 * max(day, 0.06), cloud);
+    col = mix(col, CL * (cl_ndl * u_sun_i * 0.9 + 0.035) * max(day, 0.06), cloud);
+  }
   if (u_aov != 0){
     // a planet is a distant body: no fog, no water mask, its own object id
     if (u_aov == 1) frag = vec4(length(u_cam - v_world), 0.0, 0.0, 1.0);
@@ -328,7 +349,8 @@ void main(){
   if (water){
     vec3 V = normalize(u_cam - v_world);
     vec3 H = normalize(V + u_sun);
-    col += vec3(1.0, 0.97, 0.9) * pow(max(dot(N, H), 0.0), 180.0) * u_sun_i * day;
+    col += vec3(1.0, 0.97, 0.9) * pow(max(dot(N, H), 0.0), 180.0) * u_sun_i * day *
+           (1.0 - cloud) * (1.0 - shade);
   }
   // atmosphere: limb glow, stronger on the lit side
   vec3 V = normalize(u_cam - v_world);
@@ -416,7 +438,10 @@ void main(){
   // outside every tile: the nearest one's distance cuts the hole and
   // holds the ring; the height blend below reads tile 0
   float dout = tiles_dout(uv);
-  float cam_d = max(length(u_cam.xz - uv) * 0.15, 0.02);
+  // the eye's distance in three dimensions: measured across the ground only,
+  // a camera high over the tile kept every octave in vertices a tile apart,
+  // and the relief they sampled aliased into streaks seen from orbit
+  float cam_d = max(length(u_cam - vec3(uv.x, u_base, uv.y)) * 0.15, 0.02);
   // A short ring. The placement already feathers the tile's own relief and
   // colour to the planet inside its border (planet_place.cpp), so the tile
   // edge *is* the planet there; this ring only smooths the last float of
@@ -443,13 +468,15 @@ void main(){
   // units, so the grit runs straight across the border
   if (u_frac_amount > 0.0){
     int oct = gp_octaves(length(u_cam - vec3(uv.x, h, uv.y)), 9.0);
-    if (oct > 0) h += (gp_detail(uv, u_frac_scale, oct, 0.5) - 0.5) * u_frac_amount;
+    if (oct > 0) h += (gp_detail(uv, u_frac_scale, oct, gp_gain()) - 0.5) * u_frac_amount;
   }
   v_proc = h;
   v_wet = hw.y * s;
-  // the sea and the lakes: the ground never shows below the water level,
-  // the surface flattens to it - the same plane the tile's water pass draws
-  h = max(h, u_wl);
+  // Near the tile the ground runs on under the sea: the water is one surface
+  // drawn over all of it (renderer_water.cpp), and it needs the bed to be
+  // there to see through to. The far shell's vertices are too far apart for
+  // that, so its ground flattens to the sea and shades it itself.
+  if (u_shell == 1) h = max(h, u_wl);
   vec3 p = pl_sphere_place(uv, h, u_curve);
   v_world = p; v_uv = uv; v_out = dout;
   gl_Position = u_mvp * vec4(p, 1.0);
@@ -467,8 +494,7 @@ uniform int u_has_albedo;
 uniform int u_textured; // 1 textured, 0 solid - see the terrain shader
 uniform vec3 u_cam, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_hscale, u_amp, u_base, u_sun_i, u_ambient, u_exposure, u_sat;
-uniform float u_wl, u_lat, u_snow_line, u_wclarity;
-uniform vec3 u_wdeep, u_wshallow;
+uniform float u_wl, u_lat, u_snow_line;
 uniform vec3 u_grade;
 // the world's shape (world_shape.hpp): the far shell of an inside face,
 // a ring's width (a flat world's size, and its outline: 0 disc, 1 square),
@@ -482,13 +508,6 @@ uniform float u_shell_w, u_curve;
 // there.
 uniform int u_horizon;
 uniform float u_atmo;
-// the far shell's cloud band: the sky's own cloud shape, sampled at the
-// cloud altitude over the far surface - the cloud layer is a band on the
-// world (world_shape.hpp), and the far side of a ring shows it too
-uniform int u_fc_on;
-uniform sampler3D u_fc_shape;
-uniform float u_fc_cov, u_fc_alt, u_fc_time;
-uniform vec2 u_fc_wind;
 PL_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
 PL_SPHERE_PLACEHOLDER
@@ -502,6 +521,7 @@ uniform float u_frac_amount, u_frac_scale, u_tile_octf;
 // used to paint the surround pale right up to the tile's border
 FOG_FN_PLACEHOLDER
 SKY_FN_PLACEHOLDER
+SKY_ENV_PLACEHOLDER
 WATER_FN_PLACEHOLDER
 // the surface's height at a world point, the way the vertex stage builds
 // it: the tile's heightmap (through the tile's transform) blending into
@@ -562,9 +582,9 @@ void main(){
     int oct = gp_octaves(cam_d, 12.0);
     if (oct > 0){
       float e2 = clamp(cam_d * 0.02, 2.0e-7, 0.35 / exp2(u_tile_octf));
-      float c  = gp_detail(v_uv, u_frac_scale, oct, 0.5);
-      float dx = gp_detail(v_uv + vec2(e2, 0.0), u_frac_scale, oct, 0.5) - c;
-      float dy = gp_detail(v_uv + vec2(0.0, e2), u_frac_scale, oct, 0.5) - c;
+      float c  = gp_detail(v_uv, u_frac_scale, oct, gp_gain());
+      float dx = gp_detail(v_uv + vec2(e2, 0.0), u_frac_scale, oct, gp_gain()) - c;
+      float dy = gp_detail(v_uv + vec2(0.0, e2), u_frac_scale, oct, gp_gain()) - c;
       float k = u_frac_amount / max(e2, 1e-5) * 0.25;
       N = normalize(N + vec3(-dx * k, 0.0, -dy * k));
     }
@@ -574,17 +594,28 @@ void main(){
   // globe, the whole way round on an inside face's far shell)
   float slope = 1.0 - N.y;
   float n_up = N.y;
-  {
-    vec3 east, up, north;
-    pl_sphere_frame(v_uv, u_curve, east, up, north);
-    N = normalize(east * N.x + up * N.y + north * N.z);
-  }
-  // water where the ground is below the water level; the vertex stage
-  // already flattened the surface to it. The shell's vertices are far
-  // apart, so it reads the height it just built per pixel instead.
-  float proc = u_shell == 1 ? h0 : v_proc;
-  bool water = proc < u_wl - 1e-4;
-  float depth = max(u_wl - proc, 0.0);
+  vec3 f_east, f_up, f_north;
+  pl_sphere_frame(v_uv, u_curve, f_east, f_up, f_north);
+  N = normalize(f_east * N.x + f_up * N.y + f_north * N.z);
+  // The ground's height under this pixel, built per pixel as the shell always
+  // did. The surround used the height interpolated between its vertices,
+  // which far out are a tile or more apart: seen from high up its colours
+  // smeared into streaks and its lakes vanished, and the ground inside the
+  // 30-tile square looked nothing like the shell outside it.
+  float proc = h0;
+  // The sea painted here rather than by the water pass: on the far shell,
+  // which flattened its ground to the sea; and on the surround wherever the
+  // ground under the pixel is below the water but the coarse triangle drawn
+  // over it is not, since the water pass cannot reach under a triangle that
+  // stands above its surface. Only from two tiles out, faded in over the
+  // tile before: nearer, the triangles are fine enough, and the fractal grit
+  // they carry (which h0 does not) would paint false water along every
+  // shore. The water pass treats its sea as deep over the same distances,
+  // so the two paint one lake.
+  bool below = proc < u_wl - 1e-4;
+  float water_w = u_shell == 1 ? (below ? 1.0 : 0.0)
+                               : ((below && v_proc >= u_wl) ? smoothstep(1.5, 2.5, cam_d) : 0.0);
+  bool water = water_w > 0.5;
 
   // the shared landscape palette on the same altitude scale as the tile:
   // 0 at the water, 1 at the top of the tile's height range
@@ -615,32 +646,15 @@ void main(){
   vec3 direct = alb * u_sun_color * u_sun_i * NdL * 0.92 / 3.14159;
   vec3 ambient = alb * u_sky_light * u_ambient * (0.45 + 0.55*n_up) * day_f;
   vec3 col = direct + ambient;
-  if (water && u_shell == 1){
-    // far water is a colour, not waves: at thousands of tiles a wave
-    // normal is speckle
-    alb = u_wdeep;
-    col = alb * (u_sun_color * u_sun_i * NdL * 0.92 / 3.14159 +
-                 u_sky_light * u_ambient * day_f);
-  } else if (water){
-    // the tile's own water shader - waves, foam, the translucent shore -
-    // over the bed shaded above, so a lake crossing the tile's border is
-    // one lake (WATER_FN_GLSL)
-    WaterShade ws = water_shade(v_uv, v_world, depth, u_hscale, u_cam, sun, u_sun_color,
-                                u_sky_zenith, u_sky_horizon);
-    col = mix(col, ws.col, ws.alpha);
-    N = ws.n;
-    alb = ws.water;
-  }
-  if (u_shell == 1 && u_fc_on == 1){
-    vec3 p = v_world + pl_world_up(v_world, u_curve) * u_fc_alt;
-    vec3 wp = p; wp.xz += u_fc_wind * u_fc_time;
-    vec4 sn = texture(u_fc_shape, wp * 0.06);
-    float fbm = sn.g*0.625 + sn.b*0.25 + sn.a*0.125;
-    float shape = clamp((sn.r - (fbm - 1.0)) / max(2.0 - fbm, 1e-3), 0.0, 1.0);
-    float cc = clamp((shape - (1.0 - u_fc_cov)) / max(u_fc_cov, 1e-3), 0.0, 1.0);
-    vec3 cloud = u_sun_color * u_sun_i * 0.5 * (0.55 + 0.45 * NdL) * day_f
-               + u_sky_light * u_ambient * day_f;
-    col = mix(col, cloud, cc * 0.85);
+  if (water_w > 0.0){
+    // the sea from far off: every wave below a pixel, so a rough mirror over
+    // deep water - the limit the water pass's own shading reaches at that
+    // distance (WATER_FN_GLSL), so the two meet
+    alb = mix(alb, u_w_deep, water_w);
+    N = normalize(mix(N, f_up, water_w));
+    col = mix(col, water_far_color(V, f_up, sun, u_sun_color * u_sun_i,
+                                   u_sky_light * u_ambient * day_f, u_sky_zenith,
+                                   u_sky_horizon, u_sun_color), water_w);
   }
   float fog_f; vec3 fog_c;
   // the fog's day factor reads the sun's elevation from its y: a sun

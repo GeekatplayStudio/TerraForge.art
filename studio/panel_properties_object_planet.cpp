@@ -156,6 +156,11 @@ void object_properties_planet_ui(App &a, SceneObject &o) {
   ImGui::SeparatorText("Atmosphere");
   studio::SliderFloatW("Density", &P.atmo_density, 0.f, 2.f);
   ImGui::ColorEdit3("Tint", P.atmo_color);
+  studio::SliderFloatW("Cloud cover", &P.clouds, 0.f, 1.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How much of the planet a deck of cloud covers, seen\n"
+                      "from space: 0 clear, 1 overcast. It drifts with the\n"
+                      "scene's clouds. A world with no atmosphere has none.");
   // The shape of a planet's surface is its stack of displacement layers,
   // so they are edited here rather than only in the Objects tree: this is
   // the panel you are already in when you decide the world is too smooth.

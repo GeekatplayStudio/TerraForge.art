@@ -139,5 +139,9 @@ void install_emitters();
 // HSV and colour adjustment. Called once from install_emitters().
 void install_emitters_convert();
 
+// field_glsl_emitters_plant.cpp: PlantVariable and PlantVector, both
+// constants on the GPU path. Called once from install_emitters().
+void install_emitters_plant();
+
 } // namespace glslgen
 } // namespace gpx

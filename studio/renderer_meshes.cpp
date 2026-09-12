@@ -17,7 +17,10 @@
 
 namespace studio {
 
-void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
+bool a_plant_wind_preview(); // studio/scene_plants_species.cpp: the wind preview toggle
+
+
+void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere, bool media) {
   RenderSettings &RS = F.RS;
   SceneState &sc = scene();
   const float *view_eye = F.view_eye;
@@ -36,6 +39,8 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
     const bool have_uv = o.uvs.size() == (size_t)o.vert_count * 2;
     if (o.parts.empty() || !have_uv) {
       unii(prog_mesh, "u_has_tex", 0);
+      unii(prog_mesh, "u_leaf", 0);
+      unii(prog_mesh, "u_has_part_normal", 0);
       draw(0, o.vert_count);
       return;
     }
@@ -45,6 +50,32 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
       if (part.first < 0 || part.count <= 0 || part.first + part.count > o.vert_count) continue;
       float col[3] = {o.color[0] * part.color[0], o.color[1] * part.color[1], o.color[2] * part.color[2]};
       uni3(prog_mesh, "u_color", col);
+      // Foliage: thin, two-sided, cut out - lit and masked differently. How
+      // much light it lets through and how sharply it reflects come from the
+      // material now, not from a constant: a laurel is glossy and nearly
+      // opaque, a beech in spring is matte and glows through.
+      unii(prog_mesh, "u_leaf", part.double_sided ? 1 : 0);
+      uni1(prog_mesh, "u_leaf_through", part.translucency > 0.f ? part.translucency
+                                                                : (part.double_sided ? 0.4f : 0.f));
+      uni1(prog_mesh, "u_part_rough", part.roughness);
+      if (part.normal_tex) {
+        glActiveTexture(GL_TEXTURE6);
+        glBindTexture(GL_TEXTURE_2D, part.normal_tex);
+        unii(prog_mesh, "u_part_normal", 6);
+        unii(prog_mesh, "u_has_part_normal", 1);
+        glActiveTexture(GL_TEXTURE3);
+      } else {
+        unii(prog_mesh, "u_has_part_normal", 0);
+      }
+      if (part.rough_tex) {
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D, part.rough_tex);
+        unii(prog_mesh, "u_part_rough_tex", 7);
+        unii(prog_mesh, "u_has_part_rough", 1);
+        glActiveTexture(GL_TEXTURE3);
+      } else {
+        unii(prog_mesh, "u_has_part_rough", 0);
+      }
       if (part.tex) {
         glBindTexture(GL_TEXTURE_2D, part.tex);
         unii(prog_mesh, "u_albedo_tex", 3);
@@ -59,10 +90,15 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
     if (covered < o.vert_count) {
       uni3(prog_mesh, "u_color", scene_display_color(o).data());
       unii(prog_mesh, "u_has_tex", 0);
+      unii(prog_mesh, "u_leaf", 0);
+      unii(prog_mesh, "u_has_part_normal", 0);
       draw(covered, o.vert_count - covered);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
+    unii(prog_mesh, "u_leaf", 0);
+    unii(prog_mesh, "u_has_part_normal", 0);
+    unii(prog_mesh, "u_has_part_rough", 0);
   };
 
   // Lighting is shared by every mesh in this view.
@@ -73,15 +109,18 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
   uni1(prog_mesh, "u_ambient", RS.ambient_intensity);
   uni3(prog_mesh, "u_sky_light", sky_light_rgb());
   uni1(prog_mesh, "u_sun_intensity", RS.sun_intensity);
+  bind_sky_env(prog_mesh); // the sky a glossy mesh reflects (renderer_clouds.cpp)
   // Scene meshes, in two passes: surfaces first, with the depth they write,
   // then the volumes - meshes whose material is a medium - blended over
   // them, back to front, without writing depth. A medium has no surface to
   // write; what it adds is light scattered toward the eye and what it takes
-  // is in its alpha, and that only composes correctly over everything solid.
+  // is in its alpha, and that only composes correctly over everything solid
+  // and the sky. The two are separate calls (`media`), because the sky is
+  // drawn between them (renderer_scene.cpp).
   std::vector<SceneObject *> volumes;
   for (int pass = 0; pass < 2; ++pass) {
   if (pass == 1) {
-    if (volumes.empty()) break;
+    if (!media || volumes.empty()) break;
     std::sort(volumes.begin(), volumes.end(), [&](SceneObject *p, SceneObject *q) {
       auto d2 = [&](SceneObject *o) {
         float dx = o->pos[0] - view_eye[0], dy = o->pos[1] * RS.height_scale - view_eye[1],
@@ -94,7 +133,17 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
   }
-  for (SceneObject &o : sc.objects) {
+  // The first pass walks the scene; the second the media in the order just
+  // sorted. It used to walk the scene again and skip what was not a medium,
+  // so the sort decided nothing and two smoke volumes blended in whatever
+  // order they had been added.
+  std::vector<SceneObject *> order;
+  if (pass == 0)
+    for (SceneObject &o : sc.objects) order.push_back(&o);
+  else
+    order = volumes;
+  for (SceneObject *op : order) {
+    SceneObject &o = *op;
     if (o.type != SceneObject::Mesh || !sc.object_visible(o)) continue;
     // a MaterialOutput assigned to this object drives its shading (Vue
     // Advanced Material Editor tabs); unassigned meshes get the defaults,
@@ -109,7 +158,7 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
       volumes.push_back(&o);
       continue;
     }
-    if (pass == 1 && std::find(volumes.begin(), volumes.end(), &o) == volumes.end()) continue;
+    if (pass == 0 && media) continue; // the surfaces were drawn by the first call
     mesh_upload(o); // renderer_mesh_upload.cpp, when the geometry changed
     bool is_sel = (&o - sc.objects.data()) == sc.selected;
     glUseProgram(prog_mesh);
@@ -165,6 +214,17 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
     unii(prog_mesh, "u_def_bend_axis", o.deform.bend_axis);
     uni3(prog_mesh, "u_def_shear", o.deform.shear);
     uni1(prog_mesh, "u_def_taper", o.deform.taper);
+    // a plant sways by its wind weights, in the wind its species root set;
+    // the preview toggle stills it without touching the species
+    unii(prog_mesh, "u_plant_on", o.plant ? 1 : 0);
+    if (o.plant) {
+      const gpx::PlantWind &w = o.plant_wind;
+      const float on = a_plant_wind_preview() ? 1.f : 0.f;
+      uni1(prog_mesh, "u_plant_time", time_acc);
+      glUniform4f(uniform_location(prog_mesh, "u_pw_a"), w.strength * on, w.dir[0], w.dir[1], w.breeze);
+      glUniform4f(uniform_location(prog_mesh, "u_pw_b"), w.breeze_speed, w.flutter, w.flutter_speed, w.gust);
+      glUniform4f(uniform_location(prog_mesh, "u_pw_c"), w.gust_frequency, w.breeze_randomness, 0.f, 0.f);
+    }
     uni3(prog_mesh, "u_bmin", o.bmin);
     uni3(prog_mesh, "u_bmax", o.bmax);
     glBindVertexArray(o.vao);
@@ -190,8 +250,10 @@ void draw_scene_meshes(const FrameCtx &F, const float *sun, bool atmosphere) {
       }
       instances_count(drawn, o.inst_count(), cards);
       draw_mesh_parts(o, true);
+      // The reduced copies set their own colour and picture per part
+      // (renderer_instances.cpp); a mesh without parts is drawn in the
+      // object's own colour, as it always was.
       uni3(prog_mesh, "u_color", scene_display_color(o).data());
-      unii(prog_mesh, "u_has_tex", 0);
       instances_draw_lods(prog_mesh, o, runs);
       uni1(prog_mesh, "u_inst_grow", 1.f);
       unii(prog_mesh, "u_inst_on", 0);

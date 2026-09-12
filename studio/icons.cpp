@@ -42,7 +42,7 @@ ImU32 icon_color(Icon ic) {
       return geometry();
     // generators and hierarchy: things that make or hold other things
     case Icon::Group: case Icon::Null: case Icon::Expression: case Icon::Bake:
-    case Icon::Node: case Icon::Layer:
+    case Icon::Node: case Icon::Layer: case Icon::Plant:
       return generator();
     // deformers
     case Icon::Twist: case Icon::Bend: case Icon::Skew: case Icon::Taper:

@@ -14,7 +14,7 @@ endif()
 # RC is the Windows resource compiler. It exists nowhere else, and naming it
 # in LANGUAGES makes configure fail on macOS and Linux before it starts — so
 # it is enabled below, under if(WIN32), instead.
-project(GeekatplayTerraForge VERSION 2.0.0 LANGUAGES C CXX)
+project(GeekatplayTerraForge VERSION 2.1.0 LANGUAGES C CXX)
 if(WIN32)
     enable_language(RC)
 endif()
@@ -121,6 +121,61 @@ set(ENGINE_SOURCES
     src/mcp_bridge.cpp
     engine/heightmap.cpp
     engine/attribute.cpp
+    engine/ecology_biomes.cpp
+    engine/ecology_table.cpp
+    engine/plant_curve.cpp
+    engine/plant/plant_schema.cpp
+    engine/plant/plant_schema_species.cpp
+    engine/plant/plant_schema_segment.cpp
+    engine/plant/plant_schema_leaves.cpp
+    engine/plant/plant_schema_shapes.cpp
+    engine/plant/plant_schema_growth.cpp
+    engine/plant/plant_schema_tips.cpp
+    engine/plant/plant_types.cpp
+    engine/plant/plant_params.cpp
+    engine/plant/plant_eval.cpp
+    engine/plant/plant_eval_walk.cpp
+    engine/plant/plant_attach.cpp
+    engine/plant/plant_axis.cpp
+    engine/plant/plant_segment.cpp
+    engine/plant/plant_segment_extra.cpp
+    engine/plant/plant_blades.cpp
+    engine/plant/plant_mesh_util.cpp
+    engine/plant/plant_mesh.cpp
+    engine/plant/plant_wind.cpp
+    engine/plant/plant_season.cpp
+    engine/plant/plant_materials.cpp
+    engine/plant/plant_leaf.cpp
+    engine/plant/plant_cutout_leaf.cpp
+    engine/plant/plant_warpboard.cpp
+    engine/plant/plant_object.cpp
+    engine/plant/plant_urchin.cpp
+    engine/plant/plant_hydra.cpp
+    engine/plant/plant_ball.cpp
+    engine/plant/plant_flower.cpp
+    engine/plant/plant_growth.cpp
+    engine/plant/plant_growth_sim.cpp
+    engine/plant/plant_growth_mesh.cpp
+    engine/plant/plant_textures.cpp
+    engine/plant/plant_textures_bark.cpp
+    engine/plant/plant_textures_trace.cpp
+    engine/plant/plant_export.cpp
+    engine/plant/plant_export_gltf.cpp
+    engine/plant/plant_schema_tips_species.cpp
+    engine/plant/plant_schema_tips_segment.cpp
+    engine/plant/plant_schema_tips_parts.cpp
+    engine/plant/plant_schema_tips_parts2.cpp
+    engine/plant/plant_schema_tips_shared.cpp
+    engine/plant/plant_species_io.cpp
+    engine/plant/plant_describe.cpp
+    engine/plant/plant_knowledge.cpp
+    engine/plant/plant_knowledge_table.cpp
+    engine/plant/plant_knowledge_table2.cpp
+    engine/plant/plant_archetypes.cpp
+    engine/plant/plant_archetypes_trees.cpp
+    engine/plant/plant_archetypes_small.cpp
+    engine/plant/plant_presets.cpp
+    engine/field_glsl_emitters_plant.cpp
     engine/material_params.cpp
     engine/animation.cpp
     engine/anim_curve.cpp
@@ -164,6 +219,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_field_color.cpp
     engine/nodes/nodes_channels.cpp
     engine/nodes/nodes_primitives.cpp
+    engine/nodes/nodes_gradient.cpp
     engine/nodes/nodes_fractals.cpp
     engine/nodes/nodes_fractals2.cpp
     engine/nodes/nodes_filters.cpp
@@ -183,6 +239,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_morphology.cpp
     engine/nodes/nodes_filters_local.cpp
     engine/nodes/nodes_segment.cpp
+    engine/nodes/nodes_plant.cpp
     engine/nodes/nodes_quilt.cpp
     engine/nodes/nodes_noise_extra.cpp
     engine/nodes/nodes_warp.cpp
@@ -195,6 +252,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_surface_forms.cpp
     engine/nodes/nodes_fake_stones.cpp
     engine/nodes/nodes_atmosphere.cpp
+    engine/nodes/nodes_fog_layer.cpp
     engine/nodes/nodes_material_graph.cpp
     engine/nodes/nodes_material_source.cpp
     engine/nodes/nodes_hydro.cpp
@@ -368,6 +426,7 @@ set(STUDIO_SOURCES
     studio/panel_material_tabs_eco.cpp
     studio/scatter_lod.cpp
     studio/renderer_instances.cpp
+    studio/alpha_mips.cpp
     studio/renderer_mesh_upload.cpp
     studio/renderer_meshes.cpp
     studio/renderer_billboards.cpp
@@ -375,11 +434,27 @@ set(STUDIO_SOURCES
     studio/billboard.cpp
     studio/eco_dynamic.cpp
     studio/mesh_lod.cpp
+    studio/mesh_lod_parts.cpp
     studio/panel_material_hierarchy.cpp
     studio/material_channel_ui.cpp
     studio/asset_store.cpp
     studio/asset_ops.cpp
     studio/panel_assets.cpp
+    studio/plant_library.cpp
+    studio/plant_fetch.cpp
+    studio/plant_forest.cpp
+    studio/spray.cpp
+    studio/spray_biome.cpp
+    studio/spray_ops.cpp
+    studio/plant_place.cpp
+    studio/plant_ops.cpp
+    studio/plant_species.cpp
+    studio/plant_species_edit.cpp
+    studio/plant_species_ai.cpp
+    studio/plant_species_ops.cpp
+    studio/panel_plant_editor.cpp
+    studio/panel_plant_editor_parts.cpp
+    studio/panel_plants.cpp
     studio/theme.cpp
     studio/theme_colors.cpp
     studio/icons.cpp
@@ -390,6 +465,7 @@ set(STUDIO_SOURCES
     studio/panel_graph_draw.cpp
     studio/panel_properties.cpp
     studio/panel_properties_object.cpp
+    studio/panel_properties_air.cpp
     studio/panel_properties_object_surface.cpp
     studio/panel_properties_scene.cpp
     studio/panel_properties_node.cpp
@@ -413,8 +489,18 @@ set(STUDIO_SOURCES
     studio/renderer.cpp
     studio/renderer_camera.cpp
     studio/renderer_scene.cpp
+    studio/renderer_origin.cpp
     studio/renderer_passes.cpp
+    studio/renderer_water.cpp
+    studio/renderer_clouds.cpp
+    studio/renderer_clouds_over.cpp
+    studio/renderer_space_half.cpp
+    studio/renderer_fxaa.cpp
+    studio/renderer_post_bloom.cpp
+    studio/water_surface.cpp
+    studio/water_gpu_check.cpp
     studio/renderer_post.cpp
+    studio/renderer_post_flare.cpp
     studio/renderer_matprev.cpp
     studio/camera_optics.cpp
     studio/renderer_programs.cpp
@@ -424,10 +510,12 @@ set(STUDIO_SOURCES
     studio/renderer_aov.cpp
     studio/hdr_image.cpp
     studio/shaders_terrain.cpp
+    studio/shaders_relief.cpp
     studio/shaders_terrain_frag.cpp
     studio/terrain_cull.cpp
     studio/planet_place.cpp
     studio/render_terrain_bake.cpp
+    studio/render_water_bake.cpp
     studio/sky_light.cpp
     studio/panel_properties_object_planet.cpp
     studio/planet_pick.cpp
@@ -439,10 +527,13 @@ set(STUDIO_SOURCES
     studio/accel_check.cpp
     studio/blue_noise.cpp
     studio/shaders_scene.cpp
+    studio/shaders_water.cpp
     studio/shaders_mesh_depth.cpp
     studio/shaders_sky.cpp
+    studio/shaders_clouds.cpp
     studio/planet_renderer.cpp
     studio/planet_shaders.cpp
+    studio/planet_clouds.cpp
     studio/planet_rim.cpp
     studio/shaders_space.cpp
     studio/renderer_space.cpp
@@ -458,6 +549,7 @@ set(STUDIO_SOURCES
     studio/preview.cpp
     studio/project_io.cpp
     studio/panel_environment.cpp
+    studio/panel_environment_wind.cpp
     studio/panel_environment_space.cpp
     studio/panel_ai.cpp
     studio/panel_materials.cpp
@@ -486,9 +578,11 @@ set(STUDIO_SOURCES
     studio/panel_render_editor.cpp
     studio/render_scene_export.cpp
     studio/scene.cpp
+    studio/scene_air_layers.cpp
     studio/world_shape.cpp
     studio/mesh_load.cpp
     studio/scene_primitives.cpp
+    studio/scene_plants.cpp
     studio/scene_csg.cpp
     studio/scene_io.cpp
     studio/scene_io_object.cpp
@@ -507,8 +601,10 @@ set(STUDIO_SOURCES
     studio/paint_canvas_tools.cpp
     studio/png16.cpp
     studio/panel_properties_widgets.cpp
+    studio/attr_widgets_plant.cpp
     studio/scene_nodes_material.cpp
     studio/scene_nodes_objects.cpp
+    studio/scene_plants_species.cpp
     studio/material_library.cpp
     studio/node_library.cpp
     studio/panel_camera.cpp
@@ -662,6 +758,7 @@ add_executable(undo_tests
     studio/scene.cpp
     studio/world_shape.cpp
     studio/scene_primitives.cpp
+    studio/scene_plants.cpp
     studio/scene_io.cpp
     studio/scene_io_object.cpp
     studio/scene_io_anim.cpp
@@ -713,6 +810,10 @@ add_executable(shape_lake_tests tests/cpp/test_shape_lake.cpp)
 target_link_libraries(shape_lake_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+add_executable(gradient_tests tests/cpp/test_gradient.cpp)
+target_link_libraries(gradient_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 add_executable(terrain_crack_tests tests/cpp/test_terrain_cracks.cpp)
 target_link_libraries(terrain_crack_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
@@ -732,16 +833,39 @@ target_link_libraries(node_tests PRIVATE
 # Renderer maths that needs no GL context: per-patch visibility, and the
 # packing helpers that follow it.
 add_executable(render_tests tests/cpp/test_render.cpp tests/cpp/test_render_hdr.cpp
-                            tests/cpp/test_planet_place.cpp
+                            tests/cpp/test_planet_place.cpp tests/cpp/test_water.cpp
+                            tests/cpp/test_terrain_relief.cpp tests/cpp/test_ground_march.cpp
                             studio/terrain_cull.cpp studio/blue_noise.cpp
-                            studio/scatter_lod.cpp
-                            studio/hdr_image.cpp studio/planet_place.cpp)
+                            studio/scatter_lod.cpp studio/water_surface.cpp
+                            studio/hdr_image.cpp studio/planet_place.cpp
+                            studio/alpha_mips.cpp)
 target_include_directories(render_tests PRIVATE studio)
 target_link_libraries(render_tests PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
 
+# The plant library: the manifest reader, the folder scan, variants, search,
+# recording a model the user owns - against a library the test builds.
+add_executable(plant_library_tests tests/cpp/test_plant_library.cpp studio/plant_library.cpp
+                                   studio/scene_plants.cpp studio/paths.cpp)
+target_include_directories(plant_library_tests PRIVATE studio)
+target_link_libraries(plant_library_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
 # The asset index: scan, tf-idf search, tags, trash, and its JSON file,
 # against a folder the test builds itself.
+# The plant engine: curves and random parameters, a species grown into a
+# mesh, the plants it knows by name, species files, the pictures made from
+# rules and the mesh export. No GL: a plant is grown in a console.
+add_executable(plant_tests tests/cpp/test_plant.cpp tests/cpp/test_plant_species.cpp)
+target_include_directories(plant_tests PRIVATE engine)
+target_link_libraries(plant_tests PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,geekatplay_nodeterrain>" third_party_headers)
+
+add_executable(ecology_tests tests/cpp/test_ecology.cpp engine/ecology_table.cpp
+                             engine/ecology_biomes.cpp)
+target_include_directories(ecology_tests PRIVATE engine)
+target_link_libraries(ecology_tests PRIVATE third_party_headers)
+
 add_executable(asset_tests tests/cpp/test_assets.cpp engine/asset_index.cpp)
 target_include_directories(asset_tests PRIVATE engine)
 target_link_libraries(asset_tests PRIVATE third_party_headers)
@@ -850,6 +974,7 @@ add_test(NAME NodeContract COMMAND node_tests)
 add_test(NAME AnimTests COMMAND anim_tests)
 add_test(NAME EcosystemTests COMMAND ecosystem_tests)
 add_test(NAME ShapeLakeTests COMMAND shape_lake_tests)
+add_test(NAME GradientTests COMMAND gradient_tests)
 add_test(NAME TerrainCrackTests COMMAND terrain_crack_tests)
 add_test(NAME HorizonTests COMMAND horizon_tests)
 add_test(NAME PointsThumbTests COMMAND points_thumb_tests)
@@ -871,6 +996,9 @@ add_test(NAME TerrainXformTests COMMAND terrain_xform_tests)
 add_test(NAME IconTests COMMAND icon_tests)
 add_test(NAME AiServiceTests COMMAND ai_services_tests)
 add_test(NAME AssetTests COMMAND asset_tests)
+add_test(NAME PlantLibraryTests COMMAND plant_library_tests)
+add_test(NAME PlantTests COMMAND plant_tests)
+add_test(NAME EcologyTests COMMAND ecology_tests)
 
 
 

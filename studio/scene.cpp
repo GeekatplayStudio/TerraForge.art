@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include "gpx/node_graph.hpp"
 #include "render_settings.hpp"
 #include "world_shape.hpp"
 #include <algorithm>
@@ -170,6 +171,59 @@ int scene_delete_subtree(int object) {
   return (int)del.size();
 }
 
+SceneDeleteResult scene_delete_with_drivers(SceneState &sc, gpx::Graph *graph,
+                                            const std::vector<int> &objects, bool keep_builtin) {
+  SceneDeleteResult out;
+  std::vector<int> want;
+  for (int w : objects) {
+    if (w < 0 || w >= (int)sc.objects.size()) continue;
+    if (keep_builtin && sc.objects[(size_t)w].builtin) {
+      ++out.kept_builtin;
+      continue;
+    }
+    want.push_back(w);
+  }
+  for (int i = 0; i < (int)sc.objects.size(); ++i)
+    for (int w : want)
+      if (scene_is_descendant(sc, i, w)) {
+        out.objects.push_back(i);
+        break;
+      }
+  if (out.objects.empty()) return out;
+  // the nodes that would put them back, found before the indices move
+  static const char *const REBUILDERS[] = {"Primitive", "ImportObject", "PlantSpecies", "LightSource", "SceneCamera",
+                                           "Planet",    "Nebula",       "InfiniteTerrain"};
+  if (graph)
+    for (int d : out.objects)
+      if (const uint64_t id = sc.objects[(size_t)d].driver_node)
+        if (const gpx::Node *n = graph->find_node(id))
+          for (const char *t : REBUILDERS)
+            if (n->type == t && std::find(out.nodes.begin(), out.nodes.end(), id) == out.nodes.end()) {
+              out.nodes.push_back(id);
+              break;
+            }
+  std::sort(out.objects.rbegin(), out.objects.rend());
+  for (int d : out.objects) {
+    auto fix = [&](int &v) {
+      if (v > d) v--;
+      else if (v == d) v = -1;
+    };
+    for (auto &o : sc.objects) {
+      if (o.parent > d) o.parent--;
+      else if (o.parent == d) o.parent = -1;
+    }
+    fix(scene_active_camera());
+    fix(scene_last_used_camera());
+    sc.objects.erase(sc.objects.begin() + d);
+  }
+  for (uint64_t id : out.nodes) graph->remove_node(id);
+  // Nothing is selected: the index that was selected now names whatever
+  // slid into its place, and a second Delete would have taken that too.
+  sc.selected = -1;
+  sc.selection.clear();
+  return out;
+}
+
 void scene_ensure_home_planet() {
   SceneState &s = scene();
   if (scene_home_planet() >= 0) return;
@@ -242,6 +296,7 @@ int scene_add_moon(const std::string &name) {
   P.sea_level = 0.f;
   P.snow_line = 1.f;
   P.atmo_density = 0.f;
+  P.clouds = 0.f; // no air, no weather
   const float lo[3] = {0.36f, 0.35f, 0.34f}, hi[3] = {0.62f, 0.61f, 0.59f};
   for (int k = 0; k < 3; ++k) { P.rock_low[k] = lo[k]; P.rock_high[k] = hi[k]; }
   // its one surface layer is craters (gpx::planet::Layer type 4)

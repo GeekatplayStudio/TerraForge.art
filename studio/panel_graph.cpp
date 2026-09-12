@@ -336,7 +336,7 @@ static void draw_graph_editor(App &a, GraphEditor &e) {
       // the wire is the colour of what it carries, same as the connector
       const App::PortView &fp = fn->ports[fi];
       ImVec4 lc = ImGui::ColorConvertU32ToFloat4(
-          theme::port_color(fp.is_texture, fp.is_field, fp.field_type, fp.is_points));
+          theme::port_color(fp.is_texture, fp.is_field, fp.field_type, fp.is_points, fp.is_plant));
       lc.w = 0.85f;
       ed::Link(l.id, pin_id(l.from_node, fi), pin_id(l.to_node, ti), lc, 2.2f);
     }

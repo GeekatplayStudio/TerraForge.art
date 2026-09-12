@@ -199,11 +199,14 @@ void transform(PointCloud &pc, const Transform &t) {
     }
     pc.species[i] = (uint16_t)sp;
     // ---- size ------------------------------------------------------------
-    // variation 1 means half to twice: a symmetric draw in log2
-    float common = std::exp2((unit(id, 3) * 2.f - 1.f) * t.variation);
+    // variation 1 means half to twice: a symmetric draw in log2. Each kind
+    // may vary in its own way - a stand of boulders is all sizes, the
+    // saplings among them much of a muchness - and 0 takes the layer's.
+    const float var = t.species_variation[sp] > 0.f ? t.species_variation[sp] : t.variation;
+    float common = std::exp2((unit(id, 3) * 2.f - 1.f) * var);
     float ax[3];
     for (int k = 0; k < 3; ++k) {
-      float own = std::exp2((unit(id, 4 + (uint32_t)k) * 2.f - 1.f) * t.variation);
+      float own = std::exp2((unit(id, 4 + (uint32_t)k) * 2.f - 1.f) * var);
       ax[k] = common * t.keep_proportions + own * (1.f - t.keep_proportions);
     }
     const float base = t.scale * t.species_scale[sp];
@@ -222,6 +225,10 @@ void transform(PointCloud &pc, const Transform &t) {
     } else {
       pc.tilt[i] = t.direction;
     }
+    // Each kind may tip with the ground in its own way: a boulder sits on the
+    // hillside, a tree stands up out of it, and one figure for a whole
+    // population cannot say both. Negative takes the layer's.
+    if (t.species_lean[sp] >= 0.f) pc.tilt[i] = std::clamp(t.species_lean[sp], 0.f, 1.f);
     // ---- rotation --------------------------------------------------------
     if (t.rotation == 1) pc.yaw[i] = 0.f;
     else if (t.rotation == 2 && driven)

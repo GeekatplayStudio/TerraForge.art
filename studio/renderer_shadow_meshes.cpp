@@ -15,6 +15,9 @@
 
 namespace studio {
 
+bool a_plant_wind_preview(); // studio/scene_plants_species.cpp: the wind preview toggle
+
+
 unsigned long long mesh_shadow_key() {
   unsigned long long h = 1469598103934665603ull;
   auto mix = [&](const void *p, size_t n) {
@@ -62,6 +65,17 @@ void pass_shadow_meshes(const FrameCtx &F) {
     unii(prog_depth_mesh, "u_def_bend_axis", o.deform.bend_axis);
     uni3(prog_depth_mesh, "u_def_shear", o.deform.shear);
     uni1(prog_depth_mesh, "u_def_taper", o.deform.taper);
+    // a plant sways by its wind weights, in the wind its species root set;
+    // the preview toggle stills it without touching the species
+    unii(prog_depth_mesh, "u_plant_on", o.plant ? 1 : 0);
+    if (o.plant) {
+      const gpx::PlantWind &w = o.plant_wind;
+      const float on = a_plant_wind_preview() ? 1.f : 0.f;
+      uni1(prog_depth_mesh, "u_plant_time", F.time_acc);
+      glUniform4f(uniform_location(prog_depth_mesh, "u_pw_a"), w.strength * on, w.dir[0], w.dir[1], w.breeze);
+      glUniform4f(uniform_location(prog_depth_mesh, "u_pw_b"), w.breeze_speed, w.flutter, w.flutter_speed, w.gust);
+      glUniform4f(uniform_location(prog_depth_mesh, "u_pw_c"), w.gust_frequency, w.breeze_randomness, 0.f, 0.f);
+    }
     uni3(prog_depth_mesh, "u_bmin", o.bmin);
     uni3(prog_depth_mesh, "u_bmax", o.bmax);
     glBindVertexArray(o.vao);

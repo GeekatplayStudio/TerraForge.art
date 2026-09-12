@@ -62,7 +62,7 @@ void build_light_mvp(const float *sun, float hscale, float *out) {
                     -(sx[0] * eye[0] + sx[1] * eye[1] + sx[2] * eye[2]),
                     -(uy[0] * eye[0] + uy[1] * eye[1] + uy[2] * eye[2]),
                     fz[0] * eye[0] + fz[1] * eye[1] + fz[2] * eye[2], 1};
-  float r = 0.95f, znear = 0.1f, zfar = 4.5f;
+  float r = SHADOW_HALF, znear = SHADOW_NEAR, zfar = SHADOW_FAR;
   float proj[16] = {1.f / r, 0, 0, 0, 0, 1.f / r, 0, 0,
                     0, 0, -2.f / (zfar - znear), 0,
                     0, 0, -(zfar + znear) / (zfar - znear), 1};
@@ -176,9 +176,11 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   if (!far_tier[slot] && tile_dist > 9.f) far_tier[slot] = true;
   else if (far_tier[slot] && tile_dist < 7.f) far_tier[slot] = false;
   bool near_ground = !far_tier[slot];
-  // volumetric clouds are a ground-view effect; from high above they cost a
-  // full raymarch for a few pixels
-  bool clouds_ok = RS.clouds_on && view_eye[1] < 3.f && near_ground;
+  // The clouds are one layer seen from anywhere: from under it, from above
+  // the tops and from orbit (renderer_clouds.cpp). They used to be switched
+  // off three units up, so pulling back took the weather off the world; the
+  // march now spends its steps by how much of the band a pixel can resolve.
+  bool clouds_ok = RS.clouds_on;
   bool shadows_ok = RS.shadows && near_ground && perf_shadows_for(slot); // shadow texels vanish out there; the governor may drop them
   bool heavy_maps = near_ground; // 4K material maps are wasted on a far tile
   // how far out of the atmosphere the camera is (0 ground .. 1 open space);
@@ -200,6 +202,8 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   // shadow pass
   build_light_mvp(sun, RS.height_scale, F.light_mvp);
   pass_shadow(F);
+  // the sky the sea will reflect, before anything reflects it
+  sky_env_update(F);
 
   glBindFramebuffer(GL_FRAMEBUFFER, fbo[slot]);
   glViewport(0, 0, w, h);
@@ -209,11 +213,19 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
   glEnable(GL_DEPTH_TEST);
 
 
-  pass_sky(F);
-
-  // planets: drawn between the sky and the ground, so terrain in front of
-  // them occludes correctly and they are never clipped however far you zoom
-  if (vc.camera == 0) {
+  // The sky and the planets in it. They go after everything solid, onto the
+  // pixels nothing covers (both sit on the far plane, depth test GL_LEQUAL):
+  // the sky is the most expensive shader on screen - the cloud march, deep
+  // space - and drawn first it was worked out for every pixel and then
+  // painted over, a whole screen of cloud march under the ground that the
+  // clouds-over-the-ground pass then marched again. Measured at 1718x798
+  // looking down on the clouds: 19.6 ms of sky for no visible pixel. A
+  // see-through terrain needs the sky behind it, and a flat background is
+  // cheap, so those keep the old order.
+  const bool sky_late = RS.background_mode == 0 && RS.mat_transparency <= 0.001f;
+  auto sky_and_planets = [&]() {
+    pass_sky(F);
+    if (vc.camera != 0) return;
     PlanetFrame pf;
     pf.mvp = mvp;
     pf.eye = view_eye;
@@ -224,8 +236,10 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     pf.saturation = g_saturation;
     pf.view_h = h;
     pf.fovy_rad = g_last_fovy;
+    pf.cloud_time = cloud_time;
     planet_draw_all(pf);
-  }
+  };
+  if (!sky_late) sky_and_planets();
 
   pass_terrain(F);
 
@@ -250,12 +264,9 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.height_scale = RS.height_scale;
     inf.base_height = renderer_ground_base();
     inf.planet_radius = view_planet_radius(RS, vc);
-    inf.water_level = (RS.show_water && show_water_obj)
+    inf.water_level = (RS.show_water && show_water_obj && vc.show_water_view)
                           ? RS.water_level * RS.height_scale
                           : -1e9f;
-    inf.water_deep = RS.water_deep_color;
-    inf.water_shallow = RS.water_shallow_color;
-    inf.water_clarity = RS.water_clarity;
     inf.latitude = std::fabs(RS.latitude) / 90.f;
     inf.atmosphere = atmosphere;
     inf.textured = textured;
@@ -264,14 +275,6 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     inf.frac_scale = RS.fractal_scale;
     inf.tile_octf = std::clamp(std::log2((float)std::max(hm_w, 16)), 4.f, 11.f);
     inf.time = time_acc;
-    // the far shell's cloud band: the sky pass's own cloud shape and clock
-    inf.tex_cloud_shape = tex_cloud_shape;
-    inf.clouds_on = clouds_ok;
-    inf.cloud_cov = RS.cloud_coverage;
-    inf.cloud_alt = RS.cloud_altitude + RS.cloud_thickness * 0.5f;
-    inf.cloud_time = cloud_time;
-    inf.cloud_wind[0] = wind[0];
-    inf.cloud_wind[1] = wind[1];
     infinite_draw(inf);
   }
 
@@ -292,8 +295,12 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glDrawArrays(GL_TRIANGLES, 0, sphere_verts);
   }
 
-  // every mesh object and its scattered copies (renderer_meshes.cpp)
-  draw_scene_meshes(F, sun, atmosphere);
+  // every mesh object and its scattered copies (renderer_meshes.cpp); then
+  // the sky where nothing solid stands, then the meshes that are media,
+  // which blend over both
+  draw_scene_meshes(F, sun, atmosphere, false);
+  if (sky_late) sky_and_planets();
+  draw_scene_meshes(F, sun, atmosphere, true);
 
 
   // The sun's handle: a real, selectable scene object, and a *handle* - a
@@ -422,7 +429,12 @@ void draw_scene(int slot, const RenderSettings::ViewConfig &vc, int w,
     glDisable(GL_BLEND);
   }
 
+  // the world's centre (renderer_origin.cpp)
+  if (vc.show_origin) draw_world_origin(mvp, RS);
+
   pass_water(F);
+  // the cloud layers in front of everything drawn (renderer_clouds.cpp)
+  pass_clouds(F);
 
   pass_outlines(F);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);

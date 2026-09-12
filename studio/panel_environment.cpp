@@ -6,6 +6,7 @@
 #include "gpu_timer.hpp"
 #include "render_settings.hpp"
 #include "renderer_instances.hpp"
+#include "water_surface.hpp"
 #include <imgui.h>
 
 namespace studio {
@@ -82,6 +83,10 @@ static void section_atmosphere(RenderSettings &rs) {
 // a palette, a march and a way to fill the sky, and this file has the
 // 500-line rule to keep.
 void section_space(RenderSettings &rs);
+
+// The scene's wind (studio/panel_environment_wind.cpp): one wind that the
+// clouds, the sea, the fog and the plants all read.
+void section_wind(RenderSettings &rs);
 
 static void section_fog(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Fog / Haze", ImGuiTreeNodeFlags_DefaultOpen)) return;
@@ -195,25 +200,76 @@ static void section_clouds(RenderSettings &rs) {
   }
 }
 
+// Vue's Water Surface Options: one sea over the whole world, its waves
+// raised by a wind (gpx/water_waves.hpp), foam along the coasts and over
+// the breaking crests.
+static void tip(const char *text) {
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", text);
+}
+
 static void section_water(RenderSettings &rs) {
   if (!ImGui::CollapsingHeader("Water", ImGuiTreeNodeFlags_DefaultOpen)) return;
-  studio::Checkbox("Enabled", &rs.show_water);
+  studio::Checkbox("Enabled##water", &rs.show_water);
   if (!rs.show_water) return;
-  studio::SliderFloatW("Level", &rs.water_level, 0.f, 1.f);
+  studio::SliderFloatW("Level##water", &rs.water_level, 0.f, 1.f);
+  studio::Checkbox("Displaced water surface", &rs.water_displaced);
+  tip("The waves are real geometry: crests stand up against the sky and\n"
+      "hide the water behind them. Off, the sea is flat and the waves are\n"
+      "in its shading only - cheaper, and the same from far away.");
   ImGui::ColorEdit3("Deep color", rs.water_deep_color);
+  tip("The light the water itself sends back from its depths.");
   ImGui::ColorEdit3("Shallow color", rs.water_shallow_color);
-  studio::SliderFloatW("Clarity", &rs.water_clarity, 1.f, 60.f);
-  studio::SliderFloatW("Opacity", &rs.water_opacity, 0.3f, 1.f);
-  studio::SliderFloatW("Wave amplitude", &rs.water_wave_amp, 0.f, 4.f);
+  tip("The tint of what is seen through the water: its proportions decide\n"
+      "which colour the water swallows first. Real water takes red first.");
+  studio::SliderFloatW("Clarity##water", &rs.water_clarity, 1.f, 60.f, "%.1f m");
+  tip("How far the clearest colour carries through the water before most of\n"
+      "it is gone. A few metres is a lake; tropical sea is forty.");
+  studio::SliderFloatW("Opacity##water", &rs.water_opacity, 0.3f, 1.f);
+  tip("Leans on the clarity: 0.92 leaves it as set, 1 is water no light gets\n"
+      "into, lower is clearer still.");
+
+  ImGui::SeparatorText("Waves");
+  studio::SliderFloatW("Wind intensity", &rs.water_wind_speed, 0.f, 25.f, "%.1f m/s");
+  tip("The wind the sea has been under. It decides how long the waves are and\n"
+      "how much of each size there is: 4 m/s is a breeze on a lake, 15 a\n"
+      "gale. 0 is a mirror.");
+  studio::SliderFloatW("Wind direction##water", &rs.water_wind_dir, 0.f, 360.f,
+                       "%.0f\xC2\xB0");
+  tip("The way the waves run, seen from above: 0 toward +X, 90 toward +Z.\n"
+      "The longest waves follow it closely, the short ones scatter round it.");
+  studio::SliderFloatW("Wave height", &rs.water_wave_amp, 0.f, 4.f);
+  tip("Multiplies every wave's height, without changing their sizes.");
   studio::SliderFloatW("Wave scale", &rs.water_wave_scale, 0.2f, 6.f);
-  studio::SliderFloatW("Wave speed", &rs.water_wave_speed, 0.f, 5.f);
+  tip("Multiplies every wavelength, and the height with it: the same sea at\n"
+      "another size.");
+  studio::SliderFloatW("Agitation", &rs.water_wave_speed, 0.f, 5.f);
+  tip("How fast the waves run. Only seen moving; 1 is the speed deep water\n"
+      "really carries each size of wave at.");
+  studio::SliderFloatW("Choppiness", &rs.water_choppiness, 0.f, 1.f);
+  tip("0 is round swells; toward 1 the water gathers in under the crests and\n"
+      "they stand up sharp, which is where they break and foam.");
+  {
+    const WaterWaves &ww = water_waves(rs);
+    ImGui::TextDisabled("waves about %.2f m high, the longest %.0f m",
+                        gpx::water::significant_height(ww.w, ww.n),
+                        ww.n ? ww.w[0].lambda : 0.f);
+  }
+
   ImGui::SeparatorText("Foam");
   studio::Checkbox("Foam enabled", &rs.water_foam);
   if (rs.water_foam) {
     ImGui::ColorEdit3("Foam color", rs.foam_color);
-    studio::SliderFloatW("Shoreline foam", &rs.foam_amount, 0.f, 2.f);
+    studio::SliderFloatW("Coast foam", &rs.foam_amount, 0.f, 2.f);
+    tip("Foam along the coasts: wherever the water meets the ground, a rock\n"
+        "or a boat, in bands that run in toward it.");
+    studio::SliderFloatW("Typical depth", &rs.foam_depth_m, 0.05f, 10.f, "%.2f m");
+    tip("How shallow the water has to get before the coast foam starts.");
     studio::SliderFloatW("Crest foam", &rs.foam_crests, 0.f, 1.f);
+    tip("Foam over the waves: whitecaps where a crest breaks.");
+    studio::SliderFloatW("Crest coverage", &rs.foam_coverage, 0.f, 1.f);
+    tip("How much of each breaking crest turns white.");
     studio::SliderFloatW("Foam scale", &rs.foam_scale, 0.5f, 10.f);
+    tip("The size of the bubbles and lace the foam is made of, 0.4 m a unit.");
   }
 }
 
@@ -228,6 +284,11 @@ static void section_planet(RenderSettings &rs) {
                       "the surface stays fractal instead of turning into\n"
                       "flat grid cells.");
   studio::SliderFloatW("Detail scale", &rs.fractal_scale, 8.f, 400.f, "%.0f");
+  studio::SliderFloatW("Detail roughness", &rs.fractal_gain, 0.2f, 0.8f, "%.2f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How much of each size of that relief the next finer size\n"
+                      "keeps. Low leaves smooth ground with its larger forms;\n"
+                      "high puts gravel over everything. 0.5 is the default.");
   // In metres, from one metre up: a small planet wraps the terrain tile
   // round itself (equirectangular), a large one is the curved horizon.
   {
@@ -360,6 +421,7 @@ void world_properties_ui(App &a) {
     ImGui::PopStyleColor();
     ImGui::Separator();
   }
+  if (prop_filter_match("Wind gust")) section_wind(rs);
   if (prop_filter_match("Sun")) section_sun(rs);
   if (prop_filter_match("Atmosphere sky")) section_atmosphere(rs);
   if (prop_filter_match("Space stars galaxy nebula")) section_space(rs);

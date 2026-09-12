@@ -68,6 +68,9 @@ struct PerfQuality {
   bool shadows_secondary = true;
   bool shadows_primary = true;
   int cloud_quality_cap = 2;   // 0 draft .. 2 high
+  // the nebula march's quality (SpaceSettings::quality, 0 draft .. 3 exhaustive):
+  // a nebula filling the frame is marched per pixel, like the clouds
+  int space_quality_cap = 3;
   float tess_scale = 1.f;      // multiplies the subdivision limit
   float lod_scale = 1.f;       // multiplies the scatter LOD distances
   int preview_quality_cap = 2; // the Preview panel's render scale index

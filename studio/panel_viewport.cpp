@@ -12,6 +12,7 @@
 #include "icons.hpp"
 #include "panel_float.hpp"
 #include "sculpt.hpp"
+#include "shortcuts.hpp"
 #include "theme_colors.hpp"
 #include "toolbar_internal.hpp"
 #include <imgui.h>
@@ -88,6 +89,18 @@ static void view_options_menu(App &a, int slot, RenderSettings::ViewConfig &vc) 
   studio::Checkbox("Water", &vc.show_water_view);
   studio::Checkbox("Grid", &vc.grid);
   studio::Checkbox("Selection outline", &vc.outlines);
+  studio::Checkbox("World origin", &vc.show_origin);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Three axes through 0,0,0 - red X, green Y, blue Z -\n"
+                      "with the negative halves dimmer, so the arms say which\n"
+                      "way is forward as well as where the middle is. The\n"
+                      "ticks are tenths of a tile.");
+  studio::Checkbox("Animate plants", &vc.animate_plants);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Let the wind move the plants in this window.\n"
+                      "Off to begin with: a swaying crown never settles, and\n"
+                      "placing a tree or framing a shot is easier against a\n"
+                      "still picture. Each window decides for itself.");
 
   ImGui::SeparatorText("Viewport windows");
   // Arranging the viewport area, without disturbing anything else on screen.
@@ -323,6 +336,8 @@ static void view_header(App &a, int slot, RenderSettings::ViewConfig &vc) {
     flag(Icon::Water, "##ow", "Show the water surface", &vc.show_water_view);
     flag(Icon::Grid, "##og", "Ground reference grid", &vc.grid);
     flag(Icon::Outline, "##oo", "Outline the selected object", &vc.outlines);
+    flag(Icon::Plant, "##op", "Let the wind move the plants in this window", &vc.animate_plants);
+    flag(Icon::Move, "##oz", "Show the world's centre, 0,0,0", &vc.show_origin);
     divider();
   } else {
     const float compact = 96.f + 84.f + bw + gap * 2.f;
@@ -654,29 +669,48 @@ static void view_body(App &a, int slot, RenderSettings::ViewConfig &vc) {
   // entirely natural gesture on a node - left every later edit apparently
   // doing nothing. "The erosion effect is not reflected in the viewport" is
   // what that looks like from the outside, and it was right.
+  // The label says what is missing, not only that a pin exists: "pinned:
+  // Crater" was on screen and the report still came - erosion after the
+  // pinned node "not applied in the viewport".
+  // Drawn, not clickable. An overlay on top of the viewport image cannot
+  // reliably take a click: the image is submitted first and owns the hover
+  // for the frame, and every way of asking ImGui about it here reads false
+  // (IsWindowHovered says no window is hovered at all at this call site).
+  // The controls live in the view header, where ordinary widget behaviour
+  // applies; a badge says what is going on, where the person is looking.
+  float badge_y = p0.y + 24;
+  auto badge = [&](const std::string &text) {
+    const ImVec2 tp(p0.x + 8, badge_y);
+    const ImVec2 tsz = ImGui::CalcTextSize(text.c_str());
+    dl->AddRectFilled(ImVec2(tp.x - 4, tp.y - 2),
+                      ImVec2(tp.x + tsz.x + 4, tp.y + tsz.y + 2),
+                      IM_COL32(0, 0, 0, 150), 3.f);
+    dl->AddText(ImVec2(tp.x + 1, tp.y + 1), sh, text.c_str());
+    dl->AddText(tp, IM_COL32(245, 190, 110, 240), text.c_str());
+    badge_y += tsz.y + 8;
+  };
   if (a.view_node) {
-    std::string pin = "pinned: ";
+    std::string pin = "Showing ";
     {
       GraphLease lease(a);
       const gpx::Node *pn =
           lease.owns_lock() ? a.graph.find_node(a.view_node) : nullptr;
-      pin += pn ? gpx::node_display_name(pn->type) : std::string("a node");
+      pin += pn ? gpx::node_display_name(pn->type) : std::string("one node");
     }
-    pin += "   —  the Unpin button in this view's header releases it";
-    // Drawn, not clickable. An overlay on top of the viewport image cannot
-    // reliably take a click: the image is submitted first and owns the hover
-    // for the frame, and every way of asking ImGui about it here reads false
-    // (IsWindowHovered says no window is hovered at all at this call site).
-    // The control that releases the pin is a plain button in the view header,
-    // where ordinary widget behaviour applies; this says what is going on,
-    // where the person is already looking.
-    const ImVec2 tp(p0.x + 8, p0.y + 24);
-    const ImVec2 tsz = ImGui::CalcTextSize(pin.c_str());
-    dl->AddRectFilled(ImVec2(tp.x - 4, tp.y - 2),
-                      ImVec2(tp.x + tsz.x + 4, tp.y + tsz.y + 2),
-                      IM_COL32(0, 0, 0, 150), 3.f);
-    dl->AddText(ImVec2(tp.x + 1, tp.y + 1), sh, pin.c_str());
-    dl->AddText(tp, IM_COL32(245, 190, 110, 240), pin.c_str());
+    pin += " only: the nodes after it (erosion, the Terrain Output) are not in this view.\n"
+           "The lock in this view's header, or double-clicking the node again, follows the output.";
+    badge(pin);
+  }
+  // A low-resolution pass on screen: a slider is held, or the full pass has
+  // not landed yet. At 256 texels a crater rim is a staircase and an erosion
+  // node erodes differently, so the picture says it is not the final ground.
+  {
+    // the snapshot's resolution, taken under the lock: the graph's own field
+    // holds the preview size while the worker evaluates a drag
+    const int shown = renderer_height_res(), full = a.snapshot_resolution;
+    if (shown > 0 && full > shown)
+      badge("Preview at " + std::to_string(shown) + " px - the " + std::to_string(full) +
+            " px terrain follows when the edit is released");
   }
 
   // selected object name
@@ -703,6 +737,7 @@ void draw_panel_viewport(App &a) {
   // 1, 3 and 4 where they are instead of renumbering them.
   const unsigned mask = prefs().view_mask ? prefs().view_mask : 1u;
   int closing = -1;
+  bool delete_selection = false;
   for (int slot = 0; slot < RenderSettings::MAX_VIEWS; ++slot) {
     if (!(mask & (1u << slot))) continue;
     // Only offer the close box while another viewport would remain.
@@ -718,6 +753,14 @@ void draw_panel_viewport(App &a) {
     if (!stay) closing = slot;
     // Where a new viewport goes when the user asks for one.
     if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered()) a.view_focus = slot;
+    // Delete takes the selected objects out of the scene, as it does in the
+    // Objects tree - the thing picked in this view goes from this view. Only
+    // the focused view listens, so the key still belongs to the node editor,
+    // the tree or the timeline when one of those was clicked last; never in
+    // the middle of a drag.
+    if (open && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) && !ImGui::IsAnyItemActive() &&
+        !ImGui::IsMouseDown(ImGuiMouseButton_Left) && shortcut_pressed("edit.delete"))
+      delete_selection = true;
     if (open) {
       // a borderless child drops its window padding unless told to keep
       // it - which is how the header's buttons came to sit on the frame
@@ -733,6 +776,15 @@ void draw_panel_viewport(App &a) {
   }
   // Closed after the loop: the mask must not change while it is being walked.
   if (closing >= 0) view_close(a, closing);
+  // Deleted after it too, for the same reason: the views drew this frame's scene.
+  if (delete_selection) {
+    SceneState &sc = scene();
+    std::vector<int> sel = sc.selection;
+    if (sc.selected >= 0 && std::find(sel.begin(), sel.end(), sc.selected) == sel.end())
+      sel.push_back(sc.selected);
+    std::string why;
+    if (!scene_delete_objects(a, sel, true, why) && !why.empty()) a.status = why;
+  }
 }
 
 } // namespace studio

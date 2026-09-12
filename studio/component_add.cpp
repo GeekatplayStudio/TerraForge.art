@@ -77,6 +77,13 @@ const std::vector<ComponentKind> &component_kinds() {
       {"cylinder", "Cylinder", "Objects", "A cylinder, with its Primitive node and a material."},
       {"cone", "Cone", "Objects", "A cone, with its Primitive node and a material."},
       {"import_mesh", "Import a mesh...", "Objects", "An OBJ, STL, PLY, glTF or FBX from disk."},
+      {"pine", "Pine", "Plants", "A conifer, about 22 m: tiers of ragged, drooping branches."},
+      {"juniper", "Juniper", "Plants", "A desert juniper or pinyon, about 6 m: a twisted trunk under a lumpy crown."},
+      {"palm", "Palm", "Plants", "A palm, about 16 m: a leaning ringed trunk under arching fronds."},
+      {"fern", "Fern", "Plants", "A fern, about 1.6 m: a rosette of arching fronds."},
+      {"grass", "Grass tuft", "Plants", "A tuft of dry grass, about 0.8 m."},
+      {"bush", "Bush", "Plants", "A shrub, about 2.5 m."},
+      {"boulder", "Boulder", "Plants", "A sandstone boulder, about 3 m."},
       {"scatter", "Scatter points", "Populations",
        "A ScatterPoints node: a population placed over the terrain by mask,\n"
        "slope and altitude."},
@@ -179,7 +186,8 @@ bool component_add(App &a, const std::string &kind, const std::string &name,
     undo_push(a, "Add camera");
     return select(scene_add_camera(name));
   }
-  if (kind == "cube" || kind == "sphere" || kind == "plane" || kind == "cylinder" || kind == "cone") {
+  if (kind == "cube" || kind == "sphere" || kind == "plane" || kind == "cylinder" || kind == "cone" ||
+      scene_is_plant_kind(kind)) {
     out = component_add_primitive(a, kind, name);
     if (out.object < 0) {
       err = "add " + kind + ": the graph is busy";

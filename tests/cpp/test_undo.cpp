@@ -188,6 +188,52 @@ static void test_lights_and_primitives_undo() {
   CHECK(prim_ok, "the primitive came back with geometry and scatter binding");
 }
 
+// A graph reloaded by undo is renumbered. Every node binding outside it has to
+// follow: with a hole in the numbering (any deleted node leaves one) the old
+// number named a different node or none, and undoing a delete built the
+// deleted plant a second time beside the restored one.
+static void test_undo_keeps_node_bindings() {
+  std::printf("undo: bindings follow the renumbered nodes...\n");
+  App a;
+  reset_all(a);
+  gpx::Node *gap = a.graph.add_node("Noise");
+  gpx::Node *prim = a.graph.add_node("Primitive");
+  gpx::Node *mat = a.graph.add_node("MaterialOutput");
+  CHECK(gap && prim && mat, "the nodes exist");
+  if (!gap || !prim || !mat) return;
+  a.graph.remove_node(gap->id); // the hole
+  const uint64_t prim_id = prim->id, mat_id = mat->id;
+  int obj = scene_add_primitive("pine", "Pine");
+  scene().objects[(size_t)obj].driver_node = prim_id;
+  scene().objects[(size_t)obj].material_node = mat_id;
+  render_settings().terrain_material_node = mat_id;
+  a.last_material = mat_id;
+
+  undo_push(a, "Delete Pine");
+  const SceneDeleteResult r = scene_delete_with_drivers(scene(), &a.graph, {obj}, false);
+  CHECK(r.objects.size() == 1 && r.nodes.size() == 1, "the pine and its node went");
+  undo_perform(a);
+
+  uint64_t prim_now = 0, mat_now = 0;
+  for (const auto &n : a.graph.nodes) {
+    if (n->type == "Primitive") prim_now = n->id;
+    if (n->type == "MaterialOutput") mat_now = n->id;
+  }
+  const SceneObject *pine = nullptr;
+  int pines = 0;
+  for (const SceneObject &o : scene().objects)
+    if (o.name == "Pine") {
+      pine = &o;
+      ++pines;
+    }
+  CHECK(prim_now && mat_now, "undo brought the nodes back");
+  CHECK(pines == 1 && pine, "one pine came back");
+  CHECK(pine && pine->driver_node == prim_now, "its driver is the restored Primitive");
+  CHECK(pine && pine->material_node == mat_now, "its material is the restored MaterialOutput");
+  CHECK(render_settings().terrain_material_node == mat_now, "a setting's node binding follows too");
+  CHECK(a.last_material == mat_now, "the last material follows");
+}
+
 static void test_mesh_vertices_survive() {
   std::printf("undo: imported mesh data...\n");
   App a;
@@ -1059,6 +1105,7 @@ int main() {
   test_world_undo();
   test_scene_undo();
   test_lights_and_primitives_undo();
+  test_undo_keeps_node_bindings();
   test_mesh_vertices_survive();
   test_redo_branch_truncation();
   test_history_and_jump();

@@ -70,8 +70,16 @@ std::vector<uint8_t> mesh_raster(const SceneObject &o, int size,
     float nl = std::sqrt(nv[0] * nv[0] + nv[1] * nv[1] + nv[2] * nv[2]);
     if (nl < 1e-9f) continue;
     float ndl = (nv[0] * L[0] + nv[1] * L[1] + nv[2] * L[2]) / nl;
-    float shade = 0.35f + 0.65f * std::max(0.f, ndl);
     const SceneObject::Part *part = part_of(t);
+    // A leaf is thin and lets light through, so a leaf card turned away from
+    // the sun is not in shadow - it is lit from behind. Lighting it as if it
+    // were a solid surface crushed every needle to the ambient floor while
+    // the trunk beside it took the full light, and a picture of a pine came
+    // out as a brown skeleton with a green fringe. Double-sided parts, which
+    // is what foliage is, are lit by how square they are to the light either
+    // way.
+    const bool thin = part && part->double_sided;
+    float shade = thin ? 0.55f + 0.45f * std::fabs(ndl) : 0.35f + 0.65f * std::max(0.f, ndl);
     float base[3] = {o.color[0], o.color[1], o.color[2]};
     if (part) for (int k = 0; k < 3; ++k) base[k] = part->color[k];
     const bool tex = part && part->w > 0 && part->h > 0 && !part->rgba.empty() && have_uv;
@@ -96,8 +104,8 @@ std::vector<uint8_t> mesh_raster(const SceneObject &o, int size,
         float z = w0 * Z[0] + w1 * Z[1] + w2 * Z[2];
         float &d = depth[(size_t)y * W + x];
         if (z >= d) continue;
-        d = z;
         float col[3] = {base[0], base[1], base[2]};
+        float cover = 1.f;
         if (tex) {
           const float *ua = &o.uvs[(size_t)t * 2], *ub = &o.uvs[(size_t)(t + 1) * 2], *uc = &o.uvs[(size_t)(t + 2) * 2];
           float u = w0 * ua[0] + w1 * ub[0] + w2 * uc[0];
@@ -106,12 +114,29 @@ std::vector<uint8_t> mesh_raster(const SceneObject &o, int size,
           v -= std::floor(v);
           int tx = std::min(part->w - 1, (int)(u * part->w)), ty = std::min(part->h - 1, (int)(v * part->h));
           const uint8_t *s = &part->rgba[((size_t)ty * part->w + tx) * 4];
-          if (opt.alpha_cutout && s[3] < 128) continue; // a leaf's cut-out
+          // How much of this texel the leaf covers, kept rather than tested.
+          // A needle spray or a leaf edge is mostly gap: testing each texel
+          // against a half takes the whole texel or none of it, and at the
+          // size a picture of a tree is wanted almost none of them pass - the
+          // foliage vanishes and the card is a picture of the wood. A pine
+          // wood went brown from the middle distance out. Weighing the colour
+          // by what is actually covered keeps the foliage; only a texel with
+          // nothing in it at all is skipped, so it cannot take the depth from
+          // something solid behind it.
+          cover = s[3] / 255.f;
+          if (opt.alpha_cutout && cover < 0.04f) continue;
           for (int k = 0; k < 3; ++k) col[k] *= s[k] / 255.f;
         }
+        // Only now is this sample known to be there, so only now may it take
+        // the depth. Claiming it first and then discovering the picture was
+        // transparent punched a hole through everything behind: a needle
+        // picture is mostly gap, so the nearest spray blanked the whole crown
+        // behind it and a photographed pine came out as bare brown wood
+        // however much foliage it had.
+        d = z;
         uint8_t *dst = &rgba[((size_t)y * W + x) * 4];
         for (int k = 0; k < 3; ++k) dst[k] = (uint8_t)std::clamp(col[k] * shade * 255.f, 0.f, 255.f);
-        dst[3] = 255;
+        dst[3] = (uint8_t)std::clamp(cover * 255.f, 0.f, 255.f);
       }
   }
   return rgba;

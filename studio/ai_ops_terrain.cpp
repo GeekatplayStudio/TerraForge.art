@@ -103,10 +103,11 @@ int ai_terrain_op(App &a, const std::string &op, const json &act, std::string &e
       err = "delete_object: no object called '" + name + "'";
       return 0;
     }
-    undo_push(a, "Delete " + name);
-    const int n = scene_delete_subtree(idx);
-    a.scene_selection_serial++;
-    a.status = "deleted " + name + (n > 1 ? " and " + std::to_string(n - 1) + " under it" : "");
+    // with the node that would rebuild it, as the tree and the viewport delete
+    if (!scene_delete_objects(a, {idx}, false, err)) {
+      err = "delete_object: " + err;
+      return 0;
+    }
     return 1;
   }
   if (op == "add_component") {

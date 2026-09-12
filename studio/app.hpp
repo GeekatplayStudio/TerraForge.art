@@ -55,6 +55,7 @@ struct App {
     bool is_texture = false;
     bool is_field = false;   // the field domain rather than a buffer
     bool is_points = false;  // the point-cloud domain
+    bool is_plant = false;   // a part of a plant handed to what it grows on
     unsigned field_type = 0; // gpx::FieldType, meaningful when is_field
     bool optional = false;
     std::string value; // outputs: what the connector carries ("0.02..0.97")
@@ -119,6 +120,10 @@ struct App {
   bool show_material_browser = false;
   // The height painter: a sculpt layer drawn flat, as a greyscale picture.
   bool show_paint_canvas = false;
+  // The Plants workspace's library window (panel_plants.cpp).
+  bool show_plants = false;
+  bool show_plant_editor = false; // the species editor window (panel_plant_editor.cpp)
+  bool plant_wind_preview = true; // plants sway in the viewport
   // The MaterialOutput most recently assigned to something. A new component
   // gets this rather than nothing, because working on a set of objects that
   // share a look is the common case (studio/component_new.cpp).
@@ -190,11 +195,13 @@ enum : int {
   WS_LIGHTING = 6,
   WS_CAMERAS = 7,
   WS_ANIMATION = 8,
-  WS_COUNT = 9
+  WS_PLANTS = 9, // the plant library now; the plant editor's graph later
+  WS_COUNT = 10
 };
-static const int WORKSPACE_ORDER[8] = {WS_TERRAIN,  WS_MATERIALS, WS_OBJECTS,
-                                       WS_ATMOSPHERE, WS_LIGHTING, WS_CAMERAS,
-                                       WS_ANIMATION, WS_RENDER};
+static const int WORKSPACE_ORDER_COUNT = 9;
+static const int WORKSPACE_ORDER[WORKSPACE_ORDER_COUNT] = {
+    WS_TERRAIN,  WS_MATERIALS, WS_OBJECTS,   WS_PLANTS, WS_ATMOSPHERE,
+    WS_LIGHTING, WS_CAMERAS,   WS_ANIMATION, WS_RENDER};
 // localised name of a workspace (toolbar_bars.cpp)
 const char *workspace_name(int ws);
 
@@ -207,6 +214,7 @@ inline int domain_of_category(const std::string &cat) {
   if (cat == "Light") return WS_LIGHTING;
   if (cat == "Camera") return WS_CAMERAS;
   if (cat == "Animation") return WS_ANIMATION;
+  if (cat == "Plant") return WS_PLANTS;
   return WS_TERRAIN;
 }
 
@@ -235,6 +243,15 @@ bool layout_load_named(App &a, const std::string &name, std::string &err);
 // select it, and pan the graph to it. Does nothing if the node is gone.
 void graph_focus_node(App &a, uint64_t node);
 
+// Delete scene objects - each with everything under it, and the node that
+// would build it again - as one undo step (panel_scene_dnd.cpp, over
+// scene_delete_with_drivers). The Objects tree, the viewports' Delete key and
+// the delete_object op all come here. `keep_builtin` spares the world's own
+// pieces, which a stray key in a viewport should not take. Takes the graph
+// lock itself. Returns how many objects went; 0 with `why` said when none did.
+int scene_delete_objects(App &a, const std::vector<int> &objects, bool keep_builtin,
+                         std::string &why);
+
 // panels
 void draw_toolbar(App &a);       // row 1: the classic text menus
 void draw_workspace_bar(App &a); // row 2: which workflow
@@ -246,6 +263,9 @@ void settings_open();
 void draw_panel_material_studio(App &a);  // panel_material_studio.cpp
 void draw_panel_paint_canvas(App &a);     // paint_canvas.cpp
 void draw_panel_material_browser(App &a); // panel_material_browser.cpp
+void draw_panel_plants(App &a);
+void draw_panel_plant_editor(App &a); // panel_plant_editor.cpp           // panel_plants.cpp: the plant library
+void plants_service(App &a);              // once a frame: downloads and loading plants
 // Every workspace keeps its own window arrangement (layout_workspace.cpp).
 void workspace_layout_switch(App &a, int from, int to);
 // the arrangement a workspace was left in, at startup; false when none was saved
@@ -274,6 +294,9 @@ void node_properties_ui(App &a);
 // The same parameters for a given node, as the side pane of a node editor:
 // any_workspace skips the "belongs to another workspace" redirect.
 void node_properties_ui(App &a, uint64_t node_id, bool any_workspace);
+// Parameter edits not yet written to their node, flushed once a frame even
+// when their panel is not drawn (panel_properties_node.cpp).
+void node_properties_flush(App &a);
 // Open another node editor window: domain 0..3 (terrain, materials,
 // atmosphere, render) or 4 for every domain at once.
 void graph_editor_add(App &a, int domain);

@@ -144,6 +144,8 @@ struct FieldValue {
 // (Position, Normal, Altitude, Slope, Orientation — p769-770) plus time for
 // animation and an LOD hint so a node can cheapen itself when the caller is far
 // away. Nothing here is resolution-dependent, by design.
+struct PlantVars; // gpx/plant.hpp: the primitive a plant graph is asking about
+
 struct FieldContext {
   float pos[3] = {0, 0, 0};    // evaluation position, in the graph's space
   float normal[3] = {0, 1, 0}; // surface direction at that point
@@ -152,6 +154,10 @@ struct FieldContext {
   float orientation = 0.f;     // -1..1 by azimuth of the normal
   float time = 0.f;            // seconds, for animated graphs
   float lod = 12.f;            // octave budget; lower when far from the camera
+  // Set while a plant is built: the primitive, its position along it and on
+  // its parent, the plant's age, season and health (gpx/plant.hpp). Null
+  // everywhere else; the plant input nodes read 0 then.
+  const PlantVars *plant = nullptr;
 
   // Derive normal-dependent inputs so callers only have to supply a normal.
   void derive_from_normal() {

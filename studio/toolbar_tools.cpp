@@ -224,8 +224,11 @@ void tools_animation(App &a) {
 
 } // namespace
 
+void tools_plants(App &a); // panel_plants.cpp
+
 void draw_workspace_tools(App &a) {
   switch (a.workspace) {
+    case WS_PLANTS: tools_plants(a); break;
     case WS_MATERIALS: tools_materials(a); break;
     case WS_ATMOSPHERE: tools_atmosphere(a); break;
     case WS_RENDER: tools_render(a); break;

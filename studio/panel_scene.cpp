@@ -44,6 +44,7 @@ Icon scene_type_icon(SceneObject::Type t) {
     case SceneObject::InfiniteSurface: return Icon::Grid;
     case SceneObject::Light: return Icon::Light;
     case SceneObject::Nebula: return Icon::Cloud;
+    case SceneObject::AirLayer: return Icon::Cloud;
     default: return Icon::Mesh;
   }
 }
@@ -54,6 +55,7 @@ const char *scene_type_name(SceneObject::Type t) {
     case SceneObject::Water: return tr("om.type.water");
     case SceneObject::Sun: return tr("om.type.sun");
     case SceneObject::Atmosphere: return tr("om.type.atmosphere");
+    case SceneObject::AirLayer: return tr("om.type.airlayer");
     case SceneObject::Camera: return tr("om.type.camera");
     case SceneObject::Group: return tr("om.type.group");
     case SceneObject::Planet: return tr("om.type.planet");
@@ -208,6 +210,26 @@ void add_bar(App &a, SceneState &sc) {
     sc.selected = scene_add_infinite_surface(parent);
     sc.selection = {sc.selected};
     a.scene_selection_serial++;
+  }
+  ImGui::SameLine(0, 2);
+  if (IconButton(Icon::Cloud, "##addcloud", tr("om.add_cloud_tip"))) {
+    undo_push(a, tr("om.undo.add_air"));
+    const int idx = scene_add_air_layer(a, (int)SceneObject::AirLayerData::Cloud);
+    if (idx >= 0) {
+      sc.selected = idx;
+      sc.selection = {idx};
+      a.scene_selection_serial++;
+    }
+  }
+  ImGui::SameLine(0, 2);
+  if (IconButton(Icon::Sky, "##addfog", tr("om.add_fog_tip"))) {
+    undo_push(a, tr("om.undo.add_air"));
+    const int idx = scene_add_air_layer(a, (int)SceneObject::AirLayerData::Fog);
+    if (idx >= 0) {
+      sc.selected = idx;
+      sc.selection = {idx};
+      a.scene_selection_serial++;
+    }
   }
   ImGui::SameLine(0, 2);
   if (IconButton(Icon::Mesh, "##import", tr("om.import_tip"))) {

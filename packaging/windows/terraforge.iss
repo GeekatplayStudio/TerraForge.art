@@ -2,7 +2,7 @@
 ;
 ; Built by packaging\windows\make_installer.ps1, which passes the version, the
 ; staged folder and the output folder in. Compile it by hand with:
-;   ISCC.exe /DAppVersion=2.0.0 /DStageDir=..\..\build\package\TerraForge /DOutDir=..\..\dist terraforge.iss
+;   ISCC.exe /DAppVersion=2.1.0 /DStageDir=..\..\build\package\TerraForge /DOutDir=..\..\dist terraforge.iss
 ;
 ; Two deliberate choices worth knowing about:
 ;
@@ -17,7 +17,7 @@
 ;   the program should not remove their work.
 
 #ifndef AppVersion
-  #define AppVersion "2.0.0"
+  #define AppVersion "2.1.0"
 #endif
 #ifndef StageDir
   #define StageDir "..\..\build\package\TerraForge"

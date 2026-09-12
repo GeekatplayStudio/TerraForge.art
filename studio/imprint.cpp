@@ -12,6 +12,7 @@
 #include "imprint_footprint.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "terrain_relief.hpp"
 #include "undo.hpp"
 #include <cmath>
 #include <mutex>
@@ -107,8 +108,9 @@ std::string footprints_text(const SceneState &sc, float hs, bool &any) {
     // told about simply must not move. Then there is nothing to suppress -
     // sinking a boulder a hundred metres, or lifting it, leaves the ground
     // byte for byte where it was, because the ground was never asked a
-    // different question.
-    f.base += o.ground_sunk;
+    // different question. The micro-relief's lift of the seat is the same
+    // kind of displacement (SceneObject::ground_relief).
+    f.base += o.ground_sunk - o.ground_relief;
     text += imprint_footprint_line(f, o.ground_sink, o.ground_margin,
                                     o.ground_blend, o.ground_lift,
                                     o.ground_dig);
@@ -150,9 +152,16 @@ void app_service_imprint(App &a) {
   if (!ground && node) ground = node->in_hmap("input");
   if (ground && !ground->v.empty()) {
     bool moved = false;
+    const ReliefDials relief = relief_dials(render_settings());
     for (int i = 0; i < (int)sc.objects.size(); ++i) {
       SceneObject &o = sc.objects[i];
-      if (imprint_ground_of(o) < 0 || !o.ground_lock) continue;
+      if (imprint_ground_of(o) < 0) continue;
+      if (!o.ground_lock) {
+        // left where it was put: the mould meets its base as it stands
+        if (o.ground_relief != 0.f) moved = true;
+        o.ground_relief = 0.f;
+        continue;
+      }
       Footprint f = imprint_footprint(o, hs);
       if (!f.valid()) continue;
       // The ground under the footprint, sampled at its corners and centre.
@@ -160,22 +169,35 @@ void app_service_imprint(App &a) {
       // ever underground unless it is put there on purpose; how far under
       // is `ground_sunk` below. The spread between highest and lowest is
       // published so the panel can say how deep "touches everywhere" is.
-      float hi = -1e30f, lo = 1e30f;
+      //
+      // The ground is the one the viewport draws: the natural ground and the
+      // micro-relief over it (terrain_relief.hpp), metres either way on the
+      // default tile. Every octave, as a plant stands on it - an object's
+      // seat must not move with the camera.
+      float hi = -1e30f, lo = 1e30f, hi_bare = -1e30f;
       const size_t n = f.xz.size() / 2;
       // through the tile's transform (terrain_xform.hpp): the object stands
       // where the moved, turned or stretched ground actually is
       const TerrainXform tx = terrain_xform_current();
       auto note = [&](float u, float v) {
-        const float g = terrain_xform_ground(tx, u, v, [&](float x, float z) {
-          return ground->sample(std::clamp(x, 0.f, 1.f), std::clamp(z, 0.f, 1.f));
-        });
+        auto at = [&](float octaves) {
+          return terrain_xform_ground(tx, u, v, [&](float x, float z) {
+            return ground->sample(std::clamp(x, 0.f, 1.f), std::clamp(z, 0.f, 1.f)) +
+                   relief_at(x, z, relief, octaves) / hs;
+          });
+        };
+        const float g = at(RELIEF_NEAR_OCTAVES);
         hi = std::max(hi, g);
         lo = std::min(lo, g);
+        hi_bare = std::max(hi_bare, at(0.f));
       };
       for (size_t k = 0; k < n; ++k) note(f.xz[k * 2], f.xz[k * 2 + 1]);
       note(f.cx, f.cz);
       if (std::fabs(o.ground_uneven - (hi - lo)) > 1e-6f) moved = true;
       o.ground_uneven = hi - lo;
+      // what the relief lifts the seat by, which the mould is not shown
+      if (std::fabs(o.ground_relief - (hi - hi_bare)) > 1e-6f) moved = true;
+      o.ground_relief = hi - hi_bare;
       const float base_rel = f.base - o.pos[1]; // the base below the pivot
       // Two displacements, and the whole point is that they are different:
       //

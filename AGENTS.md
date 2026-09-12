@@ -141,10 +141,16 @@ changed rather than to the mode that is hiding it.
    erosion effect is not reflected in the viewport": measured on a
    Noise→Hydraulic→Output chain, changing the erosion moved the viewport by a
    mean of 1.022 unpinned and 0.030 while pinned to the Noise upstream of it.
-2. **So it says so, and there are three ways out**: the "Unpin" button in the
+2. **So it says so, and there are three ways out**: the lock button in the
    view header, double-clicking the same node again, and "Follow the Terrain
    Output again" in the graph canvas's right-click menu. The viewport also
-   draws a badge naming the pinned node.
+   draws a badge over the picture. A badge that only named the node was not
+   enough - the same report came back on a Crater -> Terrain Shape -> Thermal
+   chain pinned to the Crater - so it says what is missing: the nodes after
+   it, the erosion, the output.
+   The pin is not saved with the project. A reopened scene follows the Terrain
+   Output, so a camera placed while pinned can stand inside ground the pinned
+   node never had (that crater's camera faced the plateau's cliff).
 3. **A state that changes what is drawn but is not part of the evaluation
    must force the upload itself** (`a.uploaded_serial = 0`). Releasing the pin
    through the API changed the answer and left the previous picture on screen,
@@ -595,8 +601,8 @@ blend ring and rises beyond it; its normal is mixed from the tile's own
 heightmap over the same ring; the tile's fractal micro-relief (FRACTAL_FN,
 `u_frac_amount/u_frac_scale`) is added in both stages with the same
 function in the same tile units; the albedo is borrowed through the tile's
-inverse transform; and water is WATER_FN_GLSL in both the water pass and
-the surround, uploaded by `upload_water_uniforms`. Change the tile's look
+inverse transform; and the water belongs to neither - it is one surface
+drawn over both (see "The sea is one surface" below). Change the tile's look
 and the surround must change with it, or the border comes back.
 
 The colour join is the tile's, not the surround's: planet_place.cpp
@@ -773,7 +779,14 @@ fragment stage, `terrain_xform_apply()` on the CPU for the selection box and
    `base + sink`. `sink = 0` is the exact flat base; there is no separate
    "buried" switch to keep in step.
 3. **The grounded lock reads the highest ground under the hull**, so no
-   corner is ever below the natural surface unless the user sinks it.
+   corner is ever below the surface unless the user sinks it - the surface
+   the viewport draws, micro-relief included, at every octave so a seat
+   never follows the camera. The imprint moulds the heightmap and the relief
+   rides over the mould wherever it is, so the relief's lift of the seat
+   (`ground_relief`, runtime only) is kept from the node the way
+   `ground_sunk` is, taken off the base in `footprints_text`. Handed the
+   lifted base, the mould rises to it and lifts the relief with it: a mound
+   under every object, and the object no better seated.
 4. **A layer's relief is a delta in heightmap units, composited by
    presence** - the same `p` the colour uses - on top of or instead of the
    layers below (`disp_add`). A node that hands a layer relief exposes the
@@ -796,6 +809,248 @@ fragment stage, `terrain_xform_apply()` on the CPU for the selection box and
    apply_post", which belonged to Crater - a node without that port - and
    crashed every battery. Locate by the node's own registration, never by a
    call several nodes share.
+
+## Plants
+
+The Plants workspace (studio/panel_plants.cpp) is the plant library today
+and the plant editor's home later (docs/roadmaps/plants.md).
+
+1. **Three shelves, one manifest** (studio/plant_library.hpp): the built-in
+   kinds (scene_plants.cpp), the free CC0 plants `orchestrator/plant_fetch.py`
+   downloads from Poly Haven on request, and a person's own models recorded
+   where they lie. Each downloaded or recorded plant is a folder with a
+   `plant.json` under `<data_dir>/library/plants/<source>/<id>/`.
+2. **Bundle nothing from a proprietary plant tool.** The dedicated plant
+   modellers' licences forbid redistributing content derived from their
+   assets and building asset collections for scene-assembly tools, and their
+   formats are undocumented and node-locked. No reader for them, no presets
+   recreated from their catalogues, no product names in shipped UI; a user's
+   own export comes in through the generic importers and `plant_record`.
+3. **A file of plants is split, not placed whole.** Poly Haven ships sets -
+   fern_02 is four ferns a metre apart, grass_bermuda_01 twenty-one tufts -
+   so `split_variants` writes one glTF per plant sharing the set's buffer:
+   roots whose footprints overlap are one plant's parts (a pachira's bark
+   and leaves), `_LOD<n>` roots keep their finest. A cut-out's colour is a
+   JPEG with its alpha in a separate map; `merge_alpha` makes the PNG the
+   viewport and the engines cut on. The CDN answers some thumbnail requests
+   with WebP, which stb cannot read: `normalise_thumb`.
+4. **An object's height is heightmap units.** `scene_object_matrix`
+   multiplies `pos[1]` by `height_scale`; `renderer_ground_under` answers in
+   world units. Divide - taken as it came, every plant stood a hundred
+   metres under a 130 m hill.
+5. **Stand on the ground the viewport draws**: the heightmap *and* the
+   fractal micro-relief the terrain shaders lay over it, metres either way
+   on the default tile (`fractal_detail`). `terrain_relief.hpp` is the CPU
+   twin of `gp_detail` in the same float arithmetic; placement, scattered
+   copies (`scene_rebuild_scatter_instances`) and camera-driven populations
+   add `relief_at(..., RELIEF_NEAR_OCTAVES)`. The render bake carries the
+   octaves its grid resolves (`relief_octaves_for_grid`), and the export
+   moves anything standing on the viewport's ground onto the baked
+   triangles (`seat_offset`, `baked_tile_height`) - a ten-metre grid is not
+   the viewport's surface, and a fern on the one was buried in the other.
+   The CPU's other ground queries read the same surface:
+   `renderer_ground_under` takes an octave count, the orbit pivot settles
+   at the count its view draws there (`relief_view_octaves` with that
+   view's `g_view_tri_k`), clicks and the sculpt brush walk onto it
+   (`ground_march.hpp`), the grounded lock seats on it, and `probe_height`
+   reports `drawn_m` beside `placed_m`. Change `gp_detail`, or
+   terrain_place's octave choice, and change the twin.
+6. **A plant is a component**: a Primitive node for a built-in, an
+   ImportObject node for a model, driving the object, at its real size
+   (`unit_m` metres per file unit over `terrain_size_m`), its own colours
+   and pictures and no grey material over them.
+7. **Heavy models load off the main thread from the panel**
+   (`plant_add_async`, finished by `plant_place_service`); a script's
+   `plant_add` waits for its object, with the hang watchdog paused around
+   the read. The jacaranda is two hundred megabytes of scan.
+
+8. **A species is a graph with a sink.** Plant links (`DataType::Plant`) run
+   from a part to the part it grows on, so `PlantSpecies` evaluates last and
+   an edit anywhere in the species reaches it (`plant_root_of`,
+   `plant_subtree`). Only the root computes; every other plant node is data
+   it reads, the way a MaterialLayer is data under a MaterialOutput. The mesh
+   goes into the mailbox `plant_mesh_store` under the root's id, the studio
+   picks it up after the evaluation (`scene_plants_species.cpp`), and the
+   object is created, adopted by name and never deleted like every other
+   node-driven object.
+9. **One seed is one plant, everywhere.** Every draw hashes (seed, instance
+   id, parameter key, draw index) - never a clock, a counter, a global or a
+   thread id - and an instance's id hashes (parent id, node id, slot, index).
+   That is what lets a second leaf node be added without reshuffling the
+   first one's leaves, and what lets `plant_fingerprint` say that a rebuild
+   would change nothing.
+10. **The walker decides whether and where a part grows; its builder decides
+    only what it looks like** (`plant_eval_walk.cpp`). Levels of detail,
+    presence over the seasons, the selectors, the loops, the caps and which
+    child fills a socket live in one place. New behaviour of that sort
+    belongs on the walker's side of the line, or every part has to learn it
+    again.
+11. **Every number on a plant node is a Random attribute and every curve a
+    Curve attribute** (`AttrType::Random`, `AttrType::Curve`), read through
+    `ParamReader`, so spread modes, scopes, the two shaping curves and a
+    field-driven override behave the same on every part. Parameters are
+    declared once with their tooltips in `engine/plant/plant_schema*.cpp`;
+    the nodes, the Properties rows, serialization, `set_attr` and the
+    assistant all read that one table, and a key is permanent once shipped.
+12. **Material slots are fixed**: 0..3 are the `material` .. `material 4`
+    ports, 4 the cap, 5 and 6 the blades. `material_for` returns a default by
+    the part's kind when nothing is connected; a part never makes a material
+    of its own.
+13. **The wind is baked, not simulated**: four numbers per vertex (phase,
+    bend, flutter, height) and one function that moves them, whose GLSL twin
+    (`plant_wind_glsl()`) is spliced into the mesh and depth shaders. Change
+    one, change the other - a plant that sways differently in the render than
+    in the viewport is the bug the pairing exists to prevent.
+
+14. **A plant's mesh is per primitive; a scene part is per material.** A
+    mature tree grows hundreds of thousands of `PlantPart` runs, one for each
+    thing it grew, and the exporters need every one of them by name. The
+    scene object does not: `mesh_to_object` gathers the triangles by the
+    material they wear, so one picture is held and one texture uploaded per
+    material. Copying a leaf picture per part ran the app out of memory on a
+    24 m oak.
+15. **A picture made from rules carries its own colour.** The bark is drawn
+    with the material's colour between its cracks and the leaf with its own
+    green, so the material's colour must be left at white when a picture is
+    attached. Multiplying it in again squared a mid-brown bark into black.
+16. **A plant is full-grown long before it dies.** Growth is measured against
+    a little under half the lifespan (`plant_maturity`), not the whole of it -
+    a 140-year oak of a 600-year species is a whole tree, not a quarter of
+    one - and the size that maturity implies is `plant_size_at`. The engine
+    and the archetype builders read the same two functions, because the
+    builders cancel exactly what the engine applies.
+17. **The height in a description is the height that stands up.** What an
+    archetype's botany adds up to is only roughly the height asked for, and a
+    gnarled tree wanders as it climbs. `fit_to_height` grows the species at
+    the coarsest meshing and corrects the root's scale by what it made. The
+    placement's size belongs to the object in the scene and must never be
+    written onto the species' own scale.
+
+18. **A part must not come away from the part it grows on.** The wind moves
+    a vertex from four baked numbers alone (phase, bend, flutter, height), so
+    two vertices in the same place that disagree about any of them are pulled
+    apart. The phase is a function of distance out along the wood
+    (`wind_phase_at`) and nothing else; `bend` and the phase are carried on
+    the parent's axis samples and copied by the child from the socket it
+    lands on, interpolated between samples exactly as its position is - never
+    worked out a second time; and `flutter` is zero where a part meets its
+    parent. A leaf that drew its own phase, with a flutter floor under its
+    hook, shook 92,000 leaves off their twigs.
+19. **Flutter is baked in metres.** A builder writes the amplitude it wants -
+    a third of a leaf's own length - and `plant_build` divides it into the
+    wind function's units once the plant's height is known, the same way it
+    finishes the height weight. Baked as a bare 0..1 weight the wind scaled
+    it by the whole plant's height, smearing every leaf on a 22 m oak over
+    22 cm: twice its own length, and the crown drew as green streaks.
+20. **A leaf is the size the species says, wherever it grows.** Wood inherits
+    its parent's scale, because a twig is smaller than its branch; a leaf, a
+    flower and a fruit do not, because an oak leaf is eleven centimetres on a
+    low bough and on the highest twig alike. Inheriting it put a leaf three
+    levels down at 0.62^3 of its size.
+
+21. **A wood is a few individuals and many copies.** One species grown a
+    handful of times, each with its own seed, bound to one population layer
+    that splits its points among them by the species index every point
+    already carries (`SceneObject::scatter_species`). Scattering a single
+    plant gives clones the eye picks out at once; a mesh per tree is
+    unaffordable. `plant_forest` is the only thing that should make one.
+22. **A branch is as thick as what it feeds** (`pipe_ratio`): n branches of
+    ratio r satisfy n*r^2 = 1. A fixed share per level gave a 28 m pine
+    sixteen-centimetre twigs, as thick as its needle sprays were wide.
+23. **A cut-out picture must cover enough of its card to read as what it
+    is.** A single needle drawn across a whole card is 6% opaque and 94%
+    hole, and a pine built from those is bare wood at every distance. Fifteen
+    per cent is the floor the tests hold; a needle spray gives 37%.
+24. **A part with no picture must not outweigh the tree.** It is the one
+    thing that paints a flat colour, so it decides what the plant looks like
+    from any distance: a pine's cones reached 47% of its triangles and turned
+    the whole crown brown.
+25. **A rasteriser claims the depth buffer only for what is actually there.**
+    Writing the depth before testing a cut-out punches the picture's every
+    transparent gap through everything behind it - and foliage, being thin,
+    is mostly gap. The same rule makes a leaf lit from behind bright, not
+    black: `double_sided` parts are lit by |N.L|.
+
+26. **One wind blows over the whole scene** (`RenderSettings::wind`). The
+    clouds drift with it, the sea is raised by it, the fog moves with it, the
+    plants lean and gust with it. Each keeps only what is properly its own -
+    how long the sea has been under it, how flexible a plant is, how much
+    faster the air moves aloft - and each can be cut loose. A landscape where
+    the cloud shadows cross one way, the trees lean another and the waves run
+    a third reads as assembled however good each part is.
+27. **Anything that drifts is given a distance, never a speed.** A gusting
+    speed multiplied by the clock teleports the whole field the moment it
+    changes. `wind_advance` integrates the drift a frame at a time and the
+    clouds and fog are given that, so a gust surges and never jumps. The sea
+    is the exception in the other direction: it takes the mean and not the
+    gust, because a sea state is built over hours and rebuilding the wave
+    spectrum every frame would cost more than the water pass.
+28. **A leaf is a sheet, not a surface.** Which way its normal faces is an
+    accident of how the card was built, so foliage is lit from both sides
+    (`u_leaf`: N turned toward the viewer) and lit through from behind. Lit as
+    a solid surface, every leaf that turns past the sun snaps to black and
+    back - half of what reads as flicker in a moving crown.
+29. **A cut-out edge is resolved to a pixel, not tested at a half.** A leaf
+    that moves drags its picture across the pixel grid and each pixel flips as
+    the texel it lands on crosses the threshold. Dividing by `fwidth(a)` makes
+    the test a sub-pixel coverage, and the edge lands in the same place
+    however the leaf is sampled - the other half of the flicker.
+30. **A branch is as flexible as its thickness makes it.** A cantilever's
+    stiffness is EI with I ~ r^4 and the wind's push goes with its diameter,
+    so how far it swings relative to its own length goes as the slenderness
+    (L/r) cubed, and along it the shape is the cantilever's own - which leaves
+    the clamped end with no slope at all. `p^1.5` rose vertically out of the
+    joint, so a branch appeared to shear away at the point it is fixed to.
+31. **Plants do not move in a window unless that window says so**
+    (`ViewConfig::animate_plants`, off by default). A swaying crown is the one
+    thing on screen that never settles, and placing a tree or framing a shot
+    is easier against a still picture.
+32. **A population that is painted must be bounded by its paint.** An
+    unbounded layer is realised cell by cell in world space around the camera
+    and cannot see a mask painted on the tile, so an unpainted brush places
+    thousands of instances anyway. `unbounded` is for a population meant to
+    cover everything; a brush says where by being painted.
+
+33. **Where a thing goes is a rule about its GROUP, never about the thing**
+    (engine/gpx/ecology.hpp). "Moss gathers on stone and nowhere else" is a
+    fact about moss; a particular moss model is a member of that group and
+    inherits it. Written per model, every rule would have to be restated each
+    time the library grew - written per group, a model added next year is
+    placed correctly in every biome, including ones written before it existed.
+34. **Tier is the order the ground assembles, and it cannot be fudged.** What
+    lies on bare earth is placed first, then what stands up out of it, then
+    what lives among that, then the cover, then the litter over everything. A
+    layer can only be placed in relation to what is already there, so moss
+    laid before the boulders has nothing to gather on - and that is exactly
+    what makes assembled scenery look assembled. A rule about a group of a
+    higher tier than its own is a modelling error; the ecology tests refuse
+    it.
+35. **What a layer is placed against is not what precedes it.** A population
+    interacts with the one population wired into its "below", so that choice
+    decides which rule can be expressed at all. It is whichever already-placed
+    group the strongest rule names - moss against boulders, litter against the
+    tree that dropped it, fungi against the dead wood - not whatever happened
+    to be built last. Conflating order-of-creation with choice-of-host put the
+    moss on the ferns.
+36. **Affinity and repulsion say different things and the interesting cases
+    need both.** Affinity is a gradient (more of them the closer you get);
+    repulsion is a hole (none at all inside the radius); NEGATIVE repulsion is
+    "only inside it", which is how a group sits ON another rather than merely
+    near it. Bracken near the trees but not in their shade is both at once.
+
+37. **A leaf is a surface, not a picture.** What makes foliage read as a leaf
+    rather than as printed paper is not the colour - it is the midrib standing
+    proud with the blade dished either side, the veins ridged across it, and a
+    waxy cuticle that is glossy on the blade and dull along the veins and at a
+    dry rim. None of that is in a colour map, so a leaf picture comes with a
+    normal map and a roughness map (`plant_texture_leaf`), the part carries
+    them, and the shader lights by them. The bark had a normal map from the
+    start; the leaves went without one for far too long.
+38. **A part's material terms belong to the part.** Roughness and translucency
+    come from the plant material the part wears, not from a constant in the
+    renderer or from whatever the material system last happened to set: a
+    laurel is glossy and nearly opaque, a beech in spring is matte and glows
+    through, and one number cannot be both.
 
 ## Populations and level of detail
 
@@ -842,6 +1097,28 @@ fragment stage, `terrain_xform_apply()` on the CPU for the selection box and
    back the same instances; the moment a cell's contents read the eye,
    distance or frame, a population re-grows as you walk and the whole
    on-demand model is worthless.
+8. **Plants are primitives, not files** (studio/scene_plants.cpp): `pine`,
+   `juniper`, `palm`, `fern`, `grass`, `bush`, `boulder` are built from the
+   kind like the cube, deterministically, with a bark part and a foliage part
+   carrying their own colours - so a plant gets **no** grey component
+   material, its object colour and node colour are white, and it comes at
+   its real size (`scene_plant_size_m`). Everything that regenerates a
+   primitive calls `scene_primitive_build`, which fills verts, uvs and parts;
+   `scene_primitive_verts` alone loses a plant's colours. Sheets of leaf are
+   one-sided: FS_MESH mirrors a normal that faces away from the eye across
+   the view plane (continuous at a closed mesh's silhouette), so a leaf seen
+   from below is lit, not black. A plant's **seed rides in its pseudo-path**
+   (`primitive:pine#12`, the Primitive node's Plant seed): the object rebuilds
+   when it changes and a saved scene grows the same tree; 0 is the tree it
+   always was.
+9. **A cut-out picture's mipmaps keep its coverage** (alpha_mips.hpp, part
+   textures and baked cards): each level's alpha is scaled until the share of
+   texels past the cut matches the base level. Plain mipmaps averaged the leaf
+   into the clear texels round it and a far tree thinned to twigs.
+10. **An imported mesh shades smooth where it is smooth** (`mesh_to_object`):
+    a corner takes the area-weighted normal of every face meeting at its
+    **position** (a file splits vertices at texture seams), unless that leans
+    more than 50 degrees from its own face - a box keeps its edges.
 
 ## Performance rules
 
@@ -872,8 +1149,8 @@ fragment stage, `terrain_xform_apply()` on the CPU for the selection box and
    medians 22 % apart.
 8. **A conservative bound must be built from the real data.** Patch height
    bounds come from the full-resolution heightmap, not the 256² picking copy,
-   and are widened by a texel because bilinear filtering reaches the
-   neighbour. A bound that under-covers does not cost performance — it puts a
+   and are widened by two texels because the B-spline relief's bilinear taps
+   reach that far. A bound that under-covers does not cost performance — it puts a
    hole in the terrain.
 
 ## Engine rules
@@ -993,9 +1270,11 @@ belongs to; do not fake a field node with a 1×1 buffer.
 1. **A node belongs to one workspace through its category**
    (`domain_of_category`, `WS_*` in `app.hpp`). Terrain, Materials, Objects
    (Scene), Atmosphere (+Cloud), Lighting (Light), Cameras (Camera),
-   Animation, Render. Workspace numbers are historical - 4 is "all domains"
-   and saved editor layouts carry them - so new workspaces append; never
-   renumber.
+   Animation, Render, Plants (Plant - no node has it yet; the plant editor's
+   will). Workspace numbers are historical - 4 is "all domains" and saved
+   editor layouts carry them - so new workspaces append; never renumber.
+   `WORKSPACE_ORDER` is the bar's order and `WORKSPACE_ORDER_COUNT` its
+   length: loops over the bar use the count, never a literal.
 2. **Configuration nodes drive the scene, they do not compute buffers.**
    Light / Camera / Scene / Cloud / Render categories and every node whose
    description starts with `[Planned]` are configuration nodes in the
@@ -1006,6 +1285,16 @@ belongs to; do not fake a field node with a 1×1 buffer.
    name, then created - and never deleted** (`scene_nodes_objects.cpp`).
    Removing the node leaves an ordinary object behind. Lengths on nodes are
    metres; the conversion to tile units happens there and nowhere else.
+   The other way round, **deleting an object deletes the node that would
+   create it again** (Primitive, ImportObject, LightSource, SceneCamera,
+   Planet, Nebula, InfiniteTerrain), in the same undo step: every delete -
+   the Objects tree, a viewport's Delete key, `delete_object` - goes through
+   `scene_delete_objects` (panel_scene_dnd.cpp) over
+   `scene_delete_with_drivers` (scene.cpp, tested in undo_tests). Deleting
+   the object alone brought it back on the next evaluation. A viewport's
+   Delete spares `builtin` objects (the world, its terrain, sea, air, sun);
+   the tree does not. Nothing is selected after a delete, so a second press
+   cannot take whatever slid into the deleted index.
 4. **Render nodes are the source of truth when present.** `apply_scene_nodes`
    copies RenderOutput / RenderPasses / RenderBackdrop / PostProcess into
    `RenderSettings` after every evaluation; the Render panel edits the same
@@ -1058,6 +1347,52 @@ belongs to; do not fake a field node with a 1×1 buffer.
    written for.** The scattering octave attenuation of 0.5 assumes an
    optical-depth scale that is not ours. Expose the constant and pick the
    value by measuring, rather than copying it and trusting the result.
+
+## The terrain's detail in the viewport
+
+What the node graph shows and what the viewport draws have to be the same
+ground. Four rules came out of "the node looks eroded, the viewport does not,
+and the rims are jagged". (The scene that reported it had no imprint at all:
+its viewport was pinned to the node before the erosion - see "Modes you
+cannot see". Check `view_node` before anything below.)
+
+1. **Only the imprint that feeds the output directly is lifted off the
+   tile** (`final_imprint`, app_upload.cpp). Taking any TerrainImprint's
+   input dropped every node after it - the erosion and Terrain Editor effects
+   inserted before the output - from the viewport, while the output's own
+   thumbnail still showed them.
+2. **The relief is a cubic B-spline, in every pass that places the terrain**
+   (HEIGHT_SMOOTH_FN, shaders_relief.cpp: the view's vertices and the shadow
+   map's). Read bilinearly it is facets meeting at creases, and a rim drawn
+   that way is a staircase however finely it is tessellated. `u_height_top`
+   must be the tile's own last mip level, uploaded after its swap - a level
+   past the texture reads size 0 and the surface goes NaN.
+3. **The relief's level of detail follows the lens and the screen**
+   (`relief_lod_k`): the mip whose texel is as long as a tessellation edge,
+   times the dial - never a fixed multiple of distance, which put the whole
+   tile at level 4 from the default camera. Vertex micro-relief stops at
+   octaves longer than two triangle edges (`u_tri_k`); finer ones are the
+   normal's. The fragment normal is differenced over a texel **of the level
+   it reads** (`textureQueryLod`), or it shades as creased facets.
+4. **The picture is anti-aliased** (renderer_fxaa.cpp) after `draw_scene`
+   and before the lens pass, on 8-bit targets only - a float target is a
+   render pass whose numbers must not be blended.
+5. **Patch bounds reach two texels past a patch** (terrain_cull.cpp): the
+   B-spline's bilinear taps read that far. One texel was right for plain
+   bilinear and would cull ground the spline still draws.
+6. **A released slider's edit is flushed once a frame, whatever panel is up**
+   (`node_properties_flush`). The panel used to write its own node only while
+   drawn: release a slider while the 256 pass held the graph, pick another
+   node, and the full-resolution pass never came - the viewport stayed on the
+   preview. While the heightmap on screen is smaller than the graph's
+   resolution the view says so ("Preview at N px").
+7. **The sun's shadow bias comes from the map's texel**, slope-scaled, plus
+   the relief only the view draws (micro-relief, a material's displacement) -
+   `u_shadow_geom`. A fixed 0.004 of the depth range was ~88 m on a 5 km tile
+   and no gully or crater wall could shadow itself.
+8. **`u_frac_gain` in FRACTAL_FN reads 0 when a program never uploads it**, and
+   `gp_gain()` turns that into the 0.5 it always was: the tile and the surround
+   draw the same micro-relief whether or not a program knows the setting.
 
 ## Generated shaders
 
@@ -1202,6 +1537,56 @@ belongs to; do not fake a field node with a 1×1 buffer.
     fog of its own painted it pale right up to the tile's border, which read
     as a cliff around the tile.
 
+## The sea is one surface
+
+The water used to be two things: a plane under the tile's footprint,
+blended over the tile, and the surround flattening its own ground to the
+water level and tinting it. Two programs, two looks, and the tile's square
+stood in the middle of every lake. Now (studio/renderer_water.cpp,
+shaders_water.cpp, water_surface.*, engine/gpx/water_waves.hpp):
+
+1. **One clipmap over the world.** Rings about the eye's point over the
+   flat world (`water_eye_param`, the inverse of `sphere_place`), each
+   level centred on a point snapped to twice its own cell, placed with
+   `pl_sphere_place` so the sea follows the curve. A level owns what lies
+   within `WATER_OWN` cells of its centre and no finer level owns; the
+   fragment stage discards the rest by the point's *resting* position, and
+   a ring leaves `WATER_HOLE` cells open. `test_water.cpp` `test_clipmap`
+   proves the partition and that at every seam the fine side is fully
+   morphed and the coarse side not at all - change a constant and it says
+   so (224 hole and 2860 seam failures when they were loosened).
+2. **Never take screen derivatives on a clipmap.** Where a level morphs its
+   triangles thin to slivers, and `fwidth` there is nonsense: every sliver
+   drew a dot along the level's rim. The pixel's footprint on the water is
+   `dist * u_pixel_k / |V.up|` - measured at the far plane on the CPU,
+   because at the near plane the two points are too close for a float.
+3. **The surround no longer flattens to the water** (u_shell 0): the sea
+   needs the bed there to see through. The far shell still flattens and
+   shades its sea with `water_far_color`, the limit the full shading
+   reaches when every wave is under a pixel, so the two meet at the 29-tile
+   square - the water stops on that square (`u_reach_square`) exactly where
+   the shell starts, or it fades with the surround's horizon when there is
+   no shell (`surround_far_shell`, world_shape.cpp, is the one decision).
+4. **The waves are a CPU truth with a GLSL twin.** `gpx::water::build`
+   (Gerstner waves from the Pierson-Moskowitz spectrum of a wind) and
+   `evaluate`; WATER_WAVES_GLSL is line for line. `verify_field_gpu`
+   measures them (displacement 4e-5 m, slope 8e-5 at 600 m). Phases are
+   rebased in double to a quarter-tile origin (`rebase`), so a 4 cm wave
+   keeps its phase kilometres out. The offline render bakes its sea from
+   the same truth (render_water_bake.cpp), about the camera, with the
+   roughness of the waves its mesh cannot carry.
+5. **The water composites what is behind it, in light.** The scene's depth
+   and colour are copied before the pass; the colour is un-developed
+   (gamma, ACES, saturation, grade, exposure undone) and the transmitted
+   light added to what the surface sends, then developed once. Blending in
+   the display's encoding made every shallow glow cyan.
+6. **Depth-buffer measurements need a trust.** A lake a few metres deep at
+   thirty kilometres sits inside one 24-bit depth step: measured, it reads
+   as no water and turns see-through and white with foam. `grain_m` is the
+   step in metres; past it the thickness counts as deep, and coast foam's
+   probe straight down (`ground_below_m` - vertical, because a view-ray
+   depth widens foam into a band at a grazing view) gives way.
+
 ## What you see is what you get
 
 The viewport and the offline render have to be one picture. Four things had
@@ -1273,6 +1658,71 @@ the whole sky dome, and the viewport multiplies one averaged sky colour by
 `ambient_intensity`. The physical answer is several times brighter. The two
 will not agree until one of them changes, and changing either changes how
 every existing scene looks.
+
+Five faults made the rendered textures "all mixed up" (grey and green bands
+over the mountain, black edges at the water), and each has a rule now:
+
+1. **The surround leaves the tile's square out** (`keep` mask in
+   `render_bake_terrain`), as FS_INF discards it. Kept, it lay a hair from
+   the tile's surface and the path tracer picked one or the other per pixel.
+2. **Palette rows are written in grid order.** The mesh's v is `1 - b` and
+   the engines read v up from the image's bottom; writing rows upside down as
+   well mirrored the palette north to south.
+3. **The tile's colour is the viewport's**: `app_terrain_albedo()` (what
+   app_upload.cpp picked, the assigned material first) through the
+   material's tint/gain/saturation/blend, mixed toward the palette by the
+   placement weight - never "the last node in the graph with a texture".
+4. **`Ground::at` applies the tile's `scl.y` and `pos.y`**, as every viewport
+   pass does.
+5. **Engines clip at 1e-5 units** (Mitsuba `near_clip`, Blender
+   `clip_start`): a unit is a tile, and the defaults cut away the first 50 m
+   and 500 m. Terrain and surround BSDFs are `twosided`.
+
+And the surround grid gathers about the **camera's** ground point (as the
+sea's rings do), not the tile's centre, or a tile's width away its cells are
+hundreds of metres across. A scattered copy's row in scene.json has twelve
+numbers; read them through `orchestrator/render_instances.py`, never by
+unpacking five.
+
+Every engine builds the same scene (render_engines.py Mitsuba,
+render_cycles.py, render_luxcore.py): terrain and surround with their
+pictures, the exported sea mesh, scene meshes **by their parts**.
+
+- **A mesh goes out one OBJ per part** (`mesh_N_part_K.obj`, `parts` in its
+  scene.json entry) with the part's colour, picture and a grey alpha mask:
+  every engine takes one material per shape, and a plant's colours are its
+  parts'. Faces are written **wound to their own normals** - Cycles shades
+  from the winding and drew mis-wound lumps and trunks black.
+- **Cycles works in one frame**: Blender's OBJ importer turns y-up into z-up,
+  (x, y, z) -> (x, -z, y), so everything the script places goes through the
+  same turn (`CONV`, `to_blender`), and a placed mesh's `matrix_world` is
+  `CONV @ M`. It used to swap y and z - a mirror - and overwrite the imported
+  turn, so the camera looked at a reflection and meshes lay on their sides.
+- **The sky panorama, per engine** (measured with a marked panorama - red at
+  our +x, green at +z, blue at -z - and a camera looking along each). Our
+  longitude is `u = atan2(x, -z) / 2pi + 0.5`, row 0 up.
+  - Mitsuba's `envmap` reads it without the half turn: `to_world` is a
+    180-degree turn about y.
+  - Cycles: the world mapping turns it **270** degrees about z. It was 90,
+    which matched a Mitsuba that was itself half a turn out - both engines
+    drew the sky behind the camera, and nothing compared either with the
+    viewport.
+  - LuxCore: `transformation = mirror_y * RotZ(90)`; its infinite light runs
+    longitude the other way round, which no turn can undo.
+- **LuxCore** (render_luxcore.py, pinned by tests/test_render_luxcore.py) is
+  z-up like Cycles (`CONV`, `to_lux`). Its field of view spans the picture's
+  **longer** side. A `distant` light's `direction` is the way the light
+  travels (minus our sun direction) and its `color` is a radiance over a
+  cone of half-angle `theta`: irradiance E needs `E / (pi sin^2 theta)`.
+  `DefineMesh(name, points, triangles, normals, uvs, None, None)`.
+  `pyluxcore.Init()` takes no Python log callback: with one,
+  `WaitForDone` deadlocked - poll `HasDone()` instead.
+- **Numbers into OBJ text go through `ObjText`** (studio/obj_text.hpp,
+  `std::to_chars`), never the stream: under MinGW the stream formats each
+  float through its printf, and one small scene of plants froze the window
+  for seven seconds. A part's picture goes out once per content
+  (`png_once`, named by a hash, fast compression) - it used to be compressed
+  again at the slowest setting on every render.
 
 ## One palette, from the same numbers, on both sides of a tile's border
 
@@ -1399,6 +1849,91 @@ because the density is sampled six times a step (once forward, five toward
 the sun). `cloud_volumetric` off replaces the march with a single sample on
 the middle of the layer - a third of the frame cost.
 
+**The clouds are one layer seen from anywhere** (shaders_clouds.cpp,
+renderer_clouds.cpp). The march lives once, in CLOUD_FN_GLSL, and runs in
+the sky pass for rays that reach the sky and in `pass_clouds` (after the sea)
+for rays that end on geometry, cut at the scene's depth - so a cloud stands
+in front of a mountain, under a camera above it, and over the world seen
+from orbit. Rules that keep it one layer:
+
+1. **No altitude gate.** `clouds_ok` is `clouds_on`; the old `eye.y < 3`
+   switched the weather off as the camera rose and the far shell drew a flat
+   stand-in (removed). Cost is bounded by the march itself: steps follow how
+   much of the band a pixel resolves (`u_cl_pixel_k`), and empty-space
+   skipping is off on a short march, or thin cloud turns to salt and pepper.
+2. **Far lookups go to their mean, not to noise.** `cl_lod` picks the
+   volumes' mip by footprint (the 3D textures are mipmapped); past a few
+   texels a pixel the weather's warp fades and the shape reads its mean, or
+   the volume's tile prints over the planet as a regular pattern.
+3. **One shape function for clouds and their shadows.** The terrain's
+   `cloud_shadow` calls `cloud_shape_at` with the layer's scale, weather and
+   `cloud_systems` - a lookup of its own at a fixed scale was a different
+   pattern from the clouds casting it.
+4. **Two pieces per layer on a curved world.** `layer_spans` returns the
+   near and the far crossing; on an inside world the far one is the cloud
+   over the far side, and on a globe it is dropped only where the ground is
+   in front of it (and only when the eye is above that ground).
+5. **The sea reflects the sky pass, clouds and all.** `sky_env_update` shoots
+   a 512x256 lat-long panorama from the water under the eye (mipmapped;
+   `wat_sky` samples it with an explicit level from the waves' slope variance
+   - never with the sun's width, which only spreads the glint). One per view
+   slot, kept: re-shot at most 15 times a second, or when the eye moves more
+   than a quarter texel of parallax (0.003 x the cloud altitude) - every view
+   every frame was a cloud march on pictures that had not moved. It uses the
+   view's own pixel for the march's level of detail, because the far-field
+   fades change the clouds' shapes, and the water's clouds must be the sky's.
+6. **A view ray is `far point - eye`**, never the far point alone - that sat
+   the whole sky up to a couple of degrees off the ground in front of it.
+7. **The animation clock moves by real time once a frame** (renderer.cpp),
+   not by the `dt` of whichever view drew first - the camera thumbnail passes
+   0 and stopped the clouds and the waves. Captures and render passes draw at
+   that same clock (`renderer_anim_time`), not at 0 - waves frozen at their
+   first instant under clouds at the live time. And drifting clouds or a
+   running sea keep the frame pacing at `ambient_fps` (30) when idle: at the
+   15 fps idle rate the weather stutters (`renderer_ambient_motion`, which the
+   performance watcher also counts as a change).
+8. **The clouds' depth cut runs on by one depth step** (FS_CLOUD_OVER): from
+   orbit a 24-bit step is longer than the cloud base is high, and a cut that
+   falls short takes the bottom off the layer.
+9. **Texture units above 7**: 8-11 the graph's sampled buffers
+   (`bind_field_textures`), 12 the placement weight in the terrain program
+   (and a half-size target's second picture in the cloud and sky passes), 13
+   the backdrop dome, 14 the sky panorama everything reflects (`bind_sky_env`),
+   15 a half-size target's first picture. The dome used to share 11 with the
+   fourth graph buffer. **Unbind a target from its units before drawing into
+   it**: a texture on a sampler the program declares while it is also the draw
+   target is a feedback loop whether or not the branch reads it.
+10. **A capture has its own slot** (`SLOT_CAPTURE`) and never takes the
+    governor's lighter secondary settings; it used to borrow View 6's target.
+11. **Everything glossy reflects the same sky** (SKY_ENV_GLSL,
+    renderer_clouds.cpp): the sea, the ground's reflection term and meshes read
+    the panorama through `sky_env`, shot when the view has a sea *or* clouds -
+    under an overcast a glossy rock used to reflect a clear blue gradient.
+    Below the horizon the panorama holds no ground (the sky pass draws only
+    sky, which came out as a starry night under every glossy object): `sky_env`
+    reads the horizon's light there, at a blurred level, dimmed.
+12. **The sky is drawn after everything solid** (renderer_scene.cpp): VS_SKY and
+    the planets sit on the far plane, drawn with GL_LEQUAL onto the pixels no
+    solid wrote. Drawn first it was worked out for every pixel and painted
+    over - 19.6 ms of sky for no visible pixel looking down, at 1718x798 - and
+    the clouds over the ground then marched those pixels again. A see-through
+    terrain (`mat_transparency`) and a flat background keep the old order. The
+    media meshes blend after the sky (`draw_scene_meshes(..., media)`).
+13. **A working view marches half size** (renderer_clouds_over.cpp,
+    renderer_space_half.cpp): the clouds over the ground on a checkerboard of
+    nearest/farthest depth per 2x2 block, brought up by bilinear weights times
+    depth similarity (a pixel no texel was cut near is marched on its own);
+    the nebulas into an add/transmittance pair read bilinearly (they are at
+    infinity: no depth), their hot stars drawn at full size in the sky pass.
+    A capture and a render pass march every pixel and take the nebulas a
+    quality step finer. Measured: clouds 8.6 -> 3.5 ms looking down, nebula
+    poster 40 -> 25 ms; raw captures differ by at most 13/255 (clouds).
+14. **Measuring without a viewport**: GPX_TIME_CAPTURES=1 moves the pass
+    timers from View 1 to the captures (`pass_timed`), GPX_CAPTURE_RAW=1 keeps
+    a capture at its drawn 2x size (the 2x2 average hides half-size errors),
+    GPX_CLOUDS_HALF / GPX_NEBULAS_HALF = 0 never, 1 views (default), 2 captures
+    too. A script cannot see the viewport; it can see captures.
+
 ## A blend keyed on a square draws a square
 
 planet_place.cpp: the tile's border used to be
@@ -1471,6 +2006,83 @@ The sky pass works out how much of space reaches the eye *before* calling
 shader and in daylight none of it shows: a terrain scene at noon must not
 pay for a sky it cannot see.
 
+Nebula detail is spent by footprint: `sp_neb_field` adds two finer reads of
+the volume (billows) and a rim read toward the nearest ionising star only
+where `foot` - a pixel in units of the nebula's radius - can resolve them.
+Emission goes as gas squared (knots and voids, not an even haze) and the
+gas band is narrow, so the cloud has edges. The bright few stars carry long
+spikes no thinner than 0.55 px (`pix_k`), or they break into dashes.
+
+More that hold now:
+
+- **The pixel's size is taken outside every branch** (`sp_pix` in FS_SKY):
+  `fwidth` inside `sp_w > 0.002 ? ... : ...` is undefined right where the
+  branch starts and stops, which is dusk.
+- **The irradiance probe passes a negative pixel size**, and space leaves
+  every point source out (the stars, a nebula's hot stars): its pixel is a
+  fifth of a radian, and stars drawn a pixel wide lit the night ground like
+  dusk. The probe's key hashes the space settings and the nebulas **field by
+  field**, never a struct's bytes, whose padding is not its own.
+- **The nebula list is depth**: each cloud dims and reddens everything before
+  it in the list, so a dark cloud laid over a bright one hides it
+  (`add = add * T + S`).
+- **Diffraction spikes belong to the camera**: one shared angle for every
+  star, in 4, 6 or 8 points, each colour reaching a little further
+  (`star_spike_points`, `_angle`, `_chroma`).
+- **A nebula's hot stars are drawn before its sphere test**, like the halo, or
+  their spikes end on the silhouette. New cloud dials (turbulence, lanes,
+  core glow, outskirts colour) default to the old look; an outskirts colour
+  never set is negative and reads as the cool gas's.
+- The nebula march has a governor cap (`space_quality_cap`), as the clouds do.
+- **One step spacing for every ray** through a nebula (the diameter over the
+  step budget), and a one-read envelope bound before the field's other reads;
+  the dither is the clouds' blue noise (`u_sp_blue`, unit 9), not a sin hash.
+  None of that bought much (30 -> 29.5 ms): the half-size march did (rule 13 of
+  the clouds).
+- **Star clusters** (`sp_clusters`, `star_clusters`, `star_cluster_size`) are a
+  6x6-per-face grid of King profiles obeying the same 3x3-cells rule at both
+  scales: a haze plus members on a tangent grid of their own while a pixel
+  can separate them (globulars 30 cells across, open clusters 8), all haze
+  when it cannot. A bright haze over the members read as an out-of-focus disc.
+  `star_bright_share` sets the magnitude law's exponent, 14 - 10 x share (0.5
+  is the old 9); an unset uniform reads 0 and falls back to 9.
+- **Other planets have weather** (planet_clouds.cpp, `PlanetData::clouds`,
+  default 0.4, none without air): a warped fbm deck by direction, drifting on
+  the cloud clock and sheared by latitude, its shadow sampled a little
+  toward the sun. A disc a few hundred pixels across is not worth a volume
+  march; its pattern, shadow and light are what read.
+
+## The lens flare
+
+renderer_post.cpp + renderer_post_flare.cpp, through a scene camera with
+optics on. The sun's screen position comes from `compute_sun_dir` projected
+**as a direction** (w = 0), in the pass's uv with y **up** - it used to be
+rebuilt from azimuth/altitude with the axes swapped (half the sky off) and
+flipped. How much of the sun shows is read from the picture in the vertex
+stage (25 samples over the disc, once a frame), so terrain, planets, clouds
+and night dim the flare without the pass knowing they exist. Styles: 0 the
+old ghosts, 1 cinematic (core, starburst, ring, hexagonal ghosts), 2
+anamorphic (plus the streak); the light is compressed and screened over the
+picture, never added and clipped. Each part's shape is a camera setting
+(core, ray count and length, streak length and tint, halo radius, ghost count,
+aperture blades, colour parting, seed) whose defaults draw exactly the flare
+from before they existed - a saved camera must not change. The ghosts'
+polygon is the distance along the nearest edge normal,
+`length(q) * cos(mod(angle, seg) - seg/2)`, which works for odd blade counts
+where the old `max |dot|` over three directions only made hexagons. The flare
+parts' strengths and shapes are keyable (anim_targets.cpp `cam.flare_*`).
+
+**Bloom** (renderer_post_bloom.cpp, `CameraData::bloom`, off by default) is a
+13-tap downsample chain from a soft-knee bright pass on the developed
+picture (threshold in the picture's own terms: the sun and glints are what
+clip) and a tent upsample back, summed and divided by the level count so the
+amount means the same at any size, screened over the picture in light after
+the flare and before the vignette.
+
+**Round primitives are smooth** (scene_primitives.cpp `tri_n`): a sphere,
+cylinder or cone carries its surface's normal at each corner. Face normals
+made every one faceted at any detail, and a glossy sphere a disco ball.
+
 ## Undo
 
 1. **Every mutation is preceded by `undo_push(a, "what changed")`.** A change a
@@ -1483,7 +2095,15 @@ pay for a sky it cannot see.
    frame of an interaction only, never per frame.
 3. Snapshots hold the graph as JSON, plus the scene and world settings. **Node
    ids are reassigned when that JSON is loaded**, so anything referring to a
-   node across a restore travels as an index, not an id.
+   node across a restore travels as an index, or is translated through the
+   loader's id map. `restore` sends every binding outside the graph through
+   `scene_remap_node_ids` (objects' driver, material, population, planet and
+   surface nodes; the settings' `'u'` fields) plus `last_material` and
+   `seq_cam_path`. It used not to: after any node deletion the numbering had
+   a hole, a restored object's driver named another node or none, and its
+   node built the object a second time - undoing a delete doubled every
+   plant. A new node-id field anywhere outside the graph goes into that
+   function the day it is added.
 4. Imported mesh vertices are shared between snapshots rather than copied.
    Keep any new bulk data out of the per-step copy the same way.
 5. `undo_tests` covers restore correctness, redo branching, history jumps and

@@ -1,19 +1,144 @@
-// Geekatplay TerraForge — sky and volumetric-cloud shaders. Split from shaders_scene.cpp for the 500-line module rule.
+// Geekatplay TerraForge — the sky shader: the air, the sun, deep space, and the
+// cloud layers marched through it (shaders_clouds.cpp). Split from
+// shaders_scene.cpp for the 500-line module rule.
 #include "renderer_shaders.hpp"
 
 namespace studio {
 
+// On the far plane itself: the sky pass is drawn after everything solid with
+// GL_LEQUAL, so it lands only where the depth was never written
+// (renderer_scene.cpp). At 0.99999 it would also have covered distant ground
+// whose depth rounds above that.
 const char *const VS_SKY = R"GLSL(#version 430 core
 out vec2 v_ndc;
 void main(){
   vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2)*2.0-1.0;
   v_ndc = p;
-  gl_Position = vec4(p, 0.99999, 1.0);
+  gl_Position = vec4(p, 1.0, 1.0);
 })GLSL";
+
+// shared sky helper injected into several shaders
+// The sky function is shared by the sky pass, terrain reflections and water
+// reflections, so the backdrop dome lives in it too: whatever looks at the sky
+// sees the same picture. renderer_backdrop.cpp binds the sampler and uniforms
+// in every program that carries this block.
+const char *const SKY_FN = R"GLSL(
+// The light the sky casts on level ground, measured through the same sky and
+// cloud march the viewport draws (studio/sky_light.cpp). Reflected radiance
+// is albedo times this: the cosine-weighted integral over the sky and the
+// division by pi cancel, which is why one number does the whole job.
+//
+// It replaced the average of the two sky *colours* - a number between 0 and
+// 1 where the real one is several times larger. That substitution is why a
+// path-traced frame, which integrates the real sky, came out far brighter
+// than its own preview. A uniform never set reads as zero, so a shader that
+// forgets to upload it goes black rather than quietly wrong.
+uniform vec3 u_sky_light;
+uniform sampler2D u_backdrop;
+uniform int u_bd_on, u_bd_mode, u_bd_flip, u_bd_hide_sun;
+uniform float u_bd_aspect, u_bd_yaw, u_bd_pitch, u_bd_tanhalf, u_bd_gain;
+uniform float u_bd_blend, u_bd_haze;
+uniform vec3 u_bd_tint;
+// how much of the last sky_color() came from the dome (0 = none / no pixel)
+float g_bd_weight = 0.0;
+vec3 bd_rotate(vec3 d){
+  float cy = cos(u_bd_yaw), sy = sin(u_bd_yaw);
+  d = vec3(d.x*cy - d.z*sy, d.y, d.x*sy + d.z*cy);
+  float cp = cos(u_bd_pitch), sp = sin(u_bd_pitch);
+  return vec3(d.x, d.y*cp - d.z*sp, d.y*sp + d.z*cp);
+}
+// Direction to image coordinates for each mapping. Forward is -Z, so the
+// middle of a panorama faces the default camera; v = 0 is the top row.
+// Returns false where the mapping has no pixel (below a sky dome, outside a
+// planar plate) so the procedural sky shows through there.
+bool bd_uv(vec3 d, out vec2 uv){
+  const float PI_ = 3.14159265, PI2 = 6.2831853;
+  uv = vec2(0.5);
+  if (u_bd_mode == 0) {
+    uv = vec2(atan(d.x, -d.z) / PI2 + 0.5, acos(clamp(d.y, -1.0, 1.0)) / PI_);
+  } else if (u_bd_mode == 1) {
+    float r = acos(clamp(-d.z, -1.0, 1.0)) / PI_;
+    float k = r / max(length(d.xy), 1e-6);
+    uv = vec2(d.x * k, -d.y * k) * 0.5 + 0.5;
+  } else if (u_bd_mode == 2) {
+    float m = 2.0 * length(vec3(d.x, d.y, d.z + 1.0));
+    if (m < 1e-6) return false;
+    uv = vec2(d.x / m, -d.y / m) + 0.5;
+  } else if (u_bd_mode == 3) {
+    vec3 a = abs(d); int face; vec2 st;
+    if (a.x >= a.y && a.x >= a.z) { face = d.x > 0.0 ? 0 : 1; st = vec2(d.x > 0.0 ? -d.z : d.z, -d.y) / a.x; }
+    else if (a.y >= a.z) { face = d.y > 0.0 ? 2 : 3; st = vec2(d.x, d.y > 0.0 ? d.z : -d.z) / a.y; }
+    else { face = d.z > 0.0 ? 4 : 5; st = vec2(d.z > 0.0 ? d.x : -d.x, -d.y) / a.z; }
+    st = st * 0.5 + 0.5;
+    vec2 cell, grid;
+    if (u_bd_aspect > 1.0) { // horizontal cross, 4 x 3
+      grid = vec2(4.0, 3.0);
+      if (face == 0) cell = vec2(2.0, 1.0); else if (face == 1) cell = vec2(0.0, 1.0);
+      else if (face == 2) cell = vec2(1.0, 0.0); else if (face == 3) cell = vec2(1.0, 2.0);
+      else if (face == 4) cell = vec2(1.0, 1.0); else cell = vec2(3.0, 1.0);
+    } else { // vertical cross, 3 x 4, the back face upside down at the bottom
+      grid = vec2(3.0, 4.0);
+      if (face == 0) cell = vec2(2.0, 1.0); else if (face == 1) cell = vec2(0.0, 1.0);
+      else if (face == 2) cell = vec2(1.0, 0.0); else if (face == 3) cell = vec2(1.0, 2.0);
+      else if (face == 4) cell = vec2(1.0, 1.0); else { cell = vec2(1.0, 3.0); st = 1.0 - st; }
+    }
+    uv = (cell + st) / grid;
+  } else if (u_bd_mode == 4) {
+    float t = d.y / max(length(d.xz), 1e-6);
+    uv = vec2(atan(d.x, -d.z) / PI2 + 0.5, 0.5 - t / (2.0 * u_bd_tanhalf));
+    if (uv.y < 0.0 || uv.y > 1.0) return false;
+  } else if (u_bd_mode == 5) {
+    if (d.y <= 0.0) return false;
+    float r = acos(clamp(d.y, -1.0, 1.0)) / (PI_ * 0.5) * 0.5;
+    vec2 dir = length(d.xz) > 1e-6 ? normalize(d.xz) : vec2(0.0);
+    uv = vec2(0.5) + r * vec2(dir.x, -dir.y);
+  } else {
+    if (d.z >= -1e-6) return false;
+    vec2 p = d.xy / (-d.z);
+    uv = vec2(p.x / (2.0 * u_bd_tanhalf * u_bd_aspect), -p.y / (2.0 * u_bd_tanhalf)) + 0.5;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return false;
+  }
+  if (u_bd_flip == 1) uv.x = 1.0 - uv.x;
+  return true;
+}
+// The sky's up: the world's surface's up at the eye (world_shape.hpp). Every
+// program starts with world y - dot(dir, (0,1,0)) is dir.y to the bit - and
+// the sky pass sets it from the world's shape, so on a ring the gradient
+// stands over the ring's ground and not over the tile's y axis.
+vec3 g_sky_up = vec3(0.0, 1.0, 0.0);
+vec3 sky_color(vec3 dir, vec3 zenith_c, vec3 horizon_c, vec3 sun, vec3 sun_col,
+               float atmo){
+  float t = clamp(dot(dir, g_sky_up)*0.5+0.5, 0.0, 1.0);
+  vec3 col = mix(horizon_c, zenith_c, pow(t, 0.7/max(atmo,0.05)));
+  float low = 1.0 - clamp(sun.y*3.0, 0.0, 1.0);
+  col = mix(col, col * vec3(1.15,0.85,0.65), low*0.5*atmo);
+  float s = max(dot(dir, sun), 0.0);
+  col += sun_col * pow(s, 12.0) * 0.18 * atmo;
+  // the sky darkens as the sun sets: full brightness above the horizon,
+  // deep blue-black once it is well below. Shared by sky, terrain ambient
+  // and water reflections, so the whole scene agrees about nightfall.
+  float day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
+  col *= day;
+  // The dome is an absolute HDR picture: it is not dimmed with the procedural
+  // sky, its own lighting is whatever the photograph holds.
+  g_bd_weight = 0.0;
+  if (u_bd_on == 1) {
+    vec2 uv;
+    if (bd_uv(bd_rotate(dir), uv)) {
+      vec3 bd = texture(u_backdrop, uv).rgb * u_bd_gain * u_bd_tint;
+      col = mix(col, bd, u_bd_blend);
+      g_bd_weight = u_bd_blend;
+    }
+  }
+  return col;
+}
+)GLSL";
 
 const char *const FS_SKY_SRC = R"GLSL(#version 430 core
 in vec2 v_ndc;
-out vec4 frag;
+layout(location = 0) out vec4 frag;
+// the nebulas' transmittance, written only while u_neb_mode is 1
+layout(location = 1) out vec4 frag_tr;
 uniform mat4 u_inv_vp;
 uniform vec3 u_cam, u_sun, u_sun_color, u_sky_zenith, u_sky_horizon;
 uniform float u_exposure, u_atmo;
@@ -21,24 +146,7 @@ uniform float u_sun_angle, u_sun_glow, u_sun_glow_size;
 uniform int u_fog_type;
 uniform vec3 u_fog_color;
 uniform float u_fog_density;
-// volumetric clouds
-uniform int u_clouds, u_cl_steps, u_cl_type;
-uniform int u_cl_volumetric; // 0 one flat sheet, 1 marched as a volume
-uniform sampler3D u_cl_shape;
-uniform sampler3D u_cl_detail;
-uniform sampler2D u_blue_noise;  // ray-march dither
-uniform int u_cl_octaves;        // multiple-scattering octaves, 1 = single
-uniform float u_cl_ms_depth;     // extinction attenuation per bounce
-uniform float u_cl_cov, u_cl_den, u_cl_alt, u_cl_thick, u_cl_detail_amt;
-uniform float u_cl_time, u_cl_ambient, u_cl_anvil;
-// a second layer: its own kind, height, coverage and density; same march
-uniform int u_cl2, u_cl2_type;
-uniform float u_cl2_cov, u_cl2_den, u_cl2_alt, u_cl2_thick;
-// the layer being marched (set per march from the uniforms above)
-int g_type; float g_alt, g_thick, g_cov, g_den;
 uniform float u_sun_intensity;
-uniform vec2 u_cl_wind;
-uniform vec3 u_cl_color;
 // panorama export: equirectangular directions, linear HDR out, no sun disc
 uniform int u_panorama;
 uniform int u_hdr;
@@ -52,54 +160,7 @@ const float PI = 3.14159265;
 // the clouds are a band round the inside of the ring, on a globe a shell
 // over it - and the sky's up is the surface's up under the eye.
 PL_SPHERE_PLACEHOLDER
-uniform float u_world_r;
-uniform float u_world_w; // a ring's width (a flat world's size): its air ends there
-uniform int u_world_outline;
-// The part of a ray that is over the world at all, as an interval. A ring
-// reaches only so far along its axis and a flat world only so far across,
-// and past either edge there is no ground to hold air or cloud - so the
-// same clip belongs to the air, to every cloud layer, and to anything else
-// that is a layer on the surface. Air that ignored it filled the whole sky
-// inside a ring instead of running along the ring as a band.
-bool world_slab(vec3 ro, vec3 rd, inout float t0, inout float t1){
-  if (u_world_shape.y > 0.5 && u_world_w > 0.0 && !pl_world_flat()){
-    float hw = u_world_w * 0.5;
-    if (abs(rd.z) < 1e-6){ if (abs(ro.z - 0.5) > hw) return false; }
-    else {
-      float za = (0.5 - hw - ro.z) / rd.z, zb = (0.5 + hw - ro.z) / rd.z;
-      t0 = max(t0, min(za, zb)); t1 = min(t1, max(za, zb));
-    }
-  }
-  if (pl_world_flat() && u_world_w > 0.0){
-    vec2 o = ro.xz - 0.5, dd = rd.xz;
-    float hw = u_world_w * 0.5;
-    if (u_world_outline == 1){
-      for (int k = 0; k < 2; ++k){
-        if (abs(dd[k]) < 1e-6){ if (abs(o[k]) > hw) return false; continue; }
-        float ta = (-hw - o[k]) / dd[k], tb = (hw - o[k]) / dd[k];
-        t0 = max(t0, min(ta, tb)); t1 = min(t1, max(ta, tb));
-      }
-    } else {
-      float a = dot(dd, dd);
-      if (a < 1e-9){ if (dot(o, o) > hw * hw) return false; }
-      else {
-        float b = dot(o, dd), c = dot(o, o) - hw * hw;
-        float disc = b * b - a * c;
-        if (disc < 0.0) return false;
-        float sq = sqrt(disc);
-        t0 = max(t0, (-b - sq) / a); t1 = min(t1, (-b + sq) / a);
-      }
-    }
-  }
-  return t1 > t0;
-}
-uniform int u_sun_mode;
-float world_alt(vec3 p){ return pl_world_alt(p, u_world_r); }
-vec3 world_up(vec3 p){ return pl_world_up(p, u_world_r); }
-bool world_curved(){ return !(u_world_r <= 0.0 || u_world_r > 1.0e5 || pl_world_flat()); }
-// where the sun shines from at a point: a body inside the world shines
-// from the centre or the axis, anything else from u_sun
-vec3 sun_at(vec3 p){ return u_sun_mode == 1 ? pl_world_up_at(p, u_world_r) : u_sun; }
+SKY_WORLD_PLACEHOLDER
 // The atmosphere is a layer of this height on the world's surface (0: the
 // old rule, u_space by the camera's distance). How much of the ray lies in
 // it, in vertical thicknesses, decides how much sky and how much space a
@@ -109,6 +170,8 @@ vec3 sun_at(vec3 p){ return u_sun_mode == 1 ? pl_world_up_at(p, u_world_r) : u_s
 uniform float u_atm_h;
 SPACE_FN_PLACEHOLDER
 SKY_FN_PLACEHOLDER
+CLOUD_SHAPE_PLACEHOLDER
+CLOUD_FN_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -116,123 +179,6 @@ vec3 aces(vec3 x){
   float lum = dot(x, vec3(0.299, 0.587, 0.114));
   x = mix(vec3(lum), x, u_sat);
   return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
-}
-float remap01(float v, float lo, float hi){ return clamp((v-lo)/max(hi-lo,1e-4), 0.0, 1.0); }
-// remap that allows a negative low bound (the standard cloud shaping form)
-float remapf(float v, float lo, float hi, float nlo, float nhi){
-  return nlo + (v - lo) / max(hi - lo, 1e-4) * (nhi - nlo);
-}
-float hg(float c, float g){
-  float g2 = g*g;
-  return (1.0-g2) / (4.0*PI*pow(max(1.0+g2-2.0*g*c, 1e-4), 1.5));
-}
-float cloud_gradient(float hf){
-  if (g_type == 0)               // stratus: low flat sheet
-    return remap01(hf, 0.0, 0.08) * (1.0 - remap01(hf, 0.18, 0.36));
-  if (g_type == 2){              // cumulonimbus: tall with anvil top
-    float base = remap01(hf, 0.0, 0.08);
-    float top = 1.0 - remap01(hf, 0.75 + u_cl_anvil*0.2, 1.0);
-    return base * top;
-  }
-  return remap01(hf, 0.0, 0.16) * (1.0 - remap01(hf, 0.45, 0.85)); // cumulus
-}
-uniform float u_cl_weather, u_cl_weather_scale, u_cl_scale;
-// The weather: how much cloud there is here at all, and where the shape
-// volume is read from.
-//
-// That volume tiles, and a sky is seen thirty tiles deep, so read straight
-// it draws the same few kilometres over and over - a plain grid across the
-// lower sky, which is what an overcast looked like from the ground. One
-// lookup far coarser than any cloud fixes both halves of that: its red
-// channel opens and closes the cover the way a front does, and its other
-// three push the shape lookup about, so which part of the volume you are
-// standing under keeps changing. Warping is what actually breaks the
-// repeat - modulating the cover alone only makes a modulated grid.
-//
-// One fetch does both jobs, which is what makes it affordable: the density
-// is sampled six times a step here (once forward, five toward the sun).
-float cloud_density(vec3 p, out float hf){
-  hf = clamp((world_alt(p) - g_alt) / max(g_thick, 1e-3), 0.0, 1.0);
-  vec3 wp = p; wp.xz += u_cl_wind * u_cl_time;
-  float cov = g_cov;
-  vec3 warp = vec3(0.0);
-  if (u_cl_weather > 0.0){
-    vec4 w = texture(u_cl_shape, wp * max(u_cl_weather_scale, 1e-4) + vec3(0.37));
-    cov = clamp(g_cov * mix(1.0, w.r * 2.0, clamp(u_cl_weather, 0.0, 1.0)), 0.0, 1.0);
-    warp = (w.gba - 0.5) * clamp(u_cl_weather, 0.0, 1.0) * 1.8;
-  }
-  vec4 sn = texture(u_cl_shape, wp * max(u_cl_scale, 1e-4) + warp);
-  float fbm = sn.g*0.625 + sn.b*0.25 + sn.a*0.125;
-  // base shape: Perlin-Worley eroded by the Worley FBM (Schneider/Guerrilla)
-  float shape = clamp(remapf(sn.r, fbm - 1.0, 1.0, 0.0, 1.0), 0.0, 1.0);
-  shape *= cloud_gradient(hf);
-  float d = clamp(remapf(shape, 1.0 - cov, 1.0, 0.0, 1.0), 0.0, 1.0);
-  if (d <= 0.001) return 0.0;
-  vec3 dp = p * 2.6; dp.xz += u_cl_wind * u_cl_time * 2.0;
-  vec3 dn = texture(u_cl_detail, dp).rgb;
-  float dfbm = dn.r*0.625 + dn.g*0.25 + dn.b*0.125;
-  float er = mix(dfbm, 1.0 - dfbm, clamp(hf*4.0, 0.0, 1.0));
-  d = clamp(remapf(d, er * u_cl_detail_amt * 0.55, 1.0, 0.0, 1.0), 0.0, 1.0);
-  return d * g_den;
-}
-// The ray against one shell of the world - a sphere about its centre, or a
-// cylinder about a ring's axis - radius r: the interval of t the ray spends
-// inside it, false when it misses.
-bool shell_hits(vec3 ro, vec3 rd, float r, out float t0, out float t1){
-  vec3 o = ro - pl_world_centre_at(ro, u_world_r);
-  vec3 d = rd;
-  if (u_world_shape.y > 0.5){ o.z = 0.0; d.z = 0.0; } // a ring: the axis is z
-  float a = dot(d, d);
-  if (a < 1e-12) return false;
-  float b = dot(o, d), c = dot(o, o) - r * r;
-  float disc = b * b - a * c;
-  if (disc < 0.0) return false;
-  float sq = sqrt(disc);
-  t0 = (-b - sq) / a; t1 = (-b + sq) / a;
-  return true;
-}
-// Where the ray crosses a cloud layer: the band of altitude [alt, alt +
-// thick] over the world's surface. A flat world's band is two planes, as
-// it always was. A curved world's is the space between two shells: the
-// ray is inside the outer one over one interval and inside the inner one
-// over another, and the band is the first interval less the second - the
-// part before the inner shell, or, from inside it, the part after.
-bool layer_span(vec3 ro, vec3 rd, float alt, float thick, out float t0, out float t1){
-  if (!world_curved()){
-    if (rd.y < 0.015) return false;
-    float y0 = alt, y1 = alt + thick;
-    t0 = (y0 - ro.y) / rd.y;
-    t1 = (y1 - ro.y) / rd.y;
-    if (ro.y > y0 && ro.y < y1) t0 = 0.0;
-    t0 = max(t0, 0.0); t1 = max(t1, 0.0);
-    return world_slab(ro, rd, t0, t1);
-  }
-  float R = u_world_r;
-  bool ins = u_world_shape.z > 0.5;
-  float r_lo = ins ? R - alt - thick : R + alt;   // the shell nearer the centre
-  float r_hi = ins ? R - alt : R + alt + thick;   // the shell farther from it
-  // (clipped to the world's own extent at the end - see world_slab)
-  float b0, b1;
-  if (r_hi <= 0.0 || !shell_hits(ro, rd, r_hi, b0, b1)) return false;
-  b0 = max(b0, 0.0);
-  if (b1 <= b0) return false;
-  float s0, s1;
-  if (!(r_lo > 0.0 && shell_hits(ro, rd, r_lo, s0, s1))){ t0 = b0; t1 = b1; }
-  else if (s0 > b0){ t0 = b0; t1 = min(s0, b1); }
-  else { t0 = max(s1, b0); t1 = b1; }
-  if (t1 <= t0) return false;
-  // a ring's air ends at its rim: the band is cut to the ring's width
-  if (u_world_shape.y > 0.5 && u_world_w > 0.0){
-    float hw = u_world_w * 0.5;
-    if (abs(rd.z) < 1e-6){
-      if (abs(ro.z - 0.5) > hw) return false;
-    } else {
-      float za = (0.5 - hw - ro.z) / rd.z, zb = (0.5 + hw - ro.z) / rd.z;
-      t0 = max(t0, min(za, zb));
-      t1 = min(t1, max(za, zb));
-    }
-  }
-  return world_slab(ro, rd, t0, t1);
 }
 // How much of the ray lies in the air, in vertical thicknesses of it: the
 // band of altitude [0, u_atm_h] over the surface. Flat: a slab (a
@@ -306,178 +252,6 @@ float atm_path(vec3 ro, vec3 rd){
   }
   return tau / Hs;
 }
-vec4 march_layer(vec3 ro, vec3 rd, vec3 bg, int type, float alt, float thick, float cov, float den){
-  g_type = type; g_alt = alt; g_thick = thick; g_cov = cov; g_den = den;
-  float t0, t1;
-  if (!layer_span(ro, rd, alt, thick, t0, t1)) return vec4(bg, 1.0);
-  t1 = min(t1, t0 + 30.0);
-  vec3 sun = sun_at(ro);
-  int steps = u_cl_steps;
-  float dt = (t1 - t0) / float(steps);
-  // Offset every ray's start by a fraction of a step, or the whole screen
-  // samples the volume at the same distances and a density boundary between
-  // two steps draws a hard band across it.
-  //
-  // Blue noise rather than a hash: with white noise, neighbouring pixels can
-  // land on similar offsets, so the dither clumps into visible blobs. Blue
-  // noise has no low-frequency content by construction, so the pattern is
-  // even and reads as film grain instead of static. Same cost, and it is a
-  // 64x64 texture lookup against a sin() and a multiply.
-  //
-  // It is deliberately *not* animated per frame. The usual trick is to advance
-  // the value by the golden ratio each frame so temporal AA resolves it to a
-  // smooth gradient — but we have no TAA yet, so animating it would only make
-  // a still image crawl. Left static until that lands.
-  float jitter = texture(u_blue_noise,
-                         gl_FragCoord.xy / vec2(textureSize(u_blue_noise, 0))).r;
-  float cosA = dot(rd, sun);
-  // A sheet instead of a volume, when that is what is wanted: one sample on
-  // the middle of the layer rather than dozens along the ray. It costs a
-  // fortieth of the march, and for an overcast seen from below it is most
-  // of what the march arrives at anyway.
-  if (u_cl_volumetric == 0){
-    float hf;
-    float d = cloud_density(ro + rd * mix(t0, t1, 0.5), hf);
-    if (d <= 0.002) return vec4(bg, 1.0);
-    // how much of the layer the ray crosses, so a shallow ray through it is
-    // thicker than one straight up - the one thing a sheet must still get
-    // right or the horizon goes clear
-    float span = min(t1 - t0, thick * 12.0);
-    float a = 1.0 - exp(-d * span * 2.4);
-    vec3 amb = sky_color(vec3(0,1,0), u_sky_zenith, u_sky_horizon, u_sun,
-                         u_sun_color, u_atmo) * u_cl_ambient;
-    float phase_f = mix(hg(cosA, 0.75), hg(cosA, -0.25), 0.4) * 12.566;
-    float lit = exp(-d * thick * 3.0);
-    vec3 col = amb + u_sun_color * u_sun_intensity * phase_f * lit * 0.30;
-    return vec4(mix(bg, col, a), 1.0 - a);
-  }
-  // dual-lobe HG, renormalised by 4*pi so the phase reads ~0.2..2 instead of
-  // the tiny per-steradian value (otherwise clouds vanish against the sky)
-  float phase = mix(hg(cosA, 0.75), hg(cosA, -0.25), 0.4) * 12.566;
-  vec3 amb_col = sky_color(vec3(0,1,0), u_sky_zenith, u_sky_horizon, u_sun,
-                           u_sun_color, u_atmo) * u_cl_ambient;
-  float transmittance = 1.0;
-  vec3 scatter = vec3(0.0);
-  // Empty-space skipping: in clear air the ray takes three steps at once,
-  // and drops back to one the moment it meets density, so the edge of a
-  // cloud is integrated finely and the sky between clouds costs a third.
-  float t = t0 + dt * jitter;
-  float stride = 3.0;
-  for (int i = 0; i < steps; ++i){
-    if (t >= t1) break;
-    vec3 p = ro + rd * t;
-    float hf;
-    float d = cloud_density(p, hf);
-    if (d <= 0.002){
-      stride = 3.0;
-      t += dt * stride;
-      continue;
-    }
-    if (stride > 1.0){
-      // just entered: step back to where the edge is and resample finely
-      stride = 1.0;
-      t = max(t - dt * 2.0, t0);
-      p = ro + rd * t;
-      d = cloud_density(p, hf);
-    }
-    t += dt;
-    if (d > 0.002){
-      // light march toward the sun
-      float ldt = u_cl_thick / 5.0;
-      float sum = 0.0;
-      for (int j = 0; j < 5; ++j){
-        float hf2;
-        vec3 lp = p + sun * (ldt * (float(j) + 0.5));
-        sum += cloud_density(lp, hf2) * ldt;
-      }
-      // Multiple scattering, approximated. Single scattering stops light at
-      // its first hit, which is why clouds computed that way read dense and
-      // plastic: in reality light bounces inside the volume and diffuses.
-      //
-      // Rather than trace new rays, evaluate the shadow ray we already have
-      // several times over, each pass standing for one more bounce: light
-      // penetrates further (extinction falls), loses its forward bias (the
-      // phase asymmetry falls toward isotropic) and carries less energy.
-      // Two or three octaves cost almost nothing on top of the light march
-      // that dominates this loop.
-      float powder = 1.0 - exp(-d * 4.0);
-      float ext_a = 1.0, g_a = 1.0, e_a = 1.0;
-      float lum_sum = 0.0, weight = 0.0;
-      for (int o = 0; o < 4; ++o){
-        if (o >= u_cl_octaves) break;
-        float ph = (o == 0) ? phase
-                            : mix(hg(cosA, 0.75*g_a), hg(cosA, -0.25*g_a), 0.4)
-                              * 12.566;
-        lum_sum += e_a * exp(-sum * 2.2 * ext_a) * ph;
-        weight  += e_a;
-        // How much deeper each bounce reaches. The textbook value is 0.5 —
-        // half the extinction, so twice the penetration — but that is written
-        // for an optical-depth scale that is not ours: our `sum * 2.2` was
-        // tuned against single scattering, and at 0.5 the interior of a dense
-        // cloud comes out fifteen times brighter and the shape washes out.
-        // Exposed rather than fixed so it can be set against the density it
-        // is paired with.
-        ext_a *= u_cl_ms_depth;
-        g_a   *= 0.5;   // and scatters more evenly
-        e_a   *= 0.4;   // carrying less energy
-      }
-      // Normalised by the octave weights, so the bounces redistribute the
-      // sun's energy rather than invent more of it. Summing them raw (which
-      // is how the technique is usually written down) makes the cloud's own
-      // shadow far brighter than its lit side is dark: a dense storm went
-      // from a shaped grey mass to a flat pale sheet, mean image brightness
-      // 128 -> 198. Normalised, an unshadowed sample lands exactly where
-      // single scattering left it, and only the deep interior lifts — which
-      // is the part multiple scattering is actually about.
-      vec3 sun_c = u_sun_color * u_sun_intensity * 2.2 *
-                   (lum_sum / max(weight, 1e-4)) * mix(1.0, powder, 0.55);
-      vec3 lum = (sun_c + amb_col * (0.35 + 0.65*hf)) * u_cl_color;
-      float ext = d * dt * 3.0;
-      scatter += transmittance * lum * d * dt * 3.0;
-      transmittance *= exp(-ext);
-      if (transmittance < 0.012) break;
-    }
-  }
-  return vec4(bg * transmittance + scatter, transmittance);
-}
-// Every layer, far one first so each nearer one composes over the last.
-// The list is the main layer, the second layer, and every extra CloudLayer
-// node; "far" is by height difference from the eye, so from below them all
-// the highest goes first and from above them all the lowest does.
-uniform int u_clx_n;
-uniform int u_clx_type[8];
-uniform float u_clx_cov[8], u_clx_den[8], u_clx_alt[8], u_clx_thick[8];
-vec4 march_clouds(vec3 ro, vec3 rd, vec3 bg){
-  if (u_clouds == 0) return vec4(bg, 1.0);
-  int   ty[10];
-  float al[10], th[10], cv[10], dn[10];
-  int n = 0;
-  ty[n] = u_cl_type; al[n] = u_cl_alt; th[n] = u_cl_thick; cv[n] = u_cl_cov; dn[n] = u_cl_den; ++n;
-  if (u_cl2 == 1) { ty[n] = u_cl2_type; al[n] = u_cl2_alt; th[n] = u_cl2_thick; cv[n] = u_cl2_cov; dn[n] = u_cl2_den; ++n; }
-  for (int i = 0; i < 8; ++i) {
-    if (i >= u_clx_n) break;
-    ty[n] = u_clx_type[i]; al[n] = u_clx_alt[i]; th[n] = u_clx_thick[i]; cv[n] = u_clx_cov[i]; dn[n] = u_clx_den[i]; ++n;
-  }
-  vec4 c = vec4(bg, 1.0);
-  bool done[10];
-  for (int i = 0; i < 10; ++i) done[i] = false;
-  float ro_alt = world_alt(ro); // the eye's height over the world's surface
-  for (int pass = 0; pass < 10; ++pass) {
-    if (pass >= n) break;
-    // the farthest layer not yet drawn
-    int best = -1; float bestd = -1.0;
-    for (int i = 0; i < 10; ++i) {
-      if (i >= n || done[i]) continue;
-      float d = abs(al[i] + th[i] * 0.5 - ro_alt);
-      if (d > bestd) { bestd = d; best = i; }
-    }
-    if (best < 0) break;
-    done[best] = true;
-    vec4 l = march_layer(ro, rd, c.rgb, ty[best], al[best], th[best], cv[best], dn[best]);
-    c = vec4(l.rgb, c.a * l.a);
-  }
-  return c;
-}
 void main(){
   vec3 dir;
   if (u_panorama == 1) {
@@ -501,8 +275,11 @@ void main(){
     float el = asin(sqrt(clamp(v_ndc.y * 0.5 + 0.5, 0.0, 1.0)));
     dir = vec3(cos(el)*cos(az), sin(el), cos(el)*sin(az));
   } else {
+    // Through the far plane, from the eye. The far point alone is not a
+    // direction: taken as one, the whole sky sat up to a couple of degrees
+    // off the ground drawn in front of it, and the sun with it.
     vec4 w = u_inv_vp * vec4(v_ndc, 1.0, 1.0);
-    dir = normalize(w.xyz / w.w);
+    dir = normalize(w.xyz / w.w - u_cam);
   }
   // the sky stands over the world's surface under the eye: its up is the
   // surface's up there (world y on a flat world and, at the tile, on a globe)
@@ -556,7 +333,25 @@ void main(){
     sp_w = smoothstep(0.03, -0.12, u_sun.y) * clamp(dir_up * 4.0, 0.0, 1.0);
     sp_w = max(sp_w, u_space);
   }
-  vec3 space = sp_w > 0.002 ? space_color(dir) : vec3(0.0);
+  // The pixel's angular size, taken here where every pixel runs it: inside
+  // the branch below a derivative is undefined, and the stars' size and the
+  // nebulas' detail read it right where the branch starts and stops (dusk).
+  float sp_pix = max(length(fwidth(dir)), 4.0e-4);
+  // The half-size picture of the nebulas alone (renderer_space_half.cpp):
+  // what they add and what they let through, where space shows at all. Its
+  // pixel is twice the view's, which is the filtering a half-size picture
+  // needs - the finest billows fade rather than alias.
+  if (u_neb_mode == 1){
+    vec3 tr = vec3(1.0);
+    vec3 add = (sp_w > 0.002 && u_sp_on == 1) ? sp_nebulas(dir, sp_pix, tr) : vec3(0.0);
+    frag = vec4(add, 1.0);
+    frag_tr = vec4(tr, 1.0);
+    return;
+  }
+  // The irradiance probe passes a negative size: its pixel is a fifth of a
+  // radian, a star's core is drawn a pixel wide, and every star in the sky
+  // came out a tenth of a steradian of light - the night ground lit like dusk.
+  vec3 space = sp_w > 0.002 ? space_color(dir, u_panorama == 2 ? -sp_pix : sp_pix) : vec3(0.0);
   if (u_atm_h > 0.0) {
     // The air is a layer on the world (atm_path): what it scatters is the
     // sky, what it lets through is space and the sun. Stars are lost in
@@ -575,7 +370,9 @@ void main(){
     col += sun_disc + sun_glow;
     if (night > 0.0 && dir_up > 0.0) col += space * night * clamp(dir_up * 4.0, 0.0, 1.0);
   }
-  vec4 cl = march_clouds(u_cam, dir, col);
+  // the clouds on every ray that reaches the sky; the rays that end on the
+  // ground get theirs after the ground is drawn (FS_CLOUD_OVER)
+  vec4 cl = march_clouds(u_cam, dir, col, 1.0e30);
   col = cl.rgb;
   float fogw = 0.0;
   vec3 fogcol = vec3(0.0);

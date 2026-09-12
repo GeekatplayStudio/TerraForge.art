@@ -50,6 +50,8 @@ enum class Icon {
   Key, Raise, Flatten, Smooth, Terrace, Noise, Erase, Console, Views,
   // the universal gizmo: arrows and a ring in one
   Transform,
+  // the Plants workspace: a tree
+  Plant,
   Count
 };
 

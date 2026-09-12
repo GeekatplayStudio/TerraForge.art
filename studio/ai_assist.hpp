@@ -12,7 +12,7 @@ struct App;
 
 // Which part of the app the request applies to. The assistant sends the
 // model only the schema relevant to that domain, so answers stay grounded.
-enum class AiDomain { Camera, World, Material, Terrain, Object, Render };
+enum class AiDomain { Camera, World, Material, Terrain, Object, Render, Plant };
 
 // Draws a compact prompt bar ("make a 35mm camera, 50mm lens, Kodak film").
 // Accepts an optional reference image for vision models.
@@ -28,6 +28,11 @@ bool ai_apply_actions(App &a, const std::string &json_text, std::string &err);
 // reason in `err`), -1 when the op belongs to someone else.
 int ai_graph_op(App &a, const std::string &op, const nlohmann::json &act,
                 std::string &err);
+// plant_species_ops.cpp: grow, vary, save and export plant species
+int ai_plant_species_op(App &a, const std::string &op, const nlohmann::json &act, std::string &err);
+// The spray brush: a painted population of several kinds at once
+// (studio/spray_ops.cpp).
+int spray_op(App &a, const std::string &op, const nlohmann::json &act, std::string &err);
 
 // Window layouts and the viewport set (layout_store.cpp): save_layout,
 // load_layout, delete_layout, list_layouts, reset_layout, add_view,
@@ -56,6 +61,11 @@ int ai_generate_op(App &a, const std::string &op, const nlohmann::json &act,
 // asset_untag, asset_note, asset_trash, asset_restore, asset_rescan,
 // asset_add_root, asset_remove_root, asset_roots.
 int ai_asset_op(App &a, const std::string &op, const nlohmann::json &act,
+                std::string &err);
+
+// The plant library (plant_ops.cpp): plant_library, plant_add, plant_fetch,
+// plant_record.
+int ai_plant_op(App &a, const std::string &op, const nlohmann::json &act,
                 std::string &err);
 
 // Viewport and surface quality (ai_ops_view.cpp): subdivision, per-patch

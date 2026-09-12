@@ -4,6 +4,7 @@
 // something visible". A patch wrongly discarded is a hole in the terrain, so
 // the safety direction is asserted directly: every point that projects inside
 // the frustum must lie in a patch the culler kept.
+#include "alpha_mips.hpp"
 #include "blue_noise.hpp"
 #include "scatter_lod.hpp"
 #include "terrain_cull.hpp"
@@ -121,15 +122,15 @@ static void test_bounds_cover_every_texel() {
   CHECK(b.size() == (size_t)P * P * 2, "bounds are the wrong size");
 
   // Every texel a patch can reach must be inside that patch's range. Sampling
-  // the patch interior is not enough: bilinear filtering reaches one texel
+  // the patch interior is not enough: the B-spline relief reads two texels
   // past the edge, which is the case the margin exists for.
   for (int py = 0; py < P; ++py)
     for (int px = 0; px < P; ++px) {
       float lo = b[((size_t)py * P + px) * 2];
       float hi = b[((size_t)py * P + px) * 2 + 1];
       CHECK(lo <= hi, "patch bound is inverted");
-      int x0 = px * N / P, x1 = (px + 1) * N / P;
-      int y0 = py * N / P, y1 = (py + 1) * N / P;
+      int x0 = std::max(px * N / P - 2, 0), x1 = (px + 1) * N / P + 2;
+      int y0 = std::max(py * N / P - 2, 0), y1 = (py + 1) * N / P + 2;
       for (int y = y0; y <= y1 && y < N; ++y)
         for (int x = x0; x <= x1 && x < N; ++x) {
           float v = h.v[(size_t)y * N + x];
@@ -273,6 +274,51 @@ static void test_culling_actually_culls() {
         "patches survived with the camera pointed away from them");
 }
 
+// A leaf card's levels keep its share of leaf. Averaged down plainly, thin
+// leaves over a clear ground fall under the cut at every level and the far
+// tree is bare twigs; scaled, every level stays within a few percent.
+static void test_alpha_mips_keep_coverage() {
+  const int N = 64;
+  std::vector<uint8_t> rgba((size_t)N * N * 4, 0);
+  // small soft-edged leaves of different sizes scattered over a clear card:
+  // a sparse card, the kind plain mipmaps thin to nothing
+  struct Leaf { float x, y, r; };
+  std::vector<Leaf> leaves;
+  uint32_t s = 12345u;
+  auto rnd = [&]() { s = s * 1664525u + 1013904223u; return float(s >> 8) / float(1u << 24); };
+  for (int k = 0; k < 42; ++k) leaves.push_back({rnd() * N, rnd() * N, 1.2f + rnd() * 2.6f});
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) {
+      size_t i = ((size_t)y * N + x) * 4;
+      rgba[i] = 60; rgba[i + 1] = 140; rgba[i + 2] = 50;
+      float a = 0.f;
+      for (const Leaf &l : leaves) {
+        const float d = std::hypot(x + 0.5f - l.x, y + 0.5f - l.y);
+        a = std::fmax(a, std::fmin(std::fmax((l.r - d) / 1.5f + 0.5f, 0.f), 1.f));
+      }
+      rgba[i + 3] = (uint8_t)std::lround(255.f * a);
+    }
+  CHECK(studio::alpha_has_cut(rgba, N, N), "a card with clear texels has a cut");
+  const float base = studio::alpha_coverage(rgba, N, N);
+  CHECK(base > 0.1f && base < 0.3f, "the leaves cover a small share of the card");
+  std::vector<int> sizes;
+  const auto levels = studio::alpha_coverage_mips(rgba, N, N, sizes);
+  CHECK(levels.size() == 6, "64 texels make six levels below the base");
+  CHECK(sizes.size() == levels.size() * 2 && sizes[0] == 32 && sizes.back() == 1,
+        "the levels halve down to one texel");
+  // the scaled levels stay near the base's share until they are too few
+  // texels to say
+  for (size_t l = 0; l + 2 < levels.size(); ++l) {
+    const float c = studio::alpha_coverage(levels[l], sizes[l * 2], sizes[l * 2 + 1]);
+    CHECK(std::fabs(c - base) < 0.13f,
+          "level " + std::to_string(l + 1) + " keeps the base coverage (got " +
+              std::to_string(c) + ")");
+  }
+  // and a solid picture has no cut, so the plain mipmaps serve
+  std::vector<uint8_t> solid((size_t)N * N * 4, 255);
+  CHECK(!studio::alpha_has_cut(solid, N, N), "an opaque picture has no cut");
+}
+
 static void test_cull_pad_covers_each_contribution() {
   CHECK(studio::cull_pad(0.f, false, 0.f, 0.f) == 0.f,
         "pad is non-zero with nothing displacing");
@@ -366,6 +412,9 @@ static void test_blue_noise() {
 
 int test_render_hdr_run(); // test_render_hdr.cpp
 int test_planet_place_run(); // test_planet_place.cpp
+int test_water_run();        // test_water.cpp
+int test_terrain_relief_run(); // test_terrain_relief.cpp
+int test_ground_march_run();   // test_ground_march.cpp
 
 // ------------------------------------------------------------------ lens
 // The optical simulation's one piece of physics-shaped maths: what
@@ -523,6 +572,9 @@ int main() {
   test_lens_distortion();
   g_failures += test_render_hdr_run();
   g_failures += test_planet_place_run();
+  g_failures += test_water_run();
+  g_failures += test_terrain_relief_run();
+  g_failures += test_ground_march_run();
   test_blue_noise();
   test_frustum_extraction();
   test_bounds_cover_every_texel();
@@ -530,6 +582,7 @@ int main() {
   test_culling_never_hides_visible_ground();
   test_culling_actually_culls();
   test_cull_pad_covers_each_contribution();
+  test_alpha_mips_keep_coverage();
   if (g_failures) {
     std::printf("%d failure(s)\n", g_failures);
     return 1;

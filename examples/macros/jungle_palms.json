@@ -1,0 +1,36 @@
+{ "actions": [
+  { "op": "add_node", "type": "Noise", "x": 40, "y": 300, "alias": "base", "attrs": { "octaves": 6, "post_range": [0.0, 0.35] } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "TerrainOutput", "to_port": "heightmap" },
+
+  { "op": "add_node", "type": "FlatColor", "x": 320, "y": 300, "alias": "soil", "attrs": { "r": 0.22, "g": 0.25, "b": 0.12 } },
+
+  { "op": "add_node", "type": "EcosystemLayer", "x": 640, "y": 160, "alias": "canopy",
+    "attrs": { "name": "Palms and bushes", "density": 9, "spacing_m": 9, "species": 2,
+               "sp1_presence": 1.0, "sp2_presence": 0.8, "sp2_scale": 0.9, "scale": 1.0, "variation": 0.4,
+               "footprint_m": 5, "clump_amount": 0.4, "clump_size_m": 90,
+               "use_slope": true, "slope": [0, 34], "slope_fuzz": 6, "slope_influence": 0.5 } },
+  { "op": "connect", "from": "soil", "from_port": "texture", "to": "canopy", "to_port": "below albedo" },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "canopy", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "EcosystemLayer", "x": 940, "y": 300, "alias": "ferns",
+    "attrs": { "name": "Ferns", "density": 260, "spacing_m": 2.2, "scale": 1.0, "variation": 0.5, "footprint_m": 1.4,
+               "affinity": 0.8, "affinity_radius_m": 20,
+               "use_slope": true, "slope": [0, 38], "slope_fuzz": 6 } },
+  { "op": "connect", "from": "canopy", "from_port": "albedo", "to": "ferns", "to_port": "below albedo" },
+  { "op": "connect", "from": "canopy", "from_port": "points", "to": "ferns", "to_port": "below" },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "ferns", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "MaterialOutput", "x": 1240, "y": 300, "alias": "mat", "attrs": { "name": "Jungle floor" } },
+  { "op": "connect", "from": "ferns", "from_port": "albedo", "to": "mat", "to_port": "base color" },
+  { "op": "assign_material", "node": "mat" },
+
+  { "op": "set_sun", "azimuth_deg": 150, "altitude_deg": 55, "intensity": 2.6, "color": [1.0, 0.95, 0.86] },
+  { "op": "set_fog", "type": "haze", "density": 0.8, "level": 0.2, "color": [0.72, 0.80, 0.78] },
+
+  { "op": "add_primitive", "kind": "palm", "name": "Palm", "position": [0.5, 0.0, 0.5] },
+  { "op": "set_scatter", "object": "Palm", "node": "canopy", "species": 1, "size": 1.0, "jitter": 0.35, "sway": 0.02 },
+  { "op": "add_primitive", "kind": "bush", "name": "Bush", "position": [0.5, 0.0, 0.5] },
+  { "op": "set_scatter", "object": "Bush", "node": "canopy", "species": 2, "size": 1.0, "jitter": 0.5 },
+  { "op": "add_primitive", "kind": "fern", "name": "Fern", "position": [0.5, 0.0, 0.5] },
+  { "op": "set_scatter", "object": "Fern", "node": "ferns", "size": 1.0, "jitter": 0.4, "sway": 0.04 }
+] }

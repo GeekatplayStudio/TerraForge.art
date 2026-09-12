@@ -1,5 +1,6 @@
 #include "gpx/attribute.hpp"
 #include <algorithm>
+#include <functional>
 
 namespace gpx {
 
@@ -53,6 +54,17 @@ int AttrSet::get_choice(const std::string &k) const {
   auto *a = find(k);
   return a ? a->i : 0;
 }
+const Curve &AttrSet::get_curve(const std::string &k) const {
+  static const Curve one = Curve::constant(1.f);
+  auto *a = find(k);
+  return a && !a->curves.empty() ? a->curves.primary() : one;
+}
+float AttrSet::eval_curve(const std::string &k, float x, uint32_t seed) const {
+  auto *a = find(k);
+  if (!a || a->curves.empty()) return 1.f;
+  return a->curves.eval(x, seed, (uint32_t)std::hash<std::string>{}(k));
+}
+
 void AttrSet::get_range(const std::string &k, float &lo, float &hi) const {
   auto *a = find(k);
   lo = a ? a->v2[0] : 0.f;
@@ -181,6 +193,38 @@ Attribute &add_field(AttrSet &s, const std::string &key, const std::string &labe
   a.fmax = mx;
   // left empty: an unpainted field costs nothing to carry or store
   return s.add(a);
+}
+
+Attribute &add_curve(AttrSet &s, const std::string &key, const std::string &label,
+                     const Curve &c, const std::string &group) {
+  Attribute a;
+  a.type = AttrType::Curve;
+  a.key = key;
+  a.label = label;
+  a.group = group;
+  a.curves.curves = {c};
+  a.curves.weights = {1.f};
+  return s.add(std::move(a));
+}
+
+Attribute &add_random(AttrSet &s, const std::string &key, const std::string &label,
+                      float def, float mn, float mx, float spread,
+                      const std::string &group, bool log_scale) {
+  Attribute a;
+  a.type = AttrType::Random;
+  a.key = key;
+  a.label = label;
+  a.group = group;
+  a.f = a.fdefault = def;
+  a.fmin = mn;
+  a.fmax = mx;
+  a.spread = spread;
+  a.log_scale = log_scale;
+  a.curve_along.curves = {Curve::constant(1.f)};
+  a.curve_along.weights = {1.f};
+  a.curve_hier.curves = {Curve::constant(1.f)};
+  a.curve_hier.weights = {1.f};
+  return s.add(std::move(a));
 }
 
 } // namespace gpx

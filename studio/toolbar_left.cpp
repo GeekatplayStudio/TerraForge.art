@@ -332,6 +332,8 @@ void column_render(App &a) {
 
 } // namespace
 
+void column_plants(App &a); // panel_plants.cpp
+
 void draw_left_tools(App &a) {
   tool_column_begin();
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 3.f));
@@ -348,6 +350,7 @@ void draw_left_tools(App &a) {
     case WS_LIGHTING: column_lighting(a); break;
     case WS_CAMERAS: column_cameras(a); break;
     case WS_ANIMATION: column_animation(a); break;
+    case WS_PLANTS: column_plants(a); break;
     default: column_terrain(a); break;
   }
   tool_sep();

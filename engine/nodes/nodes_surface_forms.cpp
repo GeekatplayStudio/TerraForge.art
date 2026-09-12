@@ -8,6 +8,7 @@
 #include "gpx/node_graph.hpp"
 #include "gpx/node_helpers.hpp"
 #include "gpx/noise_core.hpp"
+#include <algorithm>
 
 namespace gpx {
 
@@ -201,11 +202,19 @@ REGISTER_NODE(
                             dd * 0.35f * lip;
                 hgt += bowl + rim;
               } else {
-                // ejecta blanket decays outward
+                // The ejecta blanket decays outward. It rises from nothing at
+                // the rim and ends at nothing at the blanket's edge: started
+                // at full height it put a cliff of an eighth of the crater's
+                // depth exactly on the rim line - one texel wide, a jagged
+                // circle no renderer can draw smoothly - and stopped with a
+                // smaller one at the edge.
                 float e = (d - 1.f) / std::max(outer, 1e-4f);
                 float rim = std::exp(-std::pow((d - 1.f) / (0.12f + 0.2f * (1 - lip)), 2.f)) *
                             dd * 0.35f * lip;
-                float ej = std::exp(-e * 3.f) * dd * 0.12f;
+                float rise = 1.f - std::exp(-e * 14.f);
+                float t = std::clamp((e - 0.75f) / 0.25f, 0.f, 1.f);
+                float fade = 1.f - t * t * (3.f - 2.f * t);
+                float ej = std::exp(-e * 3.f) * dd * 0.12f * rise * fade;
                 hgt += rim + ej;
               }
             }

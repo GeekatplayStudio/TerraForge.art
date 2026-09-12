@@ -84,11 +84,42 @@ void object_properties_nebula_ui(App &a, SceneObject &o) {
                           "off as an inverse square the gas nearest them is\n"
                           "ionised twice over - teal - while the outskirts stay\n"
                           "hydrogen's crimson. Move them with the seed.");
+      studio::SliderFloatW("Hot stars shown", &N.source_stars, 0.f, 2.f);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("How bright those stars are drawn, spikes and all. 0\n"
+                          "leaves the gas lit by stars you cannot see.");
+      studio::SliderFloatW("Core glow", &N.core_glow, 0.f, 2.f);
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The gas round the hot stars burned out toward white,\n"
+                          "the way a long exposure records a nebula's heart.");
     }
+    studio::SliderFloatW("Turbulence", &N.turbulence, 0.f, 1.f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Tears the gas into filaments and tendrils with a second,\n"
+                        "finer warp. Costs one more look into the noise a step.");
+    studio::SliderFloatW("Dust lanes", &N.lanes, 0.f, 1.f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Thin dark ridges of dust laid across the glow - the lanes\n"
+                        "a photograph of a nebula is crossed by.");
   }
   ImGui::SeparatorText("Colour");
   ImGui::ColorEdit3(N.type == 2 || N.type == 3 ? "Core" : "Ionised gas", N.color1);
   ImGui::ColorEdit3(N.type == 2 ? "Arms" : (N.type == 3 ? "Halo" : "Cool gas"), N.color2);
+  if (N.type == 0) {
+    // unset (negative) reads as the cool gas's own colour, so the picker opens there
+    bool own = N.color3[0] >= 0.f;
+    float c3[3] = {N.color3[0], N.color3[1], N.color3[2]};
+    if (!own) for (int k = 0; k < 3; ++k) c3[k] = N.color2[k];
+    if (ImGui::ColorEdit3("Outskirts", c3))
+      for (int k = 0; k < 3; ++k) N.color3[k] = std::max(c3[k], 0.f);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("The colour of the barely-lit gas at the cloud's edges -\n"
+                        "the pinks and ambers round a nebula's crimson.");
+    if (own) {
+      ImGui::SameLine();
+      if (ImGui::SmallButton("As cool gas")) N.color3[0] = N.color3[1] = N.color3[2] = -1.f;
+    }
+  }
   if (ImGui::Button("Colours from the Realism dial"))
     space_nebula_colors(N.type, render_settings().space.realism, N.seed, N.color1, N.color2);
   if (ImGui::IsItemHovered())

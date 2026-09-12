@@ -2,7 +2,9 @@
 #pragma once
 #include "gpx/animation.hpp"
 #include "gpx/planet_math.hpp"
+namespace gpx { class Graph; }
 #include "gpx/deform.hpp"
+#include "gpx/plant.hpp"
 #include "scatter_lod.hpp"
 #include <array>
 #include <map>
@@ -27,6 +29,10 @@ struct PlanetData {
   float water_color[3] = {0.06f, 0.16f, 0.28f};
   float atmo_color[3] = {0.45f, 0.62f, 0.90f};
   float atmo_density = 0.6f; // 0 = airless rim
+  // The weather seen from space: how much of the world a deck of cloud
+  // covers, 0 none .. 1 overcast (planet_clouds.cpp). A world with no air has
+  // none, whatever this says; the deck drifts on the scene's cloud clock.
+  float clouds = 0.4f;
   float spin_deg = 0.f;      // static rotation about Y, for variety
   // The world the scene stands on. One Planet object is the home: the
   // terrain tiles, the water, the atmosphere and the surface layers are its
@@ -71,6 +77,17 @@ struct NebulaData {
   int sources = 3;
   float color1[3] = {0.62f, 0.92f, 0.96f}; // the ionised heart
   float color2[3] = {0.95f, 0.26f, 0.30f}; // the hydrogen around it
+  // The finer look of a cloud. Turbulence tears the gas into filaments with a
+  // second, finer warp; lanes lay thin ridges of dust across the glow; core
+  // glow burns the gas round the hot stars out toward white; and the hot
+  // stars themselves are drawn, as bright as source_stars (0 hides them).
+  float turbulence = 0.f;
+  float lanes = 0.f;
+  float core_glow = 0.f;
+  float source_stars = 0.6f;
+  // the barely-lit outskirts' colour; negative until set, which means the
+  // cool gas's own, so a cloud made before it existed looks the same
+  float color3[3] = {-1.f, -1.f, -1.f};
 };
 
 // One infinite procedural terrain layer. Parented to a Planet it shapes that
@@ -138,6 +155,34 @@ struct CameraData {
   float chromatic = 0.f;       // 0 = none; lateral fringing, in pixels at the edge
   bool flare = false;
   float flare_strength = 0.4f;
+  // What the flare is made of (renderer_post_flare.cpp). The style: 0 the
+  // old ghosts and halo, 1 a cinematic flare - a hot core, a starburst of
+  // rays, a ring and a chain of tinted ghosts - and 2 the same through an
+  // anamorphic lens, with a streak across the frame. Each part is a dial.
+  int flare_style = 1;
+  float flare_rays = 0.6f;   // the starburst
+  float flare_streak = 0.5f; // the horizontal streak
+  float flare_ghosts = 0.5f; // the reflections chained through the frame centre
+  float flare_halo = 0.35f;  // the ring about the sun
+  // The shape of each part. The defaults are the flare as it was drawn
+  // before these existed, so a saved camera looks the same.
+  float flare_core = 1.f;           // the hot core and its bloom
+  int flare_ray_count = 16;         // rays in the long set (the short set: 2.75x)
+  float flare_ray_length = 1.f;     // how far the rays reach
+  float flare_streak_length = 1.f;  // how far the streak reaches
+  float flare_streak_tint[3] = {0.45f, 0.65f, 1.f}; // its cool end, and the anamorphic lines
+  float flare_halo_radius = 0.19f;  // the ring, in frame heights
+  int flare_ghost_count = 9;        // reflections, 0..12
+  int flare_blades = 6;             // the aperture's blades: the ghosts' polygon
+  float flare_chroma = 1.f;         // how far the colours part on the ring and ray tips
+  int flare_seed = 0;               // another arrangement of rays and ghosts
+  // Bloom: the light a lens and a sensor spread round everything bright -
+  // the sun, a glint on water, snow in sunlight, a star (renderer_post_bloom
+  // .cpp). Off until asked for, like the flare: it is taste. How much, from
+  // how bright up (0..1 of the picture's white), and how far it spreads.
+  float bloom = 0.f;
+  float bloom_threshold = 0.85f;
+  float bloom_size = 0.5f;
   // Shutter-driven motion blur along the camera's own movement. The viewport
   // has no per-object motion, so this blurs what the camera did, not what
   // moved in front of it - and the render engines get the shutter itself.
@@ -146,12 +191,25 @@ struct CameraData {
 };
 
 struct SceneObject {
+  // AirLayer is a band of the atmosphere - a cloud deck, a fog, a haze - and
+  // there may be as many as a sky needs. It is a child of an Atmosphere, and
+  // an Atmosphere may itself be a child of a Planet, so a layer belongs
+  // either to the world the camera is standing on or to a particular planet
+  // hanging in its sky. What kind of band it is lives in `air` below.
   enum Type { Terrain, Water, Sun, Atmosphere, Mesh, Group, Camera, Planet,
-              InfiniteSurface, Light, Nebula };
+              InfiniteSurface, Light, Nebula, AirLayer };
   Type type = Mesh;
   PlanetData planet;          // valid when type == Planet
   InfiniteSurfaceData surf;   // valid when type == InfiniteSurface
   NebulaData nebula;          // valid when type == Nebula
+  // Valid when type == AirLayer. The numbers themselves live on the graph
+  // node that drives this object (driver_node), as every driven object's do;
+  // this says only which kind of band it is, because the tree needs to know
+  // that to draw the row before it looks anything up.
+  struct AirLayerData {
+    enum Kind { Cloud, Fog } kind = Cloud;
+  };
+  AirLayerData air;
   std::string name;
   int layer = 0;
   int parent = -1;       // index into objects, -1 = root
@@ -238,6 +296,12 @@ struct SceneObject {
   // How uneven the ground under the base is (highest minus lowest sample),
   // runtime only, so the panel can say how deep "touches everywhere" is.
   float ground_uneven = 0.f;
+  // How far the micro-relief the viewport draws over the ground lifts the
+  // lock's seat, heightmap units; runtime only, 0 while the lock is off. Like
+  // `ground_sunk`, a displacement the imprint is not handed: it moulds the
+  // heightmap, the relief rides over the mould wherever it is, and a mould
+  // raised to meet the relief would only lift the relief with it.
+  float ground_relief = 0.f;
   // What the ground lock last wrote into pos[1]. Runtime only, never saved:
   // it is how the lock tells its own writes from the user's, so that typing
   // an altitude, dragging the gizmo, driving it over the API or keyframing
@@ -264,9 +328,30 @@ struct SceneObject {
     std::string name;
     std::vector<uint8_t> rgba;  // the picture, decoded; empty = none
     int w = 0, h = 0;
+    // Thin and lit from both sides - a leaf, a needle spray, a petal. It
+    // changes how the part is lit when a picture of the mesh is taken
+    // (mesh_thumbnail.cpp): foliage turned away from the sun is not in
+    // shadow, it is lit through.
+    bool double_sided = false;
+    // The part's own surface and how it reflects. A leaf's midrib and veins
+    // live in the normal map and its waxy cuticle in the roughness; without
+    // them it is lit as one flat facet whatever its colour picture shows.
+    std::vector<uint8_t> normal_rgba, rough_rgba;
+    unsigned normal_tex = 0, rough_tex = 0;
+    float roughness = 0.6f;
+    float translucency = 0.f;  // light through it, which is what a canopy does
     unsigned tex = 0;           // its GL texture, made on first draw
   };
   std::vector<Part> parts;
+  // A plant grown from a species node (gpx/plant.hpp) carries two more
+  // streams, four floats per vertex: wind weights (phase, bend, flutter,
+  // height) the vertex shader sways by, and a tint (rgb, ambient occlusion)
+  // the fragment shader multiplies in. Empty on every other mesh. The
+  // wind it stands in comes from its species root's Wind group.
+  std::vector<float> wind, tint;
+  unsigned windbo = 0, tintbo = 0;
+  bool plant = false;
+  gpx::PlantWind plant_wind;
   unsigned vao = 0, vbo = 0, uvbo = 0;
   int vert_count = 0;
   bool gpu_dirty = false;
@@ -292,7 +377,18 @@ struct SceneObject {
   std::vector<InstanceCell> inst_cells;
   // reduced copies of the mesh for far instances (built on load for meshes
   // without material parts; transient GL handles, rebuilt on demand)
+  // The reduced copies drawn at distance. Eight floats a vertex - position,
+  // normal, texture coordinate - because a plant's parts each wear their own
+  // picture and a reduced mesh that dropped them would draw a tree as a flat
+  // grey shape. `lod_parts` says which run of it belongs to which part of
+  // `parts`, so each is drawn with its own texture.
   std::vector<float> lod_verts[2];
+  struct LodPart {
+    int part = 0;   // index into `parts`, for its picture and colour
+    int first = 0;  // vertices into lod_verts
+    int count = 0;
+  };
+  std::vector<LodPart> lod_parts[2];
   unsigned lod_vao[2] = {0, 0}, lod_vbo[2] = {0, 0};
   int lod_count[2] = {0, 0};
   bool lod_tried = false;
@@ -395,6 +491,17 @@ void scene_init_builtins();
 // cone; recorded as "primitive:<kind>" so saved scenes regenerate them
 // `detail` is the segment count round a round primitive's equator, and
 // the grid size of a flat one. 24 is what these were fixed at.
+// The whole object's geometry for a primitive kind - the five shapes above,
+// or a plant or rock (scene_plants.cpp: pine, juniper, palm, fern, grass,
+// bush, boulder), which carry bark and foliage parts with their own colours.
+bool scene_primitive_build(const std::string &kind, int detail, SceneObject &o);
+// A plant's kind may carry a seed after a '#' ("pine#12"): another tree of the
+// same kind, rebuilt the same from the saved pseudo-path; 0 or none is the
+// tree as it always was.
+bool scene_is_plant_kind(const std::string &kind);
+float scene_plant_size_m(const std::string &kind); // its size when added, metres
+bool scene_plant_build(const std::string &kind, int detail, SceneObject &o);
+std::string scene_plant_kind(const std::string &spec, uint32_t *seed); // "pine#12" -> "pine", 12
 bool scene_primitive_verts(const std::string &kind, std::vector<float> &verts,
                            int detail = 24);
 int scene_add_primitive(const std::string &kind, const std::string &name,
@@ -422,6 +529,22 @@ std::vector<int> scene_nebula_indices();
 // creates an infinite terrain layer; parent = planet object index, or -1 for
 // the home ground plane. Returns its index.
 int scene_add_infinite_surface(int parent = -1, const std::string &name = "");
+
+// The bands of air under an Atmosphere - cloud decks, fogs, hazes - listed in
+// the Objects tree as its children (studio/scene_air_layers.cpp). Pass -1 for
+// every band in the scene. An Atmosphere may itself be a child of a Planet,
+// and its bands are then that planet's sky rather than this world's.
+std::vector<int> scene_air_layers(int atmosphere_idx);
+// Add one. `kind` is SceneObject::AirLayerData::Cloud or ::Fog; the atmosphere
+// defaults to the one selected, or the scene's own. Makes the graph node that
+// holds what the band is and returns the object's index, or -1.
+struct App;
+int scene_add_air_layer(App &a, int kind, int atmosphere_idx = -1, const std::string &name = "");
+// The same with the graph lock already held, which is how an operation coming
+// in over the API reaches it: the dispatch holds the lock for the whole
+// action and the mutex is not recursive.
+int scene_add_air_layer_locked(App &a, int kind, int atmosphere_idx = -1,
+                               const std::string &name = "");
 std::vector<int> scene_planet_indices(); // the planets in the sky (the home planet excluded)
 int scene_home_planet();                  // the world's index, or -1
 // The nearest Planet above an object in the tree, or -1.
@@ -432,6 +555,23 @@ void scene_ensure_home_planet();
 // Removes an object and everything under it, fixing every index that
 // pointed past it (parents, cameras, selection). Returns how many went.
 int scene_delete_subtree(int object);
+
+// Deleting objects the way a person means it: each named object with
+// everything under it, and - when `graph` is given - the node that would
+// build it again. A Primitive, ImportObject, LightSource, SceneCamera,
+// Planet, Nebula or InfiniteTerrain node re-creates its object on the next
+// evaluation when the object is gone (scene_nodes_objects.cpp), so deleting
+// the object alone brought it straight back. `keep_builtin` leaves the
+// world's own pieces (the home planet, its terrain, sea, air, sun) alone.
+// Parents and cameras follow; nothing is selected afterwards. No undo and
+// no locking: the caller owns both (scene_delete_objects in the studio).
+struct SceneDeleteResult {
+  std::vector<int> objects;     // the indices removed, highest first
+  std::vector<uint64_t> nodes;  // the driving nodes removed from the graph
+  int kept_builtin = 0;         // named objects left alone as the world's
+};
+SceneDeleteResult scene_delete_with_drivers(SceneState &sc, gpx::Graph *graph,
+                                            const std::vector<int> &objects, bool keep_builtin);
 // the infinite layers that apply to `planet_idx` (-1 = home ground plane),
 // visible ones only, outliner order
 std::vector<int> scene_surface_layers(int planet_idx);

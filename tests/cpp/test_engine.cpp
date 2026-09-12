@@ -3250,6 +3250,22 @@ static void test_curve_and_shapes() {
       CHECK(std::fabs(a - c) < 1e-5f, "one unit is one full period");
       CHECK(std::fabs((a + b) - 1.f) < 1e-5f,
             "half a period lands on the opposite phase");
+      // the gradient shapes, appended after Step
+      n->attrs.find("width")->f = 0.4f;
+      n->attrs.find("mode")->i = 8; // square falloff: the same along an edge
+      CHECK(std::fabs(at(0.5f, 0.5f) - 1.f) < 1e-6f, "square falloff peaks at its centre");
+      CHECK(std::fabs(at(0.7f, 0.5f) - at(0.7f, 0.65f)) < 1e-5f,
+            "square falloff is flat along the edge's direction");
+      n->attrs.find("mode")->i = 9; // diamond: the corners fall faster
+      CHECK(at(0.7f, 0.5f) > at(0.65f, 0.65f) - 1e-6f && at(0.65f, 0.65f) < at(0.65f, 0.5f),
+            "diamond falloff falls faster toward the diagonal");
+      n->attrs.find("mode")->i = 10; // angular: a half turn apart is half the range
+      const float e = at(0.9f, 0.5f), w = at(0.1f, 0.5f);
+      CHECK(std::fabs(std::fabs(e - w) - 0.5f) < 1e-4f, "opposite sides are half a turn apart");
+      n->attrs.find("mode")->i = 11; // spiral: one unit out winds `frequency` turns
+      n->attrs.find("frequency")->f = 2.f;
+      const float s0 = at(0.6f, 0.5f), s1 = at(1.1f, 0.5f);
+      CHECK(std::fabs(s0 - s1) < 1e-4f, "half a unit out at two turns a unit is a whole turn");
     }
   }
 }

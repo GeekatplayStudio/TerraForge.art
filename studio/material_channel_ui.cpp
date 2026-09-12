@@ -158,6 +158,11 @@ void material_attr_widget(App &a, gpx::Node *n, const char *key, float label_w) 
     if (ImGui::InputText("##v", buf, sizeof buf)) { at->s = buf; changed = true; }
     break;
   }
+  case gpx::AttrType::Random:
+  case gpx::AttrType::Curve:
+    ImGui::NewLine();
+    changed = draw_attribute(*at);
+    break;
   case gpx::AttrType::Gradient:
     // The Properties editor's gradient widget - the strip, the stops, and
     // the gradient library with its natural presets. A fractal colour's map

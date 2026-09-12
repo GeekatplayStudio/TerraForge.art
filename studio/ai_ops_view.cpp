@@ -21,6 +21,7 @@
 #include "paint_canvas.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "terrain_relief.hpp"
 #include "undo.hpp"
 #include "world_shape.hpp"
 #include <algorithm>
@@ -66,6 +67,10 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     // (placed on the planet, the material's relief added) and the graph's
     // own heightmap - in heightmap units and in metres. What a script reads
     // to check that an imprint, a displacement or a sculpt did what it said.
+    // `drawn` adds the fractal micro-relief the viewport lays over the
+    // placed ground (terrain_relief.hpp) at every octave, as something
+    // standing there is seen: the surface a plant or a locked object rests
+    // on, metres off `placed` either way on the default tile.
     const float x = std::clamp(act.value("x", 0.5f), 0.f, 1.f);
     const float z = std::clamp(act.value("z", 0.5f), 0.f, 1.f);
     const RenderSettings &rs = render_settings();
@@ -75,6 +80,10 @@ int ai_view_op(App &a, const std::string &op, const json &act,
       float h = placed->sample(x, z);
       out["placed"] = h;
       out["placed_m"] = h * hm_m;
+      const float relief = relief_at(x, z, relief_dials(rs), RELIEF_NEAR_OCTAVES); // world units
+      out["relief_m"] = relief * rs.terrain_size_m;
+      out["drawn"] = h + relief / std::max(rs.height_scale, 1e-6f);
+      out["drawn_m"] = h * hm_m + relief * rs.terrain_size_m;
     }
     for (auto &n : a.graph.nodes)
       if (n->type == "TerrainOutput")
@@ -158,6 +167,8 @@ int ai_view_op(App &a, const std::string &op, const json &act,
         {"paint", &a.show_paint_canvas},
         {"curves", &a.show_curve_editor},
         {"mesh tools", &a.show_mesh_tools}, {"mesh", &a.show_mesh_tools},
+        {"plants", &a.show_plants},     {"plant library", &a.show_plants},
+        {"plant editor", &a.show_plant_editor}, {"species", &a.show_plant_editor},
     };
     for (const Row &r : rows)
       if (want == r.key) {
@@ -355,6 +366,7 @@ int ai_view_op(App &a, const std::string &op, const json &act,
   n += take_i(act, "place_mode", rs.place_mode, 0, 4);
   n += take_f(act, "fractal_detail", rs.fractal_detail, 0.f, 1.f);
   n += take_f(act, "fractal_scale", rs.fractal_scale, 0.1f, 4096.f);
+  n += take_f(act, "fractal_gain", rs.fractal_gain, 0.05f, 0.95f);
   n += take_f(act, "field_displacement", rs.field_displacement, -8.f, 8.f);
   // shading and exposure
   n += take_b(act, "wireframe", rs.wireframe);
@@ -440,6 +452,8 @@ int ai_view_op(App &a, const std::string &op, const json &act,
     n += take_b(act, "water", vc.show_water_view);
     n += take_b(act, "grid", vc.grid);
     n += take_b(act, "outlines", vc.outlines);
+    n += take_b(act, "animate_plants", vc.animate_plants);
+    n += take_b(act, "show_origin", vc.show_origin);
   }
   if (act.contains("shading")) {
     const json &v = act["shading"];

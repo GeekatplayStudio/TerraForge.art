@@ -4,6 +4,7 @@
 #include "render_settings.hpp"
 #include "scatter_lod.hpp"
 #include "scene.hpp"
+#include "terrain_relief.hpp"
 #include "gpx/planet_math.hpp"
 #include "gpx/scatter.hpp"
 #include "nodes/scatter_attrs.hpp"
@@ -166,6 +167,9 @@ void app_service_population(App &a) {
       for (int k = 0; k < 3; ++k) eye[k] = sc.objects[(size_t)cam].cam.eye[k];
     const float eye_x = eye[0] * size_m, eye_z = eye[2] * size_m;
     const DynamicGround ground = collect_ground(a);
+    // what the viewport draws over that ground; only the copies stand on it,
+    // the presence rules keep reading the ground's own slope and height
+    const ReliefDials relief = relief_dials(rs);
     // the tile's own height range, in metres: the band a user set against
     // the terrain they can see means the same heights out on the surround
     float tile_lo = 0.f, tile_hi = 1.f;
@@ -270,7 +274,8 @@ void app_service_population(App &a) {
                 pc.species[i] != o.scatter_species)
               continue;
             const float px = pc.x[i] / size_m, pz = pc.y[i] / size_m;
-            const float gy = ground.at(px, pz) + (pc.has_attrs() ? pc.offset[i] / size_m : 0.f);
+            const float gy = ground.at(px, pz) + relief_at(px, pz, relief, RELIEF_NEAR_OCTAVES) +
+                             (pc.has_attrs() ? pc.offset[i] / size_m : 0.f);
             // the ground's normal, for copies that grow from the surface
             const float s = std::max(j.cell_m * 0.05f, 0.5f) / size_m;
             float nx = -(ground.at(px + s, pz) - ground.at(px - s, pz)) / (2.f * s);

@@ -62,6 +62,13 @@ int world_other_side(const RenderSettings &rs);
 // on it: a thickness above 0 on a ring or a flat world (planet_rim.cpp
 // draws the rim between the two faces then).
 bool world_has_body(const RenderSettings &rs);
+// Is the surround on `side` followed by the far shell (planet_renderer.cpp)
+// for an eye at `eye`: the whole shape drawn past 29 tiles, with its own
+// sea. `layer_count` is how many surface layers stand on that face. The
+// water (renderer_water.cpp) asks the same question, so it hands over to
+// the shell exactly where the ground does and fades with it otherwise.
+bool surround_far_shell(const RenderSettings &rs, const float eye[3], float radius,
+                        int side, int layer_count);
 // u_world_shape and u_world_thick for a program (planet_shaders_common.cpp).
 // Zero is the globe. Defined in renderer_passes.cpp, so this module links
 // without GL (tests).

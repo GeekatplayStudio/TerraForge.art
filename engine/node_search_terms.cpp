@@ -92,6 +92,11 @@ const std::vector<std::vector<std::string>> &concept_rows() {
        "border"},
       {"circle", "round", "disc", "ellipse", "sphere"},
       {"square", "rectangle", "box", "rect"},
+      // A gradient is a shape too: someone asking for "a radial falloff" or
+      // "a spiral" wants a height to build ground from, and "gradient" alone
+      // only found the colour ramps.
+      {"gradient", "radial", "falloff", "fade", "spiral", "angular", "cone",
+       "diamond", "linear"},
       {"path", "road", "trail", "route", "spline", "curve", "line"},
       // "cloud" is deliberately NOT here. A point cloud is a cloud only to a
       // programmer; to everyone else the word means the thing in the sky, and

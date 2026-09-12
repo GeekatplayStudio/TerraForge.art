@@ -18,6 +18,25 @@ import subprocess
 import sys
 
 from . import tonemap
+from .render_instances import instance_local as _instance_local
+from .render_instances import mesh_parts as _mesh_parts
+from .render_luxcore import render_luxcore
+
+
+def _mitsuba_part_bsdf(p: dict) -> dict:
+    """One mesh part's material: its picture or its colour, both faces
+    shading (a leaf is one sheet), and cut where the picture is clear, as the
+    viewport cuts a leaf card at half alpha."""
+    if p.get("texture") and os.path.isfile(p["texture"]):
+        refl = {"type": "bitmap", "filename": p["texture"]}
+    else:
+        refl = {"type": "rgb", "value": p["color"]}
+    bsdf: dict = {"type": "twosided",
+                  "material": {"type": "diffuse", "reflectance": refl}}
+    if p.get("alpha") and os.path.isfile(p["alpha"]):
+        bsdf = {"type": "mask", "material": bsdf,
+                "opacity": {"type": "bitmap", "filename": p["alpha"], "raw": True}}
+    return bsdf
 
 
 # ----------------------------------------------------------------- detection
@@ -137,6 +156,12 @@ def render_mitsuba(sc: dict) -> int:
             "type": "perspective",
             "fov": cam["fov"],
             "fov_axis": "y",
+            # A scene unit is a whole tile, kilometres across: Mitsuba's
+            # default near clip of 0.01 cut away the first fifty metres in
+            # front of the lens, and a camera by a shore looked under the sea
+            # through the hole - the black edge along the waterline.
+            "near_clip": 1e-5,
+            "far_clip": 1e7,
             "to_world": mi.ScalarTransform4f().look_at(
                 origin=cam["eye"], target=cam["target"], up=[0, 1, 0]),
             "film": {"type": "hdrfilm", "width": sc["width"],
@@ -144,7 +169,11 @@ def render_mitsuba(sc: dict) -> int:
                      "rfilter": {"type": "gaussian"}},
             "sampler": {"type": "independent", "sample_count": sc["spp"]},
         },
-        "terrain": {"type": "obj", "filename": sc["terrain_obj"], "bsdf": bsdf},
+        # Both faces shade: a ground mesh seen edge-on shows the odd back
+        # face along a crest or a cut, and Mitsuba's one-sided BSDFs return
+        # nothing there - a black sliver where the viewport draws ground.
+        "terrain": {"type": "obj", "filename": sc["terrain_obj"],
+                    "bsdf": {"type": "twosided", "material": bsdf}},
         "sun": {
             "type": "directional",
             "direction": [-sun["dir"][0], -sun["dir"][1], -sun["dir"][2]],
@@ -155,11 +184,18 @@ def render_mitsuba(sc: dict) -> int:
     if sc.get("surround_obj") and os.path.isfile(sc["surround_obj"]):
         scene_dict["surround"] = {"type": "obj",
                                   "filename": sc["surround_obj"],
-                                  "bsdf": surround_bsdf}
+                                  "bsdf": {"type": "twosided",
+                                           "material": surround_bsdf}}
 
-    # the viewport's own sky + volumetric clouds, as the environment light
+    # The viewport's own sky + volumetric clouds, as the environment light.
+    # Mitsuba reads longitude from atan2(x, -z) with no half-turn offset, and
+    # the panorama is written with one (u = atan2(x, -z)/2pi + 0.5, the sky
+    # shader's panorama mode): unturned, every render's sky was the sky
+    # behind the camera. Measured with a marked panorama - the mark at +x now
+    # sits in the middle of a camera looking along +x.
     if sc.get("sky_hdr") and os.path.isfile(sc["sky_hdr"]):
-        scene_dict["env"] = {"type": "envmap", "filename": sc["sky_hdr"]}
+        scene_dict["env"] = {"type": "envmap", "filename": sc["sky_hdr"],
+                             "to_world": mi.ScalarTransform4f().rotate([0, 1, 0], 180.0)}
         print("using viewport sky panorama:", sc["sky_hdr"])
     else:
         amb = [0.5 * (a + b) * sky["ambient"]
@@ -169,27 +205,26 @@ def render_mitsuba(sc: dict) -> int:
 
     # scene meshes, scattered copies included: base placement is the exported
     # model matrix; each copy swaps in its own translation, yaw and scale,
-    # composed exactly as the viewport shader composes them
-    import math as _math
+    # composed exactly as the viewport shader composes them. A mesh goes in
+    # as its parts, each with its own colour and picture (a plant's bark and
+    # leaves), since a shape takes one material.
     for i, m in enumerate(sc.get("meshes", [])):
         base = mi.ScalarTransform4f(
             [[m["model"][c * 4 + r] for c in range(4)] for r in range(4)])
-        mesh_bsdf = {"type": "diffuse",
-                     "reflectance": {"type": "rgb", "value": m["color"]}}
+        parts = {f"part{k}": {"type": "obj", "filename": p["obj"],
+                              "bsdf": _mitsuba_part_bsdf(p)}
+                 for k, p in enumerate(_mesh_parts(m))}
         insts = m.get("instances")
         if not insts:
-            scene_dict[f"mesh{i}"] = {"type": "obj", "filename": m["obj"],
-                                      "to_world": base, "bsdf": mesh_bsdf}
+            for key, shape in parts.items():
+                scene_dict[f"mesh{i}_{key}"] = dict(shape, to_world=base)
             continue
-        scene_dict[f"group{i}"] = {
-            "type": "shapegroup",
-            "child": {"type": "obj", "filename": m["obj"], "bsdf": mesh_bsdf}}
+        scene_dict[f"group{i}"] = dict({"type": "shapegroup"}, **parts)
         bx, by, bz = m["model"][12], m["model"][13], m["model"][14]
-        for k, (x, y, z, s, yaw) in enumerate(insts):
-            t = (mi.ScalarTransform4f().translate([x - bx, y - by, z - bz])
-                 @ base
-                 @ mi.ScalarTransform4f()
-                 .rotate([0, 1, 0], -_math.degrees(yaw)).scale(s))
+        for k, row in enumerate(insts):
+            t = (mi.ScalarTransform4f().translate(
+                    [row[0] - bx, row[1] - by, row[2] - bz])
+                 @ base @ _instance_local(mi, row))
             scene_dict[f"inst{i}_{k}"] = {
                 "type": "instance",
                 "shapegroup": {"type": "ref", "id": f"group{i}"},
@@ -266,6 +301,7 @@ def render_mitsuba(sc: dict) -> int:
             d = dict(scene_dict)
             d["sensor"] = {
                 "type": "perspective", "fov": 90.0, "fov_axis": "y",
+                "near_clip": 1e-5, "far_clip": 1e7,  # as the main sensor
                 "to_world": mi.ScalarTransform4f().look_at(
                     origin=eye,
                     target=[eye[0] + fwd[0], eye[1] + fwd[1], eye[2] + fwd[2]],
@@ -419,115 +455,6 @@ def render_cycles(sc: dict) -> int:
     print("running:", " ".join(cmd))
     rc = subprocess.call(cmd)
     return 0 if rc == 0 and os.path.isfile(sc["output"]) else (rc or 1)
-
-
-# ------------------------------------------------------------- luxcorerender
-def render_luxcore(sc: dict) -> int:
-    try:
-        import pyluxcore
-    except ImportError:
-        print("pyluxcore is not installed. Run: pip install pyluxcore")
-        return 3
-    pyluxcore.Init()
-    cam, sun, mat = sc["camera"], sc["sun"], sc["material"]
-    props = pyluxcore.Properties()
-    props.SetFromString(f"""
-        scene.camera.type = perspective
-        scene.camera.lookat.orig = {cam['eye'][0]} {cam['eye'][1]} {cam['eye'][2]}
-        scene.camera.lookat.target = {cam['target'][0]} {cam['target'][1]} {cam['target'][2]}
-        scene.camera.up = 0 1 0
-        scene.camera.fieldofview = {cam['fov']}
-        scene.materials.terrain.type = roughmatte
-        scene.materials.terrain.sigma = {float(mat['roughness']) * 90.0}
-        scene.lights.sun.type = sun
-        scene.lights.sun.dir = {-sun['dir'][0]} {-sun['dir'][1]} {-sun['dir'][2]}
-        scene.lights.sun.gain = {sun['intensity']} {sun['intensity']} {sun['intensity']}
-        scene.lights.sky.type = sky2
-        scene.lights.sky.dir = {sun['dir'][0]} {sun['dir'][1]} {sun['dir'][2]}
-    """)
-    scene = pyluxcore.Scene()
-    scene.Parse(props)
-    scene.DefineMesh("terrain_mesh", *_load_obj(sc["terrain_obj"]))
-    obj = pyluxcore.Properties()
-    obj.SetFromString("""
-        scene.objects.terrain.material = terrain
-        scene.objects.terrain.shape = terrain_mesh
-    """)
-    scene.Parse(obj)
-    # scene meshes, scattered copies as transformed object entries: LuxCore
-    # takes a per-object 4x4, so each copy is base-model x yaw x scale with
-    # its own translation - the same composition the viewport shader uses
-    import math as _math
-    for i, m in enumerate(sc.get("meshes", [])):
-        mesh_id = f"prop{i}_mesh"
-        scene.DefineMesh(mesh_id, *_load_obj(m["obj"]))
-        matp = pyluxcore.Properties()
-        col = m["color"]
-        matp.SetFromString(f"""
-            scene.materials.propmat{i}.type = matte
-            scene.materials.propmat{i}.kd = {col[0]} {col[1]} {col[2]}
-        """)
-        scene.Parse(matp)
-        M = m["model"]  # column-major 4x4
-
-        def compose(tx, ty, tz, s, yaw):
-            c, sn = _math.cos(yaw), _math.sin(yaw)
-            # R*S in column-major, then base model, then the translation swap
-            rs = [c * s, 0, -sn * s, 0, 0, s, 0, 0, sn * s, 0, c * s, 0,
-                  0, 0, 0, 1]
-            out = [0.0] * 16
-            for r in range(4):
-                for cc in range(4):
-                    out[cc * 4 + r] = sum(M[k * 4 + r] * rs[cc * 4 + k]
-                                          for k in range(4))
-            out[12] += tx - M[12]
-            out[13] += ty - M[13]
-            out[14] += tz - M[14]
-            return out
-
-        insts = m.get("instances") or [
-            (M[12], M[13], M[14], 1.0, 0.0)]
-        for k, (x, y, z, s, yaw) in enumerate(insts):
-            t = compose(x, y, z, s, yaw)
-            op = pyluxcore.Properties()
-            op.SetFromString(f"""
-                scene.objects.prop{i}_{k}.material = propmat{i}
-                scene.objects.prop{i}_{k}.shape = {mesh_id}
-                scene.objects.prop{i}_{k}.transformation = {' '.join(str(v) for v in t)}
-            """)
-            scene.Parse(op)
-
-    cfg = pyluxcore.Properties()
-    cfg.SetFromString(f"""
-        renderengine.type = PATHCPU
-        film.width = {sc['width']}
-        film.height = {sc['height']}
-        batch.haltspp = {sc['spp']}
-        film.outputs.1.type = RGB_IMAGEPIPELINE
-        film.outputs.1.filename = {sc['output']}
-    """)
-    session = pyluxcore.RenderSession(pyluxcore.RenderConfig(cfg, scene))
-    session.Start()
-    session.WaitForDone()
-    session.Stop()
-    session.GetFilm().SaveOutputs()
-    print("wrote", sc["output"])
-    return 0
-
-
-def _load_obj(path: str):
-    """Minimal OBJ reader returning (points, triangles, None, None, None)."""
-    pts, tris = [], []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.startswith("v "):
-                x, y, z = line.split()[1:4]
-                pts.append((float(x), float(y), float(z)))
-            elif line.startswith("f "):
-                idx = [int(tok.split("/")[0]) - 1 for tok in line.split()[1:]]
-                for k in range(2, len(idx)):
-                    tris.append((idx[0], idx[k - 1], idx[k]))
-    return pts, tris, None, None, None
 
 
 def render_appleseed(sc: dict) -> int:

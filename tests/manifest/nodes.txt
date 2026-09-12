@@ -97,6 +97,7 @@ FlatColor|Material
 Flood|Hydrology
 FlowAccumulation|Analysis
 FlowWarp|Transform
+FogLayer|Atmosphere
 Fold|Filter
 FractalColor|Material
 Fractal|Primitive
@@ -105,6 +106,7 @@ GammaCorrection|Filter
 GeologicalStrata|Primitive
 Glaciation|Erosion
 GradientMap|Material
+Gradient|Primitive
 GrassDisplacement|Primitive
 Gravel|Effect
 Grit|Effect
@@ -140,6 +142,7 @@ MixLayers|Operator
 Morphology|Filter
 MotionBlur|Camera
 NaturalGrain|Material
+Nebula|Scene
 NoiseFractal|Primitive
 Noise|Primitive
 NormalBlend|Material
@@ -156,6 +159,23 @@ PathSpline|Path
 Peaks|Effect
 Pebbles|Effect
 Planet|Scene
+PlantBall|Plant
+PlantBias|Plant
+PlantChildSelect|Plant
+PlantCutoutLeaf|Plant
+PlantFlower|Plant
+PlantGrowth|Plant
+PlantHydra|Plant
+PlantLeaf|Plant
+PlantMaterial|Plant
+PlantObject|Plant
+PlantRepeat|Plant
+PlantSegment|Plant
+PlantSpecies|Plant
+PlantUrchin|Plant
+PlantVariable|Plant
+PlantVector|Plant
+PlantWarpboard|Plant
 Plateau|Filter
 PointsFilter|Points
 PointsFromCsv|Points

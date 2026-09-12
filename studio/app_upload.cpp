@@ -43,9 +43,24 @@ const gpx::Heightmap *app_natural_ground() {
   return g_natural_ground && !g_natural_ground->empty() ? g_natural_ground.get() : nullptr;
 }
 
+// The TerrainImprint node that is the last step before the terrain the
+// viewport shows (`out` itself, or what feeds its heightmap), or null. Only
+// that one is lifted off the tile and laid on the placed ground instead: an
+// imprint further up the chain has erosion, Terrain Editor effects or a
+// sculpt layer after it, and they belong to the ground. Taking any imprint
+// found in the graph dropped every node after it from the viewport, while
+// the output's own thumbnail still showed them - the "erosion in the node,
+// none in the viewport" report.
+static gpx::Node *final_imprint(App &a, gpx::Node *out) {
+  if (!out) return nullptr;
+  if (out->type == "TerrainImprint") return out;
+  gpx::Node *up = a.graph.upstream_node(*out, "heightmap");
+  return up && up->type == "TerrainImprint" ? up : nullptr;
+}
+
 // What rides on the placed ground: the assigned material's displacement and
-// the TerrainImprint node's footprints and settings. Caller holds graph_mtx.
-static SurfaceFeatures collect_features(App &a) {
+// the final TerrainImprint's footprints and settings. Caller holds graph_mtx.
+static SurfaceFeatures collect_features(App &a, gpx::Node *out) {
   SurfaceFeatures f;
   gpx::Node *mat_out = nullptr;
   for (const SceneObject &o : scene().objects)
@@ -53,18 +68,18 @@ static SurfaceFeatures collect_features(App &a) {
   if (mat_out && mat_out->type == "MaterialOutput")
     if (const gpx::Heightmap *d = mat_out->in_hmap("displacement"))
       if (!d->empty()) f.displacement = std::make_shared<gpx::Heightmap>(*d);
-  for (auto &n : a.graph.nodes)
-    if (n->type == "TerrainImprint") {
-      f.footprints = n->attrs.get_s("footprints");
-      f.imprint.width = n->attrs.get_f("width", 1.5f);
-      f.imprint.smoothness = n->attrs.get_f("smoothness", 0.5f);
-      f.imprint.retain = n->attrs.get_f("retain", 0.35f);
-      f.imprint.flatten = n->attrs.get_f("flatten", 1.f);
-      f.imprint.strength = n->attrs.get_f("strength", 1.f);
-      break;
-    }
+  if (gpx::Node *n = final_imprint(a, out)) {
+    f.footprints = n->attrs.get_s("footprints");
+    f.imprint.width = n->attrs.get_f("width", 1.5f);
+    f.imprint.smoothness = n->attrs.get_f("smoothness", 0.5f);
+    f.imprint.retain = n->attrs.get_f("retain", 0.35f);
+    f.imprint.flatten = n->attrs.get_f("flatten", 1.f);
+    f.imprint.strength = n->attrs.get_f("strength", 1.f);
+  }
   return f;
 }
+
+std::shared_ptr<const gpx::TextureRGBA> app_terrain_albedo() { return g_last_albedo; }
 static std::optional<PlacementRequest> g_placement_next;
 static std::future<TerrainUpload> g_placement_work;
 
@@ -425,12 +440,11 @@ void app_service_upload(App &a) {
           // placement, on the ground the viewport shows. Detach from the
           // mutable graph buffers before the worker reads them.
           const gpx::Heightmap *tile_src = ph->hmap.get();
-          for (auto &cand : a.graph.nodes)
-            if (cand->type == "TerrainImprint")
-              if (const gpx::Heightmap *pre = cand->in_hmap("input"))
-                if (!pre->empty() && pre->w == ph->hmap->w && pre->h == ph->hmap->h) tile_src = pre;
+          if (gpx::Node *im = final_imprint(a, n))
+            if (const gpx::Heightmap *pre = im->in_hmap("input"))
+              if (!pre->empty() && pre->w == ph->hmap->w && pre->h == ph->hmap->h) tile_src = pre;
           g_last_tile = std::make_shared<gpx::Heightmap>(*tile_src);
-          g_last_features = collect_features(a);
+          g_last_features = collect_features(a, n);
           g_last_albedo = albedo ? std::make_shared<gpx::TextureRGBA>(*albedo) : nullptr;
           upload_placed_terrain(a, g_last_tile, g_last_albedo);
         }

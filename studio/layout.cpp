@@ -246,6 +246,8 @@ void build_default_layout(unsigned dockspace_id, unsigned view_mask) {
   ImGui::DockBuilderDockWindow("Material Editor", right_bottom);
   ImGui::DockBuilderDockWindow("Material Studio", right_bottom);
   ImGui::DockBuilderDockWindow("Material Browser", right_bottom);
+  ImGui::DockBuilderDockWindow("Plants", right_bottom);
+  ImGui::DockBuilderDockWindow("Plant Editor", right_bottom);
 
   // The open viewports fill the top region; each stays a normal window the
   // user can resize, re-dock, tear off or float onto another monitor.
@@ -287,6 +289,8 @@ void build_materials_layout(unsigned dockspace_id, unsigned view_mask) {
   ImGui::DockBuilderDockWindow("AI", right_bottom);
   ImGui::DockBuilderDockWindow("Mesh Tools", right_bottom);
   ImGui::DockBuilderDockWindow("Material Editor", right_bottom);
+  ImGui::DockBuilderDockWindow("Plants", right_bottom);
+  ImGui::DockBuilderDockWindow("Plant Editor", right_bottom);
 
   // top: the studio; below it the thin browser; bottom: graph | scene view
   ImGuiID bottom = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.36f,

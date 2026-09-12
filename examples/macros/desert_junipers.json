@@ -1,0 +1,42 @@
+{ "actions": [
+  { "op": "add_node", "type": "Noise", "x": 40, "y": 300, "alias": "base", "attrs": { "octaves": 7, "post_range": [0.0, 0.25] } },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "TerrainOutput", "to_port": "heightmap" },
+
+  { "op": "add_node", "type": "FlatColor", "x": 320, "y": 300, "alias": "sand", "attrs": { "r": 0.62, "g": 0.45, "b": 0.30 } },
+
+  { "op": "add_node", "type": "EcosystemLayer", "x": 640, "y": 160, "alias": "junipers",
+    "attrs": { "name": "Junipers", "density": 3, "spacing_m": 14, "scale": 1.0, "variation": 0.5, "footprint_m": 5,
+               "clump_amount": 0.7, "clump_size_m": 220,
+               "use_slope": true, "slope": [0, 22], "slope_fuzz": 6, "slope_influence": 0.7 } },
+  { "op": "connect", "from": "sand", "from_port": "texture", "to": "junipers", "to_port": "below albedo" },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "junipers", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "EcosystemLayer", "x": 940, "y": 100, "alias": "rocks",
+    "attrs": { "name": "Boulders", "density": 2, "spacing_m": 10, "scale": 0.8, "variation": 0.7, "footprint_m": 3,
+               "use_slope": true, "slope": [16, 45], "slope_fuzz": 8 } },
+  { "op": "connect", "from": "junipers", "from_port": "albedo", "to": "rocks", "to_port": "below albedo" },
+  { "op": "connect", "from": "junipers", "from_port": "points", "to": "rocks", "to_port": "below" },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "rocks", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "EcosystemLayer", "x": 1240, "y": 300, "alias": "grass",
+    "attrs": { "name": "Bunch grass", "density": 120, "spacing_m": 4, "scale": 0.8, "variation": 0.5, "footprint_m": 1.2,
+               "repulsion": 1.0, "repulsion_radius_m": 6,
+               "use_slope": true, "slope": [0, 25], "slope_fuzz": 5 } },
+  { "op": "connect", "from": "rocks", "from_port": "albedo", "to": "grass", "to_port": "below albedo" },
+  { "op": "connect", "from": "rocks", "from_port": "points", "to": "grass", "to_port": "below" },
+  { "op": "connect", "from": "base", "from_port": "output", "to": "grass", "to_port": "terrain" },
+
+  { "op": "add_node", "type": "MaterialOutput", "x": 1540, "y": 300, "alias": "mat", "attrs": { "name": "Juniper desert" } },
+  { "op": "connect", "from": "grass", "from_port": "albedo", "to": "mat", "to_port": "base color" },
+  { "op": "assign_material", "node": "mat" },
+
+  { "op": "set_sun", "azimuth_deg": 230, "altitude_deg": 28, "intensity": 3.0, "color": [1.0, 0.88, 0.72] },
+  { "op": "set_sky", "zenith": [0.20, 0.38, 0.68], "horizon": [0.80, 0.74, 0.66] },
+
+  { "op": "add_primitive", "kind": "juniper", "name": "Juniper", "position": [0.5, 0.0, 0.5] },
+  { "op": "set_scatter", "object": "Juniper", "node": "junipers", "size": 1.0, "jitter": 0.35 },
+  { "op": "add_primitive", "kind": "boulder", "name": "Boulder", "position": [0.5, 0.0, 0.5] },
+  { "op": "set_scatter", "object": "Boulder", "node": "rocks", "size": 1.0, "jitter": 0.6 },
+  { "op": "add_primitive", "kind": "grass", "name": "Bunch grass", "position": [0.5, 0.0, 0.5] },
+  { "op": "set_scatter", "object": "Bunch grass", "node": "grass", "size": 1.0, "jitter": 0.4, "sway": 0.03 }
+] }

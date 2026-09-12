@@ -41,6 +41,7 @@
   "workspace.lighting": "Licht",
   "workspace.cameras": "Kameras",
   "workspace.animation": "Animation",
+  "workspace.plants": "Pflanzen",
   "panel.outliner": "Objekte",
   "panel.properties": "Eigenschaften",
   "panel.graph": "Graph",

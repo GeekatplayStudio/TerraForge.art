@@ -97,7 +97,101 @@ bool camera_optics_ui(App &a, CameraData &cd) {
     ImGui::SetNextItemWidth(-140);
     changed |= studio::SliderFloatW("Flare strength", &cd.flare_strength, 0.f,
                                   1.5f, "%.2f");
-    ImGui::TextDisabled("Ghosts and a halo, only while the sun is in frame.");
+    static const char *styles[] = {"Classic ghosts", "Cinematic", "Anamorphic"};
+    ImGui::SetNextItemWidth(-140);
+    changed |= ImGui::Combo("Flare style", &cd.flare_style, styles, 3);
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("Classic: a few ghosts and a halo. Cinematic: a hot\n"
+                        "core, a starburst of rays, a ring and a chain of\n"
+                        "tinted reflections. Anamorphic: the same through an\n"
+                        "anamorphic lens, with a streak across the frame.");
+    if (cd.flare_style > 0) {
+      ImGui::SetNextItemWidth(-140);
+      changed |= studio::SliderFloatW("Rays", &cd.flare_rays, 0.f, 2.f, "%.2f");
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The starburst: thin rays of different lengths from\n"
+                          "the aperture's blades, faintly coloured at the tips.");
+      ImGui::SetNextItemWidth(-140);
+      changed |= studio::SliderFloatW("Streak", &cd.flare_streak, 0.f, 2.f, "%.2f");
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The horizontal streak an anamorphic lens draws\n"
+                          "through a bright light; long across the frame in\n"
+                          "the Anamorphic style, short in the Cinematic one.");
+      ImGui::SetNextItemWidth(-140);
+      changed |= studio::SliderFloatW("Ghosts", &cd.flare_ghosts, 0.f, 2.f, "%.2f");
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The reflections between the lens elements: tinted\n"
+                          "discs in the aperture's shape, strung along the line\n"
+                          "from the sun through the middle of the frame.");
+      ImGui::SetNextItemWidth(-140);
+      changed |= studio::SliderFloatW("Halo", &cd.flare_halo, 0.f, 2.f, "%.2f");
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The thin coloured ring about the sun.");
+      if (ImGui::TreeNode("Flare shape")) {
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderFloatW("Core", &cd.flare_core, 0.f, 2.f, "%.2f");
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("The white-hot middle and the bloom round it.");
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderIntW("Ray count", &cd.flare_ray_count, 4, 64);
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("How many long rays the starburst throws; a set of\n"
+                            "short ones between them follows the same count.");
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderFloatW("Ray length", &cd.flare_ray_length, 0.2f, 3.f, "%.2f");
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderFloatW("Streak length", &cd.flare_streak_length, 0.1f, 3.f, "%.2f");
+        ImGui::SetNextItemWidth(-140);
+        changed |= ImGui::ColorEdit3("Streak tint", cd.flare_streak_tint);
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("The colour the streak cools to, and of the faint\n"
+                            "parallel lines an anamorphic lens adds: blue for most\n"
+                            "anamorphic glass, amber for some.");
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderFloatW("Halo radius", &cd.flare_halo_radius, 0.05f, 0.5f, "%.2f");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("The ring's radius, in frame heights.");
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderIntW("Ghost count", &cd.flare_ghost_count, 0, 12);
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderIntW("Aperture blades", &cd.flare_blades, 5, 9);
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("The ghosts take the aperture's shape: five blades a\n"
+                            "pentagon, six a hexagon, nine nearly round.");
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::SliderFloatW("Colour parting", &cd.flare_chroma, 0.f, 2.f, "%.2f");
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("How far the colours separate on the ring and at the\n"
+                            "tips of the rays - the glass's dispersion.");
+        ImGui::SetNextItemWidth(-140);
+        changed |= studio::DragIntW("Flare seed", &cd.flare_seed, 1, 0, 1 << 20);
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("Another arrangement of rays and ghosts, the same lens.");
+        ImGui::TreePop();
+      }
+    }
+    ImGui::TextDisabled("Only while the sun is in frame, and dimmed by whatever\n"
+                        "stands in front of it.");
+  }
+
+  // ---- bloom, the glow round everything bright
+  ImGui::SetNextItemWidth(-140);
+  changed |= studio::SliderFloatW("Bloom", &cd.bloom, 0.f, 2.f, "%.2f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The glow a lens and a sensor spread round everything\n"
+                      "bright: the sun, a glint on water, snow in sunlight, the\n"
+                      "brightest stars. 0 is off.");
+  if (cd.bloom > 0.f) {
+    ImGui::SetNextItemWidth(-140);
+    changed |= studio::SliderFloatW("Bloom from", &cd.bloom_threshold, 0.f, 0.99f, "%.2f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How bright a part of the picture has to be before it\n"
+                        "glows, as a share of white. Lower and the whole bright\n"
+                        "sky softens; higher and only the sun and the glints do.");
+    ImGui::SetNextItemWidth(-140);
+    changed |= studio::SliderFloatW("Bloom size", &cd.bloom_size, 0.f, 1.f, "%.2f");
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How far the glow spreads: a tight halo at 0, a wide\n"
+                        "haze across the frame at 1.");
   }
 
   (void)a;
@@ -139,6 +233,24 @@ bool camera_copy_ui(App &a, int this_index) {
       dst.chromatic = src.chromatic;
       dst.flare = src.flare;
       dst.flare_strength = src.flare_strength;
+      dst.flare_style = src.flare_style;
+      dst.flare_rays = src.flare_rays;
+      dst.flare_streak = src.flare_streak;
+      dst.flare_ghosts = src.flare_ghosts;
+      dst.flare_halo = src.flare_halo;
+      dst.flare_core = src.flare_core;
+      dst.flare_ray_count = src.flare_ray_count;
+      dst.flare_ray_length = src.flare_ray_length;
+      dst.flare_streak_length = src.flare_streak_length;
+      for (int k = 0; k < 3; ++k) dst.flare_streak_tint[k] = src.flare_streak_tint[k];
+      dst.flare_halo_radius = src.flare_halo_radius;
+      dst.flare_ghost_count = src.flare_ghost_count;
+      dst.flare_blades = src.flare_blades;
+      dst.flare_chroma = src.flare_chroma;
+      dst.flare_seed = src.flare_seed;
+      dst.bloom = src.bloom;
+      dst.bloom_threshold = src.bloom_threshold;
+      dst.bloom_size = src.bloom_size;
       dst.motion_blur = src.motion_blur;
       ++n;
     }

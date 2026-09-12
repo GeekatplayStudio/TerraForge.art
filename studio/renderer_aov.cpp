@@ -37,7 +37,7 @@ void draw_readback(int w, int h, std::vector<float> &px) {
   vc.outlines = false;
   float eye[3], mvp[16], inv_vp[16];
   camera_matrices(w, h, eye, mvp, inv_vp);
-  draw_scene(SLOT_AOV, vc, w, h, 0.f, eye, mvp, inv_vp);
+  draw_scene(SLOT_AOV, vc, w, h, renderer_anim_time(), eye, mvp, inv_vp);
   px.resize((size_t)w * h * 4);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo[SLOT_AOV]);
   glReadPixels(0, 0, w, h, GL_RGBA, GL_FLOAT, px.data());

@@ -40,6 +40,7 @@ const char *workspace_name(int ws) {
     case WS_LIGHTING: return tr("workspace.lighting");
     case WS_CAMERAS: return tr("workspace.cameras");
     case WS_ANIMATION: return tr("workspace.animation");
+    case WS_PLANTS: return tr("workspace.plants");
     default: return tr("workspace.terrain");
   }
 }
@@ -165,7 +166,7 @@ void draw_workspace_bar(App &a) {
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(18, 5));
   tool_pad(8.f);
 
-  for (int oi = 0; oi < 8; ++oi) {
+  for (int oi = 0; oi < WORKSPACE_ORDER_COUNT; ++oi) {
     const int w = WORKSPACE_ORDER[oi];
     const bool active = a.workspace == w;
     if (active) {
@@ -196,6 +197,7 @@ void draw_workspace_bar(App &a) {
       else if (w == WS_RENDER) ImGui::SetWindowFocus("Render");
       else if (w == WS_OBJECTS) ImGui::SetWindowFocus("Scene###Outliner");
       else if (w == WS_ANIMATION) ImGui::SetWindowFocus("Timeline");
+      else if (w == WS_PLANTS) ImGui::SetWindowFocus("Plants");
     }
     ImGui::PopStyleColor(active ? 3 : 2);
     ImGui::SameLine();

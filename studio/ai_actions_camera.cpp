@@ -121,6 +121,34 @@ void apply_camera_fields(CameraData &cd, const json &j) {
   take("vignette", cd.vignette, 0.f, 4.f);
   take("chromatic", cd.chromatic, 0.f, 4.f);
   take("flare_strength", cd.flare_strength, 0.f, 4.f);
+  take("flare_rays", cd.flare_rays, 0.f, 2.f);
+  take("flare_streak", cd.flare_streak, 0.f, 2.f);
+  take("flare_ghosts", cd.flare_ghosts, 0.f, 2.f);
+  take("flare_halo", cd.flare_halo, 0.f, 2.f);
+  take("flare_core", cd.flare_core, 0.f, 2.f);
+  take("flare_ray_length", cd.flare_ray_length, 0.2f, 3.f);
+  take("flare_streak_length", cd.flare_streak_length, 0.1f, 3.f);
+  take("flare_halo_radius", cd.flare_halo_radius, 0.05f, 0.5f);
+  take("flare_chroma", cd.flare_chroma, 0.f, 2.f);
+  take("bloom", cd.bloom, 0.f, 4.f);
+  take("bloom_threshold", cd.bloom_threshold, 0.f, 0.99f);
+  take("bloom_size", cd.bloom_size, 0.f, 1.f);
+  auto take_i = [&](const char *k, int &dst, int lo, int hi) {
+    if (!j.contains(k) || !j[k].is_number_integer()) return;
+    dst = std::clamp(j[k].get<int>(), lo, hi);
+    touched = true;
+  };
+  take_i("flare_style", cd.flare_style, 0, 2);
+  take_i("flare_ray_count", cd.flare_ray_count, 4, 64);
+  take_i("flare_ghost_count", cd.flare_ghost_count, 0, 12);
+  take_i("flare_blades", cd.flare_blades, 5, 9);
+  take_i("flare_seed", cd.flare_seed, 0, 1 << 20);
+  if (j.contains("flare_streak_tint") && j["flare_streak_tint"].is_array() &&
+      j["flare_streak_tint"].size() == 3) {
+    for (int k = 0; k < 3; ++k)
+      cd.flare_streak_tint[k] = std::clamp(j["flare_streak_tint"][(size_t)k].get<float>(), 0.f, 4.f);
+    touched = true;
+  }
   take("motion_blur", cd.motion_blur, 0.f, 1.f);
   if (j.contains("distortion") && j["distortion"].is_number()) {
     cd.distortion = std::clamp(j["distortion"].get<float>(), -0.5f, 0.5f);

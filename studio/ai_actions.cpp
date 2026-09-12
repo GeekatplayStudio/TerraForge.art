@@ -11,6 +11,7 @@
 #include "gpu_compute.hpp"
 #include "ai_actions_internal.hpp"
 #include "app.hpp"
+#include "spray.hpp"
 #include "console.hpp"
 #include "ollama.hpp"
 #include "prefs.hpp"
@@ -147,6 +148,22 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       read_vec3(act, "zenith", rs.sky_zenith);
       read_vec3(act, "horizon", rs.sky_horizon);
       ++applied;
+    } else if (op == "set_wind") {
+      // The scene's wind: one wind, and the clouds, the sea, the fog and the
+      // plants all read it (render_settings.hpp).
+      if (act.contains("speed_ms")) rs.wind.speed_ms = std::clamp(act["speed_ms"].get<float>(), 0.f, 60.f);
+      if (act.contains("direction_deg")) rs.wind.direction_deg = act["direction_deg"].get<float>();
+      if (act.contains("gust_strength"))
+        rs.wind.gust_strength = std::clamp(act["gust_strength"].get<float>(), 0.f, 2.f);
+      if (act.contains("gust_frequency"))
+        rs.wind.gust_frequency = std::clamp(act["gust_frequency"].get<float>(), 0.f, 4.f);
+      if (act.contains("gust_size_m")) rs.wind.gust_size_m = std::max(1.f, act["gust_size_m"].get<float>());
+      if (act.contains("turbulence_deg"))
+        rs.wind.turbulence_deg = std::clamp(act["turbulence_deg"].get<float>(), 0.f, 180.f);
+      if (act.contains("shear")) rs.wind.shear = std::clamp(act["shear"].get<float>(), 0.f, 16.f);
+      if (act.contains("clouds_follow")) rs.cloud_wind_follow = act["clouds_follow"].get<bool>();
+      if (act.contains("water_follow")) rs.water_wind_follow = act["water_follow"].get<bool>();
+      ++applied;
     } else if (op == "set_fog") {
       if (act.contains("type") && act["type"].is_string()) {
         std::string t = act["type"].get<std::string>();
@@ -200,6 +217,19 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       read_vec3(act, "deep", rs.water_deep_color);
       read_vec3(act, "shallow", rs.water_shallow_color);
       if (act.contains("foam")) rs.water_foam = act["foam"].get<bool>();
+      // Vue's Water Surface Options (gpx/water_waves.hpp)
+      rs.water_displaced = act.value("displaced", rs.water_displaced);
+      rs.water_wind_speed = act.value("wind_speed", rs.water_wind_speed);
+      rs.water_wind_dir = act.value("wind_dir", rs.water_wind_dir);
+      rs.water_choppiness = act.value("choppiness", rs.water_choppiness);
+      rs.water_wave_amp = act.value("wave_height", rs.water_wave_amp);
+      rs.water_wave_scale = act.value("wave_scale", rs.water_wave_scale);
+      rs.water_wave_speed = act.value("agitation", rs.water_wave_speed);
+      rs.water_clarity = act.value("clarity_m", rs.water_clarity);
+      rs.foam_amount = act.value("coast_foam", rs.foam_amount);
+      rs.foam_depth_m = act.value("foam_depth_m", rs.foam_depth_m);
+      rs.foam_crests = act.value("crest_foam", rs.foam_crests);
+      rs.foam_coverage = act.value("crest_coverage", rs.foam_coverage);
       ++applied;
     } else if (op == "set_render") {
       int cam = scene_active_camera();
@@ -491,6 +521,9 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (r < 0) r = ai_mesh_op(a, op, act, err);
       if (r < 0) r = ai_material_op(a, op, act, err);
       if (r < 0) r = ai_asset_op(a, op, act, err);
+      if (r < 0) r = ai_plant_op(a, op, act, err);
+      if (r < 0) r = ai_plant_species_op(a, op, act, err);
+      if (r < 0) r = spray_op(a, op, act, err);
       if (r < 0) r = ai_generate_op(a, op, act, err);
       if (r < 0) r = ai_terrain_op(a, op, act, err);
       if (r < 0) r = ai_view_op(a, op, act, err);

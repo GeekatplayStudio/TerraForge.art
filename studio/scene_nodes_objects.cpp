@@ -23,6 +23,8 @@
 
 namespace studio {
 
+void apply_species(App &a, gpx::Node &n, float size_m); // scene_plants_species.cpp
+
 namespace {
 
 // The object `n` drives: bound by id first, then adopted by name and type.
@@ -140,15 +142,21 @@ void apply_camera(App &a, gpx::Node &n, float size_m) {
 void apply_mesh(App &a, gpx::Node &n, float size_m, bool primitive) {
   (void)a;
   const gpx::AttrSet &at = n.attrs;
-  static const char *KINDS[5] = {"cube", "sphere", "plane", "cylinder", "cone"};
+  // the Primitive node's Shape choice, in its order (engine/nodes/nodes_scene.cpp)
+  static const char *KINDS[12] = {"cube", "sphere", "plane", "cylinder", "cone", "pine",
+                                  "juniper", "palm", "fern", "grass", "bush", "boulder"};
   std::string source = primitive
-                           ? std::string("primitive:") + KINDS[std::clamp(at.get_choice("kind"), 0, 4)]
+                           ? std::string("primitive:") + KINDS[std::clamp(at.get_choice("kind"), 0, 11)]
                            : at.get_s("file");
+  // a plant's seed rides in its pseudo-path ("primitive:pine#12"), so the
+  // object rebuilds when it changes and a saved scene grows the same tree
+  if (primitive && at.get_choice("kind") >= 5 && at.find("seed") && at.get_seed("seed") != 0)
+    source += "#" + std::to_string(at.get_seed("seed"));
   if (source.empty()) return; // an ImportObject with no file yet drives nothing
   std::string name = at.get_s("object");
   if (name.empty()) {
     if (primitive) {
-      name = KINDS[std::clamp(at.get_choice("kind"), 0, 4)];
+      name = KINDS[std::clamp(at.get_choice("kind"), 0, 11)];
       name[0] = (char)std::toupper((unsigned char)name[0]);
     } else {
       size_t slash = source.find_last_of("/\\");
@@ -162,14 +170,7 @@ void apply_mesh(App &a, gpx::Node &n, float size_m, bool primitive) {
     std::string err;
     bool ok;
     if (primitive) {
-      std::vector<float> verts;
-      ok = scene_primitive_verts(source.substr(10), verts);
-      if (ok) {
-        o.verts = std::move(verts);
-        o.uvs.clear();
-        o.parts.clear();
-        o.vert_count = (int)(o.verts.size() / 6);
-      }
+      ok = scene_primitive_build(source.substr(10), o.primitive_detail, o);
     } else {
       ok = scene_load_mesh(source, o, err);
     }
@@ -219,6 +220,7 @@ void apply_planet(App &a, gpx::Node &n, float size_m) {
   P.sea_level = at.get_f("sea_level", 0.35f);
   P.snow_line = at.get_f("snow_line", 0.75f);
   P.atmo_density = at.get_f("atmo_density", 0.6f);
+  P.clouds = at.get_f("clouds", 0.4f);
   P.spin_deg = at.get_f("spin", 0.f);
   auto col = [&](const char *key, float *dst) {
     if (const gpx::Attribute *c = at.find(key))
@@ -258,6 +260,14 @@ void apply_nebula(App &a, gpx::Node &n) {
   N.density = at.get_f("density", 0.5f);
   N.detail = at.get_f("detail", 0.5f);
   N.arms = at.get_i("arms", 2);
+  N.dust = at.get_f("dust", N.dust);
+  N.warp = at.get_f("warp", N.warp);
+  N.glow = at.get_f("glow", N.glow);
+  N.sources = at.get_i("sources", N.sources);
+  N.source_stars = at.get_f("source_stars", N.source_stars);
+  N.core_glow = at.get_f("core_glow", N.core_glow);
+  N.turbulence = at.get_f("turbulence", N.turbulence);
+  N.lanes = at.get_f("lanes", N.lanes);
   auto col = [&](const char *key, float *dst) {
     if (const gpx::Attribute *c = at.find(key))
       for (int k = 0; k < 3; ++k) dst[k] = c->col[k];
@@ -338,6 +348,7 @@ void apply_object_nodes(App &a) {
     else if (n.type == "SceneCamera") apply_camera(a, n, size_m);
     else if (n.type == "ImportObject") apply_mesh(a, n, size_m, false);
     else if (n.type == "Primitive") apply_mesh(a, n, size_m, true);
+    else if (n.type == "PlantSpecies") apply_species(a, n, size_m);
     else if (n.type == "Planet") apply_planet(a, n, size_m);
     else if (n.type == "Nebula") apply_nebula(a, n);
     else if (n.type == "InfiniteTerrain") apply_surface(a, n);

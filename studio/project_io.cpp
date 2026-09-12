@@ -50,7 +50,8 @@ static json bodies_to_json() {
                      {"rock_hi", {P.rock_high[0], P.rock_high[1], P.rock_high[2]}},
                      {"water", {P.water_color[0], P.water_color[1], P.water_color[2]}},
                      {"atmo", {P.atmo_color[0], P.atmo_color[1], P.atmo_color[2]}},
-                     {"atmo_d", P.atmo_density}});
+                     {"atmo_d", P.atmo_density},
+                     {"clouds", P.clouds}});
     } else if (o.type == SceneObject::InfiniteSurface) {
       const gpx::planet::Layer &L = o.surf.layer;
       arr.push_back({{"kind", "surface"},
@@ -102,6 +103,7 @@ static void bodies_from_json(const json &arr) {
     col("water", P.water_color);
     col("atmo", P.atmo_color);
     P.atmo_density = j.value("atmo_d", 0.6f);
+    P.clouds = j.value("clouds", P.clouds);
     sc.objects.push_back(o);
     planet_remap[j.value("index", -1)] = (int)sc.objects.size() - 1;
   }

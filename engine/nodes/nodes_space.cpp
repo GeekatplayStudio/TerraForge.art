@@ -49,6 +49,32 @@ REGISTER_NODE(
           .tooltip = "Fractal fineness, soft to wispy.";
       add_int(n.attrs, "arms", "Arms", 2, 1, 6, "Look")
           .tooltip = "Spiral galaxies: how many arms.";
+      // The cloud kinds' own shape and light (NebulaData, marched as volumes
+      // in shaders_space_neb.cpp). The node never set them, so a nebula made
+      // from the graph could not be given what one made in the tree could.
+      add_float(n.attrs, "dust", "Dust", 0.55f, 0.f, 1.f, "Cloud")
+          .tooltip = "Clouds: how much dark dust threads through the gas and\n"
+                     "hides it - the black lanes across a bright nebula.";
+      add_float(n.attrs, "warp", "Warp", 0.6f, 0.f, 1.5f, "Cloud")
+          .tooltip = "Clouds: how far the shape is pulled out of a ball into\n"
+                     "billows, pillars and tails.";
+      add_float(n.attrs, "glow", "Glow", 0.4f, 0.f, 2.f, "Cloud")
+          .tooltip = "Clouds: the soft halo the gas throws around itself.";
+      add_int(n.attrs, "sources", "Hot stars", 3, 1, 4, "Cloud")
+          .tooltip = "Clouds: how many hot young stars inside light the gas.\n"
+                     "Their glare decides where it glows in the bright colour\n"
+                     "and where in the cool one.";
+      add_float(n.attrs, "source_stars", "Hot stars shown", 0.6f, 0.f, 2.f, "Cloud")
+          .tooltip = "Clouds: how bright those stars are drawn. 0 leaves the gas\n"
+                     "lit by stars you cannot see.";
+      add_float(n.attrs, "core_glow", "Core glow", 0.f, 0.f, 2.f, "Cloud")
+          .tooltip = "Clouds: the gas round the hot stars burned out toward\n"
+                     "white, as a long exposure records a nebula's heart.";
+      add_float(n.attrs, "turbulence", "Turbulence", 0.f, 0.f, 1.f, "Cloud")
+          .tooltip = "Clouds: tears the gas into filaments and tendrils with a\n"
+                     "second, finer warp.";
+      add_float(n.attrs, "lanes", "Dust lanes", 0.f, 0.f, 1.f, "Cloud")
+          .tooltip = "Clouds: thin dark ridges of dust laid across the glow.";
       add_color(n.attrs, "color1", "Bright gas / core", 0.95f, 0.38f, 0.48f, 1.f, "Look")
           .tooltip = "The bright gas of a cloud, the core of a galaxy.";
       add_color(n.attrs, "color2", "Cool gas / arms", 0.30f, 0.55f, 0.95f, 1.f, "Look")

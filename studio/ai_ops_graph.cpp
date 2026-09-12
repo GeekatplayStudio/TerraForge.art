@@ -19,6 +19,7 @@
 #include "render_settings.hpp"
 #include "gpx/metanode.hpp"
 #include "gpx/node_graph.hpp"
+#include "gpx/plant_curve.hpp"
 #include <json.hpp>
 #include <filesystem>
 #include <map>
@@ -122,6 +123,53 @@ bool set_attr_value(gpx::Attribute &at, const json &v) {
       at.v2[0] = v[0].get<float>();
       at.v2[1] = v[1].get<float>();
       return true;
+    case AttrType::Random:
+      // a number sets the value; [value, spread] both; {"value","spread",
+      // "spread_mode","scope","curve_along","curve_hier"} any of them
+      if (v.is_number()) { at.f = std::clamp(v.get<float>(), at.fmin, at.fmax); return true; }
+      if (v.is_array() && !v.empty() && v[0].is_number()) {
+        at.f = std::clamp(v[0].get<float>(), at.fmin, at.fmax);
+        if (v.size() > 1 && v[1].is_number()) at.spread = std::max(v[1].get<float>(), 0.f);
+        return true;
+      }
+      if (v.is_object()) {
+        if (v.contains("value") && v["value"].is_number()) at.f = std::clamp(v["value"].get<float>(), at.fmin, at.fmax);
+        if (v.contains("spread") && v["spread"].is_number()) at.spread = std::max(v["spread"].get<float>(), 0.f);
+        if (v.contains("spread_mode") && v["spread_mode"].is_number()) at.spread_mode = std::clamp(v["spread_mode"].get<int>(), 0, 2);
+        if (v.contains("scope") && v["scope"].is_number()) at.scope = std::clamp(v["scope"].get<int>(), 0, 3);
+        gpx::Curve c;
+        if (v.contains("curve_along") && v["curve_along"].is_string() && gpx::curve_from_string(v["curve_along"].get<std::string>(), c))
+          at.curve_along.curves = {c}, at.curve_along.weights = {1.f};
+        if (v.contains("curve_hier") && v["curve_hier"].is_string() && gpx::curve_from_string(v["curve_hier"].get<std::string>(), c))
+          at.curve_hier.curves = {c}, at.curve_hier.weights = {1.f};
+        return true;
+      }
+      return false;
+    case AttrType::Curve: {
+      // the text form, or [[x,y],...] points joined smoothly
+      gpx::Curve c;
+      if (v.is_string() && gpx::curve_from_string(v.get<std::string>(), c)) {
+        at.curves.curves = {c};
+        at.curves.weights = {1.f};
+        return true;
+      }
+      if (v.is_array() && !v.empty()) {
+        for (const auto &pt : v)
+          if (pt.is_array() && pt.size() >= 2 && pt[0].is_number() && pt[1].is_number())
+            c.keys.push_back({pt[0].get<float>(), pt[1].get<float>(), 0.f, 0.f});
+        if (c.keys.empty()) return false;
+        c.normalise();
+        c.auto_slopes();
+        if (!at.curves.curves.empty()) {
+          c.xmin = at.curves.curves[0].xmin; c.xmax = at.curves.curves[0].xmax;
+          c.ymin = at.curves.curves[0].ymin; c.ymax = at.curves.curves[0].ymax;
+        }
+        at.curves.curves = {c};
+        at.curves.weights = {1.f};
+        return true;
+      }
+      return false;
+    }
     case AttrType::Color:
       if (v.is_number()) {
         float g = std::clamp(v.get<float>(), 0.f, 1.f);

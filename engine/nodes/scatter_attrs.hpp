@@ -134,6 +134,17 @@ inline scatter::Interaction read_interaction(const Node &n, const PointCloud *be
 
 // --------------------------------------------------------------- transform
 inline void declare_transform(Node &n) {
+  // What this population stands for, in the ecology's own vocabulary
+  // (gpx/ecology.hpp): "boulder", "conifer", "moss". It is what lets a thing
+  // added later be placed correctly without anybody restating the rules - a
+  // new moss model is assigned to the moss group and lands wherever moss
+  // belongs, in every biome that has moss in it, including ones written
+  // before that model existed.
+  add_text(n.attrs, "eco_group", "Ecology group", "", "Population")
+      .tooltip = "The group this population stands for: boulder, conifer,\n"
+                 "moss, grass... The rules about where a thing goes are\n"
+                 "written about groups, not about models, so anything\n"
+                 "assigned to a group is placed by those rules.";
   add_int(n.attrs, "species", "Species", 1, 1, 8, "Population")
       .tooltip = "How many kinds of object this layer places. Each scene\n"
                  "object bound to the layer picks the species it stands for.";
@@ -147,6 +158,21 @@ inline void declare_transform(Node &n) {
                    "overall scaling. A population of one mesh at several\n"
                    "sizes reads as a stand of different ages; every copy\n"
                    "identical reads as instancing.";
+    // Each kind varies in its own way. A stand of boulders is all sizes; the
+    // saplings under it are much of a muchness. One figure for the whole
+    // layer cannot say both, so each kind carries its own - and 0 takes the
+    // layer's, which is what every population had before this.
+    add_float(n.attrs, k + "_variation", "Species " + std::to_string(s) + " size variation", 0.f, 0.f, 1.f,
+              "Population")
+        .tooltip = "How much this kind varies in size about its own scale: 0\n"
+                   "takes the layer's overall variation, 1 ranges from half\n"
+                   "to twice. Rocks vary far more than nursery trees do.";
+    add_float(n.attrs, k + "_lean", "Species " + std::to_string(s) + " lean to slope", -1.f, -1.f, 1.f,
+              "Population")
+        .tooltip = "How far this kind tips with the ground it stands on: 0\n"
+                   "grows straight up whatever the slope, 1 lies flat along\n"
+                   "it. A boulder sits on the hillside; a tree stands up out\n"
+                   "of it. Below 0 takes the layer's own setting.";
   }
   add_float(n.attrs, "scale", "Overall scaling", 1.f, 0.05f, 10.f, "Scaling", true)
       .tooltip = "The size of one copy, as a multiple of the mesh's own\n"
@@ -197,6 +223,8 @@ inline scatter::Transform read_transform(const Node &n, const Heightmap *driver,
     std::string k = "sp" + std::to_string(s + 1);
     t.weights[s] = n.attrs.get_f(k + "_presence", 1.f);
     t.species_scale[s] = n.attrs.get_f(k + "_scale", 1.f);
+    t.species_variation[s] = n.attrs.get_f(k + "_variation", 0.f);
+    t.species_lean[s] = n.attrs.get_f(k + "_lean", -1.f);
   }
   t.driver = driver && !driver->empty() ? driver : nullptr;
   t.scale = n.attrs.get_f("scale", 1.f);

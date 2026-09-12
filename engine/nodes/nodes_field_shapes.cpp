@@ -23,10 +23,10 @@ namespace {
 constexpr float TAU = 6.2831853071795865f;
 
 // The shared geometry: project the field position onto a direction in the
-// ground plane (u) and measure the distance from a centre (r). Every mode is
-// a function of one of those two numbers.
+// ground plane (u) and across it (v), and measure the distance from a centre
+// (r). Every mode is a function of those numbers.
 struct ShapeFrame {
-  float u, r;
+  float u, v, r;
 };
 
 ShapeFrame shape_frame(const Node &self, const float p[3]) {
@@ -43,11 +43,12 @@ ShapeFrame shape_frame(const Node &self, const float p[3]) {
   const float dx = p[0] - cx, dz = p[2] - cy;
   ShapeFrame f;
   f.u = dx * std::cos(ang) + dz * std::sin(ang);
+  f.v = -dx * std::sin(ang) + dz * std::cos(ang);
   f.r = std::sqrt(dx * dx + dz * dz);
   return f;
 }
 
-float shape_value(int mode, float u, float r, float freq, float width,
+float shape_value(int mode, float u, float v, float r, float freq, float width,
                   float phase) {
   const float w = std::max(width, 1e-6f);
   switch (mode) {
@@ -73,6 +74,21 @@ float shape_value(int mode, float u, float r, float freq, float width,
       float t = std::fabs(u) / (w * 0.5f);
       return t >= 1.f ? 0.f : 1.f - t * t * (3.f - 2.f * t);
     }
+    // The gradient shapes the Gradient node draws as a heightmap, here as a
+    // function, so a planet or the infinite ground can be built from them.
+    // Appended after Step: a choice is saved by its index.
+    case 8: // square falloff, turned by the direction
+      return std::max(0.f, 1.f - std::max(std::fabs(u), std::fabs(v)) / w);
+    case 9: // diamond falloff
+      return std::max(0.f, 1.f - (std::fabs(u) + std::fabs(v)) / w);
+    case 10: { // angular: once round the centre, from the direction
+      float t = std::atan2(v, u) / TAU + 0.5f + phase;
+      return t - std::floor(t);
+    }
+    case 11: { // spiral: the angle wound outward, `frequency` turns a unit
+      float t = std::atan2(v, u) / TAU + 0.5f + r * freq + phase;
+      return t - std::floor(t);
+    }
     default: // step: one side of the line
       return u >= 0.f ? 1.f : 0.f;
   }
@@ -82,14 +98,18 @@ float shape_value(int mode, float u, float r, float freq, float width,
 
 REGISTER_NODE(
     FieldShape, "Field Noise",
-    "Analytic shapes - waves, bands, bumps, cones and steps, as a function",
+    "Analytic shapes - waves, bands, bumps, cones, steps and square, diamond, angular "
+    "and spiral gradients, as a function",
     [](Node &n) {
       n.add_field_in("position", FieldType::Vector, true);
       add_choice(n.attrs, "mode", "Shape",
                  {"Sine wave", "Square wave", "Triangle wave", "Sawtooth",
-                  "Gaussian bump", "Cone", "Band", "Step"},
+                  "Gaussian bump", "Cone", "Band", "Step", "Square falloff",
+                  "Diamond falloff", "Angular", "Spiral"},
                  0)
-          .tooltip = "The analytic shape produced.";
+          .tooltip = "The analytic shape produced. The falloffs are 1 at the\n"
+                     "centre and 0 at Width; Angular runs once round the centre;\n"
+                     "Spiral winds Frequency turns a unit outward.";
       add_vec2(n.attrs, "center", "Center", 0.5f, 0.5f, -4.f, 4.f, "Placement")
           .tooltip = "Where the shape is centred.";
       add_float(n.attrs, "direction", "Direction", 0.f, -180.f, 180.f,
@@ -97,9 +117,11 @@ REGISTER_NODE(
           .tooltip = "Which way the waves run, the band lies, or the step\n"
                      "faces, in degrees on the ground plane.";
       add_float(n.attrs, "frequency", "Frequency", 4.f, 0.01f, 200.f, "Shape")
-          .tooltip = "Wave repetitions per unit of ground. Waves only.";
+          .tooltip = "Wave repetitions per unit of ground; the spiral's turns\n"
+                     "per unit outward.";
       add_float(n.attrs, "width", "Width", 0.25f, 0.001f, 8.f, "Shape")
-          .tooltip = "Radius of the bump or cone; thickness of the band.";
+          .tooltip = "Radius of the bump, the cone and the square and diamond\n"
+                     "falloffs; thickness of the band.";
       add_float(n.attrs, "phase", "Phase", 0.f, -2.f, 2.f, "Shape")
           .tooltip = "Slides a wave along, as a fraction of one cycle.";
       add_float(n.attrs, "amplitude", "Amplitude", 1.f, 0.f, 8.f, "Output")
@@ -113,7 +135,7 @@ REGISTER_NODE(
                       FieldValue::vector(ctx.pos[0], ctx.pos[1], ctx.pos[2]))
             .as_vector(p);
         ShapeFrame f = shape_frame(self, p);
-        float v = shape_value(self.attrs.get_choice("mode"), f.u, f.r,
+        float v = shape_value(self.attrs.get_choice("mode"), f.u, f.v, f.r,
                               self.attrs.get_f("frequency", 4.f),
                               self.attrs.get_f("width", 0.25f),
                               self.attrs.get_f("phase", 0.f));
@@ -150,8 +172,14 @@ struct ShapeEmitterRegistrar {
           "float", "su",
           dx + " * " + f2s(std::cos(ang)) + " + " + dz + " * " +
               f2s(std::sin(ang)));
+      const int mode = n.attrs.get_choice("mode");
+      std::string v;
+      if (mode >= 8)
+        v = ctx.declare("float", "sv",
+                        "-" + dx + " * " + f2s(std::sin(ang)) + " + " + dz + " * " +
+                            f2s(std::cos(ang)));
       std::string e;
-      switch (n.attrs.get_choice("mode")) {
+      switch (mode) {
         case 0:
           e = "0.5 + 0.5 * sin((" + u + " * " + f2s(freq) + " + " +
               f2s(phase) + ") * 6.2831853)";
@@ -182,6 +210,21 @@ struct ShapeEmitterRegistrar {
               "float", "sbt", "abs(" + u + ") / " + f2s(width * 0.5f));
           e = "(" + t + " >= 1.0 ? 0.0 : 1.0 - " + t + "*" + t +
               " * (3.0 - 2.0*" + t + "))";
+          break;
+        }
+        case 8:
+          e = "max(0.0, 1.0 - max(abs(" + u + "), abs(" + v + ")) / " + f2s(width) + ")";
+          break;
+        case 9:
+          e = "max(0.0, 1.0 - (abs(" + u + ") + abs(" + v + ")) / " + f2s(width) + ")";
+          break;
+        case 10:
+          e = "fract(atan(" + v + ", " + u + ") / 6.2831853 + 0.5 + " + f2s(phase) + ")";
+          break;
+        case 11: {
+          std::string r = "sqrt(" + dx + "*" + dx + " + " + dz + "*" + dz + ")";
+          e = "fract(atan(" + v + ", " + u + ") / 6.2831853 + 0.5 + " + r + " * " + f2s(freq) +
+              " + " + f2s(phase) + ")";
           break;
         }
         default:

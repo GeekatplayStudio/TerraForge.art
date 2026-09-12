@@ -190,7 +190,7 @@
       "id": "field.shapes_and_curve",
       "area": "engine",
       "phase": "22",
-      "description": "FieldShape (8 analytic waveforms with a GPU mirror) and Curve (a drawn tone curve for elevations through the gradient editor)",
+      "description": "FieldShape (12 analytic shapes - waves, bumps, bands, steps and square, diamond, angular and spiral gradients - with a GPU mirror) and Curve (a drawn tone curve for elevations through the gradient editor)",
       "test_file": "test_engine.cpp",
       "test_symbol": "test_curve_and_shapes"
     },
@@ -971,6 +971,46 @@
       "test_symbol": "test_scan_search_tags_trash"
     },
     {
+      "id": "plants.library",
+      "area": "studio",
+      "phase": "46",
+      "description": "The Plants workspace (WS_PLANTS) as a plant library: plant.json manifests under <data_dir>/library/plants read into entries with variants in name order and files resolved against their folder, the seven built-in kinds on their shelves at their built sizes, a folder scan that leaves out broken manifests, missing models and missing variants, every-word search, and a user's model recorded in place with its units read from the file or from the height asked for; ops plant_library, plant_add, plant_fetch, plant_record with MCP tools (studio_plant_tools.py)",
+      "test_file": "test_plant_library.cpp",
+      "test_symbol": "test_record"
+    },
+    {
+      "id": "plants.fetch",
+      "area": "python",
+      "phase": "46",
+      "description": "orchestrator/plant_fetch.py fetches CC0 Poly Haven plants on request: md5-checked downloads that skip files already present, a cut-out material's separate alpha map merged into an RGBA PNG and the glTF pointed at it (MASK), a file holding a set split into one glTF per plant sharing the buffer (overlapping roots kept together as one plant's parts, _LOD<n> roots kept once, each plant centred), thumbnails normalised to square PNG (the CDN serves WebP), and a manifest and licence per plant",
+      "test_file": "test_plant_fetch.py",
+      "test_symbol": "test_split_variants_one_glb_per_plant_parts_together_lod_once"
+    },
+    {
+      "id": "terrain.relief_twin",
+      "area": "studio",
+      "phase": "46",
+      "description": "The CPU twin of the viewport's fractal micro-relief (terrain_relief.hpp: gp_hash, gp_vnoise, gp_detail in the same float arithmetic, continuous octaves summed in one pass bit for bit, the small-planet amount cap, the grid octave limit, and terrain_place's octave choice by distance and triangle size - relief_view_octaves, relief_tri_k): library plants, scattered copies and camera-driven populations stand on the drawn ground, the render bake carries the octaves its grid resolves, the export seats grounded objects on the baked triangles, the orbit pivot settles on the ground its view draws, the grounded-object lock seats on the drawn ground while the imprint moulds the heightmap as before (ground_relief), and probe_height reports drawn/drawn_m/relief_m beside placed",
+      "test_file": "test_terrain_relief.cpp",
+      "test_symbol": "test_terrain_relief_run"
+    },
+    {
+      "id": "terrain.ground_march",
+      "area": "studio",
+      "phase": "47",
+      "description": "Picking lands on the ground the viewport draws (ground_march.hpp): strides against the top of the band the micro-relief can reach, a fine walk inside it at a quarter of the finest wave the view draws there, bisection onto the crossing, a fine budget that falls back to strides; the sculpt brush (renderer_pick_terrain) and click picking of terrain tiles (renderer_pick) use it with each view's own u_tri_k, and a pick casts its ray through the camera the view draws with",
+      "test_file": "test_ground_march.cpp",
+      "test_symbol": "test_ground_march_run"
+    },
+    {
+      "id": "render.luxcore",
+      "area": "python",
+      "phase": "46",
+      "description": "The LuxCore backend builds the scene Mitsuba and Cycles render: z-up frame (CONV, to_lux), field of view across the longer side, a distant sun whose direction is its travel and whose colour is the radiance giving the asked irradiance over its disc, the sky panorama turned and mirrored to match the viewport, and every scattered copy of every part as an object with its material and alpha",
+      "test_file": "test_render_luxcore.py",
+      "test_symbol": "test_the_sky_panorama_is_turned_and_mirrored"
+    },
+    {
       "id": "materials.params",
       "area": "engine",
       "phase": "31",
@@ -1593,6 +1633,182 @@
       "description": "The node library's filter and the asset browser's search row stay put while their lists scroll under them; drawn straight into the window they scrolled together, so the box you were typing into left the screen as soon as you looked past the first screenful",
       "test_file": "test_layout.cpp",
       "test_symbol": "test_round_trip"
+    },
+    {
+      "id": "water.one_surface",
+      "area": "studio",
+      "phase": "42",
+      "description": "The sea is one surface over the whole world: a camera-centred clipmap of rings on the world's curve (renderer_water.cpp) replaced the tile's own water plane and the surround's separately shaded lakes, which drew the tile's square in the middle of every lake. The levels partition the sea - every point drawn by exactly one level from a mesh that covers it - and at every seam the fine side is fully morphed onto the coarse lattice",
+      "test_file": "test_water.cpp",
+      "test_symbol": "test_clipmap"
+    },
+    {
+      "id": "water.wind_waves",
+      "area": "engine",
+      "phase": "42",
+      "description": "Vue's Water Surface Options in physical units: a sum of Gerstner waves sized by the Pierson-Moskowitz spectrum of a wind (gpx/water_waves.hpp), displaced as real geometry with exact slopes and a Jacobian for whitecaps; deep-water speeds, calm water flat, rebased phases so a short wave keeps its phase far from the origin. The GLSL twin is checked against it by verify_field_gpu",
+      "test_file": "test_water.cpp",
+      "test_symbol": "test_physics"
+    },
+    {
+      "id": "water.shore_foam_and_clarity",
+      "area": "studio",
+      "phase": "42",
+      "description": "The water reads the scene it covers: the thickness of water along each ray tints what shows through (red absorbed first) and composites it in light rather than in the display's encoding, foam gathers where the ground comes within the typical depth below the surface - measured straight down, not along the view - and over breaking crests, and far away, where the depth buffer's grain is coarser than the water, the sea counts as deep instead of turning white",
+      "test_file": "test_water.cpp",
+      "test_symbol": "test_slopes_and_filter"
+    },
+    {
+      "id": "terrain.gradient",
+      "area": "engine",
+      "phase": "43",
+      "description": "Gradient: an image editor's gradient tool as a heightmap (gpx/gradient_shape.hpp) - linear, reflected, circle, ellipse, square, diamond, angular and spiral - with the ramp's start and end along its size, eight profiles (linear, smooth, smoother, ease in and out, sine, dome, bell), repeats that hold, repeat with a step or mirror smoothly, terraces, corner rounding from square to circle, a stretch that keeps the area, and a noise warp that turns a geometric circle into an island's outline",
+      "test_file": "test_gradient.cpp",
+      "test_symbol": "test_centred_shapes"
+    },
+    {
+      "id": "plants.growth_engine",
+      "area": "engine",
+      "phase": "48",
+      "description": "A plant species is a subgraph of Plant nodes whose root grows one individual per seed: segments with axes, biases, caps, flares and blades, leaves, flowers, fruit, a growth simulation, loops and selectors, with wind weights, seasonal presence and tints baked per vertex",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_grows"
+    },
+    {
+      "id": "plants.determinism",
+      "area": "engine",
+      "phase": "48",
+      "description": "The same seed grows the same bytes on any machine and another seed grows another individual of the same species",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_determinism"
+    },
+    {
+      "id": "plants.random_parameters",
+      "area": "engine",
+      "phase": "48",
+      "description": "Every plant parameter is a value with a spread (absolute, relative or gaussian), a scope for when a new draw is made, and two shaping curves along the part and up the hierarchy",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_random_range"
+    },
+    {
+      "id": "plants.wind",
+      "area": "engine",
+      "phase": "48",
+      "description": "Wind weights baked per vertex move the crown and leave the foot planted, with the GLSL twin the studio splices into the mesh shader",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_wind"
+    },
+    {
+      "id": "plants.knowledge",
+      "area": "engine",
+      "phase": "48",
+      "description": "A plant named in words - old oak, date palm, dead pine in winter - becomes a botanical description, and every archetype builds a species graph that grows",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_words"
+    },
+    {
+      "id": "plants.archetypes",
+      "area": "engine",
+      "phase": "48",
+      "description": "Every plant archetype builds a valid species graph whose root grows a plant with geometry",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_archetypes"
+    },
+    {
+      "id": "plants.species_files",
+      "area": "engine",
+      "phase": "48",
+      "description": "A species saves to a folder with its graph and its pictures and loads back into another graph, growing the same plant",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_species_file"
+    },
+    {
+      "id": "plants.textures",
+      "area": "engine",
+      "phase": "48",
+      "description": "Leaf, petal and bark pictures made from rules, with traced cut-outs and seamless bark, so a species needs no file it did not make itself",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_textures"
+    },
+    {
+      "id": "plants.export",
+      "area": "engine",
+      "phase": "48",
+      "description": "A grown plant writes as OBJ with its materials and as binary glTF with its pictures embedded, and reads back into our own loader",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_export"
+    },
+    {
+      "id": "plants.schema_keys",
+      "area": "engine",
+      "phase": "48",
+      "description": "Every parameter of every plant node is declared once with a tooltip - a key declared twice is unreachable and would silently do nothing",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_schema"
+    },
+    {
+      "id": "plants.flower",
+      "area": "engine",
+      "phase": "48",
+      "description": "A bloom of petals with its profile, flutter and UVs, and the droop of a flower held upright - a part facing straight at its target has no axis to turn about, and every builder used to skip the turn",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_flower"
+    },
+    {
+      "id": "plants.height",
+      "area": "engine",
+      "phase": "48",
+      "description": "The height in a description is the height that stands up: a named plant is grown, not a tenth-of-its-lifespan sapling, and every piece of its wood wears the species' bark with the picture its rules made",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_height"
+    },
+    {
+      "id": "plants.holds_together",
+      "area": "engine",
+      "phase": "48",
+      "description": "A part does not come away from the part it grows on when the wind blows: the phase travels out along the wood, the bend is copied from the socket rather than worked out again, and a leaf's flutter is zero at the hook and baked in metres so a gale ripples it rather than stretching it",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_holds_together"
+    },
+    {
+      "id": "plants.reads_as_a_plant",
+      "area": "engine",
+      "phase": "48",
+      "description": "A tree looks like a tree: a cut-out picture covers enough of its card to read as foliage (a single needle across a whole card is 94% hole), a part with no picture is a garnish rather than half the triangles, and the foliage outweighs the wood",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_reads_as_a_plant"
+    },
+    {
+      "id": "plants.flexibility",
+      "area": "engine",
+      "phase": "49",
+      "description": "A branch bends like a beam clamped at one end: its stiffness is EI with I ~ r^4 and the wind's push goes with its diameter, so a thin stem swings far more than a thick one of the same length and neither moves at the foot",
+      "test_file": "test_plant.cpp",
+      "test_symbol": "test_flexibility"
+    },
+    {
+      "id": "ecology.rules",
+      "area": "engine",
+      "phase": "49",
+      "description": "Where a thing goes is a rule about its group: every rule and biome names groups that exist, nothing is placed before what it grows on, moss sits only on stone, no grass under the conifers, and a name is guessed into the right group or into none at all",
+      "test_file": "test_ecology.cpp",
+      "test_symbol": "test_the_rules_say_what_they_mean"
+    },
+    {
+      "id": "ecology.assembly_order",
+      "area": "engine",
+      "phase": "49",
+      "description": "Tier is the order ground assembles and a rule may never be about a group placed later than itself - moss laid before the boulders has nothing to gather on",
+      "test_file": "test_ecology.cpp",
+      "test_symbol": "test_things_come_after_what_they_need"
+    },
+    {
+      "id": "plants.leaf_surface",
+      "area": "engine",
+      "phase": "49",
+      "description": "A leaf picture comes with the surface that makes it read as a leaf: a normal map whose veins and dished blade actually turn the surface, and a roughness map where the waxy blade is glossier than its veins and a wilting leaf is duller than a fresh one",
+      "test_file": "test_plant_species.cpp",
+      "test_symbol": "test_textures"
     }
   ]
 }

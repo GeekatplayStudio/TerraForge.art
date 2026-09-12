@@ -128,7 +128,9 @@ applied *after* placement, on the ground that is actually shown
 (`studio/surface_features.cpp`), and the graph's own `TerrainOutput` keeps
 the un-displaced ground for the sculpt, the scatter and the exports.
 `probe_height` reports both: `placed_m` is what you see, `graph_m` is the
-graph.
+graph. `drawn_m` is `placed_m` with the fractal micro-relief the viewport
+lays over the ground (`relief_m`, metres either way on the default tile):
+the surface a plant or a grounded object stands on.
 
 ## API
 

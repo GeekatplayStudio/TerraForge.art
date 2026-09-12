@@ -27,6 +27,9 @@ extern const char *const TES_TERRAIN_TAIL;
 extern const char *const VS_TERRAIN_PASS;
 
 extern const char *const FRACTAL_FN;
+// the relief as a smooth B-spline surface at a level of detail, shared by the
+// terrain's vertices and its shadow (shaders_terrain.cpp)
+extern const char *const HEIGHT_SMOOTH_FN;
 
 extern const char *const SKY_FN;
 // deep space behind the air (shaders_space.cpp): stars, the galaxy, the nebulas
@@ -38,8 +41,21 @@ extern const char *const SPACE_STARS_FN;
 extern const char *const SPACE_GAL_FN;
 extern const char *const SPACE_NEB_FN;
 extern const char *const SPACE_ENTRY_FN;
+// the sea (shaders_water.cpp): the waves' GLSL twin, the shading every
+// program that draws water shares, and the one water surface
+extern const char *const WATER_WAVES_GLSL;
 extern const char *const WATER_FN_GLSL;
 extern const char *const FOG_FN;
+// the cloud layers (shaders_clouds.cpp): the world the air lies on, the
+// layer's shape at a point (shared with the shadows it casts) and the march;
+// the pass that draws them over the ground keeps its shader beside it
+// (renderer_clouds.cpp)
+extern const char *const SKY_WORLD_GLSL;
+extern const char *const CLOUD_SHAPE_GLSL;
+extern const char *const CLOUD_FN_GLSL;
+// the sky pass's panorama as everything that reflects the sky reads it
+// (renderer_clouds.cpp), spliced through SKY_ENV_PLACEHOLDER
+extern const char *const SKY_ENV_GLSL;
 
 extern const char *const FS_TERRAIN_SRC;
 

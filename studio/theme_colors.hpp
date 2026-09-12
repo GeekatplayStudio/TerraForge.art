@@ -90,7 +90,7 @@ ImU32 node_color(const std::string &type, const std::string &category);
 // Ports are coloured by what flows through them, which is the one thing you
 // need to know before making a connection.
 ImU32 port_color(bool is_texture, bool is_field, unsigned field_type,
-                 bool is_points = false);
+                 bool is_points = false, bool is_plant = false);
 
 } // namespace theme
 } // namespace studio

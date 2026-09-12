@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "generated_by": "tools/gen_node_index.cpp",
-  "node_count": 249,
+  "node_count": 255,
   "category_count": 32,
   "nodes": [
     {
@@ -655,6 +655,7 @@
       "category": "Atmosphere",
       "description": "Sky colors, density, haze/fog and light absorption",
       "ports": [
+        {"name": "clouds", "dir": "in", "type": "heightmap", "optional": true},
         {"name": "atmosphere", "dir": "out", "type": "heightmap", "optional": false}
       ],
       "attrs": [
@@ -665,6 +666,14 @@
         "group": "Sky",
         "min": 0.05, "max": 3, "default": 1,
         "tooltip": "How thick the air is. It reddens the sun near the horizon\nand washes distance out to blue - the single strongest cue\nof scale in a landscape, because it tells the eye how far\naway a ridge is."
+      },
+      {
+        "key": "height_km",
+        "label": "Atmosphere height (km)",
+        "type": "float",
+        "group": "Sky",
+        "min": 0, "max": 100000, "default": 100,
+        "tooltip": "How high the air reaches over the world's surface, in\nkilometres, whatever its shape - a globe, a ring, a flat\nworld. Beyond it is space: from high enough the sky thins\nto stars and the world shows a blue rim. 0 keeps sky\neverywhere."
       },
       {
         "key": "ambient",
@@ -794,6 +803,7 @@
       "category": "Atmosphere",
       "description": "Volumetric cloud layer: type, coverage, altitude, wind",
       "ports": [
+        {"name": "clouds", "dir": "in", "type": "heightmap", "optional": true},
         {"name": "clouds", "dir": "out", "type": "heightmap", "optional": false}
       ],
       "attrs": [
@@ -1186,6 +1196,54 @@
         "group": "Foam",
         "min": 0.5, "max": 10, "default": 3,
         "tooltip": "How fine the foam's own texture is."
+      },
+      {
+        "key": "displaced",
+        "label": "Displaced water surface",
+        "type": "bool",
+        "group": "Waves",
+        "default": true,
+        "tooltip": "The waves are real geometry that stands up against the sky;\noff, the sea is flat and the waves are in its shading only."
+      },
+      {
+        "key": "wind_speed",
+        "label": "Wind intensity (m/s)",
+        "type": "float",
+        "group": "Waves",
+        "min": 0, "max": 25, "default": 4,
+        "tooltip": "The wind the sea has been under: it decides how long the\nwaves are and how much of each size there is. 4 m/s is a\nbreeze on a lake, 15 a gale, 0 a mirror."
+      },
+      {
+        "key": "wind_dir",
+        "label": "Wind direction",
+        "type": "float",
+        "group": "Waves",
+        "min": 0, "max": 360, "default": 30,
+        "tooltip": "The way the waves run seen from above, in degrees: 0 toward\n+X, 90 toward +Z."
+      },
+      {
+        "key": "choppiness",
+        "label": "Choppiness",
+        "type": "float",
+        "group": "Waves",
+        "min": 0, "max": 1, "default": 0.5,
+        "tooltip": "0 is round swells; toward 1 the crests stand up sharp, which\nis where they break and foam."
+      },
+      {
+        "key": "foam_depth",
+        "label": "Typical depth (m)",
+        "type": "float",
+        "group": "Foam",
+        "min": 0.05, "max": 10, "default": 1.5,
+        "tooltip": "How shallow the water has to get before foam gathers along\nthe coast."
+      },
+      {
+        "key": "foam_coverage",
+        "label": "Crest coverage",
+        "type": "float",
+        "group": "Foam",
+        "min": 0, "max": 1, "default": 0.4,
+        "tooltip": "How much of each breaking crest turns white."
       }
       ]
     },
@@ -1575,6 +1633,50 @@
       ]
     },
     {
+      "type": "FirTrees",
+      "display_name": "Fir trees",
+      "category": "Effect",
+      "description": "Tiny random cones all over the surface - a distant forest in the relief",
+      "ports": [
+        {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
+        {"name": "mask", "dir": "in", "type": "heightmap", "optional": true},
+        {"name": "output", "dir": "out", "type": "heightmap", "optional": false}
+      ],
+      "attrs": [
+      {
+        "key": "amount",
+        "label": "Height",
+        "type": "float",
+        "group": "Fir trees",
+        "min": 0, "max": 0.3, "default": 0.03,
+        "tooltip": "How tall the cones are, as a fraction of the terrain's own range."
+      },
+      {
+        "key": "density",
+        "label": "Density",
+        "type": "float",
+        "group": "Fir trees",
+        "min": 8, "max": 512, "default": 160,
+        "tooltip": "Trees across the tile."
+      },
+      {
+        "key": "size_jitter",
+        "label": "Size variation",
+        "type": "float",
+        "group": "Fir trees",
+        "min": 0, "max": 1, "default": 0.5,
+        "tooltip": "How much the trees differ in size."
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "seed",
+        "group": "Fir trees",
+        "tooltip": "Another arrangement of the same trees."
+      }
+      ]
+    },
+    {
       "type": "Gravel",
       "display_name": "Gravel",
       "category": "Effect",
@@ -1655,6 +1757,27 @@
       ]
     },
     {
+      "type": "Invert",
+      "display_name": "Invert",
+      "category": "Effect",
+      "description": "Turns the terrain upside down within its own range: valleys become ridges",
+      "ports": [
+        {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
+        {"name": "mask", "dir": "in", "type": "heightmap", "optional": true},
+        {"name": "output", "dir": "out", "type": "heightmap", "optional": false}
+      ],
+      "attrs": [
+      {
+        "key": "amount",
+        "label": "Amount",
+        "type": "float",
+        "group": "Invert",
+        "min": 0, "max": 1, "default": 1,
+        "tooltip": "1 inverts fully; less blends toward the inverted terrain."
+      }
+      ]
+    },
+    {
       "type": "Peaks",
       "display_name": "Sharpen the summits",
       "category": "Effect",
@@ -1680,6 +1803,50 @@
         "group": "Peaks",
         "min": 0, "max": 1, "default": 0.45,
         "tooltip": "Ground above this rises, ground below sinks.\nLower it to keep more of the terrain high."
+      }
+      ]
+    },
+    {
+      "type": "Pebbles",
+      "display_name": "Pebbles",
+      "category": "Effect",
+      "description": "Randomly scattered rounded pebbles over the whole surface - a pebble beach",
+      "ports": [
+        {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
+        {"name": "mask", "dir": "in", "type": "heightmap", "optional": true},
+        {"name": "output", "dir": "out", "type": "heightmap", "optional": false}
+      ],
+      "attrs": [
+      {
+        "key": "amount",
+        "label": "Height",
+        "type": "float",
+        "group": "Pebbles",
+        "min": 0, "max": 0.3, "default": 0.02,
+        "tooltip": "How thick the pebbles are, as a fraction of the terrain's\nown range. Vue's 'keep the button down' is a larger value."
+      },
+      {
+        "key": "density",
+        "label": "Density",
+        "type": "float",
+        "group": "Pebbles",
+        "min": 8, "max": 512, "default": 120,
+        "tooltip": "Pebbles across the tile. More is smaller and denser."
+      },
+      {
+        "key": "size_jitter",
+        "label": "Size variation",
+        "type": "float",
+        "group": "Pebbles",
+        "min": 0, "max": 1, "default": 0.6,
+        "tooltip": "0 every pebble the same size; 1 from full size down to nothing."
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "seed",
+        "group": "Pebbles",
+        "tooltip": "Another arrangement of the same pebbles."
       }
       ]
     },
@@ -1760,8 +1927,8 @@
         "label": "Edge softness",
         "type": "float",
         "group": "Clipping",
-        "min": 0, "max": 0.2, "default": 0,
-        "tooltip": "Blends the cut instead of leaving a hard step."
+        "min": 0, "max": 0.2, "default": 0.04,
+        "tooltip": "How far either side of the mark the cut is rounded, as a\nfraction of the terrain's own range. Nothing in a\nlandscape meets a flat at a crease - a shore, a pan, a\nmesa top all round into it - and 0 is that crease: the\nold hard step, kept for when you want the terrain cut\nexactly on the mark."
       }
       ]
     },
@@ -2816,12 +2983,13 @@
       "type": "TerrainOutput",
       "display_name": "Terrain output",
       "category": "Export",
-      "description": "Final terrain: combines height layers + material, zero edges",
+      "description": "Final terrain: combines height layers + material, zero edges; a blend mask decides where the tile joins the planet",
       "ports": [
         {"name": "heightmap", "dir": "in", "type": "heightmap", "optional": false},
         {"name": "extra layer 1", "dir": "in", "type": "heightmap", "optional": true},
         {"name": "extra layer 2", "dir": "in", "type": "heightmap", "optional": true},
         {"name": "albedo", "dir": "in", "type": "texture", "optional": true},
+        {"name": "blend mask", "dir": "in", "type": "heightmap", "optional": true},
         {"name": "heightmap", "dir": "out", "type": "heightmap", "optional": false},
         {"name": "albedo", "dir": "out", "type": "texture", "optional": false}
       ],
@@ -4297,7 +4465,7 @@
       "type": "FieldShape",
       "display_name": "Field shape",
       "category": "Field Noise",
-      "description": "Analytic shapes - waves, bands, bumps, cones and steps, as a function",
+      "description": "Analytic shapes - waves, bands, bumps, cones, steps and square, diamond, angular and spiral gradients, as a function",
       "ports": [
         {"name": "position", "dir": "in", "type": "field.vector", "optional": true},
         {"name": "out", "dir": "out", "type": "field.number", "optional": false}
@@ -4307,8 +4475,8 @@
         "key": "mode",
         "label": "Shape",
         "type": "choice",
-        "choices": ["Sine wave", "Square wave", "Triangle wave", "Sawtooth", "Gaussian bump", "Cone", "Band", "Step"],
-        "tooltip": "The analytic shape produced."
+        "choices": ["Sine wave", "Square wave", "Triangle wave", "Sawtooth", "Gaussian bump", "Cone", "Band", "Step", "Square falloff", "Diamond falloff", "Angular", "Spiral"],
+        "tooltip": "The analytic shape produced. The falloffs are 1 at the\ncentre and 0 at Width; Angular runs once round the centre;\nSpiral winds Frequency turns a unit outward."
       },
       {
         "key": "center",
@@ -4331,7 +4499,7 @@
         "type": "float",
         "group": "Shape",
         "min": 0.01, "max": 200, "default": 4,
-        "tooltip": "Wave repetitions per unit of ground. Waves only."
+        "tooltip": "Wave repetitions per unit of ground; the spiral's turns\nper unit outward."
       },
       {
         "key": "width",
@@ -4339,7 +4507,7 @@
         "type": "float",
         "group": "Shape",
         "min": 0.001, "max": 8, "default": 0.25,
-        "tooltip": "Radius of the bump or cone; thickness of the band."
+        "tooltip": "Radius of the bump, the cone and the square and diamond\nfalloffs; thickness of the band."
       },
       {
         "key": "phase",
@@ -8823,12 +8991,59 @@
         "tooltip": "Turns off edge smoothing for this material. Only wanted\nwhere a hard pixel boundary is the point, such as an index\nor ID pass."
       },
       {
+        "key": "vol_density",
+        "label": "Density",
+        "type": "float",
+        "group": "Volume",
+        "min": 0, "max": 8, "default": 0,
+        "tooltip": "Above zero the material is a medium, not a surface: light is\nextinguished through it by exp(-density x distance)\n(Beer-Lambert), and what it stops it scatters or absorbs.\nSmoke, cloud, dust, murky water. Zero is an ordinary surface."
+      },
+      {
+        "key": "vol_absorb",
+        "label": "Absorption colour",
+        "type": "color",
+        "group": "Volume",
+        "tooltip": "What survives per channel of the light the medium absorbs.\nDarker is a sootier medium; a tint colours what shines\nthrough it."
+      },
+      {
+        "key": "vol_albedo",
+        "label": "Scattering albedo",
+        "type": "float",
+        "group": "Volume",
+        "min": 0, "max": 1, "default": 0.85,
+        "tooltip": "Of the light the medium stops, how much scatters on rather\nthan being absorbed. Cloud and steam are near 1, smoke\naround 0.5, soot near 0."
+      },
+      {
+        "key": "vol_anisotropy",
+        "label": "Anisotropy",
+        "type": "float",
+        "group": "Volume",
+        "min": -0.9, "max": 0.95, "default": 0.3,
+        "tooltip": "The Henyey-Greenstein phase: 0 scatters evenly, toward 1\nlight carries on forward (the bright rim of a backlit\ncloud), negative scatters back."
+      },
+      {
+        "key": "vol_heterogeneity",
+        "label": "Heterogeneity",
+        "type": "float",
+        "group": "Volume",
+        "min": 0, "max": 1, "default": 0.5,
+        "tooltip": "Breaks the density up with noise, so the volume has wisps\nand holes rather than being a uniform block."
+      },
+      {
+        "key": "vol_steps",
+        "label": "Ray steps",
+        "type": "int",
+        "group": "Volume",
+        "min": 4, "max": 128, "default": 32,
+        "tooltip": "How many samples the view ray takes through the volume, each\nwith a short march toward the sun. The march stops early\nonce 99% of the light is extinguished, so this is a ceiling\non the work, not a cost always paid. More is smoother and\nslower."
+      },
+      {
         "key": "mapping",
         "label": "Mapping",
         "type": "choice",
         "group": "Transform",
-        "choices": ["Automatic", "Flat", "Faces", "Cylindrical", "Spherical"],
-        "tooltip": "How the 2D maps wrap a 3D object. Terrain is always Flat (projected from above); the others are for objects."
+        "choices": ["Automatic", "Flat", "Faces", "Cylindrical", "Spherical", "Parametric", "Standard", "Fill"],
+        "tooltip": "Where the maps are read from, before scale, offset and rotation.\n\nAutomatic    the surface's own coordinates, or flat if it has none\nFlat         projected straight down, which is what terrain wants\nFaces        each face gets the axis it most faces\nCylindrical  wrapped around the up axis\nSpherical    longitude and latitude\nParametric   exactly the UVs the model was unwrapped with — the only\n             one a painted or baked texture can use\nStandard     a solid the object is carved from, in its own space, so\n             there is no stretching and no seam and the material\n             travels with the object\nFill         the same solid, but fixed in the world: the object\n             slides through the material instead of carrying it"
       },
       {
         "key": "map_scale",
@@ -11541,6 +11756,169 @@
       ]
     },
     {
+      "type": "Gradient",
+      "display_name": "Gradient",
+      "category": "Primitive",
+      "description": "Gradient ramps as a heightmap: linear, reflected, circle (radial), ellipse, square, diamond, angular (conic) and spiral",
+      "ports": [
+        {"name": "output", "dir": "out", "type": "heightmap", "optional": false}
+      ],
+      "attrs": [
+      {
+        "key": "type",
+        "label": "Type",
+        "type": "choice",
+        "choices": ["Linear", "Reflected", "Circle", "Ellipse", "Square", "Diamond", "Angular", "Spiral"],
+        "tooltip": "The gradient's shape. Linear rises along the direction\nand Reflected rises both ways from the centre line.\nCircle, Ellipse, Square and Diamond are high in the middle\nand fall to their edge - a hill, a plateau, a pyramid.\nAngular sweeps once round the centre; Spiral winds out\nfrom it. Invert (Output) turns any of them over."
+      },
+      {
+        "key": "center",
+        "label": "Center",
+        "type": "vec2",
+        "group": "Placement",
+        "tooltip": "Where the gradient is centred, as a fraction of the tile.\nOutside 0..1 moves the middle off the map, so only an\nedge of the shape crosses it."
+      },
+      {
+        "key": "angle",
+        "label": "Direction °",
+        "type": "float",
+        "group": "Placement",
+        "min": -180, "max": 180, "default": 0,
+        "tooltip": "Turns the gradient: the way a linear ramp rises, the\nlong axis of an ellipse or a square, where an angular\nsweep starts."
+      },
+      {
+        "key": "size",
+        "label": "Size",
+        "type": "float",
+        "group": "Placement",
+        "min": 0.01, "max": 4, "default": 0.5,
+        "tooltip": "How far the gradient reaches from its centre, as a\nfraction of the tile: the radius of a circle, half the\nside of a square, half the length of a linear ramp. At\n0.5 a centred shape just touches the tile's edges."
+      },
+      {
+        "key": "aspect",
+        "label": "Stretch",
+        "type": "float",
+        "group": "Placement",
+        "min": 0.1, "max": 10, "default": 1,
+        "tooltip": "Ellipse, Square and Diamond: how much longer the shape\nis along its direction than across it, its area kept.\nAn ellipse starts twice as long as it is wide; a square\nat 1 is square."
+      },
+      {
+        "key": "range",
+        "label": "Start / end",
+        "type": "range",
+        "group": "Ramp",
+        "tooltip": "Where along the gradient it begins and ends, as a\nfraction of its size. Pulling the start up leaves a flat\ntop (a mesa for a centred shape); pulling the end in\ngives the shape a steep skirt."
+      },
+      {
+        "key": "profile",
+        "label": "Profile",
+        "type": "choice",
+        "choices": ["Linear", "Smooth", "Smoother", "Ease in", "Ease out", "Sine", "Dome", "Bell"],
+        "tooltip": "The curve from one end of the ramp to the other. Linear\nis a straight cone; Smooth and Smoother round both ends;\nEase in stays low and rises late, Ease out rises early;\nDome is a round-topped hill with steep flanks; Bell is a\nwide soft rise, like a gaussian."
+      },
+      {
+        "key": "repeat",
+        "label": "Repeats",
+        "type": "float",
+        "group": "Ramp",
+        "min": 1, "max": 32, "default": 1,
+        "tooltip": "How many times the ramp runs over the gradient's size:\nconcentric rings for a circle, parallel ridges for a\nlinear ramp, more arms for a spiral."
+      },
+      {
+        "key": "wrap",
+        "label": "Past the end",
+        "type": "choice",
+        "choices": ["Hold", "Repeat", "Mirror"],
+        "tooltip": "What the gradient does beyond its end and between\nrepeats. Hold stays at the end's value; Repeat starts\nagain with a sudden step (terraced rings, sawtooth\nridges); Mirror runs back down smoothly (rolling waves)."
+      },
+      {
+        "key": "steps",
+        "label": "Terraces",
+        "type": "int",
+        "group": "Ramp",
+        "min": 0, "max": 64, "default": 0,
+        "tooltip": "Cuts the ramp into this many flat levels, like contour\nsteps or rice terraces. 0 keeps it continuous."
+      },
+      {
+        "key": "turns",
+        "label": "Spiral turns",
+        "type": "float",
+        "group": "Ramp",
+        "min": -8, "max": 8, "default": 1.5,
+        "tooltip": "Spiral only: how many times the spiral winds out to its\nsize. Negative winds the other way."
+      },
+      {
+        "key": "roundness",
+        "label": "Corner rounding",
+        "type": "float",
+        "group": "Ramp",
+        "min": 0, "max": 1, "default": 0,
+        "tooltip": "Square and Diamond only: rounds the corners, all the way\nto a circle (or an ellipse) at 1."
+      },
+      {
+        "key": "warp",
+        "label": "Distortion",
+        "type": "float",
+        "group": "Distortion",
+        "min": 0, "max": 1, "default": 0,
+        "tooltip": "Pushes the gradient about with noise, so a circle becomes\nan island's outline and a ramp a natural slope. 0 is the\nexact geometric shape."
+      },
+      {
+        "key": "warp_scale",
+        "label": "Distortion scale",
+        "type": "float",
+        "group": "Distortion",
+        "min": 0.25, "max": 32, "default": 3,
+        "tooltip": "The size of the distortion's features: low bends the\nwhole shape, high roughens its edge."
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "seed",
+        "tooltip": ""
+      },
+      {
+        "key": "post_remap",
+        "label": "Remap to range",
+        "type": "bool",
+        "group": "Output",
+        "default": true,
+        "tooltip": "Rescales the result so its lowest point sits at the\nbottom of the range below and its highest at the top.\nOff keeps the raw values, which is what you want when\na node feeds arithmetic rather than a picture."
+      },
+      {
+        "key": "post_range",
+        "label": "Output range",
+        "type": "range",
+        "group": "Output",
+        "tooltip": "The low and high the result is rescaled into. 0..1 is\nthe terrain's own range; a narrower band makes this\nnode a gentler contribution when it is added to\nanother."
+      },
+      {
+        "key": "post_invert",
+        "label": "Invert",
+        "type": "bool",
+        "group": "Output",
+        "default": false,
+        "tooltip": "Turns the result upside down within its range - peaks\nbecome hollows. Applied after the remap."
+      },
+      {
+        "key": "post_gain",
+        "label": "Gain (gamma)",
+        "type": "float",
+        "group": "Output",
+        "min": 0.05, "max": 4, "default": 1,
+        "tooltip": "Bends the result toward its low or high end. Below 1\nlifts the middle, so more of the map sits high; above\n1 pushes it down, so peaks become sparser and sharper."
+      },
+      {
+        "key": "post_zero_edges",
+        "label": "Zero edges width",
+        "type": "float",
+        "group": "Output",
+        "min": 0, "max": 0.5, "default": 0,
+        "tooltip": "Fades the terrain to zero at the borders over this\nfraction of the map — clean edges for islands/tiles."
+      }
+      ]
+    },
+    {
       "type": "GrassDisplacement",
       "display_name": "Grass displacement",
       "category": "Primitive",
@@ -13958,6 +14336,197 @@
       ]
     },
     {
+      "type": "Nebula",
+      "display_name": "Nebula",
+      "category": "Scene",
+      "description": "A nebula or a galaxy in deep space: a glowing cloud, a dark cloud, a spiral or elliptical galaxy, or a planetary nebula, placed in the sky by direction",
+      "ports": [
+        {"name": "nebula", "dir": "out", "type": "heightmap", "optional": false}
+      ],
+      "attrs": [
+      {
+        "key": "object",
+        "label": "Scene object",
+        "type": "text",
+        "group": "Nebula",
+        "tooltip": "Which scene object this node drives."
+      },
+      {
+        "key": "kind",
+        "label": "Kind",
+        "type": "choice",
+        "group": "Nebula",
+        "choices": ["Nebula", "Dark nebula", "Spiral galaxy", "Elliptical galaxy", "Planetary nebula"],
+        "tooltip": "A cloud of glowing gas with filaments and young stars; a cloud\nof dust that hides the stars behind it; a spiral galaxy with\narms, a bulge and dust lanes; a smooth elliptical galaxy; a\nring of gas round a dying star."
+      },
+      {
+        "key": "azimuth",
+        "label": "Azimuth",
+        "type": "float",
+        "group": "Place",
+        "min": -360, "max": 360, "default": 40,
+        "tooltip": "Compass heading in the sky, degrees, the sun's frame."
+      },
+      {
+        "key": "elevation",
+        "label": "Elevation",
+        "type": "float",
+        "group": "Place",
+        "min": -90, "max": 90, "default": 35,
+        "tooltip": "Degrees above the horizon."
+      },
+      {
+        "key": "size_deg",
+        "label": "Size",
+        "type": "float",
+        "group": "Place",
+        "min": 0.2, "max": 180, "default": 24,
+        "tooltip": "Angular diameter in degrees. The full moon is half a degree,\nthe Andromeda galaxy three, the Orion nebula one."
+      },
+      {
+        "key": "tilt_deg",
+        "label": "Tilt",
+        "type": "float",
+        "group": "Place",
+        "min": 0, "max": 85, "default": 50,
+        "tooltip": "Galaxies: how far the disc is turned from face-on."
+      },
+      {
+        "key": "rotation_deg",
+        "label": "Rotation",
+        "type": "float",
+        "group": "Place",
+        "min": -180, "max": 180, "default": 0,
+        "tooltip": "Turned in the sky, degrees."
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "seed",
+        "group": "Look",
+        "tooltip": "Another seed is another cloud or galaxy of the same kind."
+      },
+      {
+        "key": "brightness",
+        "label": "Brightness",
+        "type": "float",
+        "group": "Look",
+        "min": 0, "max": 4, "default": 1,
+        "tooltip": "How bright it glows."
+      },
+      {
+        "key": "density",
+        "label": "Density",
+        "type": "float",
+        "group": "Look",
+        "min": 0, "max": 1, "default": 0.5,
+        "tooltip": "Clouds: how much of the footprint is cloud. Galaxies: how\ndark the dust lanes are."
+      },
+      {
+        "key": "detail",
+        "label": "Detail",
+        "type": "float",
+        "group": "Look",
+        "min": 0, "max": 1, "default": 0.5,
+        "tooltip": "Fractal fineness, soft to wispy."
+      },
+      {
+        "key": "arms",
+        "label": "Arms",
+        "type": "int",
+        "group": "Look",
+        "min": 1, "max": 6, "default": 2,
+        "tooltip": "Spiral galaxies: how many arms."
+      },
+      {
+        "key": "dust",
+        "label": "Dust",
+        "type": "float",
+        "group": "Cloud",
+        "min": 0, "max": 1, "default": 0.55,
+        "tooltip": "Clouds: how much dark dust threads through the gas and\nhides it - the black lanes across a bright nebula."
+      },
+      {
+        "key": "warp",
+        "label": "Warp",
+        "type": "float",
+        "group": "Cloud",
+        "min": 0, "max": 1.5, "default": 0.6,
+        "tooltip": "Clouds: how far the shape is pulled out of a ball into\nbillows, pillars and tails."
+      },
+      {
+        "key": "glow",
+        "label": "Glow",
+        "type": "float",
+        "group": "Cloud",
+        "min": 0, "max": 2, "default": 0.4,
+        "tooltip": "Clouds: the soft halo the gas throws around itself."
+      },
+      {
+        "key": "sources",
+        "label": "Hot stars",
+        "type": "int",
+        "group": "Cloud",
+        "min": 1, "max": 4, "default": 3,
+        "tooltip": "Clouds: how many hot young stars inside light the gas.\nTheir glare decides where it glows in the bright colour\nand where in the cool one."
+      },
+      {
+        "key": "source_stars",
+        "label": "Hot stars shown",
+        "type": "float",
+        "group": "Cloud",
+        "min": 0, "max": 2, "default": 0.6,
+        "tooltip": "Clouds: how bright those stars are drawn. 0 leaves the gas\nlit by stars you cannot see."
+      },
+      {
+        "key": "core_glow",
+        "label": "Core glow",
+        "type": "float",
+        "group": "Cloud",
+        "min": 0, "max": 2, "default": 0,
+        "tooltip": "Clouds: the gas round the hot stars burned out toward\nwhite, as a long exposure records a nebula's heart."
+      },
+      {
+        "key": "turbulence",
+        "label": "Turbulence",
+        "type": "float",
+        "group": "Cloud",
+        "min": 0, "max": 1, "default": 0,
+        "tooltip": "Clouds: tears the gas into filaments and tendrils with a\nsecond, finer warp."
+      },
+      {
+        "key": "lanes",
+        "label": "Dust lanes",
+        "type": "float",
+        "group": "Cloud",
+        "min": 0, "max": 1, "default": 0,
+        "tooltip": "Clouds: thin dark ridges of dust laid across the glow."
+      },
+      {
+        "key": "color1",
+        "label": "Bright gas / core",
+        "type": "color",
+        "group": "Look",
+        "tooltip": "The bright gas of a cloud, the core of a galaxy."
+      },
+      {
+        "key": "color2",
+        "label": "Cool gas / arms",
+        "type": "color",
+        "group": "Look",
+        "tooltip": "The cool gas of a cloud, the arms of a galaxy."
+      },
+      {
+        "key": "visible",
+        "label": "Visible",
+        "type": "bool",
+        "group": "Look",
+        "default": true,
+        "tooltip": "Drawn at all."
+      }
+      ]
+    },
+    {
       "type": "ObjectGroup",
       "display_name": "Object group",
       "category": "Scene",
@@ -14072,6 +14641,14 @@
         "tooltip": "0 = airless rim."
       },
       {
+        "key": "clouds",
+        "label": "Cloud cover",
+        "type": "float",
+        "group": "Atmosphere",
+        "min": 0, "max": 1, "default": 0.4,
+        "tooltip": "How much of the planet a deck of cloud covers, seen from\nspace: 0 clear, 1 overcast. It drifts with the scene's\nclouds. A planet with no atmosphere has no clouds."
+      },
+      {
         "key": "spin",
         "label": "Spin °",
         "type": "float",
@@ -14117,7 +14694,7 @@
       "type": "Primitive",
       "display_name": "Primitive",
       "category": "Scene",
-      "description": "A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene",
+      "description": "A built-in primitive placed in the scene: a cube, sphere, plane, cylinder or cone, or a plant or rock built from its kind (pine, juniper, palm, fern, grass tuft, bush, boulder)",
       "ports": [
       ],
       "attrs": [
@@ -14126,8 +14703,8 @@
         "label": "Shape",
         "type": "choice",
         "group": "Object",
-        "choices": ["Cube", "Sphere", "Plane", "Cylinder", "Cone"],
-        "tooltip": "Which primitive shape this is."
+        "choices": ["Cube", "Sphere", "Plane", "Cylinder", "Cone", "Pine", "Juniper", "Palm", "Fern", "Grass tuft", "Bush", "Boulder"],
+        "tooltip": "Which shape this is. The plants and the boulder are built\nfrom their kind - bark and foliage in their own colours -\nand come at their own size; scatter them over the terrain\nwith a Scatter points or Ecosystem layer node."
       },
       {
         "key": "object",
@@ -14142,6 +14719,13 @@
         "type": "color",
         "group": "Object",
         "tooltip": "The object's colour, where no material is assigned to it."
+      },
+      {
+        "key": "seed",
+        "label": "Plant seed",
+        "type": "seed",
+        "group": "Object",
+        "tooltip": "The plants and the boulder: another one of the same kind -\nits branches, fronds and lumps laid out afresh. 0 is the one\nit has always been. The other shapes ignore it."
       },
       {
         "key": "x_m",
@@ -14251,7 +14835,7 @@
         "type": "choice",
         "group": "Shape",
         "choices": ["Rectangle", "Rounded rectangle", "Round", "Diamond", "From mask"],
-        "tooltip": "Round is an ellipse when the width and height differ.\nFrom mask takes the outline from the mask input and\nonly the edge treatment from here."
+        "tooltip": "Round is an ellipse when the width and height differ.\nFrom mask takes the outline from the mask input and\nonly the edge treatment from here. With a named shape,\na connected mask carves it: a fractal there gives a\nragged coast, a slope mask keeps only the flats."
       },
       {
         "key": "size",
@@ -14713,6 +15297,68 @@
         "label": "Seed",
         "type": "seed",
         "tooltip": ""
+      },
+      {
+        "key": "blend_invert",
+        "label": "Invert blend",
+        "type": "bool",
+        "group": "Blend",
+        "default": false,
+        "tooltip": "Applies this node where the blend input is dark instead of\nwhere it is bright."
+      }
+      ]
+    },
+    {
+      "type": "TileRotate",
+      "display_name": "Tile rotate",
+      "category": "Transform",
+      "description": "Repeat the terrain as tiles, each turned a random quarter-turn so no lattice shows",
+      "ports": [
+        {"name": "input", "dir": "in", "type": "heightmap", "optional": false},
+        {"name": "output", "dir": "out", "type": "heightmap", "optional": false},
+        {"name": "blend", "dir": "in", "type": "heightmap", "optional": true}
+      ],
+      "attrs": [
+      {
+        "key": "across",
+        "label": "Tiles across",
+        "type": "int",
+        "min": 1, "max": 16, "default": 2,
+        "tooltip": "How many copies side by side. The output is still one\nmap at the graph's resolution, so more tiles means each\ngets fewer pixels."
+      },
+      {
+        "key": "down",
+        "label": "Tiles down",
+        "type": "int",
+        "min": 1, "max": 16, "default": 2,
+        "tooltip": "How many copies top to bottom."
+      },
+      {
+        "key": "turn",
+        "label": "Each tile",
+        "type": "choice",
+        "choices": ["Random quarter-turn", "Random quarter-turn + mirror", "As is"],
+        "tooltip": "What happens to each copy. Random turns break up the\nlattice a plain repeat makes; adding mirroring doubles\nthe number of ways a tile can appear. 'As is' is the\nplain repeat, for a map that was made seamless."
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "seed",
+        "tooltip": ""
+      },
+      {
+        "key": "feather",
+        "label": "Seam feather",
+        "type": "float",
+        "min": 0, "max": 0.4, "default": 0.08,
+        "tooltip": "Width of the cross-fade across each seam, as a fraction\nof a tile. Zero is a hard join; a turned tile almost\nnever matches its neighbour at the edge, so some is\nusually wanted."
+      },
+      {
+        "key": "whole",
+        "label": "Then turn the whole",
+        "type": "choice",
+        "choices": ["0°", "90°", "180°", "270°"],
+        "tooltip": "A final quarter-turn of the tiled result, for when the\nregion needs to face another way. Any angle is the\nTransform node."
       },
       {
         "key": "blend_invert",

@@ -292,6 +292,7 @@ static void menu_view(App &a) {
   ImGui::MenuItem("Material Studio", nullptr, &a.show_material_studio);
   ImGui::MenuItem("Material Browser", nullptr, &a.show_material_browser);
   ImGui::MenuItem("Mesh Tools", nullptr, &a.show_mesh_tools);
+  ImGui::MenuItem("Plants", nullptr, &a.show_plants);
   ImGui::MenuItem("Height Paint", nullptr, &a.show_paint_canvas);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Paint the terrain as a greyscale picture: mid grey does\n"
@@ -330,7 +331,7 @@ static void menu_view(App &a) {
     // Another graph window, pinned to one domain, with its own canvas and
     // a side pane for the selected node - so the material graph can live on
     // the second monitor while the terrain graph stays here.
-    for (int oi = 0; oi < 8; ++oi) {
+    for (int oi = 0; oi < WORKSPACE_ORDER_COUNT; ++oi) {
       int d = WORKSPACE_ORDER[oi];
       std::string label = std::string(workspace_name(d)) + " nodes";
       if (ImGui::MenuItem(label.c_str())) graph_editor_add(a, d);
@@ -357,6 +358,7 @@ void menu_materials(App &a);
 void menu_atmosphere(App &a);
 void menu_animation(App &a);
 void menu_render(App &a);
+void menu_plants(App &a); // panel_plants.cpp
 
 // The AI menu: generate an image, a texture or a skydome, a 3D model; build
 // a scene, a terrain or an atmosphere from words; the jobs list; settings.
@@ -424,6 +426,7 @@ void draw_toolbar(App &a) {
     menu_edit(a);
     menu_terrain(a);
     menu_objects(a);
+    menu_plants(a);
     menu_materials(a);
     menu_atmosphere(a);
     menu_animation(a);

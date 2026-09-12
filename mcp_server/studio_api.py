@@ -171,7 +171,7 @@ class Studio:
         return self.send({"op": "set_space", **kw})
 
     def space_preset(self, name: str) -> Dict[str, Any]:
-        """A whole sky at once: night, hubble, cinema, deep_field, nursery, void."""
+        """A whole sky at once: night, hubble, cinema, deep_field, nursery, void, nebula_cinema."""
         return self.send({"op": "space_preset", "name": name})
 
     def space_populate(self, count: int = 4, seed: int = 1,
@@ -335,10 +335,30 @@ MCP_TOOLS = {
         "description": "Modify the named or active camera (same fields).",
         "params": {"name": "str"},
     },
+    "studio_add_air_layer": {
+        "description": (
+            "Add a band of the atmosphere as a thing in the scene: a cloud deck, a fog or a "
+            "haze, listed in the Objects tree under an Atmosphere. A sky is several at once - "
+            "low stratus under cumulus under a veil, haze to the horizon under a valley fog - "
+            "and they all render together. kind: cloud|fog. atmosphere: its object index or "
+            "name, so a band can belong to a planet's sky rather than this world's. set: the "
+            "band's own settings (altitude, thickness, coverage, level, density, falloff...)."
+        ),
+        "params": {"kind": "str", "atmosphere": "any", "name": "str", "set": "obj"},
+    },
+    "studio_air_layers": {
+        "description": "Every band of air in the scene: what kind it is, what it hangs under, and whether it is showing.",
+        "params": {},
+    },
     "studio_set_world": {
-        "description": "Sun, sky, fog, clouds and water settings.",
+        "description": "Sun, sky, fog, clouds, water and wind settings. The "
+                       "wind is one wind over the whole scene - the clouds "
+                       "drift with it, the sea is raised by it, the plants "
+                       "lean and gust with it: speed_ms, direction_deg, "
+                       "gust_strength, gust_frequency, gust_size_m, "
+                       "turbulence_deg, shear.",
         "params": {"sun": "obj", "sky": "obj", "fog": "obj", "clouds": "obj",
-                   "water": "obj"},
+                   "water": "obj", "wind": "obj"},
     },
     "studio_place_object": {
         "description": "Move a scene object: name, position [x,y,z], scale, "
@@ -351,7 +371,10 @@ MCP_TOOLS = {
     "studio_probe_height": {
         "description": "The ground's height at a point of the tile (x, z in "
                        "0..1): the terrain as displayed and the graph's own "
-                       "heightmap, in heightmap units and metres. Read the "
+                       "heightmap, in heightmap units and metres, and "
+                       "drawn_m - the displayed terrain with the fractal "
+                       "micro-relief the viewport lays over it (relief_m), "
+                       "what a plant or a grounded object stands on. Read the "
                        "answer from the state's `reply`.",
         "params": {"x": "float", "z": "float"},
     },
@@ -462,11 +485,13 @@ MCP_TOOLS = {
         "description": "Create a procedural planet (any number is fine - they "
                        "are generated on the GPU and cost no memory). Fields: "
                        "name, radius, relief, seed, position [x,y,z], "
-                       "sea_level, snow_line, atmosphere, rock_low, "
-                       "rock_high, water_color, atmo_color.",
+                       "sea_level, snow_line, atmosphere, clouds (cover seen "
+                       "from space, 0-1), rock_low, rock_high, water_color, "
+                       "atmo_color.",
         "params": {"name": "str", "radius": "float", "relief": "float",
                    "seed": "int", "position": "[x,y,z]", "sea_level": "float",
-                   "snow_line": "float", "surface_node": "str", "atmosphere": "float"},
+                   "snow_line": "float", "surface_node": "str", "atmosphere": "float",
+                   "clouds": "float"},
     },
     "studio_set_planet": {
         "description": "Modify an existing planet by name (same fields as "
@@ -514,7 +539,15 @@ MCP_TOOLS = {
                        "star_brightness, star_size, star_temperature 0-1 (colour "
                        "spread), star_spikes (the diffraction arms on the brightest), "
                        "star_halo, star_clump (how strongly they gather into "
-                       "associations), star_seed. The Milky Way band: galaxy (bool), "
+                       "associations), star_seed, star_spike_points (4, 6 or 8), "
+                       "star_spike_angle (degrees, shared by every star as a "
+                       "telescope's vanes are), star_spike_chroma 0-1 (colour "
+                       "fringes along the arms), star_saturation 0-2, star_glow (the "
+                       "wide bloom round the brightest), star_bright_share 0-1 (how "
+                       "many of the stars are bright ones), star_clusters 0-1 (how "
+                       "many star clusters: loose blue open ones and tight yellow "
+                       "globulars), star_cluster_size (degrees across). The Milky "
+                       "Way band: galaxy (bool), "
                        "galaxy_intensity, galaxy_width (degrees), galaxy_yaw and "
                        "galaxy_pitch (where its pole points), galaxy_core (degrees "
                        "along the band), galaxy_dust 0-1 (dark rifts, which redden "
@@ -527,7 +560,11 @@ MCP_TOOLS = {
                    "stars": "bool", "star_density": "float", "star_brightness": "float",
                    "star_size": "float", "star_temperature": "float",
                    "star_spikes": "float", "star_halo": "float", "star_clump": "float",
-                   "star_seed": "int",
+                   "star_seed": "int", "star_spike_points": "int",
+                   "star_spike_angle": "float", "star_spike_chroma": "float",
+                   "star_saturation": "float", "star_glow": "float",
+                   "star_bright_share": "float", "star_clusters": "float",
+                   "star_cluster_size": "float",
                    "galaxy": "bool", "galaxy_intensity": "float", "galaxy_width": "float",
                    "galaxy_yaw": "float", "galaxy_pitch": "float", "galaxy_core": "float",
                    "galaxy_dust": "float", "galaxy_grain": "float",
@@ -538,7 +575,9 @@ MCP_TOOLS = {
                        "dark place; 'hubble' a telescope's picture, teal hearts and "
                        "crimson outskirts; 'cinema' the sky a film paints; "
                        "'deep_field' a quiet star field and far galaxies; 'nursery' "
-                       "one great cloud lit from inside; 'void' stars alone. Each "
+                       "one great cloud lit from inside; 'void' stars alone; "
+                       "'nebula_cinema' a poster's torn cloud with a burned-white "
+                       "heart, dust lanes and six-pointed stars. Each "
                        "sets the star field, the band and the palette, and the ones "
                        "that want nebulas scatter them too.",
         "params": {"name": "str"},
@@ -597,11 +636,15 @@ def handle_mcp(tool: str, params: Dict[str, Any],
         return {"status": "success", "sent": s.add_camera(**params)}
     if tool == "studio_set_camera":
         return {"status": "success", "sent": s.set_camera(**params)}
+    if tool == "studio_add_air_layer":
+        return {"status": "success", "sent": s.send({"op": "add_air_layer", **params})}
+    if tool == "studio_air_layers":
+        return {"status": "success", "sent": s.send({"op": "air_layers", **params})}
     if tool == "studio_set_world":
         acts = []
         for key, op in (("sun", "set_sun"), ("sky", "set_sky"),
                         ("fog", "set_fog"), ("clouds", "set_clouds"),
-                        ("water", "set_water")):
+                        ("water", "set_water"), ("wind", "set_wind")):
             if key in params:
                 acts.append({"op": op, **params[key]})
         if not acts:

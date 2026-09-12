@@ -36,13 +36,16 @@ void dock_views(ImGuiID cell, unsigned view_mask) {
 }
 
 // The windows no workflow leads with, tabbed into a cell so they are
-// placed rather than floating: the material rooms, the mesh tools, the AI.
+// placed rather than floating: the material rooms, the mesh tools, the AI,
+// the plant library.
 void dock_secondary(ImGuiID cell) {
   ImGui::DockBuilderDockWindow("Material Studio", cell);
   ImGui::DockBuilderDockWindow("Material Browser", cell);
   ImGui::DockBuilderDockWindow("Material Editor", cell);
   ImGui::DockBuilderDockWindow("Mesh Tools", cell);
   ImGui::DockBuilderDockWindow("AI", cell);
+  ImGui::DockBuilderDockWindow("Plants", cell);
+  ImGui::DockBuilderDockWindow("Plant Editor", cell);
 }
 
 ImGuiID fresh_root(unsigned dockspace_id) {
@@ -146,10 +149,38 @@ void build_render_layout(unsigned dockspace_id, unsigned view_mask) {
   ImGui::DockBuilderFinish(dockspace_id);
 }
 
+// Plants: the library down the left, wide enough for its pictures and the
+// chosen plant's details; the view it is placed into beside it; the scene
+// tree and properties on the right, so a placed plant can be moved and
+// scattered at once. The graph is a strip beneath - the plant editor's
+// canvas when there is one.
+void build_plants_layout(unsigned dockspace_id, unsigned view_mask) {
+  ImGuiID main_id = fresh_root(dockspace_id);
+  ImGuiID scene_cell, props_cell;
+  right_column(main_id, 0.24f, 0.36f, scene_cell, props_cell);
+  ImGuiID left = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Left, 0.30f, nullptr, &main_id);
+  ImGuiID bottom = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.24f, nullptr, &main_id);
+  ImGui::DockBuilderDockWindow("###console", bottom);
+  ImGui::DockBuilderDockWindow("Graph", bottom);
+  ImGui::DockBuilderDockWindow("Timeline", bottom);
+  ImGui::DockBuilderDockWindow("Curve editor", bottom);
+  ImGui::DockBuilderDockWindow("Library", bottom);
+  ImGui::DockBuilderDockWindow("Node List", bottom);
+  ImGui::DockBuilderDockWindow("Preview", scene_cell);
+  dock_secondary(props_cell);
+  // the editor over the library, both after dock_secondary, which files them too
+  ImGuiID left_bottom = ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.40f, nullptr, &left);
+  ImGui::DockBuilderDockWindow("Plant Editor", left);
+  ImGui::DockBuilderDockWindow("Plants", left_bottom);
+  dock_views(main_id, view_mask);
+  ImGui::DockBuilderFinish(dockspace_id);
+}
+
 } // namespace
 
 void build_workspace_layout(int ws, unsigned dockspace_id, unsigned view_mask) {
   switch (ws) {
+    case WS_PLANTS: build_plants_layout(dockspace_id, view_mask); break;
     case WS_MATERIALS: build_materials_layout(dockspace_id, view_mask); break;
     case WS_OBJECTS: build_objects_layout(dockspace_id, view_mask); break;
     case WS_ATMOSPHERE:

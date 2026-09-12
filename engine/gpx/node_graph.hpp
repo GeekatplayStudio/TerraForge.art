@@ -1,4 +1,4 @@
-﻿// Geekatplay Studio — registry-based dataflow graph.
+// Geekatplay Studio — registry-based dataflow graph.
 // Nodes self-register (REGISTER_NODE) with a setup fn (declares ports +
 // attributes) and a compute fn. Evaluation is topological with dirty
 // propagation and per-node output caching.
@@ -19,7 +19,11 @@ namespace gpx {
 // Heightmap/Texture are the raster domain (buffers at the graph resolution).
 // Field is the second domain: a function evaluated per point, with its own
 // value type carried alongside. See gpx/field.hpp for why both exist.
-enum class DataType { Heightmap, Texture, Field, Points };
+// Plant is the vegetation link: a part of a plant handed to the part it grows
+// on (a leaf into a branch, a branch into the trunk, the trunk into the
+// species root). It carries no buffer - the species root reads its whole
+// subtree's attributes and builds the plant (gpx/plant.hpp).
+enum class DataType { Heightmap, Texture, Field, Points, Plant };
 enum class PortDir { In, Out };
 
 class Node;

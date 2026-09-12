@@ -5,6 +5,7 @@
 #include "config.hpp"
 #include "console.hpp"
 #include "perf.hpp"
+#include "render_settings.hpp"
 #include <json.hpp>
 #include <algorithm>
 #include <cstdio>
@@ -191,8 +192,10 @@ void perf_watch_tick(App &a) {
   const bool input = io.MouseDelta.x != 0.f || io.MouseDelta.y != 0.f || io.MouseWheel != 0.f ||
                      ImGui::IsAnyMouseDown() || io.InputQueueCharacters.Size > 0 ||
                      ImGui::IsAnyItemActive();
+  // drifting clouds and a running sea redraw the views by design, which is
+  // not "work while nothing changed"
   const bool changing = a.eval.running.load() || a.eval_serial != a.uploaded_serial ||
-                        a.anim_playing || a.seq_active;
+                        a.anim_playing || a.seq_active || renderer_ambient_motion();
   {
     std::lock_guard<std::mutex> lk(g_mtx);
     if (g_period.started == 0) g_period.started = now;

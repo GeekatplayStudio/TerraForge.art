@@ -59,6 +59,7 @@ const std::map<std::string, const char *> &i18n_english_tagged() {
       {"workspace.lighting", "Lighting"},
       {"workspace.cameras", "Cameras"},
       {"workspace.animation", "Animation"},
+      {"workspace.plants", "Plants"},
       // panels
       {"panel.outliner", "Outliner"},
       {"panel.properties", "Properties"},
@@ -112,6 +113,16 @@ const std::map<std::string, const char *> &i18n_english_tagged() {
       {"om.type.water", "Water"},
       {"om.type.sun", "Sun"},
       {"om.type.atmosphere", "Atmosphere"},
+      {"om.type.airlayer", "Air layer"},
+      {"om.add_cloud_tip", "Add a cloud layer to the atmosphere.\n"
+                           "A sky is several decks at once: low stratus under\n"
+                           "cumulus under a high veil. Each is its own layer\n"
+                           "here, with its own height, thickness and cover."},
+      {"om.add_fog_tip", "Add a fog or haze layer to the atmosphere.\n"
+                         "Air is never one band: haze to the horizon, a fog in\n"
+                         "the valley bottom, a brown layer over a town. Each is\n"
+                         "its own layer, and they are all in the air at once."},
+      {"om.undo.add_air", "Add an air layer"},
       {"om.type.camera", "Camera"},
       {"om.type.group", "Group"},
       {"om.type.planet", "Planet"},

@@ -37,6 +37,10 @@ struct Prefs {
   // idles at idle_fps so the GPU is free for the things that are.
   int viewport_fps = 60;
   int idle_fps = 15;
+  // While clouds drift or the sea moves and nothing else happens, the views
+  // redraw at this rate instead of the idle one: the weather is animation,
+  // and at 15 fps it stutters. 0 lets it fall to the idle rate.
+  int ambient_fps = 30;
   // The Preview panel's own rate and render scale (0 = 25 %, 1 = 50 %,
   // 2 = 100 %): the live picture is the most expensive thing on screen.
   int preview_fps = 10;

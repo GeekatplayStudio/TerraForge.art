@@ -125,6 +125,13 @@ struct Transform {
   float weights[8] = {1, 1, 1, 1, 1, 1, 1, 1};
   const Heightmap *driver = nullptr; // when set, its value picks the species
   float species_scale[8] = {1, 1, 1, 1, 1, 1, 1, 1};
+  // Each kind's own size variation and its own lean with the slope, because
+  // a stand of boulders is all sizes and lies on the hill while the saplings
+  // among them are much of a muchness and stand up out of it. 0 variation and
+  // a negative lean mean "take the layer's", which is what every population
+  // did before they existed.
+  float species_variation[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  float species_lean[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
   float scale = 1.f;           // overall size multiplier
   float variation = 0.f;       // 1 = half to twice the size
   float keep_proportions = 1.f; // 1 uniform, 0 axes independent

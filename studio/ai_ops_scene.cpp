@@ -26,6 +26,76 @@ int ai_scene_op(App &a, const std::string &op, const json &act,
                 std::string &err) {
   gpx::Graph &g = a.graph;
 
+  if (op == "add_air_layer") {
+    // A band of the atmosphere as a thing in the scene: a cloud deck, a fog,
+    // a haze. It hangs under an Atmosphere object, and that Atmosphere may
+    // itself be under a Planet, so a band belongs either to the world the
+    // camera stands on or to a particular planet's sky.
+    const std::string kind = act.value("kind", std::string("cloud"));
+    const bool fog = kind == "fog" || kind == "haze";
+    int atmos = -1;
+    if (act.contains("atmosphere")) {
+      const json &v = act["atmosphere"];
+      if (v.is_number_integer()) atmos = v.get<int>();
+      else if (v.is_string()) {
+        const SceneState &sc = scene();
+        for (int i = 0; i < (int)sc.objects.size(); ++i)
+          if (sc.objects[(size_t)i].name == v.get<std::string>()) atmos = i;
+      }
+    }
+    const int idx = scene_add_air_layer_locked(a, fog ? (int)SceneObject::AirLayerData::Fog
+                                                     : (int)SceneObject::AirLayerData::Cloud,
+                                              atmos, act.value("name", std::string()));
+    if (idx < 0) {
+      err = "could not add the air layer - is there an atmosphere to hang it under?";
+      return 0;
+    }
+    SceneObject &o = scene().objects[(size_t)idx];
+    // whatever the request said about it, straight onto its node
+    if (gpx::Node *n = a.graph.find_node(o.driver_node))
+      if (act.contains("set") && act["set"].is_object()) {
+        for (auto it = act["set"].begin(); it != act["set"].end(); ++it)
+          if (gpx::Attribute *at = n->attrs.find(it.key())) {
+            if (at->type == gpx::AttrType::Float && it.value().is_number())
+              at->f = std::clamp(it.value().get<float>(), at->fmin, at->fmax);
+            else if ((at->type == gpx::AttrType::Int || at->type == gpx::AttrType::Choice) &&
+                     it.value().is_number())
+              at->i = it.value().get<int>();
+            else if (at->type == gpx::AttrType::Bool && it.value().is_boolean())
+              at->b = it.value().get<bool>();
+          }
+        a.graph.mark_dirty(n->id);
+        a.request_eval();
+      }
+    a.api_reply = json{{"object", idx}, {"name", o.name}, {"node", o.driver_node}}.dump();
+    a.status = "added " + o.name;
+    return 1;
+  }
+
+  if (op == "air_layers") {
+    json out = json::array();
+    const SceneState &sc = scene();
+    for (int i : scene_air_layers(-1)) {
+      const SceneObject &o = sc.objects[(size_t)i];
+      std::string under = "world";
+      if (o.parent >= 0 && o.parent < (int)sc.objects.size()) {
+        under = sc.objects[(size_t)o.parent].name;
+        const int gp = sc.objects[(size_t)o.parent].parent;
+        if (gp >= 0 && gp < (int)sc.objects.size() &&
+            sc.objects[(size_t)gp].type == SceneObject::Planet)
+          under = sc.objects[(size_t)gp].name + " / " + under;
+      }
+      out.push_back(json{{"object", i},
+                         {"name", o.name},
+                         {"kind", o.air.kind == SceneObject::AirLayerData::Fog ? "fog" : "cloud"},
+                         {"under", under},
+                         {"visible", o.visible},
+                         {"node", o.driver_node}});
+    }
+    a.api_reply = json{{"layers", out}}.dump();
+    return 1;
+  }
+
   if (op == "set_time") {
     a.graph.time = act.value("time", 0.f);
     a.request_eval();
@@ -174,13 +244,14 @@ int ai_scene_op(App &a, const std::string &op, const json &act,
       for (auto &c : s) c = (char)tolower(c);
       const char *names[WS_COUNT] = {"terrain", "material", "atmosphere",
                                      "render",  "all",      "object",
-                                     "light",   "camera",   "animation"};
+                                     "light",   "camera",   "animation",
+                                     "plant"};
       for (int i = 0; i < WS_COUNT; ++i)
         if (s.find(names[i]) != std::string::npos) d = i;
     }
     if (d < 0 || d >= WS_COUNT) {
-      err = "open_node_editor: domain 0..8 or terrain/materials/atmosphere/render/"
-            "all/objects/lighting/cameras/animation";
+      err = "open_node_editor: domain 0..9 or terrain/materials/atmosphere/render/"
+            "all/objects/lighting/cameras/animation/plants";
       return 0;
     }
     graph_editor_add(a, d);
@@ -197,8 +268,8 @@ int ai_scene_op(App &a, const std::string &op, const json &act,
   if (op == "set_workspace") {
     // Which workflow the second bar has selected, and therefore which tools
     // the third bar offers: 0 terrain, 1 materials, 2 atmosphere, 3 render,
-    // 5 objects, 6 lighting, 7 cameras, 8 animation (4 is "all", not a
-    // workspace).
+    // 5 objects, 6 lighting, 7 cameras, 8 animation, 9 plants (4 is "all",
+    // not a workspace).
     const json &v = act.contains("workspace") ? act["workspace"] : act["value"];
     int w = -1;
     if (v.is_number()) w = v.get<int>();
@@ -207,13 +278,14 @@ int ai_scene_op(App &a, const std::string &op, const json &act,
       for (auto &c : s) c = (char)tolower(c);
       const char *names[WS_COUNT] = {"terrain", "material", "atmosphere",
                                      "render",  "",         "object",
-                                     "light",   "camera",   "animation"};
+                                     "light",   "camera",   "animation",
+                                     "plant"};
       for (int i = 0; i < WS_COUNT; ++i)
         if (names[i][0] && s.find(names[i]) != std::string::npos) w = i;
     }
     if (w < 0 || w >= WS_COUNT || w == WS_ALL) {
-      err = "set_workspace: 0..8 (not 4), or terrain/materials/atmosphere/render/"
-            "objects/lighting/cameras/animation";
+      err = "set_workspace: 0..9 (not 4), or terrain/materials/atmosphere/render/"
+            "objects/lighting/cameras/animation/plants";
       return 0;
     }
     a.workspace = w;

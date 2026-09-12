@@ -31,7 +31,7 @@ STUDIO = ROOT / "studio"
 EXEMPT = {
     "undo", "redo", "render",
     "debug_crash",  # exercises the crash pipeline; never a tool
-    "set_sun", "set_sky", "set_fog", "set_clouds", "set_water",
+    "set_sun", "set_sky", "set_fog", "set_clouds", "set_water", "set_wind",
 }
 
 # op -> the MCP tool that covers it, where the names differ

@@ -93,7 +93,11 @@ static unsigned upload3d(const std::vector<uint8_t> &data, int n) {
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
   glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, n, n, n, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                data.data());
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  // Mipmapped: the march reads a coarser level where a pixel stands for
+  // many texels (cl_lod in shaders_clouds.cpp) - the clouds seen from orbit.
+  // Close up every lookup asks for level 0, exactly what it read before.
+  glGenerateMipmap(GL_TEXTURE_3D);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);

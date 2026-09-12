@@ -116,9 +116,12 @@ void backdrop_bind(GLuint prog) {
   const RenderSettings::Backdrop &b = render_settings().backdrop;
   backdrop_refresh(b);
   const bool on = b.enabled && g_bd_tex != 0;
-  glActiveTexture(GL_TEXTURE11);
+  // Unit 13, clear of the graph's sampled buffers (8-11, bind_field_textures):
+  // on 11 the terrain's fourth buffer took the dome's unit, and the sky
+  // reflected in the ground became a heightmap.
+  glActiveTexture(GL_TEXTURE13);
   glBindTexture(GL_TEXTURE_2D, g_bd_tex);
-  unii(prog, "u_backdrop", 11);
+  unii(prog, "u_backdrop", 13);
   unii(prog, "u_bd_on", on ? 1 : 0);
   if (!on) return;
   unii(prog, "u_bd_mode", b.mapping);
@@ -148,6 +151,46 @@ void upload_fog_uniforms(GLuint prog, const RenderSettings &RS, bool atmosphere)
   uni1(prog, "u_fog_g", RS.fog_anisotropy);
   uni1(prog, "u_fog_hetero", RS.fog_heterogeneity);
   unii(prog, "u_fog_steps", RS.fog_steps);
+  // Every further band of air a FogLayer node added. The first is above;
+  // these are marched with it in one pass, their optical depths summed and
+  // their colours weighted by what each accounts for (shaders_terrain.cpp).
+  {
+    const int n = atmosphere
+                      ? std::min((int)RS.fog_layers.size(), RenderSettings::MAX_FOG_LAYERS)
+                      : 0;
+    unii(prog, "u_fogl_count", n);
+    if (n > 0) {
+      int type[RenderSettings::MAX_FOG_LAYERS] = {0};
+      float dens[RenderSettings::MAX_FOG_LAYERS] = {0};
+      float lvl[RenderSettings::MAX_FOG_LAYERS] = {0};
+      float fall[RenderSettings::MAX_FOG_LAYERS] = {0};
+      float col[RenderSettings::MAX_FOG_LAYERS * 3] = {0};
+      float sc[RenderSettings::MAX_FOG_LAYERS] = {0};
+      float alb[RenderSettings::MAX_FOG_LAYERS] = {0};
+      float g[RenderSettings::MAX_FOG_LAYERS] = {0};
+      for (int i = 0; i < n; ++i) {
+        const RenderSettings::FogLayerSettings &L = RS.fog_layers[(size_t)i];
+        type[i] = L.type;
+        dens[i] = L.density;
+        // the band travels with the wind: its height is fixed, but what it is
+        // made of drifts, so a valley fog creeps down the valley
+        lvl[i] = L.level;
+        fall[i] = L.falloff;
+        for (int k = 0; k < 3; ++k) col[i * 3 + k] = L.color[k];
+        sc[i] = L.sun_scatter;
+        alb[i] = L.albedo;
+        g[i] = L.anisotropy;
+      }
+      glUniform1iv(uniform_location(prog, "u_fogl_type"), n, type);
+      glUniform1fv(uniform_location(prog, "u_fogl_density"), n, dens);
+      glUniform1fv(uniform_location(prog, "u_fogl_level"), n, lvl);
+      glUniform1fv(uniform_location(prog, "u_fogl_falloff"), n, fall);
+      glUniform3fv(uniform_location(prog, "u_fogl_color"), n, col);
+      glUniform1fv(uniform_location(prog, "u_fogl_scatter"), n, sc);
+      glUniform1fv(uniform_location(prog, "u_fogl_albedo"), n, alb);
+      glUniform1fv(uniform_location(prog, "u_fogl_g"), n, g);
+    }
+  }
   // the world the air lies on (world_shape.hpp); the fog is not distortion,
   // so it keeps the setting whatever the view draws
   const gpx::planet::Shape S = world_shape(RS);

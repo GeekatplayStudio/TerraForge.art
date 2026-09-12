@@ -27,6 +27,7 @@ One file per module, written 10 September 2026 from the audit in
 | Render | [render.md](render.md) | Parity on Cycles/LuxCore; presets with passes; sequences through the engines |
 | Viewports | [viewports.md](viewports.md) | Per-view orbit; per-view engine; layouts per project |
 | Animation | [animation.md](animation.md) | Every numeric field keyable through one table; clips; sequence rendering |
+| Plants | [plants.md](plants.md) | The plant as a graph of growth rules, with its parts and real UVs (added 11 September) |
 
 ## Integration map
 

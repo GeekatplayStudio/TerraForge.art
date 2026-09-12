@@ -38,12 +38,25 @@ const AnimProp OBJ_PROPS[] = {
     {"cam.vignette", "Vignette", "Camera", 1, false, false},
     {"cam.chromatic", "Chromatic", "Camera", 1, false, false},
     {"cam.flare_strength", "Flare", "Camera", 1, false, false},
+    {"cam.flare_core", "Flare core", "Camera", 1, false, false},
+    {"cam.flare_rays", "Flare rays", "Camera", 1, false, false},
+    {"cam.flare_streak", "Flare streak", "Camera", 1, false, false},
+    {"cam.flare_ghosts", "Flare ghosts", "Camera", 1, false, false},
+    {"cam.flare_halo", "Flare halo", "Camera", 1, false, false},
+    {"cam.flare_ray_length", "Flare ray length", "Camera", 1, false, false},
+    {"cam.flare_streak_length", "Flare streak length", "Camera", 1, false, false},
+    {"cam.flare_halo_radius", "Flare halo radius", "Camera", 1, false, false},
+    {"cam.flare_chroma", "Flare colour parting", "Camera", 1, false, false},
+    {"cam.bloom", "Bloom", "Camera", 1, false, false},
+    {"cam.bloom_threshold", "Bloom from", "Camera", 1, false, false},
+    {"cam.bloom_size", "Bloom size", "Camera", 1, false, false},
     {"cam.motion_blur", "Motion blur", "Camera", 1, false, false},
     {"planet.radius", "Radius", "Planet", 1, false, false},
     {"planet.relief", "Relief", "Planet", 1, false, false},
     {"planet.sea_level", "Sea level", "Planet", 1, false, false},
     {"planet.snow_line", "Snow line", "Planet", 1, false, false},
     {"planet.atmo_density", "Atmosphere", "Planet", 1, false, false},
+    {"planet.clouds", "Cloud cover", "Planet", 1, false, false},
     {"planet.spin", "Spin", "Planet", 1, false, false},
     {"planet.water_color", "Water colour", "Planet", 3, true, false},
     {"planet.atmo_color", "Atmosphere colour", "Planet", 3, true, false},
@@ -83,6 +96,9 @@ const AnimProp WORLD_PROPS[] = {
     {"water_wave_amp", "Wave height", "Water", 1, false, false},
     {"water_wave_scale", "Wave scale", "Water", 1, false, false},
     {"water_wave_speed", "Wave speed", "Water", 1, false, false},
+    {"water_wind_speed", "Wind intensity", "Water", 1, false, false},
+    {"water_wind_dir", "Wind direction", "Water", 1, false, false},
+    {"water_choppiness", "Choppiness", "Water", 1, false, false},
     {"water_deep_color", "Deep colour", "Water", 3, true, false},
     {"water_shallow_color", "Shallow colour", "Water", 3, true, false},
     {"cloud_coverage", "Coverage", "Clouds", 1, false, false},
@@ -90,6 +106,12 @@ const AnimProp WORLD_PROPS[] = {
     {"cloud_altitude", "Altitude", "Clouds", 1, false, false},
     {"cloud_thickness", "Thickness", "Clouds", 1, false, false},
     {"cloud_detail", "Detail", "Clouds", 1, false, false},
+    {"wind_speed", "Speed", "Wind", 1, false, false},
+    {"wind_direction", "Direction", "Wind", 1, false, false},
+    {"wind_gust", "Gust strength", "Wind", 1, false, false},
+    {"wind_gust_frequency", "Gust frequency", "Wind", 1, false, false},
+    {"wind_turbulence", "Turbulence", "Wind", 1, false, false},
+    {"wind_shear", "Shear", "Wind", 1, false, false},
     {"cloud_wind_speed", "Wind speed", "Clouds", 1, false, false},
     {"cloud_wind_dir", "Wind direction", "Clouds", 1, false, false},
     {"cloud_color", "Colour", "Clouds", 3, true, false},
@@ -139,12 +161,25 @@ float *obj_ptr(SceneObject &o, const char *path, int c) {
   if (is("cam.vignette")) return &o.cam.vignette;
   if (is("cam.chromatic")) return &o.cam.chromatic;
   if (is("cam.flare_strength")) return &o.cam.flare_strength;
+  if (is("cam.flare_core")) return &o.cam.flare_core;
+  if (is("cam.flare_rays")) return &o.cam.flare_rays;
+  if (is("cam.flare_streak")) return &o.cam.flare_streak;
+  if (is("cam.flare_ghosts")) return &o.cam.flare_ghosts;
+  if (is("cam.flare_halo")) return &o.cam.flare_halo;
+  if (is("cam.flare_ray_length")) return &o.cam.flare_ray_length;
+  if (is("cam.flare_streak_length")) return &o.cam.flare_streak_length;
+  if (is("cam.flare_halo_radius")) return &o.cam.flare_halo_radius;
+  if (is("cam.flare_chroma")) return &o.cam.flare_chroma;
+  if (is("cam.bloom")) return &o.cam.bloom;
+  if (is("cam.bloom_threshold")) return &o.cam.bloom_threshold;
+  if (is("cam.bloom_size")) return &o.cam.bloom_size;
   if (is("cam.motion_blur")) return &o.cam.motion_blur;
   if (is("planet.radius")) return &o.planet.radius;
   if (is("planet.relief")) return &o.planet.relief;
   if (is("planet.sea_level")) return &o.planet.sea_level;
   if (is("planet.snow_line")) return &o.planet.snow_line;
   if (is("planet.atmo_density")) return &o.planet.atmo_density;
+  if (is("planet.clouds")) return &o.planet.clouds;
   if (is("planet.spin")) return &o.planet.spin_deg;
   if (is("planet.water_color")) return &o.planet.water_color[c];
   if (is("planet.atmo_color")) return &o.planet.atmo_color[c];
@@ -186,6 +221,9 @@ float *world_ptr(RenderSettings &r, const char *path, int c) {
   if (is("water_wave_amp")) return &r.water_wave_amp;
   if (is("water_wave_scale")) return &r.water_wave_scale;
   if (is("water_wave_speed")) return &r.water_wave_speed;
+  if (is("water_wind_speed")) return &r.water_wind_speed;
+  if (is("water_wind_dir")) return &r.water_wind_dir;
+  if (is("water_choppiness")) return &r.water_choppiness;
   if (is("water_deep_color")) return &r.water_deep_color[c];
   if (is("water_shallow_color")) return &r.water_shallow_color[c];
   if (is("cloud_coverage")) return &r.cloud_coverage;
@@ -193,6 +231,12 @@ float *world_ptr(RenderSettings &r, const char *path, int c) {
   if (is("cloud_altitude")) return &r.cloud_altitude;
   if (is("cloud_thickness")) return &r.cloud_thickness;
   if (is("cloud_detail")) return &r.cloud_detail;
+  if (is("wind_speed")) return &r.wind.speed_ms;
+  if (is("wind_direction")) return &r.wind.direction_deg;
+  if (is("wind_gust")) return &r.wind.gust_strength;
+  if (is("wind_gust_frequency")) return &r.wind.gust_frequency;
+  if (is("wind_turbulence")) return &r.wind.turbulence_deg;
+  if (is("wind_shear")) return &r.wind.shear;
   if (is("cloud_wind_speed")) return &r.cloud_wind_speed;
   if (is("cloud_wind_dir")) return &r.cloud_wind_dir;
   if (is("cloud_color")) return &r.cloud_color[c];

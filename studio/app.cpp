@@ -102,6 +102,10 @@ void run_main() {
       if (active) last_activity = now;
       bool idle = now - last_activity > 0.4;
       int fps = idle ? std::max(prefs().idle_fps, 1) : std::max(prefs().viewport_fps, 5);
+      // Drifting clouds and a running sea are animation nobody is touching:
+      // at the idle rate they stutter, so they keep a rate of their own.
+      if (idle && prefs().ambient_fps > 0 && renderer_ambient_motion())
+        fps = std::max(fps, std::min(prefs().ambient_fps, std::max(prefs().viewport_fps, 5)));
       double period = 1.0 / fps;
       double remain = period - (now - frame_t0);
       if (remain > 0.001) {
@@ -248,6 +252,9 @@ void run_main() {
     draw_panel_material_studio(a);
     draw_panel_paint_canvas(a); // the height painter, when it is open
     draw_panel_material_browser(a);
+    plants_service(a);
+    draw_panel_plants(a);
+    draw_panel_plant_editor(a);
     perf_mark("panels.mid");
     draw_panel_settings(a);
     draw_panel_ai_generate(a);
@@ -299,6 +306,7 @@ void run_main() {
     studio_api_tick(a); // apply queued script/MCP actions, publish state
     perf_mark("api");
 
+    node_properties_flush(a); // a released slider's edit, whichever panel is up
     app_service_upload(a);
     anim_service(a); // clock, keyed properties, camera pose tracks
     app_service_imprint(a); // grounded objects: bases on the surface, footprints to the node

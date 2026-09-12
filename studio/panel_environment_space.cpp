@@ -99,8 +99,33 @@ void section_space(RenderSettings &rs) {
                       "locus, from a red dwarf's orange to a blue giant's.");
   studio::SliderFloatW("Diffraction spikes", &s.star_spikes, 0.f, 2.f);
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("The four arms a telescope's vanes cut across the\n"
-                      "brightest stars. 0 for the naked eye, which sees none.");
+    ImGui::SetTooltip("The arms a telescope's vanes cut across the brightest\n"
+                      "stars. 0 for the naked eye, which sees none.");
+  {
+    int pts = s.star_spike_points <= 4 ? 0 : (s.star_spike_points <= 6 ? 1 : 2);
+    if (ImGui::Combo("Spike points", &pts, "4 (two vanes)\0" "6 (three vanes)\0" "8 (four vanes)\0"))
+      s.star_spike_points = 4 + 2 * pts;
+    if (ImGui::IsItemHovered())
+      ImGui::SetTooltip("How many arms every spike has: four behind a two-vane\n"
+                        "spider, six behind a hexagonal mirror, eight behind a\n"
+                        "four-vane one.");
+  }
+  studio::SliderFloatW("Spike angle", &s.star_spike_angle, -90.f, 90.f, "%.0f\xC2\xB0");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The angle the arms lie at. The same for every star: the\n"
+                      "spikes belong to the camera, not to the stars.");
+  studio::SliderFloatW("Spike colour fringe", &s.star_spike_chroma, 0.f, 1.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Each colour reaches a little further along the arms than\n"
+                      "the last, the rainbow a real lens leaves on them.");
+  studio::SliderFloatW("Star saturation", &s.star_saturation, 0.f, 2.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How strongly the stars show their colour: 0 all white,\n"
+                      "1 as recorded, 2 a film's richer blues and ambers.");
+  studio::SliderFloatW("Star glow", &s.star_glow, 0.f, 2.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("A wide soft bloom round the brightest stars, the light a\n"
+                      "long exposure spreads through the lens.");
   studio::SliderFloatW("Halo", &s.star_halo, 0.f, 2.f);
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("The soft ring round a bright star.");
   studio::SliderFloatW("Clumping", &s.star_clump, 0.f, 1.f);
@@ -108,6 +133,20 @@ void section_space(RenderSettings &rs) {
     ImGui::SetTooltip("Stars gather into associations and leave the sky between\n"
                       "them nearly empty. 0 sprinkles them evenly, which no\n"
                       "real sky does.");
+  studio::SliderFloatW("Bright stars", &s.star_bright_share, 0.f, 1.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How many of the stars are bright ones. A real sky has a very\n"
+                      "few bright stars among a great many faint ones; 0 makes the\n"
+                      "bright ones rarer still, 1 a crowded, glittering field.");
+  studio::SliderFloatW("Star clusters", &s.star_clusters, 0.f, 1.f);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Crowds of stars born together, dense at the middle and\n"
+                      "thinning to an edge: loose blue open clusters and tight\n"
+                      "yellow globular ones. 0 none.");
+  studio::SliderFloatW("Cluster size", &s.star_cluster_size, 0.2f, 5.f, "%.1f\xC2\xB0");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("How wide a cluster is across the sky, degrees; each one\n"
+                      "varies around it.");
   studio::DragIntW("Star seed", &s.star_seed, 1, 1, 1 << 24);
 
   ImGui::SeparatorText("Galaxy band");

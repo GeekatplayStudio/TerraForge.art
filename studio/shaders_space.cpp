@@ -23,6 +23,8 @@ const char *const SPACE_COMMON_FN = R"GLSL(
 // ---- the backdrop as a whole
 uniform int u_sp_on;
 uniform float u_sp_bright, u_sp_realism, u_sp_glow;
+// true while the irradiance probe draws (space_color): no point sources
+bool sp_probe_pass = false;
 
 // The four fields the nebulas are marched through and the milky band is
 // built from (space_noise.hpp): billow, ridged, cellular, fine. One
@@ -31,6 +33,16 @@ uniform float u_sp_bright, u_sp_realism, u_sp_glow;
 // shows when it is stretched across a sky.
 uniform sampler3D u_sp_vol;
 vec4 sp_vol(vec3 p){ return texture(u_sp_vol, p); }
+// the march's dither (the clouds' blue noise, on the same unit)
+uniform sampler2D u_sp_blue;
+// The nebulas can come from a half-size picture of them made just before the
+// sky pass (renderer_space_half.cpp): a gas cloud is soft, a star is a point,
+// and the march through the gas is nearly all of what deep space costs. 0
+// marches them in place; 1 is the pass making that picture (FS_SKY_SRC); 2
+// reads what they add and what they let through from it (space_color).
+uniform int u_neb_mode;
+uniform sampler2D u_neb_add, u_neb_tr;
+uniform vec2 u_neb_px; // the full picture's size
 
 float sp_hash(vec3 p, float seed){
   p = fract(p * 0.1031 + seed * 0.0173);
@@ -167,12 +179,32 @@ vec3 sp_grade(vec3 c){
   c += c * c * k * 0.35;
   return max(c, vec3(0.0)) * u_sp_bright;
 }
-vec3 space_color(vec3 d){
+// `pix` is the pixel's angular size, taken by the caller outside any branch;
+// negative for a light probe, which takes the band and the nebulas and leaves
+// the stars out (points add no light a probe's pixel could measure)
+vec3 space_color(vec3 d, float pix){
   if (u_sp_on == 0) return vec3(0.0);
-  float pix = max(length(fwidth(d)), 4.0e-4);
-  vec3 behind = sp_stars(d, pix) + sp_galaxy(d, pix);
+  bool probe = pix < 0.0;
+  sp_probe_pass = probe;
+  pix = abs(pix);
+  vec3 behind = (probe ? vec3(0.0) : sp_stars(d, pix)) + sp_galaxy(d, pix);
   vec3 trans = vec3(1.0);
-  vec3 add = sp_nebulas(d, pix, trans);
+  vec3 add;
+  if (u_neb_mode == 2){
+    vec2 uv = gl_FragCoord.xy / max(u_neb_px, vec2(1.0));
+    add = texture(u_neb_add, uv).rgb;
+    trans = texture(u_neb_tr, uv).rgb;
+    // The hot stars inside the clouds are points, and a point drawn at half
+    // size is a smudge twice as wide: they are drawn here, at the view's own
+    // size, behind half of whatever dust the picture says lies over them.
+    if (!probe)
+      for (int i = 0; i < 8; ++i){
+        if (i >= u_neb_n) break;
+        if (int(u_neb_a[i].x + 0.5) == 0) add += sp_neb_stars(i, d, pix) * sqrt(trans);
+      }
+  } else {
+    add = sp_nebulas(d, pix, trans);
+  }
   return sp_grade(behind * trans + add);
 }
 )GLSL";

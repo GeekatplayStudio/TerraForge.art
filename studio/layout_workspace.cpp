@@ -32,6 +32,9 @@ void apply_workspace_panels(App &a, int ws) {
   const bool mats = ws == WS_MATERIALS;
   a.show_material_studio = mats;
   a.show_material_browser = mats;
+  // Plants is its library; the other workspaces put it away the same way.
+  a.show_plants = ws == WS_PLANTS;
+  a.show_plant_editor = ws == WS_PLANTS;
   // Animation is the timeline and the curves; entering it opens both.
   if (ws == WS_ANIMATION) {
     a.show_timeline = true;

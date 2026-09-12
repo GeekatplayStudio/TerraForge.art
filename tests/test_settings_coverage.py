@@ -24,6 +24,10 @@ ENGINE = ROOT / "engine"
 EXEMPT_FIELDS = {
     "views", "matp", "backdrop", "sun_color", "MAX_VIEWS", "MAX_CLOUD_LAYERS",
     "cloud_layers",  # derived from CloudLayer nodes every frame
+    # where the air has drifted to this session, advanced from the clock a
+    # frame at a time like time_acc: state, not a setting, and worked out
+    # again from the wind when a project is opened
+    "wind_drift_len", "wind_drift_hi_len",
     "wireframe",     # per-view: ViewConfig.display
     "viewport_layout", "viewport_engine",  # set_viewport
     "terrain_material_node", "map_normal_node", "map_roughness_node",

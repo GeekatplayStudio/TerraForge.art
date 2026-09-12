@@ -52,13 +52,25 @@ baked, no reduced copies, and it is drawn as itself.
 Stones and grass made as displacement layers are baked into the tile's
 heightmap. Far from the camera a vertex used to read a single texel of
 that relief, so a stone field at the horizon shimmered as the tessellation
-moved. The height texture is now mipmapped and the vertex reads
-`textureLod(u_height, uv, lod)` with `lod = log2(distance * k)` clamped to
-0..4, `k = 32 * terrain_lod`: at the default 0.5 the relief is averaged
-over two texels an eighth of the terrain's width away and over sixteen at
-the far edge. Near ground keeps every texel. The shadow map's terrain
-reads the same level from the same camera, so the shadow lies on the
-surface the viewer sees. `terrain_lod` 0 turns it off.
+moved. The height texture is mipmapped and the vertex reads the relief as
+a cubic B-spline on one level, blended with the next (`height_smooth`,
+`studio/shaders_relief.cpp`).
+
+The level follows the screen, not a fixed multiple of distance: it is the
+one whose texel is as long on screen as the tessellation puts between two
+vertices. `lod = log2(distance * k)` clamped to 0..6, with
+`k = terrain_lod * 2 * tess_pixels * heightmap width * pixel angle`
+(`relief_lod_k`, `studio/renderer_passes.cpp`). At the default 0.5 a texel
+is kept until it is smaller than a triangle's edge; the old fixed
+`k = 32 * terrain_lod` put the whole tile on level 4 from the default
+camera, 64 texels across for a 1024 map. An orthographic view has no
+distance to scale by and reads every texel. The shadow map's terrain reads
+the same level from the same camera, so the shadow lies on the surface
+the viewer sees. `terrain_lod` 0 turns it off.
+
+The patch bounds the culler tests are widened by two texels each way: the
+B-spline's taps reach that far past the texel a vertex stands on
+(`studio/terrain_cull.cpp`).
 
 ## Dials and API
 

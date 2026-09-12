@@ -1,5 +1,6 @@
 // Geekatplay TerraForge - see renderer_instances.hpp.
 #include "renderer_instances.hpp"
+#include "alpha_mips.hpp"
 #include "billboard.hpp"
 #include "mesh_lod.hpp"
 #include "perf.hpp"
@@ -86,10 +87,15 @@ void instances_upload(SceneObject &o) {
       glBindVertexArray(o.lod_vao[k]);
       glBindBuffer(GL_ARRAY_BUFFER, o.lod_vbo[k]);
       glBufferData(GL_ARRAY_BUFFER, o.lod_verts[k].size() * 4, o.lod_verts[k].data(), GL_STATIC_DRAW);
+      // position, normal, texture coordinate: a reduced plant keeps the
+      // pictures its parts are cut out of, so a tree at distance is a tree
+      // (mesh_lod_parts.cpp)
       glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 24, nullptr);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, nullptr);
       glEnableVertexAttribArray(1);
-      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, (void *)12);
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 32, (void *)12);
+      glEnableVertexAttribArray(2);
+      glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 32, (void *)24);
       glBindVertexArray(0);
     }
     // a new mesh means the stream must be re-attached to the new VAOs
@@ -105,7 +111,17 @@ void instances_upload(SceneObject &o) {
       glBindTexture(GL_TEXTURE_2D, o.card_tex);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, o.card_px, o.card_px, 0, GL_RGBA,
                    GL_UNSIGNED_BYTE, o.card_rgba.data());
-      glGenerateMipmap(GL_TEXTURE_2D);
+      // a card is all cut-out: its levels keep the leaf's share, or the far
+      // forest thins to nothing (alpha_mips.hpp)
+      if (alpha_has_cut(o.card_rgba, o.card_px, o.card_px)) {
+        std::vector<int> sizes;
+        const auto levels = alpha_coverage_mips(o.card_rgba, o.card_px, o.card_px, sizes);
+        for (size_t l = 0; l < levels.size(); ++l)
+          glTexImage2D(GL_TEXTURE_2D, (GLint)l + 1, GL_RGBA8, sizes[l * 2], sizes[l * 2 + 1], 0,
+                       GL_RGBA, GL_UNSIGNED_BYTE, levels[l].data());
+      } else {
+        glGenerateMipmap(GL_TEXTURE_2D);
+      }
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -184,16 +200,63 @@ void instances_draw_range(unsigned prog, const std::vector<InstanceRun> &runs, i
 
 void instances_draw_lods(unsigned prog, SceneObject &o, const std::vector<InstanceRun> &runs) {
   for (int level = 1; level <= 2; ++level) {
-    if (o.lod_count[level - 1] <= 0 || !o.lod_vao[level - 1]) continue;
+    const int k = level - 1;
+    if (o.lod_count[k] <= 0 || !o.lod_vao[k]) continue;
     bool any = false;
     for (const InstanceRun &r : runs) any |= r.level == level;
     if (!any) continue;
-    glBindVertexArray(o.lod_vao[level - 1]);
-    for (const InstanceRun &r : runs) {
-      if (r.level != level) continue;
-      uni1(prog, "u_inst_grow", r.grow);
-      glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, o.lod_count[level - 1], r.count, (GLuint)r.base);
+    glBindVertexArray(o.lod_vao[k]);
+    // The reduced mesh carries position, normal and texture coordinate and
+    // nothing else: the plant's per-vertex wind weights and tint belong to
+    // the full mesh and are not on this buffer. A disabled attribute reads
+    // the generic default - (0,0,0,1) - so a tree drawn from it came out
+    // BLACK, its tint multiplying everything to nothing. Turning the plant
+    // path off for these draws makes the shader use a tint of one, which is
+    // what a distant tree wants anyway: it is too far to see swaying and too
+    // far for its baked ambient occlusion to be read.
+    const bool plant_was = o.plant;
+    if (plant_was) unii(prog, "u_plant_on", 0);
+    if (o.lod_parts[k].empty()) {
+      // a plain solid: one colour, one draw
+      unii(prog, "u_has_tex", 0);
+      for (const InstanceRun &r : runs) {
+        if (r.level != level) continue;
+        uni1(prog, "u_inst_grow", r.grow);
+        glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, o.lod_count[k], r.count, (GLuint)r.base);
+      }
+    } else {
+      // Part by part, each with the picture it is cut out of. Without this a
+      // reduced tree is a grey silhouette, which is worse than the card it
+      // was meant to be better than.
+      glActiveTexture(GL_TEXTURE3);
+      for (const SceneObject::LodPart &lp : o.lod_parts[k]) {
+        if (lp.part < 0 || lp.part >= (int)o.parts.size() || lp.count <= 0) continue;
+        const SceneObject::Part &part = o.parts[(size_t)lp.part];
+        const float col[3] = {o.color[0] * part.color[0], o.color[1] * part.color[1],
+                              o.color[2] * part.color[2]};
+        uni3(prog, "u_color", col);
+        unii(prog, "u_leaf", part.double_sided ? 1 : 0);
+        uni1(prog, "u_leaf_through", part.double_sided ? 0.45f : 0.f);
+        if (part.tex) {
+          glBindTexture(GL_TEXTURE_2D, part.tex);
+          unii(prog, "u_albedo_tex", 3);
+          unii(prog, "u_has_tex", 1);
+        } else {
+          unii(prog, "u_has_tex", 0);
+        }
+        for (const InstanceRun &r : runs) {
+          if (r.level != level) continue;
+          uni1(prog, "u_inst_grow", r.grow);
+          glDrawArraysInstancedBaseInstance(GL_TRIANGLES, lp.first, lp.count, r.count,
+                                            (GLuint)r.base);
+        }
+      }
+      glBindTexture(GL_TEXTURE_2D, 0);
+      glActiveTexture(GL_TEXTURE0);
+      unii(prog, "u_leaf", 0);
+      unii(prog, "u_has_tex", 0);
     }
+    if (plant_was) unii(prog, "u_plant_on", 1);
   }
   glBindVertexArray(o.vao);
 }

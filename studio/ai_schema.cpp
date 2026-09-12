@@ -56,6 +56,29 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    "color":[1,0.85,0.6]}
 - {"op":"set_sky","density":1.2,"ambient":0.7,"zenith":[r,g,b],"horizon":[r,g,b]}
 - set_sun also takes "size_deg" (the sun's angular width, 0.53 is our own Sun), "glow" (the aureole the air makes round it, 0..4) and "glow_size" (how far that halo spreads, degrees).
+- {"op":"add_air_layer","kind":"cloud"|"fog","atmosphere":<index or name>,
+   "set":{"altitude":2.4,"thickness":0.3,"coverage":0.35}}
+   (A BAND OF THE ATMOSPHERE as a thing in the scene, listed in the Objects
+    tree under an Atmosphere. A sky is several at once - low stratus under
+    cumulus under a high veil; haze to the horizon under a fog lying in the
+    valley under a brown layer over a town - and every band renders with the
+    others, their optical depths adding the way air's does. An Atmosphere may
+    itself be a child of a Planet, so a band can belong to that planet's sky
+    rather than to the world the camera stands on. A cloud band takes type,
+    coverage, density, altitude, thickness; a fog band takes type, density,
+    level, falloff, colour, scattering and drift.)
+- {"op":"air_layers"}   (every band, what it is, and what it hangs under)
+- {"op":"set_wind","speed_ms":7,"direction_deg":210,"gust_strength":0.5,
+   "gust_frequency":0.12,"gust_size_m":250,"turbulence_deg":12,"shear":2.5}
+   (THE SCENE'S WIND, which the clouds, the sea, the fog and every plant read:
+    one speed and one direction for the whole world, so the cloud shadows, the
+    waves and the trees all go the same way. speed_ms is at ten metres up the
+    way weather is quoted - 2 a breath, 5 stirs leaves, 11 shakes branches, 20
+    a gale; direction_deg is the way it blows toward. Gusts are the wind
+    arriving in waves: how much harder, how often, and how large one is as it
+    crosses the ground. shear is how much faster the air moves at cloud
+    height. "clouds_follow"/"water_follow" false cut those loose onto their
+    own settings.)
 - {"op":"set_fog","type":"off"|"haze"|"fog"|"pollution","density":1.2,
    "level":0.3,"color":[r,g,b]}
 - set_fog also takes "falloff", "absorb":[r,g,b], "sun_scatter", "albedo" (scattering albedo 0..1), "anisotropy" (HG g, -0.95..0.95), "heterogeneity" (0..1, noise-broken fog) and "steps" (1..64 ray-march samples; 1 = closed form). The fog is a participating medium: Beer-Lambert extinction, single scattering, self-shadowed when marched.
@@ -63,9 +86,18 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    "coverage":0.6,"density":1.2,"altitude":1.4,"thickness":0.8,"wind_speed":0.03}
 - Any number of cloud layers: add_node "CloudLayer" per layer (type, coverage, density, altitude, thickness, enabled...), chained clouds -> clouds into AtmosphereSettings. The first CloudLayer drives the main cloud settings; each further one is its own layer.
 - set_clouds also takes a second layer: "layer2":true, "layer2_type", "layer2_coverage", "layer2_density", "layer2_altitude" (0.2..4), "layer2_thickness"
+- {"op":"set_viewport","view":1,"animate_plants":true}
+   (whether the wind moves the plants in that window. Off in every window to
+    begin with: a swaying crown never settles, and placing a tree or framing
+    a shot is easier against a still picture.)
 - {"op":"set_viewport","shading":"ids","id_mode":0|1}  (ID colours: one flat colour per object (0) or per material (1)); set_viewport also takes "terrain_shape":0|1|2 (square, round, rectangle) and "terrain_aspect" (the rectangle's depth over width)
 - {"op":"set_water","enabled":true,"level":0.1,"deep":[r,g,b],"shallow":[r,g,b],
-   "foam":true})";
+   "foam":true,"displaced":true,"wind_speed":4,"wind_dir":30,"choppiness":0.5,
+   "wave_height":1,"wave_scale":1,"agitation":1,"clarity_m":18,
+   "coast_foam":0.6,"foam_depth_m":1.5,"crest_foam":0.35,"crest_coverage":0.4}
+   (one sea over the whole world, like Vue's water plane; wind_speed m/s sets the
+   wave sizes - 4 a lake breeze, 15 a gale, 0 a mirror; displaced makes them real
+   geometry; coast foam gathers where the water is shallower than foam_depth_m))";
       break;
     case AiDomain::Render:
       s += R"(- {"op":"set_render","engine":"mitsuba"|"cycles"|"luxcore"|"viewport",
@@ -94,6 +126,119 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - RenderBackdrop / RenderPasses / RenderOutput / PostProcess nodes drive the
    render editor from the graph: add_node them and set_attr their fields)";
       break;
+    case AiDomain::Plant:
+      s += R"(Plants are grown from rules. A species is a subgraph of Plant nodes whose
+PlantSpecies root grows one individual per seed, with an age, a season, a health
+and a wind. Parts link into the part they grow on (a leaf's "plant" output into a
+branch's "child 1" input, the trunk into the root's "trunk"); PlantMaterial nodes
+link into a part's "material" input.
+- {"op":"plant_species_new","words":"old weeping willow in autumn","name":"Willow",
+   "place":true,"position":[x,y,z],"size":1.0,"scatter":false,"count":300,
+   "individuals":1,"ai":false}
+   (a whole species from a plant's name and modifiers - well over a hundred plants
+    and every archetype are known without a model; "ai":true asks the text model
+    to describe the plant first. Instead of words, "description" takes the object
+    plant_species_describe returns, and "archetype" one of broadleaf_tree,
+    conifer, palm, shrub, fern, grass_tuft, flowering_plant, cactus_columnar,
+    cactus_paddle, succulent_rosette, vine, bamboo, reed, mushroom, dead_tree,
+    weeping_tree, bonsai, ground_cover, with "height_m")
+- {"op":"plant_species_describe","words":"date palm"}   (the description the words
+   give, in "reply": archetype, height_m, crown, bark, leaf shape and colours,
+   flowers, fruit and their seasons - change it and pass it to plant_species_new)
+- {"op":"plant_species_set","species":"Willow","age":40,"max_age":120,"health":0.3,
+   "season":0.75,"seed":12,"wind_strength":0.4,"wind_direction":90,"detail":1,
+   "receive_wind":true}   (health 0 dying .. 1 thriving; season 0 midwinter,
+   0.25 spring, 0.5 midsummer, 0.75 autumn; detail is the meshing boost -3..3)
+- {"op":"plant_species_variation","species":"Willow","seed":-1,"flag":false}
+   (another individual of the same species: seed -1 picks a new one; flag keeps
+    the current seed in the species' flagged list)
+- {"op":"plant_species_individuals","species":"Willow","count":3}   (more
+   individuals sharing the species' parts, each its own seed and object)
+- {"op":"spray_biome","biome":"pine_wood"}
+   (A WHOLE BIOME as a stack of populations, in the order ground actually
+    assembles: boulders first, then what stands on them, then what lives
+    among that, then the cover, then the litter over everything. Each layer is
+    wired to whichever already-placed group its strongest rule is about, so a
+    pine wood comes out as moss and lichen ON the boulders, needle litter
+    under the conifers, fungi on the dead wood, ferns out from the trees and
+    no grass at all. One painted brush drives all of them: paint once and the
+    whole wood appears. Then say what stands for each group with spray_add.
+    This is the way to populate ground - spray_new is the manual version.)
+- {"op":"spray_biomes","family":"forest"}
+   (every biome, or every one of a family: forest, field, farm, desert,
+    water, underwater, alien, built. Each lists the groups it is made of.)
+- {"op":"spray_groups"}
+   (the vocabulary and the rules: every group, what tier it is placed in, how
+    much ground it takes, and every rule about how it behaves near another
+    group, with the observation each came from. THE RULES ARE ABOUT GROUPS,
+    not about models - so a new model assigned to a group is placed correctly
+    by every rule and in every biome, including ones written before it.)
+- {"op":"spray_add","group":"conifer","plant":"scots pine","percent":70}
+   ("group" puts a thing in the layer that stands for that group, wherever
+    that layer sits in the stack - the rules about where it goes have already
+    been applied. Left out, the group is guessed from the name, so
+    "mossy_boulder_02" is a boulder. It guesses the NOUN, not the adjective.)
+- {"op":"spray_new","density_ha":90,"spacing_m":4,"clumping":0.4,
+   "components":[{"plant":"gorse","percent":55,"scale":1,"size_variation":0.4},
+                 {"object":"Boulder","percent":30,"scale":1.6,"size_variation":0.8,"lean":1},
+                 {"plant":"foxglove","percent":15}]}
+   (THE SPRAY BRUSH: a painted population of several kinds at once. It makes a
+    MaskPaint node feeding an EcosystemLayer - select the mask node and paint
+    in the viewport with the terrain brushes to say WHERE, thickest where the
+    stroke is heaviest. Each component says WHAT: a plant grown from its name,
+    or "object" naming a mesh already in the scene (a rock, an imported
+    model). "percent" is its share of the whole against the others - they are
+    weights, so 55/30/15 and 0.55/0.3/0.15 place the same mix. "scale" is its
+    size, "size_variation" how much that size varies for this kind alone (0
+    takes the layer's; rocks vary far more than nursery trees), "lean" how far
+    it tips with the slope (0 stands straight up, 1 lies along the ground - a
+    boulder sits on a hillside, a tree stands out of it).)
+- {"op":"spray_add","spray":<node id>,"plant":"bracken","percent":20}
+   (another kind in the mix; eight at most. Leave out "spray" when there is
+    only one.)
+- {"op":"spray_list"}   (every spray, its components and each one's share as a
+   percentage of the whole)
+- {"op":"spray_set","spray":<id>,"slot":1,"percent":40,"scale":2,
+   "size_variation":0.6,"lean":0.8}
+   (change one kind. Without "slot" it changes the brush itself:
+    density_ha, spacing_m, clumping, size_variation.)
+- {"op":"plant_forest","words":"scots pine","individuals":5,"area_m":1500,
+   "spacing_m":9,"clumping":0.6,"altitude_lo":0.02,"altitude_hi":0.75,
+   "max_slope_deg":34,"size_variation":0.35,"unbounded":true}
+   (A WOOD of one kind, and the way to make one: the species is grown
+    `individuals` times, each with its own seed so no two trees are alike,
+    and an EcosystemLayer splits its points among them - so the wood costs
+    what those few trees cost, however many copies stand in it. Scattering a
+    single plant instead gives a plantation of visible clones. The rules come
+    with it: an altitude band keeps them out of the water, a slope band off
+    the cliffs, and clumping gathers them into stands with clearings. Pass
+    "species" instead of "words" to make a wood of a species already grown.)
+- {"op":"plant_part_add","species":"Willow","parent":"trunk","preset":"branch","slot":0}
+   (parent: "trunk", "root", a node id or a node type such as "PlantSegment";
+    presets: trunk, branch, stem, palm, twig, leaf, billboard leaf, growth,
+    flower, cutout leaf, fruit, bark material, leaf material; slot 0 = first free)
+- {"op":"plant_species_preset","species":"Willow","action":"store"|"apply"|"delete"|"list","name":"Winter veteran"}
+- {"op":"plant_species_save","species":"Willow","name":"Weeping willow","group":"trees","note":"..."}
+   (into the plant library, where Add and Scatter place it like any plant)
+- {"op":"plant_species_load","plant":"species/weeping_willow","place":true,"position":[x,y,z]}
+- {"op":"plant_species_list"}   (the species in the graph and the library, the
+   archetypes and the part presets, in "reply")
+- {"op":"plant_species_export","species":"Willow","path":"C:/out/willow.glb"}   (.glb, .gltf or .obj)
+Every part's parameters are node attributes. set_attr on a Plant node takes a
+number for a value, [value, spread] for a value with a random spread, or
+{"value":v,"spread":s,"spread_mode":0|1|2,"scope":0|1|2|3,"curve_along":"d:0,1,0,1|1;0,1,0,0;1,0.2,0,0"}
+(spread_mode absolute, relative, gaussian; scope each time, per primitive, per
+plant, per ancestor); a curve attribute takes [[x,y],[x,y],...].
+PlantSegment: length, radius, radius_profile, tropism, axis_bend, perturb_strength,
+flare_number, blade_number, count, count_mode, start, end, angle, coil,
+arrangement, positioning, per_whorl, pruning, cut_probability. PlantLeaf: length,
+width, orientation, mesh_kind, midrib_angle, curvature_h, shift_hue. PlantFlower:
+radius, length, lobes, profile_mode. PlantGrowth: iterations, internode,
+angle_with_parent, apical, gravitropism_influence, phototropism. PlantMaterial:
+color, source (0 colour or pictures, 1 leaf, 2 bark, 3 petal), leaf_shape,
+bark_kind, color_map, alpha_map, season_count. Seasons group on leaf-like parts:
+presence_season, tint_season, presence_health, tint_health.)";
+      break;
     case AiDomain::Object:
       s += R"(- {"op":"place_object","name":"Rock","position":[x,y,z],"scale":0.1,
    "rotation_deg":30}
@@ -102,11 +247,35 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    (applies a saved action document - any of these ops, batched)
 - {"op":"add_light","name":"Lantern","position":[x,y,z],"color":[r,g,b],
    "intensity":2.0,"reach":0.4}   (a point light; set_light edits by name)
-- {"op":"add_primitive","kind":"cube"|"sphere"|"plane"|"cylinder"|"cone",
-   "name":"Box","position":[x,y,z],"scale":0.1,"color":[r,g,b],"detail":24}
+- {"op":"add_primitive","kind":"cube"|"sphere"|"plane"|"cylinder"|"cone"|"pine"|"juniper"|"palm"|"fern"|"grass"|"bush"|"boulder",
+   "name":"Box","position":[x,y,z],"scale":0.1,"color":[r,g,b],"detail":24,"seed":0}
    (detail 3..512 is the segment count round a round primitive and the grid
    size across a flat one; raise it before putting a displacement material
-   on the object, since a displacement can only move vertices that exist)
+   on the object, since a displacement can only move vertices that exist.
+   The plants and the boulder are built from their kind with bark and
+   foliage colours and come at their real size (pine ~22 m, juniper ~6 m,
+   palm ~16 m, fern ~1.6 m, grass ~0.8 m, bush ~2.5 m, boulder ~3 m); omit
+   "scale" and "color" to keep them, and scatter them with set_scatter;
+   "seed" makes another individual of the same kind, 0 the usual one)
+- {"op":"plant_library","query":"fern","group":"trees","source":"polyhaven","rescan":false}
+   (the Plants workspace's library in "reply": the built-in plants, the free CC0
+   plants downloaded from Poly Haven and the user's recorded models, each with
+   its id, group - trees, shrubs, ground cover, flowers, grass, deadwood, rocks -
+   height in metres, licence and, for a set, its variants)
+- {"op":"plant_add","plant":"polyhaven/fern_02","variant":"b","position":[x,y,z],
+   "size":1.0,"heading_deg":30,"scatter":false,"count":300,"name":"Fern"}
+   (a library plant into the scene at its real size, standing on the ground:
+   under the view's pivot without "position"; size multiplies its own size;
+   scatter also binds it to a new ScatterPoints node with count copies)
+- {"op":"plant_fetch","ids":["fern_02","shrub_03"],"res":"1k"}  (downloads the free
+   CC0 plants - the curated set when ids is omitted - in the background;
+   {"op":"plant_fetch","cancel":true} stops it)
+- {"op":"plant_record","path":"C:/models/oak.fbx","name":"My oak","height_m":12}
+   (a model the user owns into the library, left where it is; height_m sets its
+   size, 0 reads its units from the file)
+- {"op":"plant_species_new","words":"old oak","place":true,"position":[x,y,z],"scatter":false}
+   (a plant grown from rules rather than a model: its species' parts, age, season,
+    health and wind are all editable; the Plants workspace's assistant knows the rest)
 - {"op":"combine_objects","mode":"union"|"intersect"|"difference",
    "objects":["Wall","Arch"]}
    (constructive solid geometry: the meshes are combined into one, each
@@ -157,7 +326,8 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    "reply", strongest first. Reach for this before add_node whenever you
    know the effect you want but not the node that produces it)
 - {"op":"probe_height","x":0.5,"z":0.5}  (the ground's height at a point of the
-   tile, displayed and graph, in heightmap units and metres - in "reply")
+   tile, displayed and graph, in heightmap units and metres - in "reply";
+   "drawn_m" adds the micro-relief the viewport draws over "placed_m")
 - {"op":"points_stats","node":"trees"}  (how many instances a Points node or an
    EcosystemLayer placed, per species, and their mean scale - in "reply")
 - {"op":"save_node_preview","node":"scatter","path":"out.png"}
@@ -170,7 +340,7 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    (binds a MaterialOutput to an object; omit object for the terrain)
 - {"op":"show_panel","panel":"Material Editor","visible":true}
    (Library, Nodes, Properties, Viewport, Toolbar, Console, Timeline,
-   Preview, Material Editor)
+   Preview, Material Editor, Plants)
 - {"op":"set_camera","name":"Camera 1","optics":true,"vignette":1.0,
    "chromatic":0.5,"flare":true,"flare_strength":0.7,"motion_blur":0.3,
    "distortion":0.05}
@@ -178,7 +348,16 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    "distortion" is given, vignetting follows the aperture scaled by the
    amount, chromatic aberration and flare are off at 0/false. Setting any
    of them turns the simulation on. It applies to the viewport, the Preview
-   panel and captured images alike)
+   panel and captured images alike. The flare's parts: "flare_style" 0
+   classic ghosts, 1 cinematic, 2 anamorphic; "flare_rays", "flare_streak",
+   "flare_ghosts" and "flare_halo" 0..2 each; and their shapes: "flare_core"
+   0..2, "flare_ray_count" 4..64, "flare_ray_length" and "flare_streak_length"
+   (1 as drawn), "flare_streak_tint":[r,g,b], "flare_halo_radius" (frame
+   heights, 0.19), "flare_ghost_count" 0..12, "flare_blades" 5..9 (the ghosts'
+   polygon), "flare_chroma" 0..2 (colour parting), "flare_seed". Bloom, the
+   glow a lens spreads round everything bright: "bloom" 0..4 (0 off),
+   "bloom_threshold" 0..0.99 (from how bright, of the picture's white) and
+   "bloom_size" 0..1 (how far it spreads))
 - {"op":"open_material","material":"Mossy rock"}  (by name or node id; opens
    the Material Studio in the Materials workspace)
 - {"op":"list_materials"}  (every project material with its type)
@@ -257,10 +436,12 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
    (locks an object in place: no gizmo, no dragging; false frees it)
 - {"op":"add_planet","name":"Mars","radius":3.5,"relief":0.03,"seed":42,
    "position":[x,y,z],"sea_level":0,"snow_line":0.9,"atmosphere":0.3,
-   "rock_low":[0.45,0.25,0.15],"rock_high":[0.6,0.4,0.3],
+   "clouds":0.2,"rock_low":[0.45,0.25,0.15],"rock_high":[0.6,0.4,0.3],
    "atmo_color":[0.9,0.6,0.4]}
    (planets are procedural and free: any number is fine. sea_level 0 = dry
-    world; the home terrain tile is at the origin, keep planets 8+ units away.
+    world; clouds 0-1 is the cloud cover seen from space (default 0.4, none
+    without an atmosphere); the home terrain tile is at the origin, keep
+    planets 8+ units away.
     "surface_node":"new" gives the planet its own SurfaceDisplacement field
     graph to shape it, like a Terragen planet's terrain network; or name an
     existing SurfaceDisplacement node / id)
@@ -313,9 +494,12 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"set_nebula","name":"Orion", ...same fields...}
    (clouds also take "dust":0.55, "warp":0.6 (how far it is pulled out of a
     ball), "glow":0.4, "sources":3 (hot stars inside, whose glare decides
-    where it is teal and where it is red), and "palette":"auto" to take both
-    colours from the realism dial)
-- {"op":"space_preset","name":"night"|"hubble"|"cinema"|"deep_field"|"nursery"|"void"}
+    where it is teal and where it is red), "turbulence":0 (filaments torn by a
+    finer warp), "lanes":0 (thin dust ridges across the glow), "core_glow":0
+    (the gas round the hot stars burned toward white), "source_stars":0.6 (the
+    hot stars drawn, 0 hides them), "color3":[r,g,b] (the barely-lit
+    outskirts), and "palette":"auto" to take both colours from the realism dial)
+- {"op":"space_preset","name":"night"|"hubble"|"cinema"|"deep_field"|"nursery"|"void"|"nebula_cinema"}
    (a whole sky at once: the star field, the milky band and the palette, and
     the ones that want nebulas scatter them too)
 - {"op":"space_populate","count":4,"seed":1,"style":"mixed"|"nebulas"|"galaxies"|"dark"}
@@ -325,12 +509,17 @@ centre, e.g. eye [0.5, 0.35, 1.9] with look_at "terrain".)";
 - {"op":"set_space","on":true,"brightness":1,"realism":0.65,"glow":0.5,"quality":1,
    "star_spikes":0.45,"star_halo":0.6,"star_clump":0.55,"galaxy_grain":0.8,
    "stars":true,"star_density":0.5,"star_brightness":1,"star_size":1,
-   "star_temperature":0.6,"star_seed":1,"galaxy":true,"galaxy_intensity":0.7,
+   "star_temperature":0.6,"star_seed":1,"star_spike_points":4,"star_spike_angle":0,
+   "star_spike_chroma":0,"star_saturation":1,"star_glow":0,"star_bright_share":0.5,
+   "star_clusters":0,"star_cluster_size":1.5,"galaxy":true,"galaxy_intensity":0.7,
    "galaxy_width":14,"galaxy_yaw":35,"galaxy_pitch":55,"galaxy_core":0,"galaxy_dust":0.7,
    "galaxy_color":[1,0.95,0.9],"galaxy_seed":1}
    (the star field and the galaxy band - the Milky Way - behind the air; the
     atmosphere is a layer of "set_sky" "height_m" (100000 = 100 km) over the
-    world's surface whatever its shape, and beyond it is this)
+    world's surface whatever its shape, and beyond it is this. star_bright_share
+    0-1: how many stars are bright ones; star_clusters 0-1: how many star
+    clusters - loose blue open ones and tight yellow globulars - at
+    star_cluster_size degrees across)
 - {"op":"add_infinite_terrain","planet":"Mars","style":"terrain"|"mountains"|"hills"|"dunes"|"craters",
    "scale":5,"amplitude":1.0,"coverage":0.5,"seed":7}
    (omit "planet" to extend the home ground plane to the horizon instead;
@@ -387,7 +576,7 @@ The graph, by single steps (the "graph" op builds a whole graph at once):
 - {"op":"view_node","node":"n1"}   (pin the 3D views to this node's output; omit
    node to follow the Terrain output again)
 - {"op":"select_node","node":"n1","properties":true}  {"op":"open_node_editor","domain":"materials"}
-- {"op":"set_workspace","workspace":"terrain"|"materials"|"atmosphere"|"render"|"objects"|"lighting"|"cameras"|"animation"}
+- {"op":"set_workspace","workspace":"terrain"|"materials"|"atmosphere"|"render"|"objects"|"lighting"|"cameras"|"animation"|"plants"}
 - {"op":"evaluate"}   (recompute the graph now)  {"op":"capture","path":"D:/out/view.png","width":1280,"height":720}
 Project, painting, meshes, diagnostics:
 - {"op":"save_project","path":"D:/scenes/valley.gpxt"}  {"op":"open_project","path":"..."}

@@ -26,10 +26,13 @@ uniform sampler2D u_albedo;
 uniform sampler2D u_normal_map;
 uniform sampler2D u_rough_map;
 uniform sampler2DShadow u_shadowmap;
-uniform sampler3D u_cl_shape;
 uniform mat4 u_light_mvp;
 uniform int u_has_albedo, u_has_normal, u_has_rough, u_shadows, u_quality;
 uniform float u_shadow_soft, u_hscale, u_texel, u_exposure;
+// the shadow map's texel width and depth range, and how far the drawn surface
+// can stand off the one the shadow pass draws (the micro-relief and a
+// material's displacement are the view's alone), world units
+uniform vec3 u_shadow_geom;
 uniform vec3 u_sun, u_sun_color, u_cam, u_sky_zenith, u_sky_horizon;
 uniform float u_sun_intensity, u_ambient, u_atmo;
 // scene point lights: xyz + radius, color premultiplied by intensity
@@ -52,8 +55,7 @@ uniform vec3 u_cam_unused_marker;
 uniform float u_frac_amount;
 uniform float u_frac_scale;
 in float v_detail;
-uniform float u_cl_cov, u_cl_alt, u_cl_thick, u_cl_time;
-uniform vec2 u_cl_wind;
+uniform float u_cl_cov, u_cl_alt, u_cl_thick;
 const float PI = 3.14159265;
 uniform float u_field_strength;
 uniform int u_surface_on;
@@ -72,9 +74,11 @@ GPX_SURFACE_PLACEHOLDER
 GPX_ROUGH_PLACEHOLDER
 GPX_BUMP_PLACEHOLDER
 SKY_FN_PLACEHOLDER
+SKY_ENV_PLACEHOLDER
 FOG_FN_PLACEHOLDER
 PL_PALETTE_PLACEHOLDER
 PL_SPHERE_PLACEHOLDER
+CLOUD_SHAPE_PLACEHOLDER
 uniform vec3 u_grade;
 uniform float u_sat;
 vec3 aces(vec3 x){
@@ -85,11 +89,16 @@ vec3 aces(vec3 x){
 }
 
 vec3 get_normal(vec2 uv){
-  float e = u_texel;
-  float hl = texture(u_height, uv - vec2(e,0)).r;
-  float hr = texture(u_height, uv + vec2(e,0)).r;
-  float hd = texture(u_height, uv - vec2(0,e)).r;
-  float hu = texture(u_height, uv + vec2(0,e)).r;
+  // Differenced over a texel of the level the pixel actually reads. One base
+  // texel on a coarser level lands inside a single filtered texel, whose
+  // slope is constant: the shading came out as flat facets meeting at creases
+  // along the texel grid, which read as a jagged, low-resolution surface.
+  float lodq = max(textureQueryLod(u_height, uv).x, 0.0);
+  float e = u_texel * pow(2.0, lodq);
+  float hl = textureLod(u_height, uv - vec2(e,0), lodq).r;
+  float hr = textureLod(u_height, uv + vec2(e,0), lodq).r;
+  float hd = textureLod(u_height, uv - vec2(0,e), lodq).r;
+  float hu = textureLod(u_height, uv + vec2(0,e), lodq).r;
   vec3 n = normalize(vec3((hl-hr)*u_hscale, 2.0*e, (hd-hu)*u_hscale));
   // The graph-authored displacement moved the geometry, so the normal has to
   // move with it or the lighting describes a surface that is not there.
@@ -126,9 +135,9 @@ vec3 get_normal(vec2 uv){
       // octaves were flat, which is most of why zooming in used to arrive
       // at a smooth blob.
       float e2 = clamp(dist * 0.02, 2.0e-7, u_texel * 0.35);
-      float c  = gp_detail(uv, u_frac_scale, oct, 0.5);
-      float dx = gp_detail(uv + vec2(e2,0), u_frac_scale, oct, 0.5) - c;
-      float dy = gp_detail(uv + vec2(0,e2), u_frac_scale, oct, 0.5) - c;
+      float c  = gp_detail(uv, u_frac_scale, oct, gp_gain());
+      float dx = gp_detail(uv + vec2(e2,0), u_frac_scale, oct, gp_gain()) - c;
+      float dy = gp_detail(uv + vec2(0,e2), u_frac_scale, oct, gp_gain()) - c;
       float k = u_frac_amount / max(e2, 1e-5) * 0.25;
       n = normalize(n + vec3(-dx * k, 0.0, -dy * k));
     }
@@ -136,15 +145,25 @@ vec3 get_normal(vec2 uv){
   return n;
 }
 
-float shadow_factor(vec3 world){
+// The bias is sized from the map's own texel. Under one texel the ground's
+// depth toward the sun changes by the texel's width times the tangent of the
+// light's incidence, and the filter reads R texels further out; a push of one
+// texel along the normal keeps the surface off its own samples. It used to be
+// a fixed 0.004 of the depth range plus a 0.002 push - about 100 m on a 5 km
+// tile, sized for grazing light everywhere - so a gully or a crater's inner
+// wall could never shadow itself.
+float shadow_factor(vec3 world, vec3 n, vec3 l){
   if (u_shadows == 0) return 1.0;
-  vec4 lp = u_light_mvp * vec4(world, 1.0);
+  float texel_w = u_shadow_geom.x * max(u_shadow_soft, 1.0); // world units a texel
+  float ndl = clamp(dot(n, l), 0.08, 1.0);
+  float tanq = min(sqrt(1.0 - ndl * ndl) / ndl, 8.0);
+  int R = (u_quality == 1) ? 2 : 1;
+  vec4 lp = u_light_mvp * vec4(world + n * texel_w, 1.0);
   vec3 pc = lp.xyz / lp.w * 0.5 + 0.5;
   if (pc.x < 0.0 || pc.x > 1.0 || pc.y < 0.0 || pc.y > 1.0 || pc.z > 1.0) return 1.0;
-  float bias = 0.004;
+  float bias = (((1.0 + float(R)) * tanq + 1.5) * texel_w + u_shadow_geom.z) / u_shadow_geom.y;
   float s = 0.0;
   float texel = 1.0 / 2048.0 * u_shadow_soft;
-  int R = (u_quality == 1) ? 2 : 1;
   float cnt = 0.0;
   for (int dy = -R; dy <= R; ++dy)
     for (int dx = -R; dx <= R; ++dx){
@@ -175,25 +194,24 @@ float terrain_ao(vec2 uv, float h){
 
 float cloud_shadow(vec3 world){
   if (u_cloud_shadows == 0) return 1.0;
-  // Project the point up to the *middle* of the cloud slab along the sun
-  // direction, and sample the shape volume at the frequency the sky march
-  // uses.
-  //
-  // Both were wrong. The projection landed on the slab's base, where the
-  // height gradient puts density at zero, and the sample was taken at
-  // wp * 0.35 against the march's wp * 0.18 - so the shadows on the ground
-  // were a different pattern, at roughly half the scale, from the clouds
-  // casting them. They now line up because they are the same lookup.
-  // the layer's height is over the world's surface, not over world y: on
-  // a ring the clouds are a band round the ring (world_shape.hpp)
-  float dy = max(u_cl_alt + u_cl_thick * 0.5 - pl_world_alt(world, u_planet_radius), 0.0);
-  if (u_sun.y < 0.05) return 1.0;
-  vec3 p = world + u_sun * (dy / max(u_sun.y, 0.05));
-  vec3 wp = p; wp.xz += u_cl_wind * u_cl_time;
-  vec4 sn = texture(u_cl_shape, wp * 0.18);
-  float fbm = sn.g*0.625 + sn.b*0.25 + sn.a*0.125;
-  float shape = clamp((sn.r - (fbm - 1.0)) / max(2.0 - fbm, 1e-3), 0.0, 1.0);
-  float d = clamp((shape - (1.0 - u_cl_cov)) / max(u_cl_cov, 1e-3), 0.0, 1.0);
+  // The main layer where the sun's ray through this point crosses it, read
+  // with the march's own lookup (CLOUD_SHAPE_GLSL) - its scale, its weather
+  // and its cover - a third of the way up, where every kind of cloud is
+  // thick. It used to be a lookup of its own at a fixed scale, which was a
+  // different pattern from the clouds casting it once the scale was a
+  // setting. The layer's height is over the world's surface, not over world
+  // y: on a ring the clouds are a band round the ring (world_shape.hpp).
+  vec3 up = pl_world_up(world, u_planet_radius);
+  float sun_up = dot(u_sun, up);
+  if (sun_up < 0.05) return 1.0;
+  float dy = max(u_cl_alt + u_cl_thick * 0.3 - pl_world_alt(world, u_planet_radius), 0.0);
+  vec3 p = world + u_sun * (dy / sun_up);
+  float cov;
+  // the footprint of a pixel on the layer, near enough, so a distant
+  // shadow is the filtered cloud rather than its aliased texels
+  float foot = length(u_cam - world) * 0.0012;
+  float shape = cloud_shape_at(p, u_cl_cov * cloud_systems(p, foot), foot, cov);
+  float d = clamp(cl_remap(shape, 1.0 - cov, 1.0, 0.0, 1.0), 0.0, 1.0);
   return 1.0 - d * 0.65;
 }
 
@@ -201,6 +219,7 @@ MATERIAL_FN_PLACEHOLDER
 void main(){
   if (tile_cut(v_uv)) discard; // the outline, when not placed on a planet
   vec3 N = tile_xform_normal(get_normal(v_uv));
+  vec3 N_relief = N; // before any bump: the surface the shadow map holds
   if (u_id_mode != 0 && u_aov == 0) {
     vec3 c = id_colour(u_id_mode == 2 ? u_id_key : float(u_object_id));
     frag = vec4(c * (0.7 + 0.3 * max(N.y, 0.0)), 1.0);
@@ -302,7 +321,7 @@ void main(){
   float NdH = max(dot(N, H), 0.0);
   float VdH = max(dot(V, H), 0.0);
 
-  float shadow = shadow_factor(v_world + N * 0.002) * cloud_shadow(v_world);
+  float shadow = shadow_factor(v_world, N_relief, L) * cloud_shadow(v_world);
   float ao = terrain_ao(v_uv, h);
 
   vec3 F0 = mat_f0(albedo);
@@ -326,9 +345,13 @@ void main(){
   ambient += albedo * vec3(0.25,0.22,0.18) * 0.25 * u_ambient * (1.0 - N.y) * ao;
   ambient *= u_m_ambient / 0.4;
 
-  // sky reflection
+  // Sky reflection: the sky pass's own picture when the view has one, so
+  // glossy ground under an overcast reflects the overcast, blurred by the
+  // lobe's width; the clear-sky gradient otherwise.
   vec3 R = reflect(-V, N);
-  vec3 refl = sky_color(R, u_sky_zenith, u_sky_horizon, u_sun, u_sun_color, u_atmo);
+  vec3 refl = u_sky_env_on == 1
+                  ? sky_env(R, a)
+                  : sky_color(R, u_sky_zenith, u_sky_horizon, u_sun, u_sun_color, u_atmo);
   float fres = mat_fresnel(NdV, F0.g);
   vec3 reflection = refl * fres * u_reflection * (1.0 - rough) * ao;
   if (u_m_color_reflected == 1) reflection *= albedo;

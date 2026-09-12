@@ -19,7 +19,12 @@
 #include "scene.hpp"
 #include "undo.hpp"
 #include <algorithm>
-namespace studio { struct SceneObject; void terrain_editor_ui(App &a, SceneObject &o); }
+namespace studio {
+
+// The bands of air under this atmosphere, and one band's own settings
+// (studio/panel_properties_air.cpp).
+void object_air_layers(App &a, int atmosphere_idx);
+void object_air_layer(App &a, SceneObject &o); struct SceneObject; void terrain_editor_ui(App &a, SceneObject &o); }
 #include <cmath>
 #include <cstdio>
 #include <imgui.h>
@@ -174,9 +179,8 @@ void transform_ui(App &a, SceneObject &o) {
     if (studio::DragIntW("Segments", &detail, 0.5f, 3, 0)) {
       detail = std::max(detail, 3);
       if (detail != o.primitive_detail &&
-          scene_primitive_verts(o.path.substr(10), o.verts, detail)) {
+          scene_primitive_build(o.path.substr(10), detail, o)) {
         o.primitive_detail = detail;
-        o.vert_count = (int)(o.verts.size() / 6);
         o.gpu_dirty = true;
       }
     }
@@ -636,13 +640,17 @@ void object_properties_ui(App &a) {
                           "whatever its shape; beyond it is space.");
       ImGui::ColorEdit3("Zenith", rs.sky_zenith);
       ImGui::ColorEdit3("Horizon", rs.sky_horizon);
-      ImGui::SeparatorText("Fog");
+      ImGui::SeparatorText("Ground haze");
+      // The band of air that is simply everywhere - the one every scene has
+      // and nobody adds. Every other band is a layer of its own below.
       ImGui::Combo("Type", &rs.fog_type, "Off\0Haze\0Fog\0Pollution\0");
       labeled_scalar("Density", "fd", &rs.fog_density, 0.f, 6.f);
-      ImGui::SeparatorText("Clouds");
       studio::Checkbox("Volumetric clouds", &rs.clouds_on);
-      labeled_scalar("Coverage", "cc", &rs.cloud_coverage, 0.f, 1.f);
+      object_air_layers(a, sc.selected);
       ImGui::TextDisabled("Full atmosphere controls: Environment tab.");
+      break;
+    case SceneObject::AirLayer:
+      object_air_layer(a, o);
       break;
     case SceneObject::Light:
       ImGui::SeparatorText("Point light");

@@ -24,6 +24,12 @@ void apply_scene_nodes(App &a) {
   // by adding nodes - low stratus, cumulus, a cirrus veil - with no limit but
   // the eight the sky pass marches.
   rs.cloud_layers.clear();
+  // FogLayer nodes: every one is a band of air, and the sky and the surfaces
+  // see all of them at once - haze to the horizon under a valley fog under a
+  // brown layer over a town. The AtmosphereSettings node's own fog is still
+  // the first layer, so a scene with no FogLayer node behaves as it always
+  // did.
+  rs.fog_layers.clear();
   bool first_cloud = true;
   for (auto &np : a.graph.nodes) {
     gpx::Node &n = *np;
@@ -38,6 +44,24 @@ void apply_scene_nodes(App &a) {
       L.altitude = at.get_f("altitude", 1.4f);
       L.thickness = at.get_f("thickness", 0.8f);
       rs.cloud_layers.push_back(L);
+      continue;
+    }
+    if (n.type == "FogLayer") {
+      if (!at.get_b("enabled", true)) continue;
+      if ((int)rs.fog_layers.size() >= RenderSettings::MAX_FOG_LAYERS) continue;
+      RenderSettings::FogLayerSettings L;
+      L.type = at.get_choice("type");
+      L.density = at.get_f("density", 0.6f);
+      L.level = at.get_f("level", 0.2f);
+      L.falloff = at.get_f("falloff", 6.f);
+      L.color[0] = at.get_f("color_r", 0.62f);
+      L.color[1] = at.get_f("color_g", 0.68f);
+      L.color[2] = at.get_f("color_b", 0.76f);
+      L.sun_scatter = at.get_f("sun_scatter", 0.5f);
+      L.albedo = at.get_f("albedo", 0.85f);
+      L.anisotropy = at.get_f("anisotropy", 0.55f);
+      L.drift = at.get_f("drift", 0.6f);
+      rs.fog_layers.push_back(L);
       continue;
     }
     if (n.type == "CloudLayer") first_cloud = false;
@@ -110,6 +134,12 @@ void apply_scene_nodes(App &a) {
       rs.foam_amount = at.get_f("foam_amount", rs.foam_amount);
       rs.foam_crests = at.get_f("foam_crests", rs.foam_crests);
       rs.foam_scale = at.get_f("foam_scale", rs.foam_scale);
+      rs.water_displaced = at.get_b("displaced", rs.water_displaced);
+      rs.water_wind_speed = at.get_f("wind_speed", rs.water_wind_speed);
+      rs.water_wind_dir = at.get_f("wind_dir", rs.water_wind_dir);
+      rs.water_choppiness = at.get_f("choppiness", rs.water_choppiness);
+      rs.foam_depth_m = at.get_f("foam_depth", rs.foam_depth_m);
+      rs.foam_coverage = at.get_f("foam_coverage", rs.foam_coverage);
     } else if (n.type == "RenderCamera") {
       rs.exposure = at.get_f("exposure", rs.exposure);
       rs.height_scale = at.get_f("height_scale", rs.height_scale);

@@ -226,6 +226,25 @@ REGISTER_NODE(
                      "the water meets the land.";
       add_float(n.attrs, "foam_scale", "Foam scale", 3.f, 0.5f, 10.f, "Foam")
           .tooltip = "How fine the foam's own texture is.";
+      // Vue's Water Surface Options, in physical units (gpx/water_waves.hpp)
+      add_bool(n.attrs, "displaced", "Displaced water surface", true, "Waves")
+          .tooltip = "The waves are real geometry that stands up against the sky;\n"
+                     "off, the sea is flat and the waves are in its shading only.";
+      add_float(n.attrs, "wind_speed", "Wind intensity (m/s)", 4.f, 0.f, 25.f, "Waves")
+          .tooltip = "The wind the sea has been under: it decides how long the\n"
+                     "waves are and how much of each size there is. 4 m/s is a\n"
+                     "breeze on a lake, 15 a gale, 0 a mirror.";
+      add_float(n.attrs, "wind_dir", "Wind direction", 30.f, 0.f, 360.f, "Waves")
+          .tooltip = "The way the waves run seen from above, in degrees: 0 toward\n"
+                     "+X, 90 toward +Z.";
+      add_float(n.attrs, "choppiness", "Choppiness", 0.5f, 0.f, 1.f, "Waves")
+          .tooltip = "0 is round swells; toward 1 the crests stand up sharp, which\n"
+                     "is where they break and foam.";
+      add_float(n.attrs, "foam_depth", "Typical depth (m)", 1.5f, 0.05f, 10.f, "Foam")
+          .tooltip = "How shallow the water has to get before foam gathers along\n"
+                     "the coast.";
+      add_float(n.attrs, "foam_coverage", "Crest coverage", 0.4f, 0.f, 1.f, "Foam")
+          .tooltip = "How much of each breaking crest turns white.";
     },
     [](Node &n) { (void)n; })
 

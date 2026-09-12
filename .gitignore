@@ -20,6 +20,10 @@
 
 # private development notes, research and roadmaps (not published)
 /docs_private/
+# Reference imagery kept beside the project - 72 MB of it, and growing. Git
+# keeps every blob it has ever seen, so this would sit in the history for
+# good; it is working material, not source.
+/referance/
 
 # reference material / scratch clones
 /_temp_hesiod/

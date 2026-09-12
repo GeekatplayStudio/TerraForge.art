@@ -80,6 +80,13 @@ void tab_general(App &a) {
   ImGui::SetNextItemWidth(220);
   studio::SliderIntW("Idle rate", &p.idle_fps, 2, 60, "%d fps");
   ImGui::SetNextItemWidth(220);
+  studio::SliderIntW("Sky and sea motion rate", &p.ambient_fps, 0, 60,
+                     p.ambient_fps ? "%d fps" : "idle rate");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The rate the views keep while clouds drift or the sea moves\n"
+                      "and nothing else is happening. At the idle rate that motion\n"
+                      "stutters; 0 lets it fall to the idle rate anyway.");
+  ImGui::SetNextItemWidth(220);
   studio::SliderIntW("Preview panel rate", &p.preview_fps, 1, 60, "%d fps");
   ImGui::SetNextItemWidth(220);
   ImGui::Combo("Preview panel quality", &p.preview_quality, "25%\0" "50%\0" "100%\0");

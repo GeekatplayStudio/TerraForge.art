@@ -114,6 +114,7 @@ static void publish_state(App &a) {
                        {"seed", o.planet.seed},
                        {"sea_level", o.planet.sea_level},
                        {"atmosphere", o.planet.atmo_density},
+                       {"clouds", o.planet.clouds},
                        {"surface_layers", layer_count},
                        {"visible", sc.object_visible(o)}});
   }
@@ -137,6 +138,14 @@ static void publish_state(App &a) {
                 {"star_spikes", rs.space.star_spikes},
                 {"star_halo", rs.space.star_halo},
                 {"star_clump", rs.space.star_clump},
+                {"star_spike_points", rs.space.star_spike_points},
+                {"star_spike_angle", rs.space.star_spike_angle},
+                {"star_spike_chroma", rs.space.star_spike_chroma},
+                {"star_saturation", rs.space.star_saturation},
+                {"star_glow", rs.space.star_glow},
+                {"star_bright_share", rs.space.star_bright_share},
+                {"star_clusters", rs.space.star_clusters},
+                {"star_cluster_size", rs.space.star_cluster_size},
                 {"galaxy_grain", rs.space.galaxy_grain},
                 {"stars", rs.space.stars}, {"star_density", rs.space.star_density},
                 {"star_brightness", rs.space.star_brightness}, {"star_size", rs.space.star_size},
@@ -221,6 +230,11 @@ static void publish_state(App &a) {
                    {"view_w", view_w},
                    {"view_h", view_h},
                    {"sky_gpu_ms", gpu_timer_ms("sky+clouds")},
+                   {"water_gpu_ms", gpu_timer_ms("water")},
+                   // the clouds over the ground and the sky the sea reflects
+                   // (renderer_clouds.cpp)
+                   {"clouds_over_gpu_ms", gpu_timer_ms("clouds over ground")},
+                   {"sky_reflection_gpu_ms", gpu_timer_ms("sky reflection")},
                    {"cloud_scatter_octaves", rs.cloud_scatter_octaves},
                    {"scatter_lod_full_m", rs.scatter_lod_full_m},
                    {"scatter_lod_far_m", rs.scatter_lod_far_m},

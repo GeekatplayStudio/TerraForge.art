@@ -1,4 +1,4 @@
-﻿#include "gpx/serialization.hpp"
+#include "gpx/serialization.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -107,6 +107,38 @@ static void field_from_json(Attribute &a, const json &j) {
   }
 }
 
+// A curve set as text lines plus weights: ["d:...|1;x,y,sl,sr;..", ...].
+static json curveset_to_json(const CurveSet &cs) {
+  json j;
+  json arr = json::array();
+  for (const Curve &c : cs.curves) arr.push_back(curve_to_string(c));
+  j["c"] = arr;
+  bool weighted = false;
+  for (float w : cs.weights) weighted = weighted || w != 1.f;
+  if (weighted) j["w"] = cs.weights;
+  return j;
+}
+static void curveset_from_json(CurveSet &cs, const json &j) {
+  if (!j.is_object() || !j.contains("c") || !j["c"].is_array()) return;
+  cs.curves.clear();
+  cs.weights.clear();
+  for (const json &t : j["c"]) {
+    Curve c;
+    if (t.is_string() && curve_from_string(t.get<std::string>(), c)) cs.curves.push_back(c);
+  }
+  if (j.contains("w") && j["w"].is_array())
+    for (const json &w : j["w"]) cs.weights.push_back(w.is_number() ? w.get<float>() : 1.f);
+  while (cs.weights.size() < cs.curves.size()) cs.weights.push_back(1.f);
+}
+// A shaping curve nobody touched is a constant 1, and is not written.
+static bool curveset_is_one(const CurveSet &cs) {
+  if (cs.curves.size() != 1) return cs.curves.empty();
+  const Curve &c = cs.curves[0];
+  for (const CurveKey &k : c.keys)
+    if (k.y != 1.f || k.sl != 0.f || k.sr != 0.f) return false;
+  return true;
+}
+
 json attr_to_json(const Attribute &a) {
   json j;
   switch (a.type) {
@@ -127,6 +159,23 @@ json attr_to_json(const Attribute &a) {
     case AttrType::Filename:
     case AttrType::Text: j["s"] = a.s; break;
     case AttrType::Field: j = field_to_json(a); break;
+    case AttrType::Curve: j["curves"] = curveset_to_json(a.curves); break;
+    case AttrType::Random:
+      j["f"] = a.f;
+      if (a.spread != 0.f) j["spread"] = a.spread;
+      if (a.spread_mode) j["spread_mode"] = a.spread_mode;
+      if (a.scope != 1) j["scope"] = a.scope;
+      if (a.hier_level != 1) j["hier_level"] = a.hier_level;
+      if (a.hier_cascade) j["hier_cascade"] = true;
+      if (!curveset_is_one(a.curve_along)) j["curve_along"] = curveset_to_json(a.curve_along);
+      if (!curveset_is_one(a.curve_hier)) j["curve_hier"] = curveset_to_json(a.curve_hier);
+      break;
+  }
+  if (a.published) {
+    j["published"] = true;
+    if (a.external) j["external"] = true;
+    if (!a.pub_name.empty()) j["pub_name"] = a.pub_name;
+    if (!a.pub_group.empty()) j["pub_group"] = a.pub_group;
   }
   // animation rides along with the value it belongs to
   if (!a.anim.empty()) j["anim"] = track_to_string(a.anim);
@@ -152,8 +201,29 @@ void attr_from_json(Attribute &a, const json &j) {
       a.anim_v.push_back(t);
     }
   }
+  if (j.contains("published")) {
+    a.published = j["published"].get<bool>();
+    a.external = j.value("external", false);
+    a.pub_name = j.value("pub_name", std::string());
+    a.pub_group = j.value("pub_group", std::string());
+  }
   if (a.type == AttrType::Field) {
     field_from_json(a, j);
+    return;
+  }
+  if (a.type == AttrType::Curve) {
+    if (j.contains("curves")) curveset_from_json(a.curves, j["curves"]);
+    return;
+  }
+  if (a.type == AttrType::Random) {
+    if (j.contains("f")) a.f = j["f"].get<float>();
+    a.spread = j.value("spread", 0.f);
+    a.spread_mode = j.value("spread_mode", 0);
+    a.scope = j.value("scope", 1);
+    a.hier_level = j.value("hier_level", 1);
+    a.hier_cascade = j.value("hier_cascade", false);
+    if (j.contains("curve_along")) curveset_from_json(a.curve_along, j["curve_along"]);
+    if (j.contains("curve_hier")) curveset_from_json(a.curve_hier, j["curve_hier"]);
     return;
   }
   if (j.contains("f")) a.f = j["f"].get<float>();
@@ -329,6 +399,48 @@ static void ai_set_attr(Attribute &a, const json &v) {
           a.col[3] = 1.f;
         }
         break;
+      case AttrType::Random:
+        // a number sets the value; [value, spread] sets both; an object may
+        // name any of value/spread/spread_mode/scope
+        if (v.is_number()) a.f = std::clamp(v.get<float>(), a.fmin, a.fmax);
+        else if (v.is_array() && !v.empty()) {
+          if (v[0].is_number()) a.f = std::clamp(v[0].get<float>(), a.fmin, a.fmax);
+          if (v.size() > 1 && v[1].is_number()) a.spread = std::max(v[1].get<float>(), 0.f);
+        } else if (v.is_object()) {
+          if (v.contains("value") && v["value"].is_number())
+            a.f = std::clamp(v["value"].get<float>(), a.fmin, a.fmax);
+          if (v.contains("spread") && v["spread"].is_number()) a.spread = std::max(v["spread"].get<float>(), 0.f);
+          if (v.contains("spread_mode") && v["spread_mode"].is_number()) a.spread_mode = std::clamp(v["spread_mode"].get<int>(), 0, 2);
+          if (v.contains("scope") && v["scope"].is_number()) a.scope = std::clamp(v["scope"].get<int>(), 0, 3);
+          Curve c;
+          if (v.contains("curve_along") && v["curve_along"].is_string() && curve_from_string(v["curve_along"].get<std::string>(), c))
+            a.curve_along.curves = {c}, a.curve_along.weights = {1.f};
+          if (v.contains("curve_hier") && v["curve_hier"].is_string() && curve_from_string(v["curve_hier"].get<std::string>(), c))
+            a.curve_hier.curves = {c}, a.curve_hier.weights = {1.f};
+        }
+        break;
+      case AttrType::Curve: {
+        // a curve as its text form, or as [[x,y],...] points (smooth)
+        Curve c;
+        if (v.is_string() && curve_from_string(v.get<std::string>(), c)) {
+          a.curves.curves = {c};
+          a.curves.weights = {1.f};
+        } else if (v.is_array() && !v.empty()) {
+          for (const auto &pt : v)
+            if (pt.is_array() && pt.size() >= 2 && pt[0].is_number() && pt[1].is_number())
+              c.keys.push_back({pt[0].get<float>(), pt[1].get<float>(), 0.f, 0.f});
+          if (!c.keys.empty()) {
+            c.normalise();
+            c.auto_slopes();
+            if (!a.curves.curves.empty()) {
+              c.xmin = a.curves.curves[0].xmin; c.xmax = a.curves.curves[0].xmax;
+              c.ymin = a.curves.curves[0].ymin; c.ymax = a.curves.curves[0].ymax;
+            }
+            a.curves.curves = {c};
+            a.curves.weights = {1.f};
+          }
+        }
+      } break;
       case AttrType::Gradient:
         if (v.is_array() && !v.empty()) {
           std::vector<GradientStop> stops;

@@ -51,6 +51,7 @@ void prefs_load() {
       if (d.is_number_integer()) p.editor_domains.push_back(d.get<int>());
     p.viewport_fps = j.value("viewport_fps", p.viewport_fps);
     p.idle_fps = j.value("idle_fps", p.idle_fps);
+    p.ambient_fps = std::clamp(j.value("ambient_fps", p.ambient_fps), 0, 120);
     p.win_x = j.value("win_x", p.win_x);
     p.win_y = j.value("win_y", p.win_y);
     p.win_w = j.value("win_w", p.win_w);
@@ -81,6 +82,7 @@ void prefs_save() {
   j["editor_domains"] = p.editor_domains;
   j["viewport_fps"] = p.viewport_fps;
   j["idle_fps"] = p.idle_fps;
+  j["ambient_fps"] = p.ambient_fps;
   j["win_x"] = p.win_x;
   j["win_y"] = p.win_y;
   j["win_w"] = p.win_w;

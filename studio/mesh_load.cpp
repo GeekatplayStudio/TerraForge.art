@@ -8,9 +8,12 @@
 #include "scene.hpp"
 #include "stb_image.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace studio {
@@ -18,27 +21,68 @@ namespace studio {
 void mesh_to_object(SceneObject &o, const gpx::TriMesh &m) {
   o.verts.clear();
   o.verts.reserve(m.face_count() * 18);
-  for (size_t i = 0; i < m.face_count(); ++i) {
+  // Smooth where the surface is smooth, hard where it folds. Every face used
+  // to shade with its own normal, so a trunk was a faceted prism and a rock a
+  // cut gem. A corner now takes the area-weighted normal of every face that
+  // meets at its position - by position, not index, because a file splits a
+  // vertex wherever its texture seams - unless that normal leans more than
+  // the crease angle from the corner's own face: a box keeps its edges.
+  const size_t nf = m.face_count();
+  std::vector<float> fn(nf * 3);
+  for (size_t i = 0; i < nf; ++i) {
     const uint32_t *fc = m.face(i);
     const float *p0 = m.vert(fc[0]), *p1 = m.vert(fc[1]), *p2 = m.vert(fc[2]);
-    float u[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
-    float v[3] = {p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]};
-    float nx = u[1] * v[2] - u[2] * v[1];
-    float ny = u[2] * v[0] - u[0] * v[2];
-    float nz = u[0] * v[1] - u[1] * v[0];
-    float len = std::sqrt(nx * nx + ny * ny + nz * nz);
-    if (len > 0.f) {
-      nx /= len;
-      ny /= len;
-      nz /= len;
-    } else {
-      ny = 1.f;
+    const float u[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
+    const float v[3] = {p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]};
+    fn[i * 3] = u[1] * v[2] - u[2] * v[1]; // twice the area, along the normal
+    fn[i * 3 + 1] = u[2] * v[0] - u[0] * v[2];
+    fn[i * 3 + 2] = u[0] * v[1] - u[1] * v[0];
+  }
+  float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
+  for (size_t i = 0; i < m.vert_count(); ++i)
+    for (int k = 0; k < 3; ++k) {
+      lo[k] = std::min(lo[k], m.vert((uint32_t)i)[k]);
+      hi[k] = std::max(hi[k], m.vert((uint32_t)i)[k]);
     }
-    for (const float *p : {p0, p1, p2}) {
+  const float span = std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1e-12f});
+  const float q = 1e-6f * span; // positions this close are one corner
+  auto key = [&](const float *p) {
+    const auto c = [&](int k) { return (uint64_t)(int64_t)std::llround((p[k] - lo[k]) / q) & 0x1FFFFF; };
+    return (c(0) << 42) | (c(1) << 21) | c(2);
+  };
+  std::unordered_map<uint64_t, std::array<float, 3>> smooth;
+  smooth.reserve(m.vert_count());
+  for (size_t i = 0; i < nf; ++i) {
+    const uint32_t *fc = m.face(i);
+    for (int k = 0; k < 3; ++k) {
+      std::array<float, 3> &s = smooth[key(m.vert(fc[k]))];
+      s[0] += fn[i * 3];
+      s[1] += fn[i * 3 + 1];
+      s[2] += fn[i * 3 + 2];
+    }
+  }
+  const float crease = std::cos(50.f * 3.14159265f / 180.f);
+  for (size_t i = 0; i < nf; ++i) {
+    const uint32_t *fc = m.face(i);
+    float f[3] = {fn[i * 3], fn[i * 3 + 1], fn[i * 3 + 2]};
+    float len = std::sqrt(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]);
+    if (len > 0.f) {
+      for (float &c : f) c /= len;
+    } else {
+      f[0] = 0.f; f[1] = 1.f; f[2] = 0.f;
+    }
+    for (int k = 0; k < 3; ++k) {
+      const float *p = m.vert(fc[k]);
+      float n[3] = {f[0], f[1], f[2]};
+      const auto it = smooth.find(key(p));
+      if (it != smooth.end()) {
+        const std::array<float, 3> &s = it->second;
+        const float sl = std::sqrt(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
+        if (sl > 0.f && (s[0] * f[0] + s[1] * f[1] + s[2] * f[2]) / sl >= crease)
+          for (int c = 0; c < 3; ++c) n[c] = s[(size_t)c] / sl;
+      }
       o.verts.insert(o.verts.end(), p, p + 3);
-      o.verts.push_back(nx);
-      o.verts.push_back(ny);
-      o.verts.push_back(nz);
+      o.verts.insert(o.verts.end(), n, n + 3);
     }
   }
   o.vert_count = (int)(o.verts.size() / 6);

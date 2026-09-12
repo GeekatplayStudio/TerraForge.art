@@ -35,6 +35,24 @@ struct SpaceSettings {
   float star_halo = 0.6f;        // the soft ring round a bright star
   float star_clump = 0.55f;      // how strongly they gather into associations
   int star_seed = 1;
+  // The spikes are the camera's, not the stars': a telescope's vanes cut the
+  // same cross into every star in the frame. How many points (4, 6 or 8), the
+  // angle they share, and how far each colour reaches along them - the
+  // rainbow a real lens leaves on the arms.
+  int star_spike_points = 4;
+  float star_spike_angle = 0.f;  // degrees
+  float star_spike_chroma = 0.f; // 0..1
+  float star_saturation = 1.f;   // the stars' own colour, 0 grey .. 2 rich
+  float star_glow = 0.f;         // the wide soft bloom round the brightest
+  // How many of the stars are bright ones: 0 a very few among the faint,
+  // 1 many. The magnitudes follow a steep power law (shaders_space_stars.cpp)
+  // and this is its exponent, 14 down to 4; 0.5 is the 9 the sky always had.
+  float star_bright_share = 0.5f;
+  // Star clusters: stars born together, crowded at a core and thinning to an
+  // edge - loose blue open clusters and tight yellow globulars. How many
+  // (0 none), and how wide one is across, degrees.
+  float star_clusters = 0.f;
+  float star_cluster_size = 1.5f;
 
   // ---- the milky band
   bool galaxy_on = true;

@@ -21,9 +21,14 @@ uniform float u_planet_radius; // 0 = flat, else the tile lies on a sphere
 uniform float u_field_strength; // graph-authored displacement, 0 = none
 // Level of detail for the baked relief (docs/LOD.md): far from the camera
 // the height is read from a calmer mip level, so a field of stones at the
-// horizon is a texture, not a shimmer. 0 = every vertex reads level 0.
+// horizon is a texture, not a shimmer. The level is the one whose texel spans
+// as many pixels as the tessellation puts between vertices, so it follows the
+// lens and the screen; 0 = every vertex reads level 0.
 uniform float u_height_lod_k;
 uniform vec3 u_lod_cam;
+uniform float u_lod_ground; // the tile's mean height, world units, for the distance
+uniform float u_tri_k;      // a triangle's edge per unit of distance (0: unknown)
+HEIGHT_SMOOTH_PLACEHOLDER
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
 TILE_XFORM_PLACEHOLDER
@@ -55,12 +60,7 @@ vec3 gpx_sphere_place(vec2 uv, float h){
   return pl_sphere_place(uv, h, u_planet_radius);
 }
 void terrain_place(vec2 uv){
-  float lod = 0.0;
-  if (u_height_lod_k > 0.0) {
-    float dl = length(u_lod_cam - vec3(uv.x, u_lod_cam.y, uv.y));
-    lod = clamp(log2(max(dl * u_height_lod_k, 1.0)), 0.0, 4.0);
-  }
-  float h = textureLod(u_height, uv, lod).r * u_hscale;
+  float h = height_smooth(uv, relief_lod(uv)) * u_hscale;
   if (u_has_disp == 1)
     h += (texture(u_disp, uv).r - 0.5) * 2.0 * u_disp_strength;
   vec3 p = vec3(uv.x, h, uv.y);
@@ -75,12 +75,26 @@ void terrain_place(vec2 uv){
   float d = length(u_cam - p);
   v_detail = 0.0;
   if (u_frac_amount > 0.0){
-    int oct = gp_octaves(d, 9.0);
-    if (oct > 0){
-      float f = gp_detail(uv, u_frac_scale, oct, 0.5) - 0.5;
-      v_detail = f;
-      p.y += f * u_frac_amount;
+    // No octave finer than the triangles carrying it. A wave shorter than two
+    // edges is drawn as a sawtooth along every ridge, and it crawls as the
+    // tessellation moves; those octaves are in the shading's normal instead
+    // (get_normal). The count is continuous, so an octave fades in rather
+    // than popping as the camera closes. The CPU makes the same choice to
+    // pick on this surface and settle the orbit pivot on it
+    // (relief_view_octaves, terrain_relief.hpp): change one, change both.
+    float of = gp_octavesf(d, 9.0);
+    if (u_tri_k > 0.0){
+      float tri = max(d * u_tri_k, 1e-7);
+      of = min(of, log2(1.0 / (2.0 * tri * max(u_frac_scale, 1e-4))) / log2(2.03) + 1.0);
     }
+    of = max(of, 0.0);
+    int o0 = int(floor(of));
+    float ft = of - float(o0);
+    float f = o0 > 0 ? gp_detail(uv, u_frac_scale, o0, gp_gain()) - 0.5 : 0.0;
+    if (ft > 0.001 && o0 < 9)
+      f = mix(f, gp_detail(uv, u_frac_scale, o0 + 1, gp_gain()) - 0.5, ft);
+    v_detail = f;
+    p.y += f * u_frac_amount;
   }
   // the tile's own transform (terrain_xform.hpp): offset, heading, pitch,
   // bank, size per axis, deformers - then the planetary curvature, so a
@@ -267,6 +281,11 @@ float gp_vnoise(vec2 p){
   return mix(mix(gp_hash(i), gp_hash(i + vec2(1,0)), f.x),
              mix(gp_hash(i + vec2(0,1)), gp_hash(i + vec2(1,1)), f.x), f.y);
 }
+// How much each finer octave of the micro-relief keeps (RenderSettings::
+// fractal_gain). A program that never uploads it reads 0 and gets the 0.5 the
+// relief always had, so the tile and the ground round it cannot disagree.
+uniform float u_frac_gain;
+float gp_gain(){ return u_frac_gain > 0.0 ? clamp(u_frac_gain, 0.05, 0.95) : 0.5; }
 // ridged fBm; `octaves` is chosen from camera distance so cost scales with
 // how much detail is actually visible
 float gp_detail(vec2 uv, float base_freq, int octaves, float gain){
@@ -295,129 +314,23 @@ int gp_octaves(float dist, float max_oct){
 }
 )GLSL";
 
-// shared sky helper injected into several shaders
-// The sky function is shared by the sky pass, terrain reflections and water
-// reflections, so the backdrop dome lives in it too: whatever looks at the sky
-// sees the same picture. renderer_backdrop.cpp binds the sampler and uniforms
-// in every program that carries this block.
-const char *const SKY_FN = R"GLSL(
-// The light the sky casts on level ground, measured through the same sky and
-// cloud march the viewport draws (studio/sky_light.cpp). Reflected radiance
-// is albedo times this: the cosine-weighted integral over the sky and the
-// division by pi cancel, which is why one number does the whole job.
-//
-// It replaced the average of the two sky *colours* - a number between 0 and
-// 1 where the real one is several times larger. That substitution is why a
-// path-traced frame, which integrates the real sky, came out far brighter
-// than its own preview. A uniform never set reads as zero, so a shader that
-// forgets to upload it goes black rather than quietly wrong.
-uniform vec3 u_sky_light;
-uniform sampler2D u_backdrop;
-uniform int u_bd_on, u_bd_mode, u_bd_flip, u_bd_hide_sun;
-uniform float u_bd_aspect, u_bd_yaw, u_bd_pitch, u_bd_tanhalf, u_bd_gain;
-uniform float u_bd_blend, u_bd_haze;
-uniform vec3 u_bd_tint;
-// how much of the last sky_color() came from the dome (0 = none / no pixel)
-float g_bd_weight = 0.0;
-vec3 bd_rotate(vec3 d){
-  float cy = cos(u_bd_yaw), sy = sin(u_bd_yaw);
-  d = vec3(d.x*cy - d.z*sy, d.y, d.x*sy + d.z*cy);
-  float cp = cos(u_bd_pitch), sp = sin(u_bd_pitch);
-  return vec3(d.x, d.y*cp - d.z*sp, d.y*sp + d.z*cp);
-}
-// Direction to image coordinates for each mapping. Forward is -Z, so the
-// middle of a panorama faces the default camera; v = 0 is the top row.
-// Returns false where the mapping has no pixel (below a sky dome, outside a
-// planar plate) so the procedural sky shows through there.
-bool bd_uv(vec3 d, out vec2 uv){
-  const float PI_ = 3.14159265, PI2 = 6.2831853;
-  uv = vec2(0.5);
-  if (u_bd_mode == 0) {
-    uv = vec2(atan(d.x, -d.z) / PI2 + 0.5, acos(clamp(d.y, -1.0, 1.0)) / PI_);
-  } else if (u_bd_mode == 1) {
-    float r = acos(clamp(-d.z, -1.0, 1.0)) / PI_;
-    float k = r / max(length(d.xy), 1e-6);
-    uv = vec2(d.x * k, -d.y * k) * 0.5 + 0.5;
-  } else if (u_bd_mode == 2) {
-    float m = 2.0 * length(vec3(d.x, d.y, d.z + 1.0));
-    if (m < 1e-6) return false;
-    uv = vec2(d.x / m, -d.y / m) + 0.5;
-  } else if (u_bd_mode == 3) {
-    vec3 a = abs(d); int face; vec2 st;
-    if (a.x >= a.y && a.x >= a.z) { face = d.x > 0.0 ? 0 : 1; st = vec2(d.x > 0.0 ? -d.z : d.z, -d.y) / a.x; }
-    else if (a.y >= a.z) { face = d.y > 0.0 ? 2 : 3; st = vec2(d.x, d.y > 0.0 ? d.z : -d.z) / a.y; }
-    else { face = d.z > 0.0 ? 4 : 5; st = vec2(d.z > 0.0 ? d.x : -d.x, -d.y) / a.z; }
-    st = st * 0.5 + 0.5;
-    vec2 cell, grid;
-    if (u_bd_aspect > 1.0) { // horizontal cross, 4 x 3
-      grid = vec2(4.0, 3.0);
-      if (face == 0) cell = vec2(2.0, 1.0); else if (face == 1) cell = vec2(0.0, 1.0);
-      else if (face == 2) cell = vec2(1.0, 0.0); else if (face == 3) cell = vec2(1.0, 2.0);
-      else if (face == 4) cell = vec2(1.0, 1.0); else cell = vec2(3.0, 1.0);
-    } else { // vertical cross, 3 x 4, the back face upside down at the bottom
-      grid = vec2(3.0, 4.0);
-      if (face == 0) cell = vec2(2.0, 1.0); else if (face == 1) cell = vec2(0.0, 1.0);
-      else if (face == 2) cell = vec2(1.0, 0.0); else if (face == 3) cell = vec2(1.0, 2.0);
-      else if (face == 4) cell = vec2(1.0, 1.0); else { cell = vec2(1.0, 3.0); st = 1.0 - st; }
-    }
-    uv = (cell + st) / grid;
-  } else if (u_bd_mode == 4) {
-    float t = d.y / max(length(d.xz), 1e-6);
-    uv = vec2(atan(d.x, -d.z) / PI2 + 0.5, 0.5 - t / (2.0 * u_bd_tanhalf));
-    if (uv.y < 0.0 || uv.y > 1.0) return false;
-  } else if (u_bd_mode == 5) {
-    if (d.y <= 0.0) return false;
-    float r = acos(clamp(d.y, -1.0, 1.0)) / (PI_ * 0.5) * 0.5;
-    vec2 dir = length(d.xz) > 1e-6 ? normalize(d.xz) : vec2(0.0);
-    uv = vec2(0.5) + r * vec2(dir.x, -dir.y);
-  } else {
-    if (d.z >= -1e-6) return false;
-    vec2 p = d.xy / (-d.z);
-    uv = vec2(p.x / (2.0 * u_bd_tanhalf * u_bd_aspect), -p.y / (2.0 * u_bd_tanhalf)) + 0.5;
-    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return false;
-  }
-  if (u_bd_flip == 1) uv.x = 1.0 - uv.x;
-  return true;
-}
-// The sky's up: the world's surface's up at the eye (world_shape.hpp). Every
-// program starts with world y - dot(dir, (0,1,0)) is dir.y to the bit - and
-// the sky pass sets it from the world's shape, so on a ring the gradient
-// stands over the ring's ground and not over the tile's y axis.
-vec3 g_sky_up = vec3(0.0, 1.0, 0.0);
-vec3 sky_color(vec3 dir, vec3 zenith_c, vec3 horizon_c, vec3 sun, vec3 sun_col,
-               float atmo){
-  float t = clamp(dot(dir, g_sky_up)*0.5+0.5, 0.0, 1.0);
-  vec3 col = mix(horizon_c, zenith_c, pow(t, 0.7/max(atmo,0.05)));
-  float low = 1.0 - clamp(sun.y*3.0, 0.0, 1.0);
-  col = mix(col, col * vec3(1.15,0.85,0.65), low*0.5*atmo);
-  float s = max(dot(dir, sun), 0.0);
-  col += sun_col * pow(s, 12.0) * 0.18 * atmo;
-  // the sky darkens as the sun sets: full brightness above the horizon,
-  // deep blue-black once it is well below. Shared by sky, terrain ambient
-  // and water reflections, so the whole scene agrees about nightfall.
-  float day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
-  col *= day;
-  // The dome is an absolute HDR picture: it is not dimmed with the procedural
-  // sky, its own lighting is whatever the photograph holds.
-  g_bd_weight = 0.0;
-  if (u_bd_on == 1) {
-    vec2 uv;
-    if (bd_uv(bd_rotate(dir), uv)) {
-      vec3 bd = texture(u_backdrop, uv).rgb * u_bd_gain * u_bd_tint;
-      col = mix(col, bd, u_bd_blend);
-      g_bd_weight = u_bd_blend;
-    }
-  }
-  return col;
-}
-)GLSL";
-
 // Height fog, shared by terrain, water and meshes so that every surface at a
 // given distance disappears into the same air, and the render passes: aov_out
 // is what a shader writes instead of its colour while a pass is drawn (see
 // renderer_aov.cpp; the numbers mirror RenderPass bit + 1).
 const char *const FOG_FN = R"GLSL(
 uniform int u_fog_type;
+// The bands a FogLayer node adds, beyond the first (studio/scene_nodes.cpp).
+#define MAX_FOG_LAYERS 8
+uniform int u_fogl_count;
+uniform int u_fogl_type[MAX_FOG_LAYERS];
+uniform float u_fogl_density[MAX_FOG_LAYERS];
+uniform float u_fogl_level[MAX_FOG_LAYERS];
+uniform float u_fogl_falloff[MAX_FOG_LAYERS];
+uniform vec3 u_fogl_color[MAX_FOG_LAYERS];
+uniform float u_fogl_scatter[MAX_FOG_LAYERS];
+uniform float u_fogl_albedo[MAX_FOG_LAYERS];
+uniform float u_fogl_g[MAX_FOG_LAYERS];
 uniform float u_fog_density, u_fog_level, u_fog_falloff, u_fog_scatter;
 uniform vec3 u_fog_color, u_absorb;
 uniform float u_fog_albedo, u_fog_g, u_fog_hetero;
@@ -479,59 +392,107 @@ float fog_noise3(vec3 p){
 }
 // f: 1 - transmittance along the ray; fogc: the in-scattered radiance, per
 // unit of f, so that col*T + fogc*f is the radiative transfer result.
+// One band of air along the ray: how much of the surface it swallows, and
+// what it puts back. Split out of fog_terms so that the layers above the
+// first are the same arithmetic and not a second implementation of it.
+void fog_band(vec3 world, vec3 cam, float dist, float hscale, vec3 sun, vec3 sun_col,
+              int type, float density, float lvl, float fall, vec3 fcol,
+              float scatter, float albedo, float g, out float od, out vec3 fogc){
+  od = 0.0; fogc = vec3(0.0);
+  if (type == 0 || density <= 0.0) return;
+  float level = lvl * hscale * 4.0;
+  float falloff = fall / max(hscale, 1e-3);
+  float dens = density * (type == 1 ? 0.35 : (type == 2 ? 1.0 : 1.8));
+  vec3 dir = (world - cam) / max(dist, 1e-5);
+  float fog_day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
+  float phase = fog_hg(dot(dir, sun), g) * 12.566;
+  vec3 sun_in = sun_col * fog_day * phase * scatter;
+  vec3 sky_in = fcol * fog_day;
+  // optical depth through an exponential height profile, in closed form
+  float fy0 = fog_alt(cam) - level, fy1 = fog_alt(world) - level;
+  float dY = fy1 - fy0;
+  float a = exp(-falloff * max(fy0, 0.0));
+  float b = exp(-falloff * max(fy1, 0.0));
+  od = ((abs(falloff * dY) < 1e-3) ? dist * a
+                                   : abs(dist * (a - b) / (falloff * dY))) * dens;
+  fogc = albedo * (sky_in + sun_in);
+  if (type == 3) fogc *= vec3(0.85, 0.75, 0.6);
+}
+
+// Every band of air at once.
+//
+// Air is never one band - haze to the horizon, a fog lying in the valley
+// bottom, a brown layer over a town, a clear gap, a sheet of mist above - and
+// a single set of numbers can be any one of those and never two together.
+// Each FogLayer node is a band; the settings below the loop are the first,
+// which every scene already has.
+//
+// They compose the way air does. Absorption through mixed media adds, so the
+// optical depths sum and the total is exact however many there are and
+// whatever order they lie in. The colour is each band's weighted by how much
+// of the total depth it accounts for, so a thin haze in front of a thick fog
+// reads as the fog and neither hides the other.
 void fog_terms(vec3 world, vec3 cam, float dist, float hscale, vec3 sun, vec3 sun_col,
                out float f, out vec3 fogc){
   f = 0.0; fogc = vec3(0.0);
-  if (u_fog_type == 0 || u_fog_density <= 0.0) return;
-  float level = u_fog_level * hscale * 4.0;
-  float falloff = u_fog_falloff / max(hscale, 1e-3);
-  float dens = u_fog_density * (u_fog_type == 1 ? 0.35 : (u_fog_type == 2 ? 1.0 : 1.8));
-  vec3 dir = (world - cam) / max(dist, 1e-5);
-  // lit air darkens with the day, or night would end at the horizon line
-  float fog_day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
-  // the phase is renormalised by 4pi, as the clouds do, so isotropic reads 1
-  float phase = fog_hg(dot(dir, sun), u_fog_g) * 12.566;
-  vec3 sun_in = sun_col * fog_day * phase * u_fog_scatter;
-  vec3 sky_in = u_fog_color * fog_day;
-  if (u_fog_steps <= 1 || u_fog_hetero <= 0.0) {
-    // closed form: optical depth through an exponential height profile
-    float fy0 = fog_alt(cam) - level, fy1 = fog_alt(world) - level;
-    float dY = fy1 - fy0;
-    float a = exp(-falloff * max(fy0, 0.0));
-    float b = exp(-falloff * max(fy1, 0.0));
-    float od = ((abs(falloff * dY) < 1e-3) ? dist * a
-                                           : abs(dist * (a - b) / (falloff * dY))) * dens;
-    f = clamp(1.0 - exp(-od), 0.0, 1.0);
-    fogc = u_fog_albedo * (sky_in + sun_in);
-  } else {
-    int steps = clamp(u_fog_steps, 2, 64);
-    float dt = dist / float(steps);
-    float T = 1.0;
-    vec3 S = vec3(0.0);
-    float nscale = 9.0 / max(hscale, 1e-3);
-    float ls = (0.35 / falloff) / 3.0; // the sun march covers a third of the profile
-    for (int i = 0; i < steps; ++i){
-      vec3 p = cam + dir * ((float(i) + 0.5) * dt);
-      float sig = dens * exp(-falloff * max(fog_alt(p) - level, 0.0))
-                * mix(1.0, fog_noise3(p * nscale) * 1.6, u_fog_hetero);
-      float ext = sig * dt;
-      // self-shadowing: optical depth toward the sun from this point
-      float od_sun = 0.0;
-      for (int j = 0; j < 3; ++j){
-        vec3 q = p + sun * ((float(j) + 0.5) * ls);
-        od_sun += dens * exp(-falloff * max(fog_alt(q) - level, 0.0))
-                * mix(1.0, fog_noise3(q * nscale) * 1.6, u_fog_hetero) * ls;
+  float od_total = 0.0;
+  vec3 col_sum = vec3(0.0);
+  // the first band, which may march rather than close if it is broken up
+  if (u_fog_type != 0 && u_fog_density > 0.0) {
+    if (u_fog_steps <= 1 || u_fog_hetero <= 0.0) {
+      float od; vec3 c;
+      fog_band(world, cam, dist, hscale, sun, sun_col, u_fog_type, u_fog_density,
+               u_fog_level, u_fog_falloff, u_fog_color, u_fog_scatter, u_fog_albedo,
+               u_fog_g, od, c);
+      od_total += od; col_sum += c * od;
+    } else {
+      float level = u_fog_level * hscale * 4.0;
+      float falloff = u_fog_falloff / max(hscale, 1e-3);
+      float dens = u_fog_density * (u_fog_type == 1 ? 0.35 : (u_fog_type == 2 ? 1.0 : 1.8));
+      vec3 dir = (world - cam) / max(dist, 1e-5);
+      float fog_day = clamp(sun.y * 4.0 + 0.35, 0.035, 1.0);
+      float phase = fog_hg(dot(dir, sun), u_fog_g) * 12.566;
+      vec3 sun_in = sun_col * fog_day * phase * u_fog_scatter;
+      vec3 sky_in = u_fog_color * fog_day;
+      int steps = clamp(u_fog_steps, 2, 64);
+      float dt = dist / float(steps);
+      float T = 1.0;
+      vec3 S = vec3(0.0);
+      float nscale = 9.0 / max(hscale, 1e-3);
+      float ls = (0.35 / falloff) / 3.0;
+      for (int i = 0; i < steps; ++i){
+        vec3 p = cam + dir * ((float(i) + 0.5) * dt);
+        float sig = dens * exp(-falloff * max(fog_alt(p) - level, 0.0))
+                  * mix(1.0, fog_noise3(p * nscale) * 1.6, u_fog_hetero);
+        float ext = sig * dt;
+        float od_sun = 0.0;
+        for (int j = 0; j < 3; ++j){
+          vec3 q = p + sun * ((float(j) + 0.5) * ls);
+          od_sun += dens * exp(-falloff * max(fog_alt(q) - level, 0.0))
+                  * mix(1.0, fog_noise3(q * nscale) * 1.6, u_fog_hetero) * ls;
+        }
+        vec3 Li = u_fog_albedo * (sky_in + sun_in * exp(-od_sun));
+        float absorbed = 1.0 - exp(-ext);
+        S += T * Li * absorbed;
+        T *= 1.0 - absorbed;
+        if (T < 0.01) { T = 0.0; break; }
       }
-      vec3 Li = u_fog_albedo * (sky_in + sun_in * exp(-od_sun));
-      float absorbed = 1.0 - exp(-ext);
-      S += T * Li * absorbed;
-      T *= 1.0 - absorbed;
-      if (T < 0.01) { T = 0.0; break; } // dissipated: nothing more to add
+      float od = -log(max(T, 1e-4));
+      vec3 c = S / max(1.0 - T, 1e-4);
+      if (u_fog_type == 3) c *= vec3(0.85, 0.75, 0.6);
+      od_total += od; col_sum += c * od;
     }
-    f = clamp(1.0 - T, 0.0, 1.0);
-    fogc = S / max(f, 1e-4);
   }
-  if (u_fog_type == 3) fogc *= vec3(0.85, 0.75, 0.6);
+  // and every band a FogLayer node added
+  for (int i = 0; i < u_fogl_count; ++i) {
+    float od; vec3 c;
+    fog_band(world, cam, dist, hscale, sun, sun_col, u_fogl_type[i], u_fogl_density[i],
+             u_fogl_level[i], u_fogl_falloff[i], u_fogl_color[i], u_fogl_scatter[i],
+             u_fogl_albedo[i], u_fogl_g[i], od, c);
+    od_total += od; col_sum += c * od;
+  }
+  f = clamp(1.0 - exp(-od_total), 0.0, 1.0);
+  fogc = od_total > 1e-5 ? col_sum / od_total : vec3(0.0);
 }
 // What survives of the surface: transmittance, tinted by a wavelength-
 // dependent absorber (u_absorb per channel, raised to the optical depth), plus

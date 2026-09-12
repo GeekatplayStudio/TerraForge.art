@@ -7,6 +7,7 @@
 #include "gpx/planet_math.hpp"
 #include "gpx/scatter.hpp"
 #include "scatter_lod.hpp"
+#include "terrain_relief.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -44,6 +45,9 @@ void scene_rebuild_scatter_instances(App &a) {
                                  ? g_overlay_terrain.get()
                                  : nullptr;
   float hs = render_settings().height_scale;
+  // the micro-relief the viewport draws over the heightmap: without it a
+  // copy stood metres into a crest or over a trough (terrain_relief.hpp)
+  const ReliefDials relief = relief_dials(render_settings());
   for (SceneObject &o : scene().objects) {
     o.inst_revision = ++revision;
     if (o.type != SceneObject::Mesh || !o.scatter_node) {
@@ -78,7 +82,7 @@ void scene_rebuild_scatter_instances(App &a) {
       if (hm) {
         int ix = std::clamp((int)(px * hm->w), 0, hm->w - 1);
         int iy = std::clamp((int)(pz * hm->h), 0, hm->h - 1);
-        py = hm->v[(size_t)iy * hm->w + ix] * hs;
+        py = hm->v[(size_t)iy * hm->w + ix] * hs + relief_at(px, pz, relief, RELIEF_NEAR_OCTAVES);
         // the ground's normal, for instances that grow from the surface
         float dx = 0, dz = 0;
         hm->gradient_at(ix, iy, dx, dz);

@@ -33,6 +33,10 @@ void show_attr_tooltip(const gpx::Attribute &at);
 bool object_ref_combo(gpx::Attribute &at);
 // scalar_float is declared in app.hpp: prop_lengths.hpp uses it too.
 
+// studio/attr_widgets_plant.cpp - a curve you draw, a number with a spread
+bool draw_attr_curve(gpx::Attribute &at);
+bool draw_attr_random(gpx::Attribute &at);
+
 // Also used by the Material Editor, which shows one layer's settings
 // with the same widgets the Properties editor uses for any node.
 bool draw_attribute(gpx::Attribute &at) {
@@ -47,6 +51,12 @@ bool draw_attribute(gpx::Attribute &at) {
   switch (at.type) {
     case gpx::AttrType::Float:
       changed = scalar_float("f", &at.f, at.fmin, at.fmax, at.log_scale);
+      break;
+    case gpx::AttrType::Random:
+      changed = draw_attr_random(at);
+      break;
+    case gpx::AttrType::Curve:
+      changed = draw_attr_curve(at);
       break;
     case gpx::AttrType::Int:
       changed = scalar_int("i", &at.i, at.imin, at.imax);
@@ -286,6 +296,31 @@ struct NodeMirror {
 static std::map<uint64_t, NodeMirror> g_mirrors;
 
 void node_properties_ui(App &a) { node_properties_ui(a, a.selected_node, false); }
+
+// Edits still waiting in a mirror, written through once a frame whether or
+// not their panel is drawn. The panel only flushed its own node while it was
+// on screen: release a slider while the last low-resolution pass holds the
+// graph, pick another node, and the edit - and the full-resolution pass it
+// asks for - waited until that node was shown again. The viewport stayed on
+// the 256 map meanwhile, jagged and with the erosion of another resolution.
+void node_properties_flush(App &a) {
+  bool any = false;
+  for (const auto &kv : g_mirrors) any = any || kv.second.pending;
+  if (!any) return;
+  std::unique_lock<App::GraphMutex> lk(a.graph_mtx, std::try_to_lock);
+  if (!lk.owns_lock()) return; // the next frame tries again
+  for (auto &kv : g_mirrors) {
+    NodeMirror &m = kv.second;
+    if (!m.pending) continue;
+    m.pending = false;
+    gpx::Node *live = a.graph.find_node(m.id);
+    if (!live) continue;
+    for (const auto &src : m.attrs.items)
+      if (gpx::Attribute *dst = live->attrs.find(src.key)) *dst = src;
+    a.graph.mark_dirty(live->id);
+    a.request_eval();
+  }
+}
 
 void node_properties_ui(App &a, uint64_t node_id, bool any_workspace) {
   NodeMirror &g_mirror = g_mirrors[node_id];

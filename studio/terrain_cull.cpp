@@ -71,17 +71,19 @@ std::vector<float> patch_height_bounds(const gpx::Heightmap &h, int patches) {
   // samples, and it runs again every time the terrain changes.
   gpx::parallel_rows(patches, [&](int p0, int p1) {
     for (int py = p0; py < p1; ++py) {
-      // Texel span of this patch, widened by one on every side. Bilinear
-      // filtering inside the patch can reach the neighbouring texel, and a
-      // bound that does not cover what the shader can sample is a bound that
-      // lies.
-      int y0 = (int)std::floor((float)py / patches * h.h) - 1;
-      int y1 = (int)std::ceil((float)(py + 1) / patches * h.h) + 1;
+      // Texel span of this patch, widened by two on every side. The relief is
+      // a cubic B-spline read through four bilinear taps (shaders_relief.cpp)
+      // that reach two texels past the one a vertex stands on, and a bound
+      // that does not cover what the shader can sample is a bound that lies.
+      // (The spline's weights are positive and sum to one, so its height
+      // never leaves the range of the texels it reads.)
+      int y0 = (int)std::floor((float)py / patches * h.h) - 2;
+      int y1 = (int)std::ceil((float)(py + 1) / patches * h.h) + 2;
       y0 = std::max(y0, 0);
       y1 = std::min(y1, h.h - 1);
       for (int px = 0; px < patches; ++px) {
-        int x0 = (int)std::floor((float)px / patches * h.w) - 1;
-        int x1 = (int)std::ceil((float)(px + 1) / patches * h.w) + 1;
+        int x0 = (int)std::floor((float)px / patches * h.w) - 2;
+        int x1 = (int)std::ceil((float)(px + 1) / patches * h.w) + 2;
         x0 = std::max(x0, 0);
         x1 = std::min(x1, h.w - 1);
         float lo = h.v[(size_t)y0 * h.w + x0], hi = lo;

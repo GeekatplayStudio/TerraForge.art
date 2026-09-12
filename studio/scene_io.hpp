@@ -69,4 +69,11 @@ void scene_from_json(const nlohmann::json &j, const GraphIdMap &idmap,
 nlohmann::json environment_to_json();
 void environment_from_json(const nlohmann::json &j, const GraphIdMap &idmap);
 
+// Every node binding outside the graph - an object's driver, material,
+// population, planet and surface-layer nodes, and the settings' node fields -
+// translated through `idmap`, in place. For a graph reloaded in memory (undo):
+// the loader renumbers nodes, and a binding left on the old number pointed
+// at nothing, so a restored plant's node built it a second time.
+void scene_remap_node_ids(SceneState &sc, RenderSettings &rs, const GraphIdMap &idmap);
+
 } // namespace studio

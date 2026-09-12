@@ -9,6 +9,78 @@
 
 namespace studio {
 
+
+// --------------------------------------------------------------- the wind
+// What the wind is doing at a moment, which every moving thing in the scene
+// asks and none of them decides for itself.
+//
+// A gust is not a random number per frame - that would make everything
+// jitter and nothing travel. It is a slow wave passing over the ground, so
+// two trees a hundred metres apart are caught by the same gust a moment
+// apart, and the whole wood leans and recovers together. Here only the time
+// part is evaluated; whatever is being moved adds its own place through
+// `gust_size_m` where it can (the sea and the clouds already march in world
+// space, and a plant is small enough that one plant is one place).
+//
+// The turn is the same wave a quarter cycle behind: real gusts back and veer
+// as they arrive rather than strengthening along a fixed line.
+void RenderSettings::wind_at(float t, float alt, float &speed_ms, float &dir_deg) const {
+  const float TAU = 6.28318530717959f;
+  const float f = std::max(wind.gust_frequency, 0.f);
+  // two frequencies a fifth apart, so the gusts never fall into a rhythm
+  const float a = std::sin(t * f * TAU) * 0.65f + std::sin(t * f * TAU * 1.7f + 1.3f) * 0.35f;
+  const float b = std::sin(t * f * TAU - 1.5708f) * 0.65f + std::sin(t * f * TAU * 1.7f - 0.27f) * 0.35f;
+  const float gust = 1.f + std::max(wind.gust_strength, 0.f) * a;
+  // the shear: still air at the ground, faster aloft
+  const float lift = 1.f + (std::max(wind.shear, 0.f) - 1.f) * std::clamp(alt, 0.f, 1.f);
+  speed_ms = std::max(wind.speed_ms, 0.f) * std::max(gust, 0.f) * lift;
+  dir_deg = wind.direction_deg + wind.turbulence_deg * b;
+}
+
+void RenderSettings::wind_vector(float t, float alt, float &vx, float &vz, float &speed_ms) const {
+  float dir = 0.f;
+  wind_at(t, alt, speed_ms, dir);
+  const float r = dir * 0.01745329251994f;
+  vx = std::cos(r);
+  vz = std::sin(r);
+}
+
+
+// One step of the air, and what everything following it is blown by.
+void RenderSettings::wind_advance(float t, float dt) {
+  dt = std::clamp(dt, 0.f, 0.25f);
+  const float size = std::max(terrain_size_m, 1.f);
+  float vx = 0.f, vz = 0.f, sp = 0.f;
+  // at the ground: the sea, the fog, the plants
+  wind_vector(t, 0.f, vx, vz, sp);
+  const float step = sp * dt / size; // metres a second into tiles a second
+  wind_drift[0] += vx * step;
+  wind_drift[1] += vz * step;
+  wind_drift_len += step;
+  // and aloft, where the shear has it moving faster: the clouds
+  float hx = 0.f, hz = 0.f, hs = 0.f;
+  wind_vector(t, 1.f, hx, hz, hs);
+  const float hstep = hs * dt / size;
+  wind_drift_hi[0] += hx * hstep;
+  wind_drift_hi[1] += hz * hstep;
+  wind_drift_hi_len += hstep;
+
+  // The sea is built from a wind that has been blowing for hours, so it takes
+  // the mean and not the gust: a sea state does not answer a single squall,
+  // and rebuilding the wave spectrum every frame because the speed wobbled
+  // would cost more than the whole water pass.
+  if (water_wind_follow) {
+    water_wind_speed = std::max(wind.speed_ms, 0.f);
+    water_wind_dir = wind.direction_deg;
+  }
+  // The clouds are given the direction for their detail terms; how far they
+  // have actually travelled is the drift above.
+  if (cloud_wind_follow) {
+    cloud_wind_speed = hs / size;
+    cloud_wind_dir = wind.direction_deg;
+  }
+}
+
 RenderSettings &render_settings() {
   static RenderSettings rs;
   return rs;

@@ -2,6 +2,7 @@
 #include "app.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include "scene_io.hpp"
 #include "gpx/serialization.hpp"
 #include <deque>
 #include <map>
@@ -102,7 +103,19 @@ static void restore(App &a, const Snapshot &s) {
   if (s.has_graph) {
     std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     std::string err;
-    if (gpx::graph_from_json(a.graph, s.graph_json, err)) {
+    GraphIdMap idmap;
+    if (gpx::graph_from_json(a.graph, s.graph_json, err, &idmap)) {
+      // The loader renumbers the nodes, so every binding outside the graph
+      // follows them through the same map. Left on the old numbers, a
+      // restored object's driver pointed at nothing and its node built the
+      // object a second time - undoing a delete doubled every plant.
+      scene_remap_node_ids(scene(), render_settings(), idmap);
+      auto follow = [&](uint64_t id) {
+        auto it = idmap.find(id);
+        return id && it != idmap.end() ? it->second : 0ull;
+      };
+      a.last_material = follow(a.last_material);
+      a.seq_cam_path = follow(a.seq_cam_path);
       a.graph.resolution = s.graph_resolution;
       // node ids are reassigned by the loader, so selection travels by index
       auto id_at = [&](int idx) -> uint64_t {

@@ -5,6 +5,7 @@
 #include "scene.hpp"
 #include <cmath>
 #include <unordered_map>
+#include <vector>
 
 namespace studio {
 
@@ -58,8 +59,15 @@ bool mesh_build_lods(SceneObject &o) {
   o.lod_tried = true;
   o.lod_verts[0].clear();
   o.lod_verts[1].clear();
+  o.lod_parts[0].clear();
+  o.lod_parts[1].clear();
   o.lod_count[0] = o.lod_count[1] = 0;
-  if (!o.parts.empty()) return false; // pictures would tear
+  // A mesh with parts is reduced part by part so each keeps its own picture
+  // (mesh_lod_parts.cpp). Welding the whole thing into one soup, which is
+  // what happens below, throws the texture coordinates away - fine for a
+  // rock, and for a plant it means every ring but the farthest drew the FULL
+  // tree, because there was no reduced mesh for the renderer to pick.
+  if (!o.parts.empty()) return mesh_build_lods_parts(o);
   const size_t faces = o.verts.size() / 18;
   if (faces < 300) return false;      // nothing worth reducing
   gpx::TriMesh m = weld(o.verts);
@@ -69,8 +77,21 @@ bool mesh_build_lods(SceneObject &o) {
     size_t target = std::max<size_t>((size_t)(faces * targets[k]), 24);
     gpx::MeshReduceResult r;
     if (!gpx::mesh_reduce(m, target, r) || m.face_count() == 0) break;
-    flatten(m, o.lod_verts[k]);
-    o.lod_count[k] = (int)(o.lod_verts[k].size() / 6);
+    std::vector<float> six;
+    flatten(m, six);
+    // one stride for both kinds of reduced mesh: position, normal, texture
+    // coordinate. A mesh without parts has no coordinates to carry, and
+    // pads with nought rather than making the renderer keep two formats.
+    std::vector<float> &out = o.lod_verts[k];
+    out.clear();
+    out.reserve(six.size() / 6 * 8);
+    for (size_t i = 0; i + 5 < six.size(); i += 6) {
+      out.insert(out.end(), six.begin() + (long)i, six.begin() + (long)i + 6);
+      out.push_back(0.f);
+      out.push_back(0.f);
+    }
+    o.lod_count[k] = (int)(out.size() / 8);
+    o.lod_parts[k].clear();
     any = true;
   }
   return any;

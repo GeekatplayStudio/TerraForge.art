@@ -2,6 +2,7 @@
 #include "world_shape.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
+#include <cmath>
 #include <cstring>
 
 namespace studio {
@@ -47,6 +48,23 @@ bool world_has_inside(const RenderSettings &rs) {
         (o.type == SceneObject::Terrain || o.type == SceneObject::InfiniteSurface))
       return true;
   return false;
+}
+
+bool surround_far_shell(const RenderSettings &rs, const float eye[3], float radius,
+                        int side, int layer_count) {
+  const gpx::planet::Shape S = world_shape(rs, side);
+  const bool body_face = world_has_body(rs) && side == world_other_side(rs);
+  if (world_is_flat(rs)) return rs.world_width > 58.f;
+  // A horizon d away sits at d*d/2R, so on a small world the surround runs
+  // out at head height and on a large one only from an aeroplane. Taking it
+  // as a fixed tile up left a band of heights on every world where the
+  // ground stopped at 30 tiles with the horizon still further out and
+  // nothing drawn between - the hard line against the sky.
+  const float shell_h = radius > 0.f ? 29.f * 29.f / (2.f * radius) : 1.0e9f;
+  const bool aloft = eye[1] > shell_h * 0.5f || std::fabs(eye[0] - 0.5f) > 20.f ||
+                     std::fabs(eye[2] - 0.5f) > 20.f;
+  return radius > 0.f && (gpx::planet::shape_faces_centre(S) || body_face ||
+                          (layer_count > 0 && aloft));
 }
 
 const char *world_shape_name(int shape) {

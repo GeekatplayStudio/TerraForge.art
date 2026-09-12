@@ -225,7 +225,8 @@ then materials by erosion masks as in 4.1 (keep the DEM as the base; no style on
 ```
 Today the DEM is normalised to 0..1, so set `height_scale` from the known
 relief (summit ÷ tile width); the terrain roadmap's Phase 1 keeps metres.
-**Verify**: `probe_height` at a known summit against the map.
+**Verify**: `probe_height` at a known summit against the map (`placed_m`;
+`drawn_m` adds the viewport's micro-relief, metres either way).
 
 ### 4.6 A flat disc world
 ```

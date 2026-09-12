@@ -174,7 +174,7 @@ void draw_node(App &a, const App::NodeView &n) {
       const float y = rows_top + row * ROW_H;
       const float tw = ImGui::CalcTextSize(p.name.c_str()).x;
       const ImU32 pc = theme::port_color(p.is_texture, p.is_field, p.field_type,
-                                         p.is_points);
+                                         p.is_points, p.is_plant);
       if (p.is_input) {
         ImVec2 dot(head_pos.x, y + ROW_H * 0.5f); // on the left edge
         ImGui::SetCursorScreenPos(ImVec2(head_pos.x + PAD_X, y));
@@ -376,7 +376,9 @@ void add_node_popup(App &a) {
                                  ? tr("texture")
                                  : g_drag_create.type == gpx::DataType::Points
                                        ? tr("points")
-                                       : tr("field");
+                                       : g_drag_create.type == gpx::DataType::Plant
+                                             ? tr("plant part")
+                                             : tr("field");
     if (filtering)
       ImGui::TextDisabled(tr("nodes that accept a %s"), what);
     else

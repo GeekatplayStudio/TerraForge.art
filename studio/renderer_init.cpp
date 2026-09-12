@@ -146,9 +146,14 @@ bool renderer_init() {
     std::string terr;
     rebuild_terrain_program(terr);
   }
-  std::string vs_water = inject_sky(VS_WATER);
-  prog_water = link_prog(vs_water.c_str(), fs_water.c_str());
+  {
+    std::string werr;
+    prog_water = link_checked(inject_sky(VS_WATER), fs_water, werr);
+    if (!prog_water) log_error("shader", "water program: " + werr);
+    water_init();
+  }
   prog_sky = link_prog(VS_SKY, fs_sky.c_str());
+  clouds_init(); // the clouds over the ground (renderer_clouds.cpp)
   prog_lines = link_prog(VS_LINES, FS_LINES);
   prog_bg = link_prog(VS_BG, FS_BG);
   std::string fs_mesh = inject_sky(FS_MESH); // fog and the pass writer
@@ -273,6 +278,11 @@ bool renderer_init() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                     mips ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // Anisotropic: the ground is seen at a grazing angle almost everywhere,
+    // and a mipmap chosen for the pixel's longest side blurred the material
+    // into a smear a few hundred metres out.
+    if (mips && (GLAD_GL_EXT_texture_filter_anisotropic || GLAD_GL_ARB_texture_filter_anisotropic))
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, 8.f);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   };
@@ -311,8 +321,13 @@ bool renderer_init() {
 
 void renderer_shutdown() {
   delete_program(prog_terrain);
-  delete_program(prog_water);
+  if (prog_water) delete_program(prog_water);
+  prog_water = 0;
+  water_shutdown();
   delete_program(prog_sky);
+  clouds_shutdown();
+  renderer_fxaa_shutdown();
+  renderer_bloom_shutdown();
   delete_program(prog_depth);
   if (prog_depth_mesh) delete_program(prog_depth_mesh);
   prog_depth_mesh = 0;

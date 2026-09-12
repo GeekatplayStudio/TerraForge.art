@@ -35,6 +35,13 @@ Material libraries fetched from [ambientCG](https://ambientcg.com) are
 **CC0 1.0** (public domain dedication) and carry no obligations. They are
 downloaded at the user's request and are not redistributed with TerraForge.
 
+Plant models fetched from [Poly Haven](https://polyhaven.com) by the Plants
+workspace (`orchestrator/plant_fetch.py`) are likewise **CC0 1.0**. They are
+downloaded at the user's request into the user's own library folder, each
+with a `LICENSE.txt` naming its source and authors, and are not
+redistributed with TerraForge. Plants a user records from their own files
+remain under whatever terms those files came with.
+
 QuadriFlow is patched on fetch by `scripts/patch_quadriflow.py` to build
 without Boost - the patch is ours, the code stays BSD-3, and the script
 says exactly what it changes and what that costs.

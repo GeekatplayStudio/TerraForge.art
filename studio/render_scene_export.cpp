@@ -3,15 +3,19 @@
 // every scene mesh with its scattered copies. Split from
 // panel_render.cpp for the 500-line module rule.
 #include "app.hpp"
+#include "obj_text.hpp"
 #include "render_settings.hpp"
 #include "render_terrain_bake.hpp"
+#include "render_water_bake.hpp"
 #include "scene.hpp"
+#include "terrain_relief.hpp"
 #include "gpx/camera_math.hpp"
 #include "gpx/heightmap.hpp"
 #include "gpx/material_params.hpp"
 #include "gpx/node_graph.hpp"
 #include <json.hpp>
 #include <algorithm>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include "stb_image_write.h"
@@ -24,19 +28,146 @@ using json = nlohmann::json;
 fs::path render_workdir();
 bool renderer_export_sky_hdr(const std::string &path, int w, int h,
                              const float *from);
+std::shared_ptr<const gpx::TextureRGBA> app_terrain_albedo(); // app_upload.cpp
+const gpx::Heightmap *app_placed_terrain();                    // app_services.cpp
 void renderer_get_camera(float *eye, float *target, float *fov);
 void render_set_preview_paths(const std::string &preview,
                               const std::string &progress);
 
+
+namespace {
+
+// The faces of a run of `count` vertices starting at `first`, written so each
+// winds the way its own normals face. A generator or a file can wind a
+// triangle against the normals it gives it: the viewport shades whichever
+// side is seen and Mitsuba's two-sided materials forgive it, but Cycles
+// shades from the winding and drew those meshes black (a plant's lumps and
+// trunk).
+void write_face_run(ObjText &f, const SceneObject &o, int first, int count, bool uv) {
+  for (int i = 0; i + 2 < count; i += 3) {
+    const float *a = &o.verts[(size_t)(first + i) * 6], *b = &o.verts[(size_t)(first + i + 1) * 6],
+                *c = &o.verts[(size_t)(first + i + 2) * 6];
+    const float e1[3] = {b[0] - a[0], b[1] - a[1], b[2] - a[2]};
+    const float e2[3] = {c[0] - a[0], c[1] - a[1], c[2] - a[2]};
+    const float g[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
+                        e1[0] * e2[1] - e1[1] * e2[0]};
+    const float facing = g[0] * (a[3] + b[3] + c[3]) + g[1] * (a[4] + b[4] + c[4]) +
+                         g[2] * (a[5] + b[5] + c[5]);
+    const int order[3] = {1, facing < 0.f ? 3 : 2, facing < 0.f ? 2 : 3};
+    f.ch('f');
+    for (int k : order) {
+      const int n = i + k;
+      if (uv) f.ch(' ').num(n).ch('/').num(n).ch('/').num(n);
+      else f.ch(' ').num(n).text("//").num(n);
+    }
+    f.ch('\n');
+  }
+}
+
+// A picture goes out once per content, named by it. Every render compressed
+// every part's picture again, on the main thread, at the writer's slowest
+// setting - over a second for one plant's leaf - so five plants froze the
+// window for seven seconds, and did again on the next render of the same
+// scene. A scratch file read once wants speed, not size.
+std::string png_once(const fs::path &dir, const uint8_t *px, int w, int h, int comp) {
+  uint64_t key = 1469598103934665603ull;
+  const size_t n = (size_t)w * (size_t)h * (size_t)comp;
+  for (size_t i = 0; i < n; ++i) {
+    key ^= px[i];
+    key *= 1099511628211ull;
+  }
+  key ^= ((uint64_t)w << 40) ^ ((uint64_t)h << 20) ^ (uint64_t)comp;
+  char name[40];
+  std::snprintf(name, sizeof name, "tex_%016llx.png", (unsigned long long)key);
+  const fs::path path = dir / name;
+  std::error_code ec;
+  if (!fs::exists(path, ec)) {
+    const int level = stbi_write_png_compression_level;
+    stbi_write_png_compression_level = 2;
+    const std::string part = path.string() + ".part";
+    stbi_write_png(part.c_str(), w, h, comp, px, w * comp);
+    stbi_write_png_compression_level = level;
+    fs::rename(part, path, ec);
+  }
+  return path.string();
+}
+
+// A mesh's materials, one OBJ per part, since every engine takes one material
+// per shape: a plant goes out as its bark and its leaves, each in its own
+// colour and picture. The whole mesh used to take the object's colour, and a
+// plant's colours are its parts' - offline it was one flat white tree. Parts
+// count only with texture coordinates, as in the viewport (renderer_meshes.cpp).
+json export_mesh_parts(const SceneObject &o, const fs::path &dir, int mesh_index) {
+  json parts = json::array();
+  const size_t nv = o.verts.size() / 6;
+  if (o.parts.empty() || o.uvs.size() != nv * 2) return parts;
+  auto write_run = [&](const std::string &stem, int first, int count, const float *rgb,
+                       const SceneObject::Part *p) {
+    const fs::path op = dir / (stem + ".obj");
+    ObjText f(op.string());
+    for (int i = first; i < first + count; ++i) {
+      const float *v = &o.verts[(size_t)i * 6];
+      // v up is the picture's top in the viewport; the engines read an OBJ's
+      // v from the picture's bottom
+      f.line3("v", v[0], v[1], v[2]).line3("vn", v[3], v[4], v[5]);
+      f.text("vt ").num(o.uvs[(size_t)i * 2]).ch(' ').num(1.f - o.uvs[(size_t)i * 2 + 1]).ch('\n');
+    }
+    write_face_run(f, o, first, count, true);
+    json jp = {{"obj", op.string()}, {"color", {rgb[0], rgb[1], rgb[2]}}};
+    if (p && !p->rgba.empty() && p->w > 0 && p->h > 0 &&
+        p->rgba.size() >= (size_t)p->w * (size_t)p->h * 4) {
+      jp["texture"] = png_once(dir, p->rgba.data(), p->w, p->h, 4);
+      // The viewport cuts a picture at alpha 0.5 (a leaf card's edge). An
+      // engine's mask reads a grey picture of its own.
+      std::vector<uint8_t> alpha((size_t)p->w * (size_t)p->h);
+      bool cut = false;
+      for (size_t i = 0; i < alpha.size(); ++i) {
+        alpha[i] = p->rgba[i * 4 + 3];
+        cut = cut || alpha[i] < 128;
+      }
+      if (cut) jp["alpha"] = png_once(dir, alpha.data(), p->w, p->h, 1);
+    }
+    parts.push_back(std::move(jp));
+  };
+  int covered = 0;
+  for (size_t k = 0; k < o.parts.size(); ++k) {
+    const SceneObject::Part &p = o.parts[k];
+    if (p.first < 0 || p.count <= 0 || (size_t)(p.first + p.count) > nv) continue;
+    const float rgb[3] = {o.color[0] * p.color[0], o.color[1] * p.color[1], o.color[2] * p.color[2]};
+    write_run("mesh_" + std::to_string(mesh_index) + "_part_" + std::to_string(k), p.first,
+              p.count, rgb, &p);
+    covered = std::max(covered, p.first + p.count);
+  }
+  // what no part claims is drawn plain, in the object's own colour
+  if (!parts.empty() && (size_t)covered < nv)
+    write_run("mesh_" + std::to_string(mesh_index) + "_rest", covered, (int)nv - covered,
+              o.color, nullptr);
+  return parts;
+}
+
+// What stands on the viewport's ground stands on the render's. The tile the
+// engines get is a grid of ten-metre cells carrying the few octaves of the
+// micro-relief such a grid can; the viewport's ground is the heightmap under
+// all of them. A fern placed on the one stood half buried in the other. A
+// point within `reach` of the viewport's ground is moved by the difference;
+// anything further off it - a bird, a floating rock - is left where it is.
+float seat_offset(const BakedTerrain &b, float x, float z, float y, float reach) {
+  const gpx::Heightmap *hm = app_placed_terrain();
+  float baked = 0.f;
+  if (!hm || hm->empty() || !baked_tile_height(b, x, z, baked)) return 0.f;
+  const RenderSettings &rs = render_settings();
+  const float view = hm->sample(x, z) * rs.height_scale +
+                     relief_at(x, z, relief_dials(rs), RELIEF_NEAR_OCTAVES);
+  return std::fabs(y - view) <= reach ? baked - view : 0.f;
+}
+
+} // namespace
 
 bool export_scene(App &a, const std::string &out_png, int width, int height,
                   int spp, const char *engine, std::string &err,
                   int cam_index, bool passes, bool panorama) {
   RenderSettings &rs = render_settings();
   fs::path dir = render_workdir();
-  gpx::Heightmap hm;
-  std::vector<uint8_t> albedo_u8;
-  int alb_w = 0;
   {
     std::lock_guard<App::GraphMutex> lk(a.graph_mtx);
     gpx::Node *best = nullptr;
@@ -53,26 +184,6 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
       err = "terrain not computed yet";
       return false;
     }
-    hm = *ph->hmap;
-    if (rs.terrain_material_mode == 2) {
-      gpx::Node *mn = a.graph.find_node(rs.terrain_material_node);
-      gpx::Port *mp = mn ? mn->first_out(gpx::DataType::Texture) : nullptr;
-      if (mp && mp->tex && !mp->tex->empty()) {
-        albedo_u8 = mp->tex->to_u8();
-        alb_w = mp->tex->w;
-      }
-    } else if (rs.terrain_material_mode == 0) {
-      for (auto &n : a.graph.nodes) {
-        if (n->type == "Splatmap" || n->type == "NormalMap" ||
-            n->type == "AlbedoToPBR")
-          continue;
-        gpx::Port *pt = n->first_out(gpx::DataType::Texture);
-        if (pt && pt->tex && !pt->tex->empty()) {
-          albedo_u8 = pt->tex->to_u8();
-          alb_w = pt->tex->w;
-        }
-      }
-    }
   }
 
   // The world the viewport draws, as meshes and albedo maps: the tile placed
@@ -81,18 +192,12 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
   // was the graph's raw heightmap over one flat square, uncoloured - which
   // is why a render through a camera and the viewport through that same
   // camera were two different pictures.
-  const BakedTerrain baked =
-      render_bake_terrain(a, dir.string(), 512, 384, 1024);
-  if (!baked.ok) {
-    err = baked.err;
-    return false;
-  }
-  // A material assigned to the terrain still wins over the palette: that is
-  // the picture the viewport shows too.
-  if (!albedo_u8.empty())
-    stbi_write_png((dir / "albedo.png").string().c_str(), alb_w, alb_w, 4,
-                   albedo_u8.data(), alb_w * 4);
-
+  //
+  // The tile's own colour is the one the viewport's tile was painted with
+  // (app_upload.cpp picks it: the assigned material first), over the palette
+  // by the placement's weight. The export used to pick a texture of its own -
+  // whichever node in the graph came last with one, often a material's flat
+  // preview - and overwrite the whole tile with it.
   // a camera-requested render frames from THAT camera's own optics; only a
   // bare panel render falls back to whatever the viewport is doing
   float eye[3], target[3], fov;
@@ -107,6 +212,14 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
     fov = gpx::cam::fov_y_deg(cd.focal_mm, F[fi].height_mm);
   } else {
     renderer_get_camera(eye, target, &fov);
+  }
+
+  const std::shared_ptr<const gpx::TextureRGBA> tile_colour = app_terrain_albedo();
+  const BakedTerrain baked =
+      render_bake_terrain(a, dir.string(), 512, 512, 1024, tile_colour.get(), eye);
+  if (!baked.ok) {
+    err = baked.err;
+    return false;
   }
   // The viewport's own sky and clouds, as an HDR environment map - shot
   // from the camera's own eye, because a cloud layer is at a finite
@@ -193,13 +306,17 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
               {"anisotropy", rs.fog_anisotropy},
               {"heterogeneity", rs.fog_heterogeneity},
               {"steps", rs.fog_steps}};
+  // The sea the camera sees: one surface about the camera, as wide as the
+  // ground it lies in, carrying the viewport's own waves (gpx/water_waves.hpp)
+  // and the roughness of those too small for the mesh.
+  const BakedWater sea = rs.show_water
+                             ? render_bake_water(rs, eye, (dir / "water.obj").string(), baked.extent)
+                             : BakedWater{};
   j["water"] = {{"enabled", rs.show_water},
-                // as wide as the ground it lies in, not the one tile it used
-                // to be: a sea that stops at the tile's edge is a puddle
                 {"extent", baked.extent},
-                {"mesh", baked.water_obj},
+                {"mesh", sea.ok ? sea.obj : std::string()},
                 {"level", rs.water_level * rs.height_scale},
-                {"roughness", std::max(rs.mat_roughness * 0.05f, 0.01f)},
+                {"roughness", sea.roughness},
                 {"deep", {rs.water_deep_color[0], rs.water_deep_color[1],
                           rs.water_deep_color[2]}}};
   // scene meshes, scattered copies included, so the offline engines see the
@@ -213,21 +330,29 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
       if (o.type != SceneObject::Mesh || !sc.object_visible(o) ||
           o.verts.empty())
         continue;
-      fs::path mp = dir / ("mesh_" + std::to_string(mi++) + ".obj");
-      std::ofstream mf(mp);
-      const size_t nv = o.verts.size() / 6;
-      for (size_t i = 0; i < nv; ++i)
-        mf << "v " << o.verts[i * 6] << ' ' << o.verts[i * 6 + 1] << ' '
-           << o.verts[i * 6 + 2] << "\nvn " << o.verts[i * 6 + 3] << ' '
-           << o.verts[i * 6 + 4] << ' ' << o.verts[i * 6 + 5] << '\n';
-      for (size_t i = 0; i + 2 < nv; i += 3)
-        mf << "f " << i + 1 << "//" << i + 1 << ' ' << i + 2 << "//" << i + 2
-           << ' ' << i + 3 << "//" << i + 3 << '\n';
+      const int mesh_index = mi++;
+      fs::path mp = dir / ("mesh_" + std::to_string(mesh_index) + ".obj");
+      {
+        ObjText mf(mp.string());
+        const size_t nv = o.verts.size() / 6;
+        for (size_t i = 0; i < nv; ++i) {
+          const float *v = &o.verts[i * 6];
+          mf.line3("v", v[0], v[1], v[2]).line3("vn", v[3], v[4], v[5]);
+        }
+        write_face_run(mf, o, 0, (int)nv, false);
+      }
       float model[16], nrm9[9];
       scene_object_matrix(o, rs.height_scale, model, nrm9);
+      // standing on the ground: within its own height of it, or two metres
+      const float reach = std::max((o.bmax[1] - o.bmin[1]) * o.scale * o.scl[1],
+                                   2.f / std::max(rs.terrain_size_m, 1.f));
+      const float seat = o.inst.empty() ? seat_offset(baked, o.pos[0], o.pos[2], model[13], reach) : 0.f;
+      model[13] += seat;
       json jm;
       jm["obj"] = mp.string();
       jm["color"] = {o.color[0], o.color[1], o.color[2]};
+      json parts = export_mesh_parts(o, dir, mesh_index);
+      if (!parts.empty()) jm["parts"] = std::move(parts);
       // A volumetric material makes the mesh a medium rather than a surface:
       // the engines get its extinction, absorption colour, scattering albedo
       // and phase, and draw it as one (Mitsuba: a homogeneous medium inside a
@@ -253,7 +378,7 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
       for (int k = 0; k < 16; ++k) jm["model"].push_back(model[k]);
       // decomposed placement too, for engines that would rather compose
       // their own transforms (Blender's axis conventions, mainly)
-      jm["position"] = {o.pos[0], o.pos[1] * rs.height_scale, o.pos[2]};
+      jm["position"] = {o.pos[0], o.pos[1] * rs.height_scale + seat, o.pos[2]};
       jm["scale"] = o.scale;
       jm["scl"] = {o.scl[0], o.scl[1], o.scl[2]};
       jm["ypr"] = {o.yaw, o.pitch, o.roll};
@@ -264,7 +389,8 @@ bool export_scene(App &a, const std::string &out_png, int width, int height,
           const float *s = o.inst.data() + i;
           // x, y, z, scale, yaw (radians, from the stored cos/sin), then the
           // per-axis scale, the lean into the ground and the ground's normal
-          inst.push_back({s[0], s[1], s[2], s[3], std::atan2(s[5], s[4]),
+          const float y = s[1] + seat_offset(baked, s[0], s[2], s[1], reach * std::max(s[3], 1.f));
+          inst.push_back({s[0], y, s[2], s[3], std::atan2(s[5], s[4]),
                           s[8], s[9], s[10], s[11], s[12], s[13], s[14]});
         }
         jm["instances"] = std::move(inst);

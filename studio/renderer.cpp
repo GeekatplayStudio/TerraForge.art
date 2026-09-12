@@ -6,6 +6,7 @@
 #include "console.hpp"
 #include "cloud_noise.hpp"
 #include "planet_renderer.hpp"
+#include "plant_species.hpp"
 #include "render_settings.hpp"
 #include "scene.hpp"
 #include "gpu_timer.hpp"
@@ -265,9 +266,47 @@ const float *renderer_last_mvp(int slot) {
   return g_last_mvp_valid[slot] ? g_last_mvp[slot] : nullptr;
 }
 
+// The sea's clock (renderer_draw_view moves it once a frame). A capture drawn
+// at 0 froze the waves at their first instant under clouds at the live time.
+static float g_time_acc = 0.f;
+float renderer_anim_time() { return g_time_acc; }
+int renderer_height_res() { return hm_w; }
+
+// GPX_FREEZE_TIME pins the animated inputs (clouds, water) so two frames
+// of the same scene are bit-identical - which is what lets a renderer
+// refactor be proven against a pixel diff instead of a squint.
+static bool anim_frozen() {
+  static const bool freeze = [] {
+    const char *e = std::getenv("GPX_FREEZE_TIME");
+    return e && *e && *e != '0';
+  }();
+  return freeze;
+}
+
+// The view the pass timers measure: the main view, or with GPX_TIME_CAPTURES
+// set, the captures - which a script can drive when no viewport is being
+// drawn at all (the window hidden behind a docked tab, a display asleep), so
+// a pass's cost can still be measured rather than guessed.
+bool pass_timed(int slot) {
+  static const int timed = [] {
+    const char *e = std::getenv("GPX_TIME_CAPTURES");
+    return e && *e && *e != '0' ? SLOT_CAPTURE : 0;
+  }();
+  return slot == timed;
+}
+
+// Something on screen moves by itself: clouds evolve and drift over the sky,
+// the sea's waves run. The frame pacing keeps a rate for it (app.cpp).
+bool renderer_ambient_motion() {
+  const RenderSettings &RS = render_settings();
+  return !anim_frozen() && ((RS.clouds_on && RS.background_mode == 0) || RS.show_water);
+}
+
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int h,
                             float dt) {
   slot = std::clamp(slot, 0, SLOT_COUNT - 1);
+  // this window's answer on whether plants move, for the mesh passes below
+  plant_view_animates_set(vc.animate_plants);
   // What the sky is casting on the ground, re-measured only when the sky
   // itself moved (sky_light.cpp). Here for the same reason the relink below
   // is here: the main thread with a context current, once before the first
@@ -298,18 +337,27 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
       rebuild_terrain_program(err);
     }
   }
-  // GPX_FREEZE_TIME pins the animated inputs (clouds, water) so two frames
-  // of the same scene are bit-identical - which is what lets a renderer
-  // refactor be proven against a pixel diff instead of a squint.
-  static const bool freeze = [] {
-    const char *e = std::getenv("GPX_FREEZE_TIME");
-    return e && *e && *e != '0';
-  }();
-  static float time_acc = 0;
+  const bool freeze = anim_frozen();
+  // The clock the clouds and the sea run on moves once a frame, by the time
+  // that really passed. It used to move by the `dt` of whichever view drew
+  // first - and the camera thumbnail passes 0, so with that panel open the
+  // clouds and the waves stood still.
+  (void)dt;
+  float &time_acc = g_time_acc;
   static int clock_frame = -1;
+  static double clock_last = -1.0;
   if (clock_frame != ImGui::GetFrameCount()) {
     clock_frame = ImGui::GetFrameCount();
-    if (!freeze) { cloud_time += dt; time_acc += dt; }
+    const double now = ImGui::GetTime();
+    const float step = clock_last < 0.0 ? 0.f : (float)std::clamp(now - clock_last, 0.0, 0.25);
+    clock_last = now;
+    if (!freeze) {
+      cloud_time += step;
+      time_acc += step;
+      // the air moves on, and everything that follows it is told what it is
+      // being blown by (render_settings.cpp)
+      render_settings().wind_advance(time_acc, step);
+    }
   }
   if (w < 8 || h < 8) return fbo_color[slot];
   // The governor's render scale: a lightened view draws into a smaller
@@ -375,6 +423,9 @@ unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w, int
   g_last_mvp_valid[slot] = true;
   perf_gpu_begin();
   draw_scene(slot, vc, w, h, time_acc, eye, mvp, inv_vp);
+  // edges anti-aliased on the picture, before the lens works on it
+  // (renderer_fxaa.cpp); a render pass keeps its numbers
+  if (g_aov == 0) renderer_fxaa(slot, w, h);
 
   // What the lens does to the finished picture. Nothing at all unless the
   // view's camera asks for it, in which case the pass returns its own target.

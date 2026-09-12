@@ -81,7 +81,13 @@ void main(){
   // beauty only, and the passes see the copies that are near enough to be
   // real geometry
   if (u_aov != 0) discard;
-  vec3 col = c.rgb * v_tint;
+  // The card is a picture of the mesh already shaded, so its pixels are sRGB
+  // like any other picture. Everything below - the fog, the exposure, the
+  // encode at the end - works in linear light, so the card has to be decoded
+  // on the way in. Feeding it in encoded and encoding it again at the end
+  // lifted every dark value (0.2 became 0.48) and the far trees washed out
+  // pale pink against the green ones in front of them.
+  vec3 col = pow(max(c.rgb, 0.0), vec3(2.2)) * v_tint;
   float fog_f; vec3 fog_c;
   float dist = length(v_world - u_cam);
   fog_terms(v_world, u_cam, dist, u_hscale, u_sun, u_sun_color, fog_f, fog_c);

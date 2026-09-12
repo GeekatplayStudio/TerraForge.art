@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 249 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 255 across 32 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -9,7 +9,7 @@ Every node in Geekatplay TerraForge — 249 across 32 categories. Generated from
 | [Atmosphere](#atmosphere) | 4 |
 | [Camera](#camera) | 6 |
 | [Cloud](#cloud) | 4 |
-| [Effect](#effect) | 8 |
+| [Effect](#effect) | 11 |
 | [Erosion](#erosion) | 11 |
 | [Export](#export) | 8 |
 | [Field Bridge](#field-bridge) | 2 |
@@ -30,12 +30,12 @@ Every node in Geekatplay TerraForge — 249 across 32 categories. Generated from
 | [Operator](#operator) | 4 |
 | [Path](#path) | 7 |
 | [Points](#points) | 12 |
-| [Primitive](#primitive) | 22 |
+| [Primitive](#primitive) | 23 |
 | [Render](#render) | 8 |
-| [Scene](#scene) | 7 |
+| [Scene](#scene) | 8 |
 | [Shape](#shape) | 1 |
 | [Texture](#texture) | 3 |
-| [Transform](#transform) | 8 |
+| [Transform](#transform) | 9 |
 
 ## Analysis
 
@@ -255,11 +255,13 @@ Sky colors, density, haze/fog and light absorption
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
+| clouds | in (optional) | heightmap |
 | atmosphere | out | heightmap |
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
 | Atmosphere density | float, 0.05 to 3, default 1 | How thick the air is. It reddens the sun near the horizon and washes distance out to blue - the single strongest cue of scale in a landscape, because it tells the eye how far away a ridge is. |
+| Atmosphere height (km) | float, 0 to 100000, default 100 | How high the air reaches over the world's surface, in kilometres, whatever its shape - a globe, a ring, a flat world. Beyond it is space: from high enough the sky thins to stars and the world shows a blue rim. 0 keeps sky everywhere. |
 | Ambient light | float, 0 to 2, default 0.7 | How much light the sky itself throws down. This is what fills the shadows; too little and they read as black holes rather than shade. |
 | Zenith R | float, 0 to 1, default 0.18 | The red component of the sky straight overhead, linear rather than sRGB. |
 | Zenith G | float, 0 to 1, default 0.32 | The green component of the sky straight overhead, linear rather than sRGB. |
@@ -282,6 +284,7 @@ Volumetric cloud layer: type, coverage, altitude, wind
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
+| clouds | in (optional) | heightmap |
 | clouds | out | heightmap |
 
 | Parameter | Kind | Notes |
@@ -354,6 +357,12 @@ Water body: level, colors, waves and foam
 | Shoreline foam | float, 0 to 2, default 0.6 | How much foam there is. |
 | Crest foam | float, 0 to 1, default 0.35 | How much foam appears on the wave tops as against at the shore. Open water foams on its crests; a beach foams where the water meets the land. |
 | Foam scale | float, 0.5 to 10, default 3 | How fine the foam's own texture is. |
+| Displaced water surface | toggle, default on | The waves are real geometry that stands up against the sky; off, the sea is flat and the waves are in its shading only. |
+| Wind intensity (m/s) | float, 0 to 25, default 4 | The wind the sea has been under: it decides how long the waves are and how much of each size there is. 4 m/s is a breeze on a lake, 15 a gale, 0 a mirror. |
+| Wind direction | float, 0 to 360, default 30 | The way the waves run seen from above, in degrees: 0 toward +X, 90 toward +Z. |
+| Choppiness | float, 0 to 1, default 0.5 | 0 is round swells; toward 1 the crests stand up sharp, which is where they break and foam. |
+| Typical depth (m) | float, 0.05 to 10, default 1.5 | How shallow the water has to get before foam gathers along the coast. |
+| Crest coverage | float, 0 to 1, default 0.4 | How much of each breaking crest turns white. |
 
 ## Camera
 
@@ -488,6 +497,23 @@ Narrow fissures cut into the surface, as after a quake
 | Wander | float, 0 to 2, default 0.35 | Makes the fissures meander instead of running straight. |
 | Seed | seed |  |
 
+### FirTrees
+
+Tiny random cones all over the surface - a distant forest in the relief
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Height | float, 0 to 0.3, default 0.03 | How tall the cones are, as a fraction of the terrain's own range. |
+| Density | float, 8 to 512, default 160 | Trees across the tile. |
+| Size variation | float, 0 to 1, default 0.5 | How much the trees differ in size. |
+| Seed | seed | Another arrangement of the same trees. |
+
 ### Gravel
 
 Loose debris that gathers on slopes and leaves flats clean
@@ -521,6 +547,20 @@ Fine random bumps and holes over the whole surface
 | Grain size | float, 8 to 400, default 90 | Higher values give finer, denser grain. |
 | Seed | seed |  |
 
+### Invert
+
+Turns the terrain upside down within its own range: valleys become ridges
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Amount | float, 0 to 1, default 1 | 1 inverts fully; less blends toward the inverted terrain. |
+
 ### Peaks
 
 Lifts high ground and digs the valleys deeper
@@ -535,6 +575,23 @@ Lifts high ground and digs the valleys deeper
 | :--- | :--- | :--- |
 | Strength | float, 0 to 1, default 0.5 | How far the high ground is lifted and the low ground pushed down. This exaggerates the relief that is already there rather than adding new shapes. |
 | Pivot altitude | float, 0 to 1, default 0.45 | Ground above this rises, ground below sinks. Lower it to keep more of the terrain high. |
+
+### Pebbles
+
+Randomly scattered rounded pebbles over the whole surface - a pebble beach
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| mask | in (optional) | heightmap |
+| output | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Height | float, 0 to 0.3, default 0.02 | How thick the pebbles are, as a fraction of the terrain's own range. Vue's 'keep the button down' is a larger value. |
+| Density | float, 8 to 512, default 120 | Pebbles across the tile. More is smaller and denser. |
+| Size variation | float, 0 to 1, default 0.6 | 0 every pebble the same size; 1 from full size down to nothing. |
+| Seed | seed | Another arrangement of the same pebbles. |
 
 ### Sharpen
 
@@ -568,7 +625,7 @@ Clip altitudes — flat tops above, holes below
 | Clip range | range | Ground below the low mark is cut away, ground above the high mark is flattened. Normalized altitudes. |
 | Below low mark | choice: Leave alone / Flatten / Cut away (hole) | What happens below the low mark. Flatten gives a level floor - a salt pan or a lake bed. Cut away removes the ground entirely, which is how you punch a hole through the terrain. |
 | Above high mark | choice: Leave alone / Flatten | What happens above the high mark. Flatten cuts the summits off level, which is what makes a mesa or a plateau out of a hill. |
-| Edge softness | float, 0 to 0.2, default 0 | Blends the cut instead of leaving a hard step. |
+| Edge softness | float, 0 to 0.2, default 0.04 | How far either side of the mark the cut is rounded, as a fraction of the terrain's own range. Nothing in a landscape meets a flat at a crease - a shore, a pan, a mesa top all round into it - and 0 is that crease: the old hard step, kept for when you want the terrain cut exactly on the mark. |
 
 ### TerrainImprint
 
@@ -953,7 +1010,7 @@ Displaces the viewport terrain on the GPU from a field graph
 
 ### TerrainOutput
 
-Final terrain: combines height layers + material, zero edges
+Final terrain: combines height layers + material, zero edges; a blend mask decides where the tile joins the planet
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -961,6 +1018,7 @@ Final terrain: combines height layers + material, zero edges
 | extra layer 1 | in (optional) | heightmap |
 | extra layer 2 | in (optional) | heightmap |
 | albedo | in (optional) | texture |
+| blend mask | in (optional) | heightmap |
 | heightmap | out | heightmap |
 | albedo | out | texture |
 
@@ -1593,7 +1651,7 @@ A sward of grass - tufts, blades and bare ground - as a function, at any scale
 
 ### FieldShape
 
-Analytic shapes - waves, bands, bumps, cones and steps, as a function
+Analytic shapes - waves, bands, bumps, cones, steps and square, diamond, angular and spiral gradients, as a function
 
 | Port | Direction | Type |
 | :--- | :--- | :--- |
@@ -1602,11 +1660,11 @@ Analytic shapes - waves, bands, bumps, cones and steps, as a function
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape | choice: Sine wave / Square wave / Triangle wave / Sawtooth / Gaussian bump / Cone / Band / Step | The analytic shape produced. |
+| Shape | choice: Sine wave / Square wave / Triangle wave / Sawtooth / Gaussian bump / Cone / Band / Step / Square falloff / Diamond falloff / Angular / Spiral | The analytic shape produced. The falloffs are 1 at the centre and 0 at Width; Angular runs once round the centre; Spiral winds Frequency turns a unit outward. |
 | Center | x/y pair | Where the shape is centred. |
 | Direction | float, -180 to 180, default 0 | Which way the waves run, the band lies, or the step faces, in degrees on the ground plane. |
-| Frequency | float, 0.01 to 200, default 4 | Wave repetitions per unit of ground. Waves only. |
-| Width | float, 0.001 to 8, default 0.25 | Radius of the bump or cone; thickness of the band. |
+| Frequency | float, 0.01 to 200, default 4 | Wave repetitions per unit of ground; the spiral's turns per unit outward. |
+| Width | float, 0.001 to 8, default 0.25 | Radius of the bump, the cone and the square and diamond falloffs; thickness of the band. |
 | Phase | float, -2 to 2, default 0 | Slides a wave along, as a fraction of one cycle. |
 | Amplitude | float, 0 to 8, default 1 | How far the result swings. |
 | Offset | float, -4 to 4, default 0 | Added to the result. |
@@ -2996,7 +3054,13 @@ The material: base color, normal, roughness, metallic, height and AO channels
 | Ignore atmosphere | toggle, default off | No fog or haze between it and the camera. |
 | Only shadows | toggle, default off | Invisible, but still casts a shadow. |
 | Disable anti-aliasing | toggle, default off | Turns off edge smoothing for this material. Only wanted where a hard pixel boundary is the point, such as an index or ID pass. |
-| Mapping | choice: Automatic / Flat / Faces / Cylindrical / Spherical | How the 2D maps wrap a 3D object. Terrain is always Flat (projected from above); the others are for objects. |
+| Density | float, 0 to 8, default 0 | Above zero the material is a medium, not a surface: light is extinguished through it by exp(-density x distance) (Beer-Lambert), and what it stops it scatters or absorbs. Smoke, cloud, dust, murky water. Zero is an ordinary surface. |
+| Absorption colour | color | What survives per channel of the light the medium absorbs. Darker is a sootier medium; a tint colours what shines through it. |
+| Scattering albedo | float, 0 to 1, default 0.85 | Of the light the medium stops, how much scatters on rather than being absorbed. Cloud and steam are near 1, smoke around 0.5, soot near 0. |
+| Anisotropy | float, -0.9 to 0.95, default 0.3 | The Henyey-Greenstein phase: 0 scatters evenly, toward 1 light carries on forward (the bright rim of a backlit cloud), negative scatters back. |
+| Heterogeneity | float, 0 to 1, default 0.5 | Breaks the density up with noise, so the volume has wisps and holes rather than being a uniform block. |
+| Ray steps | int, 4 to 128, default 32 | How many samples the view ray takes through the volume, each with a short march toward the sun. The march stops early once 99% of the light is extinguished, so this is a ceiling on the work, not a cost always paid. More is smoother and slower. |
+| Mapping | choice: Automatic / Flat / Faces / Cylindrical / Spherical / Parametric / Standard / Fill | Where the maps are read from, before scale, offset and rotation.  Automatic    the surface's own coordinates, or flat if it has none Flat         projected straight down, which is what terrain wants Faces        each face gets the axis it most faces Cylindrical  wrapped around the up axis Spherical    longitude and latitude Parametric   exactly the UVs the model was unwrapped with — the only              one a painted or baked texture can use Standard     a solid the object is carved from, in its own space, so              there is no stretching and no seam and the material              travels with the object Fill         the same solid, but fixed in the world: the object              slides through the material instead of carrying it |
 | Scale of the maps | float, 0.05 to 20, default 1 | Scales every texture map together. |
 | Origin | x/y pair | Offsets the material in map space, for precise placement. |
 | Rotation | float, -180 to 180, default 0 | Turns the maps about the surface normal, in degrees. |
@@ -3845,6 +3909,37 @@ Layered rock strata from an input heightmap
 | Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
+### Gradient
+
+Gradient ramps as a heightmap: linear, reflected, circle (radial), ellipse, square, diamond, angular (conic) and spiral
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| output | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Type | choice: Linear / Reflected / Circle / Ellipse / Square / Diamond / Angular / Spiral | The gradient's shape. Linear rises along the direction and Reflected rises both ways from the centre line. Circle, Ellipse, Square and Diamond are high in the middle and fall to their edge - a hill, a plateau, a pyramid. Angular sweeps once round the centre; Spiral winds out from it. Invert (Output) turns any of them over. |
+| Center | x/y pair | Where the gradient is centred, as a fraction of the tile. Outside 0..1 moves the middle off the map, so only an edge of the shape crosses it. |
+| Direction ° | float, -180 to 180, default 0 | Turns the gradient: the way a linear ramp rises, the long axis of an ellipse or a square, where an angular sweep starts. |
+| Size | float, 0.01 to 4, default 0.5 | How far the gradient reaches from its centre, as a fraction of the tile: the radius of a circle, half the side of a square, half the length of a linear ramp. At 0.5 a centred shape just touches the tile's edges. |
+| Stretch | float, 0.1 to 10, default 1 | Ellipse, Square and Diamond: how much longer the shape is along its direction than across it, its area kept. An ellipse starts twice as long as it is wide; a square at 1 is square. |
+| Start / end | range | Where along the gradient it begins and ends, as a fraction of its size. Pulling the start up leaves a flat top (a mesa for a centred shape); pulling the end in gives the shape a steep skirt. |
+| Profile | choice: Linear / Smooth / Smoother / Ease in / Ease out / Sine / Dome / Bell | The curve from one end of the ramp to the other. Linear is a straight cone; Smooth and Smoother round both ends; Ease in stays low and rises late, Ease out rises early; Dome is a round-topped hill with steep flanks; Bell is a wide soft rise, like a gaussian. |
+| Repeats | float, 1 to 32, default 1 | How many times the ramp runs over the gradient's size: concentric rings for a circle, parallel ridges for a linear ramp, more arms for a spiral. |
+| Past the end | choice: Hold / Repeat / Mirror | What the gradient does beyond its end and between repeats. Hold stays at the end's value; Repeat starts again with a sudden step (terraced rings, sawtooth ridges); Mirror runs back down smoothly (rolling waves). |
+| Terraces | int, 0 to 64, default 0 | Cuts the ramp into this many flat levels, like contour steps or rice terraces. 0 keeps it continuous. |
+| Spiral turns | float, -8 to 8, default 1.5 | Spiral only: how many times the spiral winds out to its size. Negative winds the other way. |
+| Corner rounding | float, 0 to 1, default 0 | Square and Diamond only: rounds the corners, all the way to a circle (or an ellipse) at 1. |
+| Distortion | float, 0 to 1, default 0 | Pushes the gradient about with noise, so a circle becomes an island's outline and a ramp a natural slope. 0 is the exact geometric shape. |
+| Distortion scale | float, 0.25 to 32, default 3 | The size of the distortion's features: low bends the whole shape, high roughens its edge. |
+| Seed | seed |  |
+| Remap to range | toggle, default on | Rescales the result so its lowest point sits at the bottom of the range below and its highest at the top. Off keeps the raw values, which is what you want when a node feeds arithmetic rather than a picture. |
+| Output range | range | The low and high the result is rescaled into. 0..1 is the terrain's own range; a narrower band makes this node a gentler contribution when it is added to another. |
+| Invert | toggle, default off | Turns the result upside down within its range - peaks become hollows. Applied after the remap. |
+| Gain (gamma) | float, 0.05 to 4, default 1 | Bends the result toward its low or high end. Below 1 lifts the middle, so more of the map sits high; above 1 pushes it down, so peaks become sparser and sharper. |
+| Zero edges width | float, 0 to 0.5, default 0 | Fades the terrain to zero at the borders over this fraction of the map — clean edges for islands/tiles. |
+
 ### GrassDisplacement
 
 Grass as displacement: a field of tufts in clumps, on ground flat enough to hold it
@@ -4373,6 +4468,40 @@ An endless procedural terrain layer: on the ground plane or shaping a planet
 | Height scale | float, 0 to 4, default 1 | Extra multiplier for ground-plane layers. |
 | Visible | toggle, default on | Whether the surround is drawn. |
 
+### Nebula
+
+A nebula or a galaxy in deep space: a glowing cloud, a dark cloud, a spiral or elliptical galaxy, or a planetary nebula, placed in the sky by direction
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| nebula | out | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Scene object | text | Which scene object this node drives. |
+| Kind | choice: Nebula / Dark nebula / Spiral galaxy / Elliptical galaxy / Planetary nebula | A cloud of glowing gas with filaments and young stars; a cloud of dust that hides the stars behind it; a spiral galaxy with arms, a bulge and dust lanes; a smooth elliptical galaxy; a ring of gas round a dying star. |
+| Azimuth | float, -360 to 360, default 40 | Compass heading in the sky, degrees, the sun's frame. |
+| Elevation | float, -90 to 90, default 35 | Degrees above the horizon. |
+| Size | float, 0.2 to 180, default 24 | Angular diameter in degrees. The full moon is half a degree, the Andromeda galaxy three, the Orion nebula one. |
+| Tilt | float, 0 to 85, default 50 | Galaxies: how far the disc is turned from face-on. |
+| Rotation | float, -180 to 180, default 0 | Turned in the sky, degrees. |
+| Seed | seed | Another seed is another cloud or galaxy of the same kind. |
+| Brightness | float, 0 to 4, default 1 | How bright it glows. |
+| Density | float, 0 to 1, default 0.5 | Clouds: how much of the footprint is cloud. Galaxies: how dark the dust lanes are. |
+| Detail | float, 0 to 1, default 0.5 | Fractal fineness, soft to wispy. |
+| Arms | int, 1 to 6, default 2 | Spiral galaxies: how many arms. |
+| Dust | float, 0 to 1, default 0.55 | Clouds: how much dark dust threads through the gas and hides it - the black lanes across a bright nebula. |
+| Warp | float, 0 to 1.5, default 0.6 | Clouds: how far the shape is pulled out of a ball into billows, pillars and tails. |
+| Glow | float, 0 to 2, default 0.4 | Clouds: the soft halo the gas throws around itself. |
+| Hot stars | int, 1 to 4, default 3 | Clouds: how many hot young stars inside light the gas. Their glare decides where it glows in the bright colour and where in the cool one. |
+| Hot stars shown | float, 0 to 2, default 0.6 | Clouds: how bright those stars are drawn. 0 leaves the gas lit by stars you cannot see. |
+| Core glow | float, 0 to 2, default 0 | Clouds: the gas round the hot stars burned out toward white, as a long exposure records a nebula's heart. |
+| Turbulence | float, 0 to 1, default 0 | Clouds: tears the gas into filaments and tendrils with a second, finer warp. |
+| Dust lanes | float, 0 to 1, default 0 | Clouds: thin dark ridges of dust laid across the glow. |
+| Bright gas / core | color | The bright gas of a cloud, the core of a galaxy. |
+| Cool gas / arms | color | The cool gas of a cloud, the arms of a galaxy. |
+| Visible | toggle, default on | Drawn at all. |
+
 ### ObjectGroup
 
 [Planned] Group objects under one transform, with instancing
@@ -4399,6 +4528,7 @@ A procedural planet: radius, relief, seas, snow, atmosphere and its surface laye
 | Ocean | color | The colour of the seas. |
 | Atmosphere | color | The colour of the air, seen from outside. |
 | Atmosphere density | float, 0 to 2, default 0.6 | 0 = airless rim. |
+| Cloud cover | float, 0 to 1, default 0.4 | How much of the planet a deck of cloud covers, seen from space: 0 clear, 1 overcast. It drifts with the scene's clouds. A planet with no atmosphere has no clouds. |
 | Spin ° | float, -180 to 180, default 0 | How far the planet is turned about its axis, which chooses which face is toward the camera. |
 | X (m) | float, -1e+07 to 1e+07, default 70000 | Where the planet sits, east-west, in metres. |
 | Height (m) | float, -1e+07 to 1e+07, default 17500 | How high the planet sits, in metres. |
@@ -4407,13 +4537,14 @@ A procedural planet: radius, relief, seas, snow, atmosphere and its surface laye
 
 ### Primitive
 
-A built-in primitive (cube, sphere, plane, cylinder, cone) placed in the scene
+A built-in primitive placed in the scene: a cube, sphere, plane, cylinder or cone, or a plant or rock built from its kind (pine, juniper, palm, fern, grass tuft, bush, boulder)
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape | choice: Cube / Sphere / Plane / Cylinder / Cone | Which primitive shape this is. |
+| Shape | choice: Cube / Sphere / Plane / Cylinder / Cone / Pine / Juniper / Palm / Fern / Grass tuft / Bush / Boulder | Which shape this is. The plants and the boulder are built from their kind - bark and foliage in their own colours - and come at their own size; scatter them over the terrain with a Scatter points or Ecosystem layer node. |
 | Scene object | text | Name in the Objects tree. Empty: the shape's name. |
 | Colour | color | The object's colour, where no material is assigned to it. |
+| Plant seed | seed | The plants and the boulder: another one of the same kind - its branches, fronds and lumps laid out afresh. 0 is the one it has always been. The other shapes ignore it. |
 | X (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along east. |
 | Height (m) | float, -10000 to 100000, default 0 | How high the object stands, in metres. Objects placed on the terrain read the ground height for themselves; this offsets from it. |
 | Z (m) | float, -100000 to 100000, default 2500 | Where the object stands, in metres from the middle of the tile along north. |
@@ -4447,7 +4578,7 @@ The outline of the ground - rectangle, round, or your own mask - with a wanderin
 
 | Parameter | Kind | Notes |
 | :--- | :--- | :--- |
-| Shape | choice: Rectangle / Rounded rectangle / Round / Diamond / From mask | Round is an ellipse when the width and height differ. From mask takes the outline from the mask input and only the edge treatment from here. |
+| Shape | choice: Rectangle / Rounded rectangle / Round / Diamond / From mask | Round is an ellipse when the width and height differ. From mask takes the outline from the mask input and only the edge treatment from here. With a named shape, a connected mask carves it: a fractal there gives a ragged coast, a slope mask keeps only the flats. |
 | Size | x/y pair | Width and height across, as a fraction of the tile. 1 touches the borders; less leaves ground around it. |
 | Centre | x/y pair | Where the shape sits on the tile. Outside 0..1 pushes it off the edge, which is how you get a coast rather than an island. |
 | Rotation | float, -180 to 180, default 0 | Turns the shape. Meaningless for a circle, and the whole point for a stretched one. |
@@ -4602,6 +4733,26 @@ Directional rock shearing / folding (Gaea-style)
 | Direction ° | float, -180 to 180, default 0 | Which way the shearing acts. |
 | Self modulated | toggle, default on | Height drives shear strength — bands show on slopes, flats stay intact. |
 | Seed | seed |  |
+| Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
+
+### TileRotate
+
+Repeat the terrain as tiles, each turned a random quarter-turn so no lattice shows
+
+| Port | Direction | Type |
+| :--- | :--- | :--- |
+| input | in | heightmap |
+| output | out | heightmap |
+| blend | in (optional) | heightmap |
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Tiles across | int, 1 to 16, default 2 | How many copies side by side. The output is still one map at the graph's resolution, so more tiles means each gets fewer pixels. |
+| Tiles down | int, 1 to 16, default 2 | How many copies top to bottom. |
+| Each tile | choice: Random quarter-turn / Random quarter-turn + mirror / As is | What happens to each copy. Random turns break up the lattice a plain repeat makes; adding mirroring doubles the number of ways a tile can appear. 'As is' is the plain repeat, for a map that was made seamless. |
+| Seed | seed |  |
+| Seam feather | float, 0 to 0.4, default 0.08 | Width of the cross-fade across each seam, as a fraction of a tile. Zero is a hard join; a turned tile almost never matches its neighbour at the edge, so some is usually wanted. |
+| Then turn the whole | choice: 0° / 90° / 180° / 270° | A final quarter-turn of the tiled result, for when the region needs to face another way. Any angle is the Transform node. |
 | Invert blend | toggle, default off | Applies this node where the blend input is dark instead of where it is bright. |
 
 ### Transform

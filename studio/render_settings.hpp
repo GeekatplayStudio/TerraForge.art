@@ -86,6 +86,37 @@ struct RenderSettings {
   float ambient_intensity = 1.f;
 
   // fog / haze / pollution
+  // Air in layers, all of it at once.
+  //
+  // One fog is one band of air: a density, a height it sits at and how
+  // quickly it thins above that. Real air is never one band - there is haze
+  // to the horizon, a valley fog lying in the bottom, a brown layer over a
+  // town, a clear gap and another sheet above - and a single set of numbers
+  // can only be one of them at a time. Every FogLayer node in the graph adds
+  // one; the fields below are the first, which every existing scene already
+  // has, so nothing changes until a second is added.
+  //
+  // They compose the way air does. Each contributes an optical depth along
+  // the ray and the total is their sum, which is exact - absorption through
+  // mixed media adds - and the colour is each layer's weighted by how much
+  // of the total it accounts for. So a thin haze in front of a thick fog
+  // reads as the fog's colour, as it should, and neither hides the other.
+  struct FogLayerSettings {
+    int type = 2;                   // 0 off, 1 haze, 2 fog, 3 pollution
+    float density = 0.6f;
+    float level = 0.2f;             // height (0..1 of terrain space) it sits at
+    float falloff = 6.f;            // how sharply it thins above that
+    float color[3] = {0.62f, 0.68f, 0.76f};
+    float sun_scatter = 0.5f;
+    float albedo = 0.85f;
+    float anisotropy = 0.55f;
+    // How fast it drifts with the scene's wind, as a share of the wind's own
+    // speed. Air near the ground is slowed by it; a high sheet runs with it.
+    float drift = 0.6f;
+  };
+  static constexpr int MAX_FOG_LAYERS = 8;
+  std::vector<FogLayerSettings> fog_layers;
+
   int fog_type = 1;                 // 0 off, 1 haze, 2 fog, 3 pollution
   float fog_density = 0.9f;
   float fog_level = 0.25f;          // height (0..1 of terrain space) where fog sits
@@ -108,17 +139,89 @@ struct RenderSettings {
   float water_level = 0.08f;
   float water_deep_color[3] = {0.02f, 0.08f, 0.12f};
   float water_shallow_color[3] = {0.10f, 0.26f, 0.36f};
-  float water_wave_amp = 1.f;
-  float water_wave_scale = 1.f;
-  float water_wave_speed = 1.f;
-  float water_clarity = 18.f;       // depth -> deep color rate
-  float water_opacity = 0.92f;
+  // The sea is one surface over the whole world, its waves built from a
+  // ------------------------------------------------------------- the wind
+  // One wind over the whole scene, and everything in it reads the same one.
+  //
+  // Before this each thing had a wind of its own: the clouds drifted one way,
+  // the waves ran another, and the trees leaned a third, which is the single
+  // clearest sign that a landscape was assembled rather than observed. Now
+  // there is one speed and one direction, and each consumer keeps only what
+  // is properly its own - how hard the water is blown over its fetch, how
+  // flexible a plant is, how much faster the air moves at cloud height. Each
+  // can still be cut loose (`*_wind_follow`) for a shot that needs it.
+  //
+  // Speed is metres a second at ten metres up, the way weather is quoted.
+  // Direction is the way it blows TOWARD, in degrees, 0 along +x.
+  struct WindSettings {
+    float speed_ms = 5.f;
+    float direction_deg = 30.f;
+    // A gust is the wind arriving in waves rather than steadily: how much
+    // stronger it gets, how often, and how large one gust is as it travels
+    // over the ground - so a squall crosses a wood rather than shaking all
+    // of it at once.
+    float gust_strength = 0.4f;
+    float gust_frequency = 0.12f;
+    float gust_size_m = 250.f;
+    // How much the direction wanders about the mean, in degrees.
+    float turbulence_deg = 12.f;
+    // Wind shear: how much faster it blows at cloud height than at the
+    // ground. Real air does; without it a cloud deck crawls at the speed of
+    // a breeze through grass.
+    float shear = 2.5f;
+    bool operator==(const WindSettings &) const = default;
+  };
+  WindSettings wind;
+
+  // What the wind is doing at time `t`, for whatever is reading it: the
+  // gusted speed in metres a second and the direction it blows toward. `alt`
+  // is 0 at the ground and 1 at cloud height, which is where the shear
+  // applies. Defined in render_settings.cpp so the studio, the renderers and
+  // the exporters all get the same answer.
+  void wind_at(float t, float alt, float &speed_ms, float &dir_deg) const;
+  // The same, as a unit vector in the ground plane.
+  void wind_vector(float t, float alt, float &vx, float &vz, float &speed_ms) const;
+
+  // How far the air has carried since the scene began, in tiles, and the
+  // distance it has covered.
+  //
+  // Anything that works out where a thing has drifted to as speed x time
+  // cannot be given a gusting speed: the moment the speed changes, the whole
+  // field jumps to where it would have been had it always blown that hard.
+  // The clouds and the fog are given this instead, advanced a step at a time
+  // with whatever the wind is doing at that step, so a gust shows as the deck
+  // surging and never as a jump. Advanced once a frame by wind_advance().
+  float wind_drift[2] = {0.f, 0.f};
+  float wind_drift_len = 0.f;
+  // The same for the air at cloud height, which the shear moves faster.
+  float wind_drift_hi[2] = {0.f, 0.f};
+  float wind_drift_hi_len = 0.f;
+  // Move the drift on by `dt` seconds at time `t`, and resolve the world's
+  // wind into what each thing that follows it is blown by. Once a frame.
+  void wind_advance(float t, float dt);
+
+  // wind (gpx/water_waves.hpp) - Vue's Water Surface Options in physical
+  // units. The three below multiply what the wind makes.
+  float water_wave_amp = 1.f;       // every wave's height (Vue: Height)
+  float water_wave_scale = 1.f;     // every wavelength, the height with it
+  float water_wave_speed = 1.f;     // how fast they run (Vue: Agitation)
+  float water_clarity = 18.f;       // metres the clearest colour carries through water
+  float water_opacity = 0.92f;      // above 0.92 murkier than clarity says, below clearer
+  bool water_displaced = true;      // the waves are geometry, not only shading
+  float water_wind_speed = 4.f;     // m/s: the wave sizes and their energy
+  float water_wind_dir = 30.f;      // degrees the waves run toward, 0 = +x
+  // The sea takes the world's wind unless it is cut loose; the two above are
+  // then what it is blown by instead.
+  bool water_wind_follow = true;
+  float water_choppiness = 0.5f;    // 0 round swells .. 1 sharp crests
   // foam
   bool water_foam = true;
   float foam_color[3] = {0.92f, 0.95f, 0.96f};
-  float foam_amount = 0.6f;         // shoreline foam width/intensity
-  float foam_scale = 3.f;           // foam noise pattern scale
-  float foam_crests = 0.35f;        // wave-crest foam intensity
+  float foam_amount = 0.6f;         // along coasts
+  float foam_scale = 3.f;           // bubble size, 0.4 m a unit
+  float foam_crests = 0.35f;        // over the waves
+  float foam_depth_m = 1.5f;        // how shallow the water is where coast foam starts
+  float foam_coverage = 0.4f;       // how much of each breaking crest foams
 
   // material assignment (Materials workspace)
   // terrain albedo source: 0 = auto (last composite texture in graph),
@@ -150,6 +253,17 @@ struct RenderSettings {
     // orthographic views stay flat: a plan is a plan. Last, so positional
     // initialisers stay put.
     bool curved = false;
+    // Whether plants move in this window. Off everywhere to begin with: a
+    // swaying crown is the one thing on screen that never settles, and while
+    // a person is placing a tree, framing a shot or reading a node's output
+    // they want the picture to hold still. Each window decides for itself,
+    // so one can be left animating while the others stay put.
+    bool animate_plants = false;
+    // The world's centre, drawn as three axes through 0,0,0 - red X, green Y,
+    // blue Z, the negative halves dimmer so the arms say which way is
+    // forward. Everything in the scene is positioned against that point and
+    // it was the one thing in the world with no way to see it.
+    bool show_origin = false;
     bool operator==(const ViewConfig &) const = default;
   };
   int viewport_layout = 0; // 0 = single, 1 = quad (persp/top/front/right)
@@ -220,6 +334,8 @@ struct RenderSettings {
   float cloud_detail = 0.6f;      // erosion strength
   float cloud_wind_speed = 0.02f;
   float cloud_wind_dir = 45.f;
+  // Clouds take the world's wind, sheared for their height, unless cut loose.
+  bool cloud_wind_follow = true;
   float cloud_color[3] = {1.f, 1.f, 1.f};
   float cloud_ambient = 0.55f;    // sky light into clouds
   int   cloud_quality = 1;        // 0 draft, 1 normal, 2 high
@@ -277,6 +393,9 @@ struct RenderSettings {
   // fractal detail: keeps resolving as the camera closes in
   float fractal_detail = 0.0025f; // height of the procedural micro-relief
   float fractal_scale = 90.f;     // base frequency of that relief
+  // how much of each octave the next finer one keeps: low is smooth ground
+  // with its large forms, high is gravel over everything (0.5 as it was)
+  float fractal_gain = 0.5f;
   // graph-authored displacement: how strongly a TerrainDisplacement node's
   // field moves the surface, in world units
   float field_displacement = 0.05f;
@@ -398,14 +517,29 @@ struct LensOptics {
   float vignette = 0.f;  // 0..1 corner falloff
   float chromatic = 0.f; // lateral fringing
   float flare = 0.f;     // 0..1
-  float sun[2] = {-1.f, -1.f}; // sun in screen space, negative when not in frame
+  int flare_style = 1;   // 0 classic ghosts, 1 cinematic, 2 anamorphic
+  float flare_rays = 0.6f, flare_streak = 0.5f, flare_ghosts = 0.5f, flare_halo = 0.35f;
+  // the parts' shapes (CameraData, scene.hpp)
+  float flare_core = 1.f, flare_ray_length = 1.f, flare_streak_length = 1.f;
+  float flare_streak_tint[3] = {0.45f, 0.65f, 1.f};
+  float flare_halo_radius = 0.19f, flare_chroma = 1.f;
+  int flare_ray_count = 16, flare_ghost_count = 9, flare_blades = 6, flare_seed = 0;
+  float sun_rgb[3] = {1.f, 0.95f, 0.85f}; // the sun's colour, brightest channel 1
+  float sun_radius = 0.01f;                // the disc's radius, in frame heights
+  // bloom round what is bright (CameraData; renderer_post_bloom.cpp)
+  float bloom = 0.f, bloom_threshold = 0.85f, bloom_size = 0.5f;
+  float sun[2] = {-1.f, -1.f}; // sun in texture space (y up), negative when not near the frame
   float blur[2] = {0.f, 0.f};  // camera motion this frame, in uv units
 };
 
 constexpr int SLOT_PREVIEW = RenderSettings::MAX_VIEWS;    // Preview panel
 constexpr int SLOT_AOV = RenderSettings::MAX_VIEWS + 1;    // render passes
 constexpr int SLOT_CAMERA = RenderSettings::MAX_VIEWS + 2; // camera thumbnail
-constexpr int SLOT_COUNT = RenderSettings::MAX_VIEWS + 3;
+// A capture to file. It used to borrow View 6's target, resizing it to twice
+// the capture and leaving that view's depth copies and anti-aliasing buffers
+// at the capture's size.
+constexpr int SLOT_CAPTURE = RenderSettings::MAX_VIEWS + 3;
+constexpr int SLOT_COUNT = RenderSettings::MAX_VIEWS + 4;
 
 // The lens a view looks through, resolved from the camera it is using
 // (studio/camera_optics.cpp). `mvp` is this frame's matrix, used only to
@@ -418,6 +552,12 @@ int view_camera_index(const RenderSettings::ViewConfig &vc);
 unsigned renderer_draw_view(int slot, RenderSettings::ViewConfig &vc, int w,
                             int h, float dt);
 void renderer_invalidate_views();
+// true while something on screen moves by itself (drifting clouds, the sea),
+// so the frame pacing keeps a rate for it (renderer.cpp)
+bool renderer_ambient_motion();
+// the width of the heightmap the views draw now (0 before the first upload):
+// below the graph's resolution while a low-resolution preview is on screen
+int renderer_height_res();
 // The planet radius a view draws with: the setting for a camera view or a
 // view with curvature on, 0 (flat) for a free view.
 // An inside world (a ring, a Dyson sphere) is nothing without its
@@ -500,9 +640,12 @@ void renderer_camera_look_at(const float target[3], float distance);
 // ground the tile does not (studio/eco_dynamic.cpp).
 float renderer_ground_base();
 
-// The ground under a point of the tile, in world units, from the picking
-// copy of the heightmap. What the orbit pivot settles onto as you zoom in.
-float renderer_ground_under(float x, float z);
+// The ground under a point of the tile as the viewport draws it, in world
+// units: the picking copy of the heightmap and the fractal micro-relief over
+// it at `octaves` (terrain_relief.hpp) - RELIEF_NEAR_OCTAVES for the ground a
+// thing standing on it is seen on, 0 for the heightmap alone. The orbit pivot
+// settles onto it at the octaves its view draws there.
+float renderer_ground_under(float x, float z, float octaves);
 // Set for the duration of one view's draw (see ViewConfig::scene_camera).
 int &renderer_camera_override();
 // world-space right/up/forward of a view, for the corner orientation gizmo

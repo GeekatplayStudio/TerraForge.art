@@ -3,6 +3,8 @@
 // and every pick that casts a ray through them. Split from renderer.cpp for
 // the 500-line module rule; state lives in renderer_internal.hpp.
 #include "renderer_internal.hpp"
+#include "ground_march.hpp"
+#include "terrain_relief.hpp"
 #include "terrain_tiles.hpp"
 #include "terrain_xform.hpp"
 #include "app.hpp"
@@ -128,13 +130,33 @@ void renderer_camera_look_at(const float target[3], float distance) {
 }
 
 
-// The ground under a point of the tile, in world units. The picking copy is
-// coarse (256 across, ~20 m a texel at 5 km) but it is the only ground the
-// CPU has, and it is four hundred metres better than the alternative below.
-float renderer_ground_under(float x, float z) {
+// The ground under a point of the tile as the viewport draws it, in world
+// units: the heightmap and the micro-relief over it at `octaves`. The picking
+// copy is coarse (256 across, ~20 m a texel at 5 km) but it is the only ground
+// the CPU has, and it is four hundred metres better than the alternative
+// below. The relief is read where the point is, off the tile too: the surround
+// lays the same function across the border.
+float renderer_ground_under(float x, float z, float octaves) {
   if (cpu_height.empty()) return 0.f;
-  return cpu_height.sample(std::clamp(x, 0.f, 1.f), std::clamp(z, 0.f, 1.f)) *
-         render_settings().height_scale;
+  const RenderSettings &rs = render_settings();
+  return cpu_height.sample(std::clamp(x, 0.f, 1.f), std::clamp(z, 0.f, 1.f)) * rs.height_scale +
+         relief_at(x, z, relief_dials(rs), octaves);
+}
+
+// The ground under the orbit's pivot as the view being worked in draws it:
+// the relief at the octaves terrain_place gives a vertex that far from the
+// orbit's eye, and no finer than that view's triangles. Settled on the
+// heightmap alone, the pivot of a close zoom sat metres inside a crest - and
+// the eye converging on it went into the ground.
+static float pivot_ground() {
+  const float x = CAM.target[0], z = CAM.target[2];
+  const float bare = renderer_ground_under(x, z, 0.f);
+  const float cp = std::cos(CAM.pitch);
+  const float dx = CAM.dist * cp * std::sin(CAM.yaw), dz = CAM.dist * cp * std::cos(CAM.yaw);
+  const float dy = CAM.target[1] + CAM.dist * std::sin(CAM.pitch) - bare;
+  const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+  const float tri_k = g_view_tri_k[std::clamp(app().view_focus, 0, SLOT_COUNT - 1)];
+  return renderer_ground_under(x, z, relief_view_octaves(d, tri_k, render_settings().fractal_scale));
 }
 
 // Zooming in pulls the pivot down onto the ground.
@@ -150,7 +172,7 @@ float renderer_ground_under(float x, float z) {
 static void zoom_toward_ground(float before) {
   if (CAM.dist >= before) return; // pulling out leaves the pivot alone
   const float k = CAM.dist / std::max(before, 1e-30f);
-  const float g = renderer_ground_under(CAM.target[0], CAM.target[2]);
+  const float g = pivot_ground();
   CAM.target[1] = g + (CAM.target[1] - g) * k;
 }
 
@@ -187,7 +209,7 @@ void renderer_handle_input(float dx, float dy, float wheel, bool rotating,
     CAM.target[2] += (dx * sy - dy * cy) * s;
     // panning across the ground keeps the pivot on the ground, so a zoom
     // from anywhere lands on the surface rather than in the air over it
-    const float g = renderer_ground_under(CAM.target[0], CAM.target[2]);
+    const float g = pivot_ground();
     const float gap = CAM.target[1] - g;
     if (std::fabs(gap) < CAM.dist) CAM.target[1] = g + gap * 0.9f;
   }
@@ -507,11 +529,19 @@ bool ray_sphere(const float *ro, const float *rd, const float *c, float r,
 // World-space ray through a view coordinate. Shared by object picking and by
 // the terrain brushes, so both agree on where the cursor is pointing.
 bool view_ray(const RenderSettings::ViewConfig &vc, float u, float v, int w,
-                     int h, float ro[3], float rd[3]) {
+                     int h, float ro[3], float rd[3], float *eye_out) {
   RenderSettings &RS = render_settings();
   float eye[3], mvp[16], inv_vp[16];
+  // Through the camera the view draws with, as renderer_draw_view sets it. A
+  // view locked to one camera, or a free view while a camera was active,
+  // cast its rays through the active camera: the click landed where some
+  // other picture would have put it.
+  const int drawn_through = renderer_camera_override();
+  renderer_camera_override() = vc.scene_camera;
   if (vc.camera == 0) camera_matrices(w, h, eye, mvp, inv_vp);
   else ortho_matrices(vc, w, h, RS.height_scale, eye, mvp, inv_vp);
+  renderer_camera_override() = drawn_through;
+  if (eye_out) std::copy(eye, eye + 3, eye_out);
   float ndc_x = u * 2.f - 1.f, ndc_y = 1.f - v * 2.f;
   auto unproject = [&](float z, float *out) {
     float p[4] = {ndc_x, ndc_y, z, 1.f};
@@ -536,48 +566,72 @@ bool view_ray(const RenderSettings::ViewConfig &vc, float u, float v, int w,
 }
 
 
+// One tile's drawn ground along a ray, for ground_march: the heightmap in
+// the tile's own frame, the micro-relief over it at the octaves the view in
+// `slot` draws each point with - the distance measured, as terrain_place
+// measures it, from the eye to the point before the relief is added - and the
+// tile's transform. `lo`..`hi` is how far off the tile a point may lie and
+// still be over it.
+struct TileGround {
+  const float *ro, *rd, *eye;
+  ReliefDials dials;
+  float tri_k, hs;
+  const TerrainXform *tx = nullptr;           // null: the tile where it was made
+  float scl_y = 1.f, pos_y = 0.f, scl_xz = 1.f; // that transform, up and across
+  float lo = 0.f, hi = 1.f;
+  float hlen; // the ray's run across the ground per unit of its length
+  TileGround(const float *ro_, const float *rd_, const float *eye_, int slot)
+      : ro(ro_), rd(rd_), eye(eye_), dials(relief_dials(render_settings())),
+        tri_k(g_view_tri_k[std::clamp(slot, 0, SLOT_COUNT - 1)]),
+        hs(render_settings().height_scale),
+        hlen(std::max(std::sqrt(rd_[0] * rd_[0] + rd_[2] * rd_[2]), 1e-3f)) {}
+  GroundProbe operator()(float t, bool fine) const {
+    GroundProbe p;
+    const float x = ro[0] + rd[0] * t, y = ro[1] + rd[1] * t, z = ro[2] + rd[2] * t;
+    float u = x, v = z;
+    if (tx) terrain_xform_unapply_xz(*tx, x, z, u, v);
+    if (u < lo || u > hi || v < lo || v > hi) {
+      p.where = y < -0.5f ? -1 : 0;
+      return p;
+    }
+    p.where = 1;
+    u = std::clamp(u, 0.f, 1.f);
+    v = std::clamp(v, 0.f, 1.f);
+    const float bare = cpu_height.sample(u, v) * hs;
+    // the relief reaches half its amount either way
+    p.top = y - (bare * scl_y + pos_y + 0.5f * dials.amount * std::fabs(scl_y));
+    if (!fine) return p;
+    const float ex = eye[0] - u, ey = eye[1] - bare, ez = eye[2] - v;
+    const float of = relief_view_octaves(std::sqrt(ex * ex + ey * ey + ez * ez), tri_k, dials.scale);
+    p.drawn = y - ((bare + relief_at(u, v, dials, of)) * scl_y + pos_y);
+    // a quarter of the finest wave drawn here, across the ground
+    const float wave = relief_finest_wave(of, dials.scale);
+    p.step = wave > 0.f ? 0.25f * wave * scl_xz / hlen : 1e30f;
+    return p;
+  }
+};
+
 // March the height field and report where the cursor lands on it, in
-// normalized terrain coordinates. This is what positions a sculpt brush.
+// normalized terrain coordinates. This is what positions a sculpt brush - once
+// a frame while sculpting, so the walk only looks for relief near the ground.
 bool renderer_pick_terrain(int slot, const RenderSettings::ViewConfig &vc, float u,
                            float v, int w, int h, float &tx, float &tz) {
-  (void)slot;
-  RenderSettings &RS = render_settings();
   if (cpu_height.empty()) return false;
-  float pn[3], rd[3];
-  if (!view_ray(vc, u, v, w, h, pn, rd)) return false;
-  float prev_diff = 0;
-  bool have_prev = false;
-  float step = 0.003f;
-  for (float tt = 0.f; tt < 12.f; tt += step) {
-    float x = pn[0] + rd[0] * tt, y = pn[1] + rd[1] * tt, z = pn[2] + rd[2] * tt;
-    if (x < 0.f || x > 1.f || z < 0.f || z > 1.f) {
-      have_prev = false;
-      if (y < -0.5f) break;
-      continue;
-    }
-    float terr = cpu_height.sample(x, z) * RS.height_scale;
-    float diff = y - terr;
-    if (have_prev && prev_diff > 0 && diff <= 0) {
-      float f = diff / (diff - prev_diff + 1e-9f);
-      float hit = tt - step * f;
-      tx = std::clamp(pn[0] + rd[0] * hit, 0.f, 1.f);
-      tz = std::clamp(pn[2] + rd[2] * hit, 0.f, 1.f);
-      return true;
-    }
-    prev_diff = diff;
-    have_prev = true;
-    step = std::min(step * 1.02f, 0.04f);
-  }
-  return false;
+  float pn[3], rd[3], eye[3];
+  if (!view_ray(vc, u, v, w, h, pn, rd, eye)) return false;
+  float hit = 0.f;
+  if (!ground_march(GroundWalk{}, TileGround(pn, rd, eye, slot), hit)) return false;
+  tx = std::clamp(pn[0] + rd[0] * hit, 0.f, 1.f);
+  tz = std::clamp(pn[2] + rd[2] * hit, 0.f, 1.f);
+  return true;
 }
 
 
 int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float v,
                   int w, int h) {
-  (void)slot;
   RenderSettings &RS = render_settings();
-  float pn[3], rd[3];
-  if (!view_ray(vc, u, v, w, h, pn, rd)) return -1;
+  float pn[3], rd[3], eye[3];
+  if (!view_ray(vc, u, v, w, h, pn, rd, eye)) return -1;
 
   SceneState &sc = scene();
   int best_idx = -1;
@@ -634,41 +688,26 @@ int renderer_pick(int slot, const RenderSettings::ViewConfig &vc, float u, float
     } else if (o.type == SceneObject::Terrain) {
       // this object's tile (terrain_tiles.hpp), through its transform: the
       // ray is walked in world units and the heightmap read where the
-      // tile's inverse says it lies
+      // tile's inverse says it lies, the relief over it as the view draws it
       const int tile = terrain_tile_for_object((int)i);
       if (tile < 0) continue;
       TileSwap swap(tile);
       if (cpu_height.empty()) continue;
       const TerrainXform tx = terrain_xform_of(o, RS.height_scale);
-      // march the heightfield
-      float t0 = 0.f, t1 = 12.f;
-      float prev_diff = 0;
-      bool have_prev = false;
-      float step = 0.004f;
-      for (float tt = t0; tt < t1; tt += step) {
-        float x = pn[0] + rd[0] * tt, y = pn[1] + rd[1] * tt, z = pn[2] + rd[2] * tt;
-        float u = x, v = z;
-        terrain_xform_unapply_xz(tx, x, z, u, v);
-        if (u < -0.05f || u > 1.05f || v < -0.05f || v > 1.05f) {
-          have_prev = false;
-          if (y < -0.5f) break;
-          continue;
-        }
-        float terr = cpu_height.sample(std::clamp(u, 0.f, 1.f),
-                                       std::clamp(v, 0.f, 1.f)) * RS.height_scale * tx.scl[1] +
-                     (tx.on ? tx.pos[1] : 0.f);
-        float diff = y - terr;
-        if (have_prev && prev_diff > 0 && diff <= 0) {
-          float hit_t = tt - step * (diff / (diff - prev_diff + 1e-9f));
-          if (hit_t < best_t) {
-            best_t = hit_t;
-            best_idx = (int)i;
-          }
-          break;
-        }
-        prev_diff = diff;
-        have_prev = true;
-        step = std::min(step * 1.02f, 0.05f);
+      TileGround ground(pn, rd, eye, slot);
+      ground.tx = &tx;
+      ground.scl_y = tx.scl[1];
+      ground.pos_y = tx.on ? tx.pos[1] : 0.f;
+      ground.scl_xz = std::max(std::min(std::fabs(tx.scl[0]), std::fabs(tx.scl[2])), 1e-4f);
+      ground.lo = -0.05f;
+      ground.hi = 1.05f;
+      GroundWalk walk;
+      walk.stride = 0.004f;
+      walk.stride_max = 0.05f;
+      float hit_t = 0.f;
+      if (ground_march(walk, ground, hit_t) && hit_t < best_t) {
+        best_t = hit_t;
+        best_idx = (int)i;
       }
     }
   }

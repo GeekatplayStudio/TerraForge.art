@@ -4,6 +4,7 @@
 // the relink-on-change bookkeeping. Split from renderer.cpp for the 500-line
 // module rule.
 #include "renderer_internal.hpp"
+#include "gpx/plant.hpp"
 #include "app.hpp"
 #include "console.hpp"
 #include "cloud_noise.hpp"
@@ -40,6 +41,7 @@ std::string inject_sky(const char *src) {
     if (p != std::string::npos) s.replace(p, strlen(tag), body);
   };
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
+  sub("HEIGHT_SMOOTH_PLACEHOLDER", HEIGHT_SMOOTH_FN);
   {
     // the terrain tile's transform: the deformers first, then the tile's
     // own offset/rotation/scale on top of them (terrain_xform.hpp)
@@ -62,6 +64,7 @@ std::string inject_sky(const char *src) {
   {
     extern const char *const DEFORM_FN_GLSL; // shaders_scene.cpp
     sub("DEFORM_FN_PLACEHOLDER", DEFORM_FN_GLSL);
+    sub("PLANT_WIND_PLACEHOLDER", gpx::plant_wind_glsl()); // engine/plant/plant_wind.cpp
     extern const char *const INSTANCE_FN; // shaders_scene.cpp
     sub("INSTANCE_FN_PLACEHOLDER", INSTANCE_FN);
   }
@@ -79,6 +82,11 @@ std::string inject_sky(const char *src) {
   }
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
+  sub("SKY_WORLD_PLACEHOLDER", SKY_WORLD_GLSL);
+  sub("CLOUD_SHAPE_PLACEHOLDER", CLOUD_SHAPE_GLSL);
+  sub("CLOUD_FN_PLACEHOLDER", CLOUD_FN_GLSL);
+  sub("SKY_ENV_PLACEHOLDER", SKY_ENV_GLSL);
+  sub("WATER_WAVES_PLACEHOLDER", WATER_WAVES_GLSL);
   sub("WATER_FN_PLACEHOLDER", WATER_FN_GLSL);
   // The vertex and fragment stages are separate translation units, so each
   // gets its own copy of the prelude; duplicate definitions only collide

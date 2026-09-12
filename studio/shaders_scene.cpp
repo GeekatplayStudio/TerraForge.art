@@ -1,4 +1,4 @@
-// Geekatplay TerraForge — water, mesh, gizmo and helper shaders (sky lives in shaders_sky.cpp)
+// Geekatplay TerraForge — mesh, gizmo and helper shaders (sky lives in shaders_sky.cpp)
 #include "renderer_shaders.hpp"
 
 namespace studio {
@@ -17,12 +17,18 @@ uniform sampler2D u_height;
 uniform mat4 u_light_mvp;
 uniform float u_hscale;
 uniform float u_field_strength;
+uniform float u_height_lod_k;
+uniform vec3 u_lod_cam;
+uniform float u_lod_ground;
+HEIGHT_SMOOTH_PLACEHOLDER
 FRACTAL_FN_PLACEHOLDER
 GPX_FIELD_PLACEHOLDER
 TILE_XFORM_PLACEHOLDER
 out vec2 v_uv;
 void main(){
-  float h = texture(u_height, in_uv).r * u_hscale;
+  // the surface the view draws: the same smooth relief at the same level
+  // (HEIGHT_SMOOTH_FN), or rims cast shadows onto ground that is not there
+  float h = height_smooth(in_uv, relief_lod(in_uv)) * u_hscale;
   vec3 p = vec3(in_uv.x, h, in_uv.y);
   if (u_field_strength != 0.0)
     p.y += gpx_terrain_field(p, vec3(0.0,1.0,0.0), h, 1.0, 0.0, 0.0, 7.0).x *
@@ -41,129 +47,7 @@ in vec2 v_uv;
 TILE_XFORM_FS_PLACEHOLDER
 void main(){ if (tile_cut(v_uv)) discard; })GLSL";
 
-// The water lies on the same sphere as the tile (PL_SPHERE_PLACEHOLDER is
-// spliced by inject_sky): on an Earth-size planet it curves with the
-// terrain, and on a globe smaller than the tile it is a shell at sea level
-// rather than a flat plane cutting through the marble.
-const char *const VS_WATER = R"GLSL(#version 430 core
-layout(location=0) in vec2 in_uv;
-uniform mat4 u_mvp;
-uniform float u_level;
-uniform float u_planet_radius;
-PL_SPHERE_PLACEHOLDER
-TILE_XFORM_PLACEHOLDER
-out vec2 v_uv;
-out vec3 v_world;
-void main(){
-  // the plane covers the tile's footprint, wherever the tile's transform
-  // put it (terrain_xform.hpp); its level stays a level
-  vec2 xz = tile_xform(vec3(in_uv.x, 0.0, in_uv.y)).xz;
-  vec3 p = pl_sphere_place(xz, u_level, u_planet_radius);
-  v_uv = in_uv; v_world = p;
-  gl_Position = u_mvp * vec4(p,1.0);
-})GLSL";
-
-
-// One water, wherever it is. The tile's water plane and the planet surround
-// used to shade water differently - waves, foam and a translucent shore on
-// the tile, a flat palette tint on the surround - so a lake crossing the
-// tile's border changed character on a straight line. Both now call this;
-// the uniforms carry a u_w_ prefix so the function can live in any program.
-const char *const WATER_FN_GLSL = R"GLSL(
-uniform float u_w_time, u_w_wave_amp, u_w_wave_scale, u_w_wave_speed;
-uniform float u_w_clarity, u_w_opacity, u_w_roughness, u_w_reflection, u_w_atmo;
-uniform vec3 u_w_deep, u_w_shallow, u_w_foam_color;
-uniform int u_w_foam_on;
-uniform float u_w_foam_amount, u_w_foam_scale, u_w_foam_crests;
-float wat_hash(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
-float wat_vnoise(vec2 p){
-  vec2 i = floor(p), f = fract(p);
-  f = f*f*(3.0-2.0*f);
-  return mix(mix(wat_hash(i),wat_hash(i+vec2(1,0)),f.x),
-             mix(wat_hash(i+vec2(0,1)),wat_hash(i+vec2(1,1)),f.x), f.y);
-}
-struct WaterShade { vec3 col; vec3 n; float alpha; vec3 water; vec3 refl; vec3 spec; };
-// uv: the water's own parameterisation (tile units, so the pattern runs
-// straight across the tile's border); depth: how far the bed is below the
-// surface, world units; hscale: the tile's height scale (the shore width).
-WaterShade water_shade(vec2 uv, vec3 world, float depth, float hscale, vec3 cam,
-                       vec3 sun, vec3 sun_color, vec3 zenith, vec3 horizon){
-  WaterShade o;
-  float t = u_w_time * u_w_wave_speed;
-  float k = u_w_wave_scale;
-  float w1 = sin(uv.x*140.0*k + t*1.3)*0.5 + sin(uv.y*120.0*k - t*1.7)*0.5;
-  float w2 = sin((uv.x*90.0 - uv.y*70.0)*k + t*0.9);
-  float w3 = sin((uv.x*47.0 + uv.y*61.0)*k - t*0.6);
-  vec3 n = normalize(vec3((w1+w3*0.5)*0.02*u_w_wave_amp, 1.0, (w2+w3*0.5)*0.02*u_w_wave_amp));
-  vec3 vdir = normalize(cam - world);
-  float fresnel = pow(1.0 - max(dot(n, vdir),0.0), 5.0)*0.9 + 0.06;
-  vec3 water = mix(u_w_shallow, u_w_deep, clamp(depth*u_w_clarity,0.0,1.0));
-  vec3 R = reflect(-vdir, n);
-  vec3 skyr = sky_color(R, zenith, horizon, sun, sun_color, u_w_atmo);
-  vec3 col = mix(water, skyr, fresnel * (0.5 + 0.5*u_w_reflection));
-  float spec = pow(max(dot(reflect(-sun, n), vdir),0.0), mix(900.0, 120.0, u_w_roughness));
-  col += sun_color * spec * 2.0;
-  float alpha = clamp(0.55 + depth*10.0, 0.0, u_w_opacity);
-  if (u_w_foam_on == 1) {
-    float fn = wat_vnoise(uv*60.0*u_w_foam_scale + vec2(t*0.15, -t*0.1));
-    fn = fn*0.6 + 0.4*wat_vnoise(uv*140.0*u_w_foam_scale - vec2(t*0.22, t*0.13));
-    float shore_w = 0.012 * u_w_foam_amount * hscale;
-    float pulse = 0.6 + 0.4*sin(t*1.8 + uv.x*30.0 + uv.y*24.0);
-    float shore = (1.0 - smoothstep(0.0, shore_w * (0.6+pulse), depth));
-    shore *= smoothstep(0.35, 0.75, fn) * u_w_foam_amount * 1.6;
-    float crest = smoothstep(1.05, 1.45, w1 + w2*0.5) * u_w_foam_crests;
-    crest *= smoothstep(0.45, 0.8, fn);
-    float foam = clamp(shore + crest, 0.0, 1.0);
-    col = mix(col, u_w_foam_color, foam);
-    alpha = max(alpha, foam * 0.95);
-  }
-  o.col = col; o.n = n; o.alpha = alpha; o.water = water;
-  o.refl = skyr * fresnel * (0.5 + 0.5*u_w_reflection);
-  o.spec = sun_color * spec * 2.0;
-  return o;
-}
-)GLSL";
-
-const char *const FS_WATER = R"GLSL(#version 430 core
-in vec2 v_uv;
-in vec3 v_world;
-out vec4 frag;
-uniform sampler2D u_height;
-uniform float u_hscale, u_level, u_exposure;
-uniform vec3 u_sun, u_sun_color, u_cam;
-uniform vec3 u_sky_zenith, u_sky_horizon;
-SKY_FN_PLACEHOLDER
-FOG_FN_PLACEHOLDER
-WATER_FN_PLACEHOLDER
-uniform vec3 u_grade;
-uniform float u_sat;
-vec3 aces(vec3 x){
-  x *= u_grade;
-  float lum = dot(x, vec3(0.299, 0.587, 0.114));
-  x = mix(vec3(lum), x, u_sat);
-  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
-}
-void main(){
-  float bed = texture(u_height, v_uv).r * u_hscale;
-  float depth = u_level - bed;
-  if (depth <= 0.0) discard;
-  WaterShade ws = water_shade(v_uv, v_world, depth, u_hscale, u_cam, u_sun, u_sun_color,
-                              u_sky_zenith, u_sky_horizon);
-  vec3 col = ws.col;
-  // the same air the terrain disappears into: distant water was never fogged
-  float dist = length(v_world - u_cam);
-  float fog_f; vec3 fog_c;
-  fog_terms(v_world, u_cam, dist, u_hscale, u_sun, u_sun_color, fog_f, fog_c);
-  if (u_aov != 0) {
-    frag = aov_out(u_aov, dist, ws.n, ws.water, v_world, float(u_object_id), ws.spec, 1.0,
-                   ws.refl, ws.spec + ws.refl, fog_f, fog_c, 1.0, col);
-    if (u_aov == 13) frag.a = ws.alpha;
-    return;
-  }
-  col = apply_fog_terms(col, fog_f, fog_c);
-  col = aces(col*u_exposure); col = pow(col, vec3(1.0/2.2));
-  frag = vec4(col, ws.alpha);
-})GLSL";
+// The water's shaders live in shaders_water.cpp.
 
 // The model matrix is built on the CPU (scene_object_matrix) so that the
 // renderer, picking and the selection outline all read one definition of
@@ -214,10 +98,24 @@ layout(location=3) in vec4 in_instance_rot; // cos(yaw), sin(yaw), tint, wind ph
 layout(location=4) in vec4 in_instance_axes; // per-axis scale, lean into the surface
 layout(location=5) in vec4 in_instance_ground; // the ground's normal, LOD key
 layout(location=6) in vec2 in_uv;          // texture coordinates, when the model has them
+// a plant's wind weights and tint (studio/scene_plants_species.cpp); the
+// same plant_wind() moves the vertices on the CPU for a bake or an export
+layout(location=7) in vec4 in_wind;
+layout(location=8) in vec4 in_tint;
+uniform int u_plant_on;
+uniform float u_plant_time;
+// 1 while a part of foliage is being drawn: a thin two-sided sheet whose
+// outline is a cut-out. It is lit from both sides, lit through from behind,
+// and its cut-out edge is resolved to a pixel (studio/renderer_meshes.cpp).
+uniform int u_leaf;
+uniform float u_leaf_through;
+uniform vec4 u_pw_a, u_pw_b, u_pw_c;
+PLANT_WIND_PLACEHOLDER
 DEFORM_FN_PLACEHOLDER
 INSTANCE_FN_PLACEHOLDER
 out vec3 v_nrm;
 out float v_tint;
+out vec4 v_ptint;
 out vec3 v_world;
 out vec2 v_uv;
 // Where this point sits inside the model's own bounding box, 0..1 per axis.
@@ -228,6 +126,9 @@ void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
   v_tint = 1.0;
+  v_ptint = u_plant_on == 1 ? in_tint : vec4(1.0);
+  // a plant's vertices are in a unit-height frame, so height is 1 here
+  if (u_plant_on == 1) pos = plant_wind(pos, in_wind, u_plant_time, 1.0, u_pw_a, u_pw_b, u_pw_c);
   v_local = (in_pos - u_bmin) / max(u_bmax - u_bmin, vec3(1e-6));
   v_uv = in_uv; // for every path below: an unwritten varying is what flickered textured meshes
   if (u_def_on == 1) {
@@ -267,6 +168,18 @@ void main(){
 const char *const FS_MESH = R"GLSL(#version 430 core
 in vec3 v_nrm;
 in float v_tint;
+in vec4 v_ptint;
+uniform int u_leaf;
+uniform float u_leaf_through;
+// The part's own surface: its normal map and how sharply it reflects. A leaf
+// without these is lit as one flat facet whatever its colour picture shows,
+// which is most of the difference between foliage that reads as a leaf and
+// foliage that reads as printed paper.
+uniform int u_has_part_normal;
+uniform sampler2D u_part_normal;
+uniform float u_part_rough;
+uniform int u_has_part_rough;
+uniform sampler2D u_part_rough_tex;
 in vec3 v_world;
 in vec2 v_uv;
 in vec3 v_local;
@@ -308,6 +221,7 @@ float mesh_shadow(vec3 world, float ndl){
   return s / 9.0;
 }
 FOG_FN_PLACEHOLDER
+SKY_ENV_PLACEHOLDER
 MATERIAL_UNIFORMS_PLACEHOLDER
 const float PI = 3.14159265;
 MATERIAL_FN_PLACEHOLDER
@@ -326,6 +240,16 @@ void main(){
   // emissive) is the terrain's own PBR pipeline, shared through
   // MATERIAL_*_PLACEHOLDER so one material means the same thing everywhere.
   vec3 N = normalize(v_nrm);
+  {
+    // Lit on whichever side is seen. A leaf, a frond or a blade of grass is
+    // one sheet, and seen from below its normal points away from the eye, so
+    // it shaded black against the sky. Mirrored across the view plane rather
+    // than negated: a normal that turns away only at a closed mesh's
+    // silhouette stays continuous there instead of snapping.
+    vec3 Vf = normalize(u_cam - v_world);
+    float nv = dot(N, Vf);
+    if (nv < 0.0) N = normalize(N - 2.0 * nv * Vf);
+  }
   if (u_id_mode != 0 && u_aov == 0) {
     vec3 c = id_colour(u_id_mode == 2 ? u_id_key : float(u_object_id));
     frag = vec4(c * (0.7 + 0.3 * max(N.y, 0.0)), 1.0);
@@ -384,20 +308,66 @@ void main(){
     frag = vec4(col, clamp(1.0 - T, 0.0, 1.0));
     return;
   }
-  vec3 base = u_color * v_tint;
+  // a plant's per-leaf tint (season, health, colour shift) and its baked
+  // ambient occlusion ride in v_ptint; 1 on every other mesh
+  vec3 base = u_color * v_tint * v_ptint.rgb * mix(1.0, v_ptint.a, 0.6);
   if (u_has_tex == 1) {
     // The material's mapping mode and its scale/offset/rotation, which the
     // part's own picture used to ignore entirely - it sampled raw model UVs,
     // so every Transform setting on the material did nothing here.
-    vec4 t = texture(u_albedo_tex, mat_uv3(v_uv, v_local, v_world, N));
-    if (t.a < 0.5) discard; // a leaf card: the picture's alpha is the leaf's edge
+    vec2 auv = mat_uv3(v_uv, v_local, v_world, N);
+    vec4 t = texture(u_albedo_tex, auv);
+    float a = t.a;
+    if (u_leaf == 1) {
+      // The cut-out edge, sharpened to the width of one pixel.
+      //
+      // A leaf's outline is a picture's alpha tested against a half. A leaf
+      // that moves - and in wind every leaf moves - drags that picture across
+      // the pixel grid, and each pixel flips between leaf and gap as the
+      // texel it happens to land on crosses the threshold. A crown of them
+      // strobes. Dividing by how fast the alpha changes across the pixel
+      // turns the test into a sub-pixel coverage: the edge lands in the same
+      // place however the leaf is sampled, and the flicker goes with it.
+      // (The mip chain already keeps each level's share of leaf, so the
+      // crown does not thin with distance either.)
+      a = clamp((a - 0.5) / max(fwidth(a), 1e-4) + 0.5, 0.0, 1.0);
+      if (a < 0.5) discard;
+    } else if (a < 0.5) {
+      discard;
+    }
     base *= pow(t.rgb, vec3(2.2));
   }
   vec3 albedo = mat_albedo(base);
-  float rough = clamp(u_roughness, 0.03, 1.0);
+  // A leaf's cuticle is waxy: its roughness belongs to the plant material,
+  // not to whatever the material system last set.
+  float rough = clamp(u_leaf == 1 ? u_part_rough : u_roughness, 0.03, 1.0);
+  // per texel where the part has a map: the blade glossy, the veins dull, a
+  // dry rim duller still. This is the glint that says "leaf" rather than
+  // "green paper".
+  if (u_leaf == 1 && u_has_part_rough == 1)
+    rough = clamp(texture(u_part_rough_tex, mat_uv3(v_uv, v_local, v_world, N)).r, 0.03, 1.0);
   vec3 V = normalize(u_cam - v_world);
   vec3 L = normalize(u_sun);
   vec3 H = normalize(L + V);
+  if (u_leaf == 1) {
+    // A leaf is a sheet with no inside. Which way its normal happens to face
+    // is an accident of how the card was built, and lighting it as a solid
+    // surface made every leaf that turned past the sun snap to black and
+    // back - the second half of the flicker. It is turned to face the
+    // viewer, so both faces are lit, and what the sun puts through it from
+    // behind is added below.
+    if (dot(N, V) < 0.0) N = -N;
+    // The midrib and the veins, from the part's normal map. A frame is built
+    // about the card's own normal rather than from real tangents, which a
+    // leaf card does not carry: the card is flat and its picture is axis
+    // aligned, so any consistent frame reads the map the way it was drawn.
+    if (u_has_part_normal == 1) {
+      vec3 t = normalize(abs(N.y) < 0.9 ? cross(vec3(0.0, 1.0, 0.0), N) : cross(vec3(1.0, 0.0, 0.0), N));
+      vec3 b = cross(N, t);
+      vec3 m = texture(u_part_normal, mat_uv3(v_uv, v_local, v_world, N)).xyz * 2.0 - 1.0;
+      N = normalize(t * m.x + b * m.y + N * m.z);
+    }
+  }
   float NdL = mat_ndl(dot(N, L)), NdV = max(dot(N, V), 1e-4);
   float NdH = max(dot(N, H), 0.0), VdH = max(dot(V, H), 0.0);
   vec3 F0 = mat_f0(albedo);
@@ -417,10 +387,19 @@ void main(){
   vec3 sky = u_sky_light * u_ambient;
   lit += albedo * sky * (0.45 + 0.55 * N.y) * (u_m_ambient / 0.4);
   vec3 R = reflect(-V, N);
-  vec3 refl = mix(u_sky_horizon, u_sky_zenith, clamp(R.y * 0.5 + 0.5, 0.0, 1.0));
+  // the sky pass's picture, clouds and all, when the view has one
+  vec3 refl = u_sky_env_on == 1 ? sky_env(R, a)
+                                : mix(u_sky_horizon, u_sky_zenith, clamp(R.y * 0.5 + 0.5, 0.0, 1.0));
   vec3 reflection = refl * u_reflection * (1.0 - rough) * mat_fresnel(NdV, F0.g);
   if (u_m_color_reflected == 1) reflection *= albedo;
   lit += reflection + mat_translucent(albedo, V, L, sun_c) + u_m_luminous;
+  // Light through the leaf. A canopy with the sun behind it glows; without
+  // this the shaded side of every leaf is flat ambient, and a leaf crossing
+  // the terminator as it moves changes brightness in one step.
+  if (u_leaf == 1) {
+    float through = max(0.0, dot(-N, L));
+    lit += albedo * sun_c * pow(through, 1.5) * u_leaf_through;
+  }
   if (u_m_ignore_light == 1) lit = albedo + u_m_luminous;
   for (int li = 0; li < u_light_count; ++li) {
     vec3 ld = u_lights[li].xyz - v_world;

@@ -17,6 +17,7 @@ implementation rather than three.
 from typing import Any, Dict, Optional
 
 from .studio_asset_tools import ASSET_TOOLS, ASSET_SIMPLE
+from .studio_plant_tools import PLANT_TOOLS, PLANT_SIMPLE
 from .studio_anim_tools import ANIM_TOOLS, ANIM_SIMPLE
 
 GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
@@ -98,10 +99,11 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
         "params": {"node": "int|str"},
     },
     "studio_set_workspace": {
-        "description": "Choose the workflow: terrain, materials, atmosphere or "
-                       "render (or 0..3). This is what the second toolbar row "
-                       "selects, and it decides which tools the third row "
-                       "offers.",
+        "description": "Choose the workflow: terrain, materials, objects, "
+                       "plants, atmosphere, lighting, cameras, animation or "
+                       "render (or its number). This is what the second "
+                       "toolbar row selects, and it decides which tools the "
+                       "third row offers.",
         "params": {"workspace": "int|str"},
     },
     "studio_show_panel": {
@@ -413,7 +415,7 @@ GRAPH_TOOLS: Dict[str, Dict[str, Any]] = {
     "studio_open_node_editor": {
         "description": "Open another node editor window pinned to a domain: "
                        "terrain, materials, atmosphere, render, objects, "
-                       "lighting, cameras, animation, or all.",
+                       "lighting, cameras, animation, plants, or all.",
         "params": {"domain": "int|str"},
     },
     "studio_combine_objects": {
@@ -516,6 +518,9 @@ _SIMPLE.update(ASSET_SIMPLE)
 # animation (studio_anim_tools.py)
 GRAPH_TOOLS.update(ANIM_TOOLS)
 _SIMPLE.update(ANIM_SIMPLE)
+# the plant library (studio_plant_tools.py)
+GRAPH_TOOLS.update(PLANT_TOOLS)
+_SIMPLE.update(PLANT_SIMPLE)
 
 
 def handle_graph_tool(tool: str, params: Dict[str, Any],

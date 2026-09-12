@@ -48,6 +48,14 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"star_halo", 'f', &rs.space.star_halo},
       {"star_clump", 'f', &rs.space.star_clump},
       {"star_seed", 'i', &rs.space.star_seed},
+      {"star_spike_points", 'i', &rs.space.star_spike_points},
+      {"star_spike_angle", 'f', &rs.space.star_spike_angle},
+      {"star_spike_chroma", 'f', &rs.space.star_spike_chroma},
+      {"star_saturation", 'f', &rs.space.star_saturation},
+      {"star_glow", 'f', &rs.space.star_glow},
+      {"star_bright_share", 'f', &rs.space.star_bright_share},
+      {"star_clusters", 'f', &rs.space.star_clusters},
+      {"star_cluster_size", 'f', &rs.space.star_cluster_size},
       {"galaxy_on", 'b', &rs.space.galaxy_on},
       {"galaxy_intensity", 'f', &rs.space.galaxy_intensity},
       {"galaxy_width", 'f', &rs.space.galaxy_width},
@@ -83,11 +91,29 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       {"water_wave_speed", 'f', &rs.water_wave_speed},
       {"water_clarity", 'f', &rs.water_clarity},
       {"water_opacity", 'f', &rs.water_opacity},
+      {"water_displaced", 'b', &rs.water_displaced},
+      // the scene's wind, which the clouds, the sea, the fog and the plants
+      // all read (render_settings.hpp). The drift is where the air has got to
+      // and is worked out again from the clock, so it is not saved.
+      {"wind_speed_ms", 'f', &rs.wind.speed_ms},
+      {"wind_direction_deg", 'f', &rs.wind.direction_deg},
+      {"wind_gust_strength", 'f', &rs.wind.gust_strength},
+      {"wind_gust_frequency", 'f', &rs.wind.gust_frequency},
+      {"wind_gust_size_m", 'f', &rs.wind.gust_size_m},
+      {"wind_turbulence_deg", 'f', &rs.wind.turbulence_deg},
+      {"wind_shear", 'f', &rs.wind.shear},
+      {"cloud_wind_follow", 'b', &rs.cloud_wind_follow},
+      {"water_wind_follow", 'b', &rs.water_wind_follow},
+      {"water_wind_speed", 'f', &rs.water_wind_speed},
+      {"water_wind_dir", 'f', &rs.water_wind_dir},
+      {"water_choppiness", 'f', &rs.water_choppiness},
       {"water_foam", 'b', &rs.water_foam},
       {"foam_color", 'c', rs.foam_color},
       {"foam_amount", 'f', &rs.foam_amount},
       {"foam_scale", 'f', &rs.foam_scale},
       {"foam_crests", 'f', &rs.foam_crests},
+      {"foam_depth_m", 'f', &rs.foam_depth_m},
+      {"foam_coverage", 'f', &rs.foam_coverage},
       // material routing
       {"terrain_material_mode", 'i', &rs.terrain_material_mode},
       {"terrain_material_node", 'u', &rs.terrain_material_node},
@@ -147,6 +173,7 @@ std::vector<EnvField> env_fields(RenderSettings &rs) {
       // detail & displacement
       {"fractal_detail", 'f', &rs.fractal_detail},
       {"fractal_scale", 'f', &rs.fractal_scale},
+      {"fractal_gain", 'f', &rs.fractal_gain},
       {"field_displacement", 'f', &rs.field_displacement},
       // tessellation & world shape
       {"tessellation", 'b', &rs.tessellation},
@@ -318,6 +345,24 @@ json scene_to_json() {
           {"chromatic", c.chromatic},
           {"flare", c.flare},
           {"flare_strength", c.flare_strength},
+          {"flare_style", c.flare_style},
+          {"flare_rays", c.flare_rays},
+          {"flare_streak", c.flare_streak},
+          {"flare_ghosts", c.flare_ghosts},
+          {"flare_halo", c.flare_halo},
+          {"flare_core", c.flare_core},
+          {"flare_ray_count", c.flare_ray_count},
+          {"flare_ray_length", c.flare_ray_length},
+          {"flare_streak_length", c.flare_streak_length},
+          {"flare_streak_tint", vec3_to_json(c.flare_streak_tint)},
+          {"flare_halo_radius", c.flare_halo_radius},
+          {"flare_ghost_count", c.flare_ghost_count},
+          {"flare_blades", c.flare_blades},
+          {"flare_chroma", c.flare_chroma},
+          {"flare_seed", c.flare_seed},
+          {"bloom", c.bloom},
+          {"bloom_threshold", c.bloom_threshold},
+          {"bloom_size", c.bloom_size},
           {"motion_blur", c.motion_blur},
           {"render",
            {{"engine", c.render.engine},
@@ -350,6 +395,7 @@ json scene_to_json() {
           {"seed", P.seed},           {"sea_level", P.sea_level},
           {"snow_line", P.snow_line}, {"spin_deg", P.spin_deg},
           {"atmo_density", P.atmo_density},
+          {"clouds", P.clouds},
           {"home", P.home},
           {"surface_node", P.surface_node},
           {"rock_low", vec3_to_json(P.rock_low)},
@@ -368,9 +414,12 @@ json scene_to_json() {
           {"arms", N.arms},           {"dust", N.dust},
           {"warp", N.warp},           {"glow", N.glow},
           {"sources", N.sources},
+          {"turbulence", N.turbulence}, {"lanes", N.lanes},
+          {"core_glow", N.core_glow}, {"source_stars", N.source_stars},
           {"color1", vec3_to_json(N.color1)},
           {"color2", vec3_to_json(N.color2)},
       };
+      if (N.color3[0] >= 0.f) jo["nebula"]["color3"] = vec3_to_json(N.color3);
     } else if (o.type == SceneObject::InfiniteSurface) {
       const gpx::planet::Layer &L = o.surf.layer;
       jo["surface"] = {
@@ -459,7 +508,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       o.scatter_species = jo.value("scatter_species", -1);
       std::string err;
       if (o.path.rfind("primitive:", 0) == 0 &&
-          scene_primitive_verts(o.path.substr(10), o.verts, o.primitive_detail)) {
+          scene_primitive_build(o.path.substr(10), o.primitive_detail, o)) {
         // a built-in primitive regenerates from its kind, no file needed
       } else if (o.path.empty() || !scene_load_mesh(o.path, o, err)) {
         // The geometry is gone but the object is not: its place in the scene,
@@ -491,6 +540,24 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       c.chromatic = jc.value("chromatic", c.chromatic);
       c.flare = jc.value("flare", c.flare);
       c.flare_strength = jc.value("flare_strength", c.flare_strength);
+      c.flare_style = std::clamp(jc.value("flare_style", c.flare_style), 0, 2);
+      c.flare_rays = jc.value("flare_rays", c.flare_rays);
+      c.flare_streak = jc.value("flare_streak", c.flare_streak);
+      c.flare_ghosts = jc.value("flare_ghosts", c.flare_ghosts);
+      c.flare_halo = jc.value("flare_halo", c.flare_halo);
+      c.flare_core = jc.value("flare_core", c.flare_core);
+      c.flare_ray_count = std::clamp(jc.value("flare_ray_count", c.flare_ray_count), 4, 64);
+      c.flare_ray_length = jc.value("flare_ray_length", c.flare_ray_length);
+      c.flare_streak_length = jc.value("flare_streak_length", c.flare_streak_length);
+      if (jc.contains("flare_streak_tint")) vec3_from_json(jc["flare_streak_tint"], c.flare_streak_tint);
+      c.flare_halo_radius = jc.value("flare_halo_radius", c.flare_halo_radius);
+      c.flare_ghost_count = std::clamp(jc.value("flare_ghost_count", c.flare_ghost_count), 0, 12);
+      c.flare_blades = std::clamp(jc.value("flare_blades", c.flare_blades), 5, 9);
+      c.flare_chroma = jc.value("flare_chroma", c.flare_chroma);
+      c.flare_seed = jc.value("flare_seed", c.flare_seed);
+      c.bloom = std::clamp(jc.value("bloom", c.bloom), 0.f, 4.f);
+      c.bloom_threshold = std::clamp(jc.value("bloom_threshold", c.bloom_threshold), 0.f, 0.99f);
+      c.bloom_size = std::clamp(jc.value("bloom_size", c.bloom_size), 0.f, 1.f);
       c.motion_blur = jc.value("motion_blur", c.motion_blur);
       if (jc.contains("render")) {
         const json &jr = jc["render"];
@@ -526,6 +593,7 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       P.snow_line = jp.value("snow_line", P.snow_line);
       P.spin_deg = jp.value("spin_deg", P.spin_deg);
       P.atmo_density = jp.value("atmo_density", P.atmo_density);
+      P.clouds = std::clamp(jp.value("clouds", P.clouds), 0.f, 1.f);
       P.surface_node = remap_id(jp.value("surface_node", 0ull), idmap);
       if (jp.contains("rock_low")) vec3_from_json(jp["rock_low"], P.rock_low);
       if (jp.contains("rock_high")) vec3_from_json(jp["rock_high"], P.rock_high);
@@ -551,8 +619,13 @@ void scene_from_json(const json &j, const GraphIdMap &idmap,
       N.warp = jn.value("warp", N.warp);
       N.glow = jn.value("glow", N.glow);
       N.sources = jn.value("sources", N.sources);
+      N.turbulence = jn.value("turbulence", N.turbulence);
+      N.lanes = jn.value("lanes", N.lanes);
+      N.core_glow = jn.value("core_glow", N.core_glow);
+      N.source_stars = jn.value("source_stars", N.source_stars);
       if (jn.contains("color1")) vec3_from_json(jn["color1"], N.color1);
       if (jn.contains("color2")) vec3_from_json(jn["color2"], N.color2);
+      if (jn.contains("color3")) vec3_from_json(jn["color3"], N.color3);
     } else if (o.type == SceneObject::InfiniteSurface && jo.contains("surface")) {
       const json &js = jo["surface"];
       gpx::planet::Layer &L = o.surf.layer;
@@ -599,6 +672,21 @@ json environment_to_json() {
     }
   }
   return j;
+}
+
+void scene_remap_node_ids(SceneState &sc, RenderSettings &rs, const GraphIdMap &idmap) {
+  for (SceneObject &o : sc.objects) {
+    o.driver_node = remap_id(o.driver_node, idmap);
+    o.material_node = remap_id(o.material_node, idmap);
+    o.scatter_node = remap_id(o.scatter_node, idmap);
+    o.planet.surface_node = remap_id(o.planet.surface_node, idmap);
+    o.surf.surface_node = remap_id(o.surf.surface_node, idmap);
+  }
+  for (const EnvField &f : env_fields(rs))
+    if (f.kind == 'u') {
+      auto *id = (unsigned long long *)f.p;
+      *id = remap_id(*id, idmap);
+    }
 }
 
 void environment_from_json(const json &j, const GraphIdMap &idmap) {

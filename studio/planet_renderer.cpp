@@ -26,6 +26,7 @@ extern const char *PL_FN;
 extern const char *PL_PALETTE;
 extern const char *PL_SPHERE_FN;
 extern const char *PL_SHELL_FN;
+extern const char *PL_CLOUDS_FN; // planet_clouds.cpp
 extern const char *PL_FIELD_STUB;
 extern const char *VS_PLANET;
 extern const char *FS_PLANET;
@@ -119,9 +120,11 @@ std::string pl_inject(const char *src, const std::string &glsl) {
   sub("PL_PALETTE_PLACEHOLDER", PL_PALETTE);
   sub("PL_SPHERE_PLACEHOLDER", PL_SPHERE_FN);
   sub("PL_SHELL_PLACEHOLDER", PL_SHELL_FN);
+  sub("PL_CLOUDS_PLACEHOLDER", PL_CLOUDS_FN);
   sub("TILE_XFORM_INV_PLACEHOLDER", TERRAIN_XFORM_INV_GLSL);
   sub("FRACTAL_FN_PLACEHOLDER", FRACTAL_FN);
   sub("SKY_FN_PLACEHOLDER", SKY_FN);
+  sub("SKY_ENV_PLACEHOLDER", SKY_ENV_GLSL);
   sub("WATER_FN_PLACEHOLDER", WATER_FN_GLSL);
   sub("FOG_FN_PLACEHOLDER", FOG_FN);
   return s;
@@ -441,6 +444,10 @@ void planet_draw_all(const PlanetFrame &f) {
     puni3(prog, "u_water_c", P.water_color);
     puni3(prog, "u_atmo_c", P.atmo_color);
     puni1(prog, "u_atmo", P.atmo_density);
+    // its weather (planet_clouds.cpp), on the scene's cloud clock
+    puni1(prog, "u_pl_clouds", std::clamp(P.clouds, 0.f, 1.f));
+    puni1(prog, "u_pl_cl_time", f.cloud_time);
+    glUniform1ui(uniform_location(prog, "u_pl_cl_seed"), P.seed * 2654435761u + 0x5bd1e995u);
     punii(prog, "u_aov", g_aov);
     punii(prog, "u_object_id", 3 + idx); // scene objects count from 3
     float spin = P.spin_deg * 0.017453293f;
@@ -485,8 +492,9 @@ void infinite_draw(const InfiniteFrame &f) {
   puni1(prog_inf, "u_hscale", f.height_scale);
   puni1(prog_inf, "u_frac_amount", f.frac_amount);
   puni1(prog_inf, "u_frac_scale", f.frac_scale);
+  puni1(prog_inf, "u_frac_gain", render_settings().fractal_gain); // the tile's grain at the join
   puni1(prog_inf, "u_tile_octf", f.tile_octf);
-  upload_water_uniforms(prog_inf, render_settings(), f.time); // the tile's water, continued
+  upload_water_uniforms(prog_inf, render_settings(), f.time); // the far shell's sea
   puni1(prog_inf, "u_curve", f.planet_radius);
   puni1(prog_inf, "u_atmo", render_settings().atmosphere_density);
   upload_fog_uniforms(prog_inf, render_settings(), f.atmosphere);
@@ -496,9 +504,6 @@ void infinite_draw(const InfiniteFrame &f) {
   puni1(prog_inf, "u_amp", amp);
   puni1(prog_inf, "u_base", f.base_height);
   puni1(prog_inf, "u_wl", f.water_level);
-  puni3(prog_inf, "u_wdeep", f.water_deep);
-  puni3(prog_inf, "u_wshallow", f.water_shallow);
-  puni1(prog_inf, "u_wclarity", f.water_clarity);
   puni1(prog_inf, "u_lat", f.latitude);
   puni1(prog_inf, "u_snow_line", 0.62f);
   glActiveTexture(GL_TEXTURE0);
@@ -508,15 +513,6 @@ void infinite_draw(const InfiniteFrame &f) {
   glBindTexture(GL_TEXTURE_2D, f.tex_albedo);
   punii(prog_inf, "u_albedo", 1);
   punii(prog_inf, "u_has_albedo", f.tex_albedo ? 1 : 0);
-  // the far shell's cloud band (FS_INF): the sky's own cloud shape
-  punii(prog_inf, "u_fc_on", (f.clouds_on && f.tex_cloud_shape) ? 1 : 0);
-  glActiveTexture(GL_TEXTURE2);
-  glBindTexture(GL_TEXTURE_3D, f.tex_cloud_shape);
-  punii(prog_inf, "u_fc_shape", 2);
-  puni1(prog_inf, "u_fc_cov", f.cloud_cov);
-  puni1(prog_inf, "u_fc_alt", f.cloud_alt);
-  puni1(prog_inf, "u_fc_time", f.cloud_time);
-  glUniform2f(uniform_location(prog_inf, "u_fc_wind"), f.cloud_wind[0], f.cloud_wind[1]);
   // Once per face of the world that has ground on it (world_shape.hpp):
   // the world's own face always, the other one when a layer stands there.
   // Each face gets its shape, its layers and the holes of its own tiles;
@@ -552,24 +548,8 @@ void infinite_draw(const InfiniteFrame &f) {
     // The far grid: the whole shape for a face that faces the centre or
     // for a body's other face, the rest of a flat world past the surround
     // ... and an outside face once the eye is high enough for the surround
-    // to end this side of the horizon.
-    //
-    // That height is not a round number of tiles: a horizon d away sits at
-    // d*d/2R, so on a small world the surround runs out at head height and
-    // on a large one only from an aeroplane. Taking it as a fixed tile up
-    // left a band of heights on every world where the ground stopped at 30
-    // tiles with the horizon still further out and nothing drawn between -
-    // the hard line against the sky.
-    const float shell_h = f.planet_radius > 0.f
-                              ? 29.f * 29.f / (2.f * f.planet_radius)
-                              : 1.0e9f;
-    const bool aloft = f.eye[1] > shell_h * 0.5f ||
-                       std::fabs(f.eye[0] - 0.5f) > 20.f ||
-                       std::fabs(f.eye[2] - 0.5f) > 20.f;
-    const bool far_shell = flat ? rsw.world_width > 58.f
-                                : (f.planet_radius > 0.f &&
-                                   (gpx::planet::shape_faces_centre(S) || body_face ||
-                                    (nl > 0 && aloft)));
+    // to end this side of the horizon (world_shape.cpp).
+    const bool far_shell = surround_far_shell(rsw, f.eye, f.planet_radius, side, nl);
     // ... and where nothing stands behind it, the surround fades out into
     // the sky over its last few tiles rather than ending on its own rim.
     // Never on a flat world: that one has a real edge, cut to its outline

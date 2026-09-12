@@ -50,6 +50,7 @@ void App::refresh_snapshot() {
       pv.is_texture = p.type == gpx::DataType::Texture;
       pv.is_field = p.type == gpx::DataType::Field;
       pv.is_points = p.type == gpx::DataType::Points;
+      pv.is_plant = p.type == gpx::DataType::Plant;
       pv.field_type = (unsigned)p.field_type;
       pv.optional = p.optional;
       if (p.dir == gpx::PortDir::Out && p.has_stat) {

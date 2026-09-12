@@ -1,8 +1,9 @@
-﻿// Geekatplay Studio — declarative node parameters.
+// Geekatplay Studio — declarative node parameters.
 // A node declares attributes in its setup fn; the properties panel renders
 // them automatically and serialization walks the same list.
 #pragma once
 #include "gpx/animation.hpp"
+#include "gpx/plant_curve.hpp"
 #include <cstdint>
 #include <map>
 #include <string>
@@ -22,7 +23,20 @@ enum class AttrType {
   Gradient,// color gradient stops
   Filename,// path + browse
   Text,    // string
-  Field    // painted 2D scalar buffer (sculpt strokes, hand-drawn masks)
+  Field,   // painted 2D scalar buffer (sculpt strokes, hand-drawn masks)
+  // A hand-drawn function of one number (gpx/plant_curve.hpp): a radius
+  // along a branch, a density along a stem, a colour over the seasons.
+  // `curves` holds it, and may hold weighted alternatives one of which is
+  // chosen per plant seed.
+  Curve,
+  // A number with a random spread: `f` is the value, `spread` how far a draw
+  // may stray (absolute, a fraction, or a gaussian deviation per
+  // `spread_mode`), `scope` when a new draw is made, and two curves that
+  // scale the result along the primitive (`curve_along`, x = 0 at its base
+  // and 1 at its tip) and by where the primitive sits on its parent
+  // (`curve_hier`, x = 0 at the parent's base and 1 at its tip). Every
+  // number a plant part is described by is one of these.
+  Random
 };
 
 struct GradientStop {
@@ -51,6 +65,20 @@ struct Attribute {
   // presentation, the way log_scale is - the engine still has no idea what a
   // scene is, and the value is a string either way.
   bool object_ref = false;
+  // Curve: the function, with any alternatives and their weights.
+  CurveSet curves;
+  // Random: see AttrType::Random. Defaults are a plain number.
+  float spread = 0.f;
+  int spread_mode = 0;  // 0 absolute, 1 relative (fraction of the value), 2 gaussian
+  int scope = 1;        // 0 each time, 1 per primitive, 2 per plant, 3 per ancestor
+  int hier_level = 1;   // curve_hier: how many levels up the parent it reads (1 = parent)
+  bool hier_cascade = false; // curve_hier: multiply across every level up to hier_level
+  CurveSet curve_along, curve_hier;
+  // Published: shown on the species' preset sheet under this name and group
+  // (plant nodes); `external` lets a scene's population dial it.
+  bool published = false;
+  bool external = false;
+  std::string pub_name, pub_group;
   // Text only: this holds the id of another node in the same graph, decimal.
   // Loading a project renumbers every node, so a reference written as a bare
   // id would land on whatever node inherited that number - which is not an
@@ -98,6 +126,9 @@ public:
   int get_choice(const std::string &k) const; // index into labels
   void get_range(const std::string &k, float &lo, float &hi) const;
   void get_vec2(const std::string &k, float &x, float &y) const;
+  // Curve: the primary curve, or a constant 1 when the key is unknown.
+  const Curve &get_curve(const std::string &k) const;
+  float eval_curve(const std::string &k, float x, uint32_t seed = 0) const;
 };
 
 // one-line builders used by node setup functions -----------------------------
@@ -130,6 +161,15 @@ Attribute &add_filename(AttrSet &s, const std::string &key, const std::string &l
                         const std::string &def, const std::string &group = "");
 Attribute &add_text(AttrSet &s, const std::string &key, const std::string &label,
                     const std::string &def, const std::string &group = "");
+// A curve: `c` is its default shape (Curve::constant(1) for a multiplier).
+Attribute &add_curve(AttrSet &s, const std::string &key, const std::string &label,
+                     const Curve &c, const std::string &group = "");
+// A random number: value `def` within `mn..mx`, straying `spread` (absolute
+// units by default; see Attribute::spread_mode). The two shaping curves start
+// as constant 1.
+Attribute &add_random(AttrSet &s, const std::string &key, const std::string &label,
+                      float def, float mn, float mx, float spread = 0.f,
+                      const std::string &group = "", bool log_scale = false);
 // A painted buffer. Starts empty (all zero) and is filled in by brush strokes;
 // `mn`/`mx` bound what a stroke may write.
 Attribute &add_field(AttrSet &s, const std::string &key, const std::string &label,

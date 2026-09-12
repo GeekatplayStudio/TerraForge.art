@@ -121,6 +121,7 @@ void apply_level(int level) {
       q.preview_fps_cap = 3;
       q.shadows_secondary = false;
       q.cloud_quality_cap = 0;
+      q.space_quality_cap = 1;
       break;
     case 3:
       q.scale_secondary = 0.35f;
@@ -129,6 +130,7 @@ void apply_level(int level) {
       q.preview_fps_cap = 2;
       q.shadows_secondary = false;
       q.cloud_quality_cap = 0;
+      q.space_quality_cap = 1;
       q.tess_scale = 0.5f;
       q.lod_scale = 0.6f;
       break;
@@ -140,6 +142,7 @@ void apply_level(int level) {
       q.shadows_secondary = false;
       q.shadows_primary = false;
       q.cloud_quality_cap = 0;
+      q.space_quality_cap = 0;
       q.tess_scale = 0.25f;
       q.lod_scale = 0.35f;
       break;
@@ -161,8 +164,13 @@ const PerfStats &perf_stats() { return g_stats; }
 const std::vector<std::pair<std::string, float>> &perf_phases() { return g_phase_smooth; }
 const PerfQuality &perf_quality() { return g_quality; }
 
-float perf_render_scale(int slot) { return slot == app().view_focus ? g_quality.scale_primary : g_quality.scale_secondary; }
-bool perf_shadows_for(int slot) { return slot == app().view_focus ? g_quality.shadows_primary : g_quality.shadows_secondary; }
+// A file being written is the picture itself, never a secondary view: the
+// governor lightens what is on screen, not what is saved.
+static bool full_quality_slot(int slot) {
+  return slot == app().view_focus || slot == SLOT_CAPTURE || slot == SLOT_AOV;
+}
+float perf_render_scale(int slot) { return full_quality_slot(slot) ? g_quality.scale_primary : g_quality.scale_secondary; }
+bool perf_shadows_for(int slot) { return full_quality_slot(slot) ? g_quality.shadows_primary : g_quality.shadows_secondary; }
 
 void perf_init_gpu() {
   const GLubyte *r = glGetString(GL_RENDERER);

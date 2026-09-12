@@ -5,6 +5,7 @@
 #include "asset_store.hpp"
 #include "config.hpp"
 #include "ai_describe.hpp"
+#include "plant_species.hpp"
 #include "console.hpp"
 #include "material_channel_ops.hpp"
 #include "mesh_object.hpp"
@@ -205,6 +206,12 @@ void ai_jobs_service(App &a) {
     {
       std::lock_guard<std::mutex> lk(j->mtx);
       msg = j->message;
+    }
+    if (s == JOB_DONE && j->kind == JOB_TEXT && j->apply.channel.rfind("plant", 0) == 0) {
+      std::string err;
+      if (species_ai_apply(a, *j, err)) a.status = "plant species grown from the description";
+      else a.status = "plant: " + err;
+      continue;
     }
     if (s == JOB_DONE && j->kind == JOB_TEXT && j->apply.channel == "describe") {
       std::string err;

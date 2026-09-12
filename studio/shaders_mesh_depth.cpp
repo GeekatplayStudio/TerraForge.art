@@ -59,16 +59,22 @@ layout(location=3) in vec4 in_instance_rot;
 layout(location=4) in vec4 in_instance_axes;
 layout(location=5) in vec4 in_instance_ground;
 layout(location=6) in vec2 in_uv;
+layout(location=7) in vec4 in_wind;
 out vec2 v_uv;
 uniform mat4 u_light_mvp, u_model;
 uniform int u_inst_on;
 uniform float u_inst_sway, u_inst_time;
 uniform vec3 u_inst_base;
+uniform int u_plant_on;
+uniform float u_plant_time;
+uniform vec4 u_pw_a, u_pw_b, u_pw_c;
+PLANT_WIND_PLACEHOLDER
 DEFORM_FN_PLACEHOLDER
 INSTANCE_FN_PLACEHOLDER
 void main(){
   vec3 pos = in_pos;
   vec3 nrm = in_nrm;
+  if (u_plant_on == 1) pos = plant_wind(pos, in_wind, u_plant_time, 1.0, u_pw_a, u_pw_b, u_pw_c);
   if (u_def_on == 1) pos = deform(pos);
   vec4 p;
   if (u_inst_on == 1) {

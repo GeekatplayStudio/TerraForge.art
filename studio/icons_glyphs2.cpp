@@ -286,6 +286,15 @@ bool paint_glyphs_b(const Pen &k, Icon ic) {
       k.head(0.f, -0.92f, -PI * 0.5f, 0.36f);
       k.head(0.f, 0.92f, PI * 0.5f, 0.36f);
       return true;
+    case Icon::Plant: // a conifer: a trunk under three tiers, lit down one side
+      k.dark().rect(-0.1f, 0.5f, 0.1f, 0.85f, true);
+      k.hi().tri(0.f, 0.05f, -0.72f, 0.62f, 0.72f, 0.62f);
+      k.hi().tri(0.f, -0.35f, -0.56f, 0.2f, 0.56f, 0.2f);
+      k.hi().tri(0.f, -0.8f, -0.4f, -0.2f, 0.4f, -0.2f);
+      k.lit().tri(0.f, -0.8f, -0.4f, -0.2f, 0.f, -0.2f);
+      k.lit().tri(0.f, -0.35f, -0.56f, 0.2f, 0.f, 0.2f);
+      k.lit().tri(0.f, 0.05f, -0.72f, 0.62f, 0.f, 0.62f);
+      return true;
     default:
       return false;
   }

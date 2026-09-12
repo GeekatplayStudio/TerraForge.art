@@ -17,28 +17,45 @@ hand. Rendered in the viewport, in real time.*
 
 ## Status
 
-*9 September 2026.* Working and shipped on `main`: the node engine (252 node
-types, 1,530 attributes, all under the regression lock), the studio with its
+*12 September 2026.* Working and shipped on `main`: the node engine (273 node
+types, 3,023 attributes, all under the regression lock), the studio with its
 eight workspaces, materials as graphs with a base-material and gradient
-library, volumetric fog and volumetric materials, cloud layers as nodes,
-planets, ecosystems, animation, and offline rendering through Mitsuba,
-Cycles and LuxCore. The world has a shape - a globe, a ring world, a Dyson
-sphere or a flat disc or square - and a thickness, so a ring seen from its
-rim or a flat world from below is a body; the atmosphere is a layer of a
-set height on that surface whatever its shape, the clouds and the water lie
-on it, and beyond the air is deep space: a star field, the Milky Way, and
-nebulas, galaxies and moons as objects. Everything the interface can
-change is reachable from the Python API, the MCP tools and the assistant,
-and two audit tests keep that true. Twenty-seven test suites pass.
+library, volumetric fog and volumetric materials, planets, ecosystems,
+animation, and offline rendering through Mitsuba, Cycles and LuxCore. The
+world has a shape - a globe, a ring world, a Dyson sphere or a flat disc or
+square - and a thickness, so a ring seen from its rim or a flat world from
+below is a body; beyond the air is deep space: a star field, the Milky Way,
+and nebulas, galaxies and moons as objects. Everything the interface can do,
+the scripting API and the MCP tools can do too, and every operation is
+checked to be reachable from both.
 
-Audited 10 September 2026: [docs/AUDIT.md](docs/AUDIT.md) with a roadmap per
-module in [docs/roadmaps/](docs/roadmaps/README.md) and a guide for building
-scenes by language in [docs/AI_SCENE_GUIDE.md](docs/AI_SCENE_GUIDE.md).
-Open at the moment: per-planet atmospheres (the home world has its air
-layer; planets in the sky get a limb glow); 21 component nodes
-are still `[Planned]` placeholders; and the performance watcher has found
-frames in the Materials workspace that work while nothing changes, not yet
-chased.
+**Plants are grown, not imported.** A species is a graph of parts - segments,
+leaves, blades, flowers, growth simulations - and a seed grows one individual
+from it: 273 node types include seventeen for plants alone, with two attribute
+kinds of their own (a drawn curve, and a random value with a spread, a scope
+and two shaping curves). Type a plant's name and it grows: 145 plants are
+known by 225 names across 18 archetypes, sized so the height you ask for is
+the height that stands up. Wind is baked per vertex with a GLSL twin, and a
+branch bends like a beam clamped at one end - its swing goes as the
+slenderness cubed, which is why a twig whips in air that leaves the trunk
+still. Leaves carry their own surface: a normal map whose veins and dished
+blade turn the light, and a roughness map where the waxy blade is glossier
+than its veins.
+
+**Ground is populated by rules, not by hand.** Where a thing goes is a rule
+about its GROUP - moss gathers on stone and nowhere else; nothing grows under
+a pine - so a model assigned to a group is placed correctly in every biome
+that group appears in, including ones written before it existed. 37 groups,
+44 rules each carrying the observation it came from, and 35 biomes across
+forest, field, farm, desert, water, underwater, alien and built. A biome lays
+itself out in the order ground assembles and one painted brush drives all of
+it.
+
+**One wind blows over the whole scene.** The clouds drift with it, the sea is
+raised by it, the fog moves with it, the plants lean and gust with it - with
+gusts, turbulence and the shear that makes the air aloft move faster. Air
+comes in as many bands as a sky needs: cloud decks, fogs and hazes as objects
+in the scene tree under an Atmosphere, which may itself hang under a planet.
 
 ## Gallery
 

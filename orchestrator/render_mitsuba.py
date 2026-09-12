@@ -7,6 +7,7 @@ Exit codes: 0 ok, 2 bad scene, 3 mitsuba missing.
 from __future__ import annotations
 
 import json
+import os
 import sys
 
 
@@ -52,6 +53,8 @@ def main() -> int:
             "type": "perspective",
             "fov": cam["fov"],
             "fov_axis": "y",
+            "near_clip": 1e-5,  # a unit is a tile: the default clipped 50 m
+            "far_clip": 1e7,
             "to_world": mi.ScalarTransform4f().look_at(
                 origin=cam["eye"], target=cam["target"], up=[0, 1, 0]
             ),
@@ -132,7 +135,9 @@ def main() -> int:
         }
         bx, by, bz = m["model"][12], m["model"][13], m["model"][14]
         import math as _math
-        for k, (x, y, z, s, yaw) in enumerate(insts):
+        for k, row in enumerate(insts):
+            # the first five of a copy's numbers; newer files carry more
+            x, y, z, s, yaw = (float(v) for v in row[:5])
             t = (
                 mi.ScalarTransform4f()
                 .translate([x - bx, y - by, z - bz])
@@ -150,19 +155,28 @@ def main() -> int:
     water = sc.get("water", {})
     if water.get("enabled"):
         lv = water["level"]
-        scene_dict["water"] = {
-            "type": "rectangle",
-            "to_world": mi.ScalarTransform4f()
-            .translate([0.5, lv, 0.5])
-            .rotate([1, 0, 0], -90)
-            .scale(0.5),
-            "bsdf": {
-                "type": "roughplastic",
-                "distribution": "ggx",
-                "alpha": 0.02,
-                "diffuse_reflectance": {"type": "rgb", "value": water["deep"]},
-            },
+        water_bsdf = {
+            "type": "roughplastic",
+            "distribution": "ggx",
+            "alpha": 0.02,
+            "diffuse_reflectance": {"type": "rgb", "value": water["deep"]},
         }
+        if water.get("mesh") and os.path.isfile(water["mesh"]):
+            # the exported sea, as wide as the ground (render_engines.py)
+            scene_dict["water"] = {"type": "obj", "filename": water["mesh"],
+                                   "bsdf": water_bsdf}
+        else:
+            # a rectangle is two units across before scaling: the ground's
+            # half-width, not the tile's, or a lake past x = 1 is cut off
+            half = max(float(water.get("extent", 0.5)), 0.5)
+            scene_dict["water"] = {
+                "type": "rectangle",
+                "to_world": mi.ScalarTransform4f()
+                .translate([0.5, lv, 0.5])
+                .rotate([1, 0, 0], -90)
+                .scale(half),
+                "bsdf": water_bsdf,
+            }
 
     scene = mi.load_dict(scene_dict)
     img = mi.render(scene)

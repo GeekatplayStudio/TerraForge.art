@@ -121,6 +121,11 @@ const std::vector<SpacePreset> &space_presets() {
       {"void", "Empty",
        "Stars alone: no band, no nebulas. The backdrop for a scene\n"
        "that wants nothing behind it."},
+      {"nebula_cinema", "Nebula poster",
+       "A great torn cloud filling the frame, its heart burned white\n"
+       "round the hot stars that light it, amber outskirts, dust lanes\n"
+       "across the glow, a dark cloud in front, and six-pointed stars\n"
+       "with coloured spikes - the space picture on a poster."},
   };
   return P;
 }
@@ -135,6 +140,84 @@ bool space_preset_apply(const std::string &key, std::string &err) {
   };
   std::string ignore;
   s.on = true;
+  // The camera's spike shape and the stars' colour are the poster's; every
+  // other sky starts from the plain four-pointed look, so choosing one after
+  // the poster does not keep its six points and fringes.
+  s.star_spike_points = 4;
+  s.star_spike_angle = 0.f;
+  s.star_spike_chroma = 0.f;
+  s.star_saturation = 1.f;
+  s.star_glow = 0.f;
+  s.star_bright_share = 0.5f;
+  s.star_clusters = 0.f;
+  s.star_cluster_size = 1.5f;
+  if (key == "nebula_cinema") {
+    s.realism = 0.3f;
+    s.brightness = 1.3f;
+    s.glow = 0.8f;
+    s.stars = true;
+    s.star_density = 0.6f;
+    s.star_brightness = 1.25f;
+    s.star_spikes = 0.95f;
+    s.star_halo = 0.7f;
+    s.star_clump = 0.6f;
+    s.star_spike_points = 6;
+    s.star_spike_angle = 15.f;
+    s.star_spike_chroma = 0.6f;
+    s.star_saturation = 1.35f;
+    s.star_glow = 0.55f;
+    s.star_clusters = 0.35f;
+    s.star_cluster_size = 2.f;
+    s.galaxy_on = true;
+    s.galaxy_intensity = 0.55f;
+    s.galaxy_grain = 0.85f;
+    clear();
+    SceneState &sc = scene();
+    // Back to front: the list is depth (shaders_space_neb.cpp), so the dark
+    // cloud added last stands in front of the bright ones.
+    struct Cloud {
+      const char *name;
+      int type;
+      float az, el, size, bright, dens, detail, dust, warp, glow, turb, lanes, core, shown;
+      int sources;
+      uint32_t seed;
+      float outskirts[3];
+    };
+    const Cloud clouds[] = {
+        {"poster companion", 0, -38.f, 12.f, 55.f, 1.1f, 0.5f, 0.8f, 0.5f, 0.8f, 0.5f,
+         0.4f, 0.3f, 0.4f, 0.6f, 2, 3181u, {0.95f, 0.45f, 0.62f}},
+        {"poster", 0, 28.f, 26.f, 100.f, 1.6f, 0.6f, 0.9f, 0.65f, 1.0f, 0.7f,
+         0.55f, 0.45f, 0.85f, 0.9f, 4, 9173u, {1.0f, 0.56f, 0.24f}},
+        {"poster dust", 1, 38.f, 18.f, 34.f, 1.0f, 0.55f, 0.85f, 0.7f, 0.9f, 0.f,
+         0.6f, 0.f, 0.f, 0.f, 1, 5527u, {-1.f, -1.f, -1.f}},
+    };
+    for (const Cloud &c : clouds) {
+      const int idx = scene_add_nebula(std::string(SCATTER_PREFIX) + c.name, c.type);
+      if (idx < 0) {
+        err = "could not add the nebula";
+        return false;
+      }
+      NebulaData &N = sc.objects[(size_t)idx].nebula;
+      N.azimuth = c.az;
+      N.elevation = c.el;
+      N.size_deg = c.size;
+      N.seed = c.seed;
+      N.brightness = c.bright;
+      N.density = c.dens;
+      N.detail = c.detail;
+      N.dust = c.dust;
+      N.warp = c.warp;
+      N.glow = c.glow;
+      N.sources = c.sources;
+      N.turbulence = c.turb;
+      N.lanes = c.lanes;
+      N.core_glow = c.core;
+      N.source_stars = c.shown;
+      space_nebula_colors(c.type, s.realism, N.seed, N.color1, N.color2);
+      for (int k = 0; k < 3; ++k) N.color3[k] = c.outskirts[k];
+    }
+    return true;
+  }
   if (key == "night") {
     s.realism = 1.f;
     s.brightness = 1.f;
@@ -145,6 +228,8 @@ bool space_preset_apply(const std::string &key, std::string &err) {
     s.star_spikes = 0.f;
     s.star_halo = 0.35f;
     s.star_clump = 0.6f;
+    s.star_clusters = 0.2f; // the Pleiades, the Beehive: a few, small
+    s.star_cluster_size = 1.2f;
     s.galaxy_on = true;
     s.galaxy_intensity = 0.85f;
     s.galaxy_grain = 0.9f;
@@ -161,6 +246,7 @@ bool space_preset_apply(const std::string &key, std::string &err) {
     s.star_spikes = 0.75f;
     s.star_halo = 0.6f;
     s.star_clump = 0.5f;
+    s.star_clusters = 0.3f;
     s.galaxy_on = true;
     s.galaxy_intensity = 0.45f;
     s.galaxy_grain = 0.8f;

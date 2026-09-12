@@ -38,7 +38,7 @@ struct AiState {
 };
 
 static AiState &state_for(AiDomain d) {
-  static AiState s[6];
+  static AiState s[7];
   return s[(int)d];
 }
 
@@ -49,6 +49,7 @@ static const char *domain_name(AiDomain d) {
     case AiDomain::Material: return "material";
     case AiDomain::Terrain: return "terrain";
     case AiDomain::Object: return "scene object";
+    case AiDomain::Plant: return "plant species";
     default: return "render";
   }
 }
