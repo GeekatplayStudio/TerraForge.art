@@ -30,6 +30,8 @@ int ai_graph_op(App &a, const std::string &op, const nlohmann::json &act,
                 std::string &err);
 // plant_species_ops.cpp: grow, vary, save and export plant species
 int ai_plant_species_op(App &a, const std::string &op, const nlohmann::json &act, std::string &err);
+// rock_ops.cpp: stones grown from a seed, one or a scatter of them
+int ai_rock_op(App &a, const std::string &op, const nlohmann::json &act, std::string &err);
 // The spray brush: a painted population of several kinds at once
 // (studio/spray_ops.cpp).
 int spray_op(App &a, const std::string &op, const nlohmann::json &act, std::string &err);

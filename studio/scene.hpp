@@ -581,6 +581,28 @@ std::vector<int> scene_surface_layers(int planet_idx);
 // `side` (world_shape.hpp): 0 every layer, else only those on that face
 std::vector<gpx::planet::Layer> planet_home_layers(int side = 0);
 
+// ---- folders in the tree ----
+// A named Group, found or made, under `owner`. Folders are how the tree says
+// what belongs to what: cameras have had one since the beginning, and what
+// grows on the ground wants one for the same reason - a wood is forty objects
+// and they are not forty separate thoughts.
+//
+// `owner` is the thing the folder hangs under: a Terrain tile when the
+// population belongs to that tile, or -1 for the world's own - the home
+// planet if there is one, the root otherwise. That is the whole of "global or
+// assigned to a terrain": the parent says which, and moving the folder in the
+// tree moves everything in it.
+int scene_folder(const std::string &name, int owner = -1);
+// Where plants and rocks go. `terrain` is a Terrain object's index, or -1 for
+// the world's own folder.
+int scene_plants_group(int terrain = -1);
+int scene_rocks_group(int terrain = -1);
+// The terrain a new population should belong to: the one selected, the one
+// whose folder is selected, or the only one there is. -1 when the scene has
+// no terrain or more than one and nothing says which - that is the global
+// folder's case, not an error.
+int scene_terrain_for_population();
+
 // ---- cameras ----
 // creates a camera under the "Cameras" group, inheriting every property
 // from the last used camera (or sensible defaults); returns its index

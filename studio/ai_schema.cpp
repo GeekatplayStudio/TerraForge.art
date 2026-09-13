@@ -209,6 +209,17 @@ link into a part's "material" input.
    "size_variation":0.6,"lean":0.8}
    (change one kind. Without "slot" it changes the brush itself:
     density_ha, spacing_m, clumping, size_variation.)
+- {"op":"add_rock","words":"river stone","count":40,"size_m":0.4,
+   "size_variation":0.5,"area_m":25,"x_m":2500,"z_m":2500,"seed":7}
+   (STONE, grown from a seed rather than loaded: ten kinds - angular, sharp,
+    river, boulder, slab, columnar, weathered, volcanic, outcrop, pebble -
+    each a recipe over how it broke, how far it has been worn and what the
+    weather took off it. One seed is one stone, so a scree slope of two
+    hundred is two hundred different rocks. With no "words" it mixes every
+    kind, which is what a real slope is. area_m scatters them over a disc of
+    that width; size_variation spreads the sizes multiplicatively, so mostly
+    small with a few large, the way scree actually sorts.)
+- {"op":"rock_kinds"}   (every kind and what made it)
 - {"op":"plant_forest","words":"scots pine","individuals":5,"area_m":1500,
    "spacing_m":9,"clumping":0.6,"altitude_lo":0.02,"altitude_hi":0.75,
    "max_slope_deg":34,"size_variation":0.35,"unbounded":true}

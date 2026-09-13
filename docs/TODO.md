@@ -18,28 +18,32 @@ this is what is broken or missing in what already exists.
 
 ## Open
 
-### 1. A scattered wood draws no copies at all
-**Severity: high — `plant_forest` produces nothing visible.**
+### 1. An unbounded population follows only the free orbit camera
+**Severity: medium - a render through any camera but the active one has no
+vegetation in it.**
 
-Planted 900 Scots pine over 1400 m (`plant_forest`), stood the camera among
-them, and nothing is drawn. The live viewport reports `instances_drawn: 0` of
-`instances_total: 19845` — so the objects are visited and their instances
-counted, and every cell is then rejected.
+An EcosystemLayer marked unbounded realises its cells around one eye
+([`studio/eco_dynamic.cpp`](../studio/eco_dynamic.cpp), `app_service_population`):
+the activated scene camera if there is one, otherwise the free orbit's
+`renderer_get_camera()`. A view locked to another camera, and a `capture` or
+render through a named camera, draw from somewhere else - so they are drawn
+with the population of a place they are not looking at.
 
-Ruled out: the LOD distances. With `scatter_lod_cull_m` 500 km,
-`scatter_lod_full_m` 300 km, `scatter_lod_min_keep` 1.0 the count is still 0,
-so `scatter_keep` is not the filter.
+Found the hard way: a wood planted with `plant_forest` was realised around the
+orbit, which a previous session had left 365 km off the tile (eye at tile
+-73, -88), while every capture went through Camera 1 at the tile. Moving the
+orbit onto the wood (`camera_to_view` with `link: false`) put 248 trees on
+screen at once.
 
-Remaining suspect: the frustum test in `instance_runs`
-([`studio/renderer_instances.cpp:162`](../studio/renderer_instances.cpp)) —
-`aabb_visible(*fr, lo, hi)` against cell bounds `c.lo`/`c.hi`. If the cells
-are built in the object's local frame while the frustum and `eye` are world,
-every cell misses. Check what `InstanceCell::lo/hi` are filled with at scatter
-time.
+The fix is to realise cells around every eye that will draw this frame - each
+open view's, and the camera a capture or render is about to use - within the
+same per-frame budget, nearest first.
 
-Not caused by the wind-field change: the same count is reported by a build
-without it, and the change only alters arithmetic inside `if (u_inst_sway >
-0.0)`, which runs after the run list is built.
+*Correction.* This entry first said a scattered wood "draws no copies at all",
+with a suspect in the frustum test. That was wrong: the renderer draws the
+wood correctly; the cells were simply 365 km away. The measurements that
+misled were `instances_drawn: 0` in a view that was not looking at the
+population, and a capture through a camera the population did not know about.
 
 ### 2. The ground still carries a repeating block pattern
 **Severity: medium — visible at landscape scale, the user's original report.**

@@ -130,6 +130,11 @@ int add_builtin(App &a, const PlantEntry &p, const PlantPlace &at, std::string &
     return -1;
   }
   SceneState &sc = scene();
+  {
+    // the folder first: making it can move the objects vector
+    const int grp = scene_plants_group(scene_terrain_for_population());
+    sc.objects[(size_t)nc.object].parent = grp;
+  }
   SceneObject &o = sc.objects[(size_t)nc.object];
   float where[3];
   stand(a, at, where);
@@ -230,6 +235,7 @@ std::vector<std::shared_ptr<Pending>> g_queue; // guarded by g_queue_mtx
 int plant_place_species(App &a, gpx::Node &root, const PlantPlace &at, float height_m) {
   SceneObject o;
   o.type = SceneObject::Mesh;
+  o.parent = scene_plants_group(scene_terrain_for_population());
   std::string want = !at.name.empty() ? at.name : root.attrs.get_s("object");
   if (want.empty()) want = root.attrs.get_s("name");
   if (want.empty()) want = "Plant";

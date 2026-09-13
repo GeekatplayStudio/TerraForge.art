@@ -123,6 +123,8 @@ set(ENGINE_SOURCES
     engine/attribute.cpp
     engine/ecology_biomes.cpp
     engine/ecology_table.cpp
+    engine/rock_types.cpp
+    engine/rock_build.cpp
     engine/plant_curve.cpp
     engine/plant/plant_schema.cpp
     engine/plant/plant_schema_species.cpp
@@ -219,6 +221,7 @@ set(ENGINE_SOURCES
     engine/nodes/nodes_field_color.cpp
     engine/nodes/nodes_channels.cpp
     engine/nodes/nodes_primitives.cpp
+    engine/nodes/nodes_rock.cpp
     engine/nodes/nodes_gradient.cpp
     engine/nodes/nodes_fractals.cpp
     engine/nodes/nodes_fractals2.cpp
@@ -595,6 +598,8 @@ set(STUDIO_SOURCES
     studio/cloud_shape_map.cpp
     studio/wind_field.cpp
     studio/scene_nodes.cpp
+    studio/scene_rocks.cpp
+    studio/rock_ops.cpp
     studio/graph_lease.cpp
     studio/id_audit.cpp
     studio/component_new.cpp
@@ -865,6 +870,13 @@ target_link_libraries(plant_tests PRIVATE
 
 add_executable(ecology_tests tests/cpp/test_ecology.cpp engine/ecology_table.cpp
                              engine/ecology_biomes.cpp)
+
+# Rocks, grown from fracture / abrasion / weathering. Also writes a shaded
+# contact sheet of every type, because a generator nobody looks at quietly
+# makes potatoes.
+add_executable(rock_tests tests/cpp/test_rock.cpp engine/rock_types.cpp engine/rock_build.cpp)
+target_include_directories(rock_tests PRIVATE engine)
+target_link_libraries(rock_tests PRIVATE third_party_headers)
 target_include_directories(ecology_tests PRIVATE engine)
 target_link_libraries(ecology_tests PRIVATE third_party_headers)
 
@@ -1007,6 +1019,7 @@ add_test(NAME AssetTests COMMAND asset_tests)
 add_test(NAME PlantLibraryTests COMMAND plant_library_tests)
 add_test(NAME PlantTests COMMAND plant_tests)
 add_test(NAME EcologyTests COMMAND ecology_tests)
+add_test(NAME RockTests COMMAND rock_tests)
 
 
 

@@ -265,3 +265,31 @@ PLANT_SIMPLE = {
     "studio_plant_species_list": "plant_species_list",
     "studio_plant_species_export": "plant_species_export",
 }
+
+# Rocks, grown from a seed (studio/rock_ops.cpp). Stone is ground cover as
+# much as a fern is, and goes into the scene through the same action path.
+PLANT_TOOLS.update({
+    "studio_add_rock": {
+        "description": "Grow rocks from a seed instead of loading a model: angular, "
+                       "sharp, river, boulder, slab, columnar, weathered, volcanic, "
+                       "outcrop or pebble - each a recipe over how the stone broke, "
+                       "how far it has been worn and what the weather took off it. "
+                       "One seed is one stone. words picks the kind, and with none "
+                       "every kind is mixed, as on a real slope; count and area_m "
+                       "scatter them over a disc of that width; size_variation "
+                       "spreads the sizes so most are small and a few large. They "
+                       "land in the Rocks folder of the terrain they stand on.",
+        "params": {"words": "str", "count": "int", "size_m": "float",
+                   "size_variation": "float", "area_m": "float", "x_m": "float",
+                   "z_m": "float", "seed": "int", "name": "str"},
+    },
+    "studio_rock_kinds": {
+        "description": "Every kind of rock the generator makes and what made each "
+                       "one, in the reply.",
+        "params": {},
+    },
+})
+PLANT_SIMPLE.update({
+    "studio_add_rock": "add_rock",
+    "studio_rock_kinds": "rock_kinds",
+})

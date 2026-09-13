@@ -523,6 +523,7 @@ bool ai_apply_actions(App &a, const std::string &text, std::string &err) {
       if (r < 0) r = ai_asset_op(a, op, act, err);
       if (r < 0) r = ai_plant_op(a, op, act, err);
       if (r < 0) r = ai_plant_species_op(a, op, act, err);
+      if (r < 0) r = ai_rock_op(a, op, act, err);
       if (r < 0) r = spray_op(a, op, act, err);
       if (r < 0) r = ai_generate_op(a, op, act, err);
       if (r < 0) r = ai_terrain_op(a, op, act, err);

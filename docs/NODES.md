@@ -1,6 +1,6 @@
 # Node reference
 
-Every node in Geekatplay TerraForge — 273 across 33 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
+Every node in Geekatplay TerraForge — 274 across 34 categories. Generated from the registry itself by `tools/gen_node_docs.cpp`, so what is written here is what is constructed; regenerate with the `node_docs_gen` target after adding a node.
 
 | Category | Nodes |
 | :--- | :--- |
@@ -33,6 +33,7 @@ Every node in Geekatplay TerraForge — 273 across 33 categories. Generated from
 | [Points](#points) | 12 |
 | [Primitive](#primitive) | 23 |
 | [Render](#render) | 8 |
+| [Rock](#rock) | 1 |
 | [Scene](#scene) | 8 |
 | [Shape](#shape) | 1 |
 | [Texture](#texture) | 3 |
@@ -6244,6 +6245,31 @@ Offline render engine, resolution and sampling
 | :--- | :--- | :--- |
 | Planned | text | This node is a placeholder: it documents a capability on the roadmap so the module is not forgotten. It has no effect on the scene yet. |
 | Roadmap phase | text |  |
+
+## Rock
+
+### Rock
+
+A rock grown from fracture, abrasion and weathering: ten kinds, any seed
+
+| Parameter | Kind | Notes |
+| :--- | :--- | :--- |
+| Kind | choice: Angular / Sharp / River / Boulder / Slab / Columnar / Weathered / Volcanic / Outcrop / Pebble | What made this stone. Each kind is a recipe over the same three processes - how it broke, how far it has been worn, and what the weather has taken off it - so the kinds are different rocks rather than different names. |
+| Seed | seed | One seed is one stone. Change it for another rock of the same kind: this is the whole of the variation, so a hillside of two hundred is two hundred different stones and not one model turned twenty ways. |
+| Size (m) | float, 0.01 to 200, default 1 | The longest axis, in metres. A pebble is 0.05, a stone you could lift 0.3, a boulder 2, a tor 15. |
+| Detail | int, 1 to 5, default 3 | How many triangles to spend: each step is four times the last, from 320 faces to 20,480. Three is right for a rock you walk past, five for one the camera rests on. |
+| Fracture | float, 0 to 2, default 1 | How broken it is: how many flat faces, and how flat. 0 is a lump that never split, 2 is all faces and edges. |
+| Roundness | float, 0 to 3, default 1 | How far wear has taken the corners. Abrasion works on the edges and not the faces, which is why a worn stone keeps its facets faintly while its edges go. |
+| Weathering | float, 0 to 3, default 1 | Pits, flutes and surface grain - what frost, salt and wind take off the outside. |
+| Flatness | float, 0.1 to 3, default 1 | Thinner or thicker than the kind usually is. Below 1 makes a plate, above it a block. |
+| Elongation | float, 0.1 to 4, default 1 | Longer or stubbier than the kind usually is. |
+| X (m) | float, -1e+07 to 1e+07, default 0 | Where it lies, east of the world's centre, in metres. |
+| Y (m) | float, -1e+07 to 1e+07, default 0 | Its height in metres, used only when it is not sitting on the ground - for a stone on a ledge, or one falling. |
+| Z (m) | float, -1e+07 to 1e+07, default 0 | Where it lies, north of the world's centre, in metres. |
+| Heading | float, 0 to 360, default 0 | Which way it is turned. A stone has no front, so this is only ever about which face you are shown. |
+| Sit on the ground | toggle, default on | Drops it onto the terrain under it rather than leaving it at the height given. A rock resting half in the ground is the commonest way a scene gives itself away. |
+| Colour | color | The stone's own colour, before any material is assigned. Grey with a little warmth in it: most rock is. |
+| Object name | text | The scene object this node drives. Left empty it names itself after the kind. |
 
 ## Scene
 

@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "tools/gen_node_index.cpp",
-  "node_count": 273,
-  "category_count": 33,
+  "node_count": 274,
+  "category_count": 34,
   "nodes": [
     {
       "type": "FlowAccumulation",
@@ -25135,6 +25135,141 @@
         "type": "text",
         "group": "Roadmap",
         "tooltip": ""
+      }
+      ]
+    },
+    {
+      "type": "Rock",
+      "display_name": "Rock",
+      "category": "Rock",
+      "description": "A rock grown from fracture, abrasion and weathering: ten kinds, any seed",
+      "ports": [
+      ],
+      "attrs": [
+      {
+        "key": "type",
+        "label": "Kind",
+        "type": "choice",
+        "group": "Rock",
+        "choices": ["Angular", "Sharp", "River", "Boulder", "Slab", "Columnar", "Weathered", "Volcanic", "Outcrop", "Pebble"],
+        "tooltip": "What made this stone. Each kind is a recipe over the same\nthree processes - how it broke, how far it has been worn,\nand what the weather has taken off it - so the kinds are\ndifferent rocks rather than different names."
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "seed",
+        "group": "Rock",
+        "tooltip": "One seed is one stone. Change it for another rock of the\nsame kind: this is the whole of the variation, so a\nhillside of two hundred is two hundred different stones\nand not one model turned twenty ways."
+      },
+      {
+        "key": "size_m",
+        "label": "Size (m)",
+        "type": "float",
+        "group": "Rock",
+        "min": 0.01, "max": 200, "default": 1,
+        "tooltip": "The longest axis, in metres. A pebble is 0.05, a stone you\ncould lift 0.3, a boulder 2, a tor 15."
+      },
+      {
+        "key": "detail",
+        "label": "Detail",
+        "type": "int",
+        "group": "Rock",
+        "min": 1, "max": 5, "default": 3,
+        "tooltip": "How many triangles to spend: each step is four times the\nlast, from 320 faces to 20,480. Three is right for a rock\nyou walk past, five for one the camera rests on."
+      },
+      {
+        "key": "fracture",
+        "label": "Fracture",
+        "type": "float",
+        "group": "Shape",
+        "min": 0, "max": 2, "default": 1,
+        "tooltip": "How broken it is: how many flat faces, and how flat. 0 is\na lump that never split, 2 is all faces and edges."
+      },
+      {
+        "key": "roundness",
+        "label": "Roundness",
+        "type": "float",
+        "group": "Shape",
+        "min": 0, "max": 3, "default": 1,
+        "tooltip": "How far wear has taken the corners. Abrasion works on the\nedges and not the faces, which is why a worn stone keeps\nits facets faintly while its edges go."
+      },
+      {
+        "key": "weathering",
+        "label": "Weathering",
+        "type": "float",
+        "group": "Shape",
+        "min": 0, "max": 3, "default": 1,
+        "tooltip": "Pits, flutes and surface grain - what frost, salt and wind\ntake off the outside."
+      },
+      {
+        "key": "flatness",
+        "label": "Flatness",
+        "type": "float",
+        "group": "Shape",
+        "min": 0.1, "max": 3, "default": 1,
+        "tooltip": "Thinner or thicker than the kind usually is. Below 1 makes\na plate, above it a block."
+      },
+      {
+        "key": "elongation",
+        "label": "Elongation",
+        "type": "float",
+        "group": "Shape",
+        "min": 0.1, "max": 4, "default": 1,
+        "tooltip": "Longer or stubbier than the kind usually is."
+      },
+      {
+        "key": "x_m",
+        "label": "X (m)",
+        "type": "float",
+        "group": "Place",
+        "min": -1e+07, "max": 1e+07, "default": 0,
+        "tooltip": "Where it lies, east of the world's centre, in metres."
+      },
+      {
+        "key": "y_m",
+        "label": "Y (m)",
+        "type": "float",
+        "group": "Place",
+        "min": -1e+07, "max": 1e+07, "default": 0,
+        "tooltip": "Its height in metres, used only when it is not sitting on\nthe ground - for a stone on a ledge, or one falling."
+      },
+      {
+        "key": "z_m",
+        "label": "Z (m)",
+        "type": "float",
+        "group": "Place",
+        "min": -1e+07, "max": 1e+07, "default": 0,
+        "tooltip": "Where it lies, north of the world's centre, in metres."
+      },
+      {
+        "key": "heading",
+        "label": "Heading",
+        "type": "float",
+        "group": "Place",
+        "min": 0, "max": 360, "default": 0,
+        "tooltip": "Which way it is turned. A stone has no front, so this is\nonly ever about which face you are shown."
+      },
+      {
+        "key": "sit",
+        "label": "Sit on the ground",
+        "type": "bool",
+        "group": "Place",
+        "default": true,
+        "tooltip": "Drops it onto the terrain under it rather than leaving it\nat the height given. A rock resting half in the ground is\nthe commonest way a scene gives itself away."
+      },
+      {
+        "key": "color",
+        "label": "Colour",
+        "type": "color",
+        "group": "Place",
+        "tooltip": "The stone's own colour, before any material is assigned.\nGrey with a little warmth in it: most rock is."
+      },
+      {
+        "key": "object",
+        "label": "Object name",
+        "type": "text",
+        "group": "Place",
+        "tooltip": "The scene object this node drives. Left empty it names\nitself after the kind."
       }
       ]
     },

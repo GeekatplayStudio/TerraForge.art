@@ -99,6 +99,61 @@ static int g_last_used_camera = -1;
 int &scene_active_camera() { return g_active_camera; }
 int &scene_last_used_camera() { return g_last_used_camera; }
 
+// ---- folders -------------------------------------------------------------
+// A folder is a Group object, and the tree already knows how to draw one,
+// expand it, hide it and move it. So "plants under this terrain" needs no new
+// machinery at all: it is a Group whose parent is the terrain, and dragging
+// it somewhere else in the tree reassigns everything in it.
+int scene_folder(const std::string &name, int owner) {
+  SceneState &s = scene();
+  if (owner >= (int)s.objects.size()) owner = -1;
+  // the world's own folder hangs under the home planet when there is one, so
+  // it reads as part of the world rather than beside it
+  if (owner < 0) owner = scene_home_planet();
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (s.objects[(size_t)i].type == SceneObject::Group &&
+        s.objects[(size_t)i].name == name && s.objects[(size_t)i].parent == owner)
+      return i;
+  SceneObject g;
+  g.type = SceneObject::Group;
+  g.name = name;
+  g.parent = owner;
+  // A folder is a place in the tree, not a transform. A new object's defaults
+  // put it in the middle of the tile at a twelfth scale, which is sensible for
+  // a thing and wrong for a container: everything in it would be moved and
+  // shrunk by the mere fact of being filed.
+  g.pos[0] = g.pos[1] = g.pos[2] = 0.f;
+  g.scale = 1.f;
+  g.yaw = g.pitch = g.roll = 0.f;
+  // Not builtin: a folder someone can rename, move or delete. It is made
+  // again the next time something needs it.
+  s.objects.push_back(g);
+  return (int)s.objects.size() - 1;
+}
+
+int scene_plants_group(int terrain) { return scene_folder("Plants", terrain); }
+int scene_rocks_group(int terrain) { return scene_folder("Rocks", terrain); }
+
+int scene_terrain_for_population() {
+  SceneState &s = scene();
+  // what is selected decides, when it says anything: a terrain, something
+  // under one, or a folder already hanging on one
+  int at = s.selected;
+  for (int guard = 0; at >= 0 && at < (int)s.objects.size() && guard < 32; ++guard) {
+    if (s.objects[(size_t)at].type == SceneObject::Terrain) return at;
+    at = s.objects[(size_t)at].parent;
+  }
+  // otherwise the only terrain there is; with none or several, the world's
+  // own folder is the honest answer
+  int only = -1;
+  for (int i = 0; i < (int)s.objects.size(); ++i)
+    if (s.objects[(size_t)i].type == SceneObject::Terrain) {
+      if (only >= 0) return -1;
+      only = i;
+    }
+  return only;
+}
+
 int scene_cameras_group() {
   SceneState &s = scene();
   for (int i = 0; i < (int)s.objects.size(); ++i)

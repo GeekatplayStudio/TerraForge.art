@@ -67,10 +67,10 @@ static bool is_config_node(const std::string &t) {
   if (!d) return false;
   const std::string &c = d->category;
   if (d->description.rfind("[Planned]", 0) == 0) return true;
-  // Plant nodes describe a species; the root grows a mesh for the scene
-  // (gpx/plant.hpp) rather than a buffer, and the parts are data it reads.
+  // Plant and Rock nodes describe a species or a stone; each grows a mesh for the scene
+  // (gpx/plant.hpp, gpx/rock.hpp) rather than a buffer, and the parts are data it reads.
   return c == "Light" || c == "Camera" || c == "Scene" || c == "Cloud" ||
-         c == "Render" || c == "Plant" || (c == "Animation" && t == "AnimationSequence");
+         c == "Render" || c == "Plant" || c == "Rock" || (c == "Animation" && t == "AnimationSequence");
 }
 // Terminal sinks: they consume and export, so having no output port is correct.
 // TerrainDisplacement and TerrainSurface are sinks too — what they "export" is

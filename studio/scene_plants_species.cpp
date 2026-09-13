@@ -227,7 +227,10 @@ void apply_species(App &a, gpx::Node &n, float size_m) {
   if (name.empty()) name = "Plant";
   int idx = find_driven_species(n, name);
   if (idx < 0) {
+    // before the object exists, because making the folder can move the vector
+    const int grp = scene_plants_group(scene_terrain_for_population());
     SceneObject o;
+    o.parent = grp;
     o.type = SceneObject::Mesh;
     o.name = name;
     o.path = "species:" + std::to_string(n.id);

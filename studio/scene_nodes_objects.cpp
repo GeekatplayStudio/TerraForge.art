@@ -24,6 +24,7 @@
 namespace studio {
 
 void apply_species(App &a, gpx::Node &n, float size_m); // scene_plants_species.cpp
+void apply_rock(App &a, gpx::Node &n, float size_m);    // scene_rocks.cpp
 
 namespace {
 
@@ -349,6 +350,7 @@ void apply_object_nodes(App &a) {
     else if (n.type == "ImportObject") apply_mesh(a, n, size_m, false);
     else if (n.type == "Primitive") apply_mesh(a, n, size_m, true);
     else if (n.type == "PlantSpecies") apply_species(a, n, size_m);
+    else if (n.type == "Rock") apply_rock(a, n, size_m);
     else if (n.type == "Planet") apply_planet(a, n, size_m);
     else if (n.type == "Nebula") apply_nebula(a, n);
     else if (n.type == "InfiniteTerrain") apply_surface(a, n);
